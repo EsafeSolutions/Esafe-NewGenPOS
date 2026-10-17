@@ -28,6 +28,7 @@ import { ref, onMounted } from 'vue'
 import { t } from '../i18n'
 import { useSessionStore } from '../stores/session'
 
+const props = defineProps({ defaultScope: { type: String, default: 'outlet' } })
 const emit = defineEmits(['change'])
 const session = useSessionStore()
 const PERIODS = [
@@ -38,7 +39,7 @@ const PERIODS = [
   { key: 'custom', label: 'Custom' },
 ]
 const period = ref('today')
-const scope = ref('outlet')
+const scope = ref(props.defaultScope === 'company' ? 'company' : 'outlet')
 const fromDate = ref('')
 const toDate = ref('')
 

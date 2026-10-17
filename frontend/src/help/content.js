@@ -343,6 +343,42 @@ export const TOPICS = [
   },
   {
     route: '/insights',
+    title: 'Products',
+    when: (s) => Boolean(s.permissions.sales_reports),
+    steps: [
+      'What sold, by item, item group, brand, and for items with variants by product and by attribute such as size or colour.',
+      'Quantities sold and returned and the net sales, with the cost and profit for whoever may see the profit.',
+    ],
+  },
+  {
+    route: '/insights',
+    title: 'Profit',
+    when: (s) => Boolean(s.permissions.profit_report),
+    steps: [
+      'Net sales, the cost of the goods, the gross profit and the margin, day by day and by item group.',
+      'The cost is what ERPNext booked for the goods. Until a shift closes it is estimated, and the page says how much.',
+    ],
+  },
+  {
+    route: '/insights',
+    title: 'Customers',
+    when: (s) => Boolean(s.permissions.sales_reports),
+    steps: [
+      'How many named customers bought, how many are new and how many came back, the average basket and how often they buy.',
+      'The best customers, the regulars and the most recent, beside the walk-in sales.',
+    ],
+  },
+  {
+    route: '/insights',
+    title: 'Outlets',
+    when: (s) => Boolean(s.permissions.sales_reports),
+    steps: [
+      "Each outlet's sales, returns, average sale, shifts and over and short, side by side.",
+      'The stock in its warehouse, the items at or below their reorder level, and its best sellers.',
+    ],
+  },
+  {
+    route: '/insights',
     title: 'Cashiers',
     when: (s) => Boolean(s.permissions.cashier_report),
     steps: [
@@ -455,6 +491,7 @@ export const TOURS = {
 // What is new, newest first. Shown once per person after an update, only the
 // entries newer than what they last saw and that apply to them.
 export const WHATS_NEW = [
+  { version: '0.62.0', title: 'Products, profit, customers and outlets', text: 'Insights also shows what sold by item, group, brand and variant, the profit on it, your customers and how each outlet did.', route: '/insights', when: (s) => Boolean(s.permissions.sales_reports || s.permissions.profit_report) },
   { version: '0.62.0', title: 'Sales reports in Insights', text: 'Insights has two new tabs: a sales and cash summary for any period, and how each cashier did. Managers see them, and whoever you name under Permissions.', route: '/insights', when: (s) => Boolean(s.permissions.sales_reports || s.permissions.cashier_report) },
   { version: '0.61.2', title: 'Other currencies on any sale', text: 'On a sale in your own currency, the amount can now be typed in another currency too. The line shows both figures, at the rate of the shift.', route: '/', when: (s) => s.saleCurrencies.length > 0 },
   { version: '0.61.1', title: 'What a customer owes', text: 'Owes now shows only what the customer owes. Holds and orders not invoiced show on their own line, and still count against the credit limit.', route: '/customers', when: onAccount },

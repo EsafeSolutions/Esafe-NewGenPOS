@@ -865,7 +865,7 @@
   },
   {
    "default": "1",
-   "description": "The sales and cash summary and how each cashier did, as tabs of Insights, for whoever may see them (Who can do what).",
+   "description": "Sales, products, profit, customers, outlets and cashiers, as tabs of Insights, for whoever may see them (Who can do what).",
    "fieldname": "reports_in_insights",
    "fieldtype": "Check",
    "label": "Sales reports in Insights"

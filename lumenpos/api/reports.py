@@ -15,9 +15,22 @@ currency (ERPNext's base_ fields), so a shop selling in several currencies
 adds up in one. The cash counted at the close is read from the shift
 (POS Register Session), each count in its own drawer's currency.
 
-Who may see what: "See sales reports" and "See cashier performance" in Who can
-do what, nobody but a manager until a shop names someone, and the whole of it
-can be switched off (LumenPOS Settings, Sales reports in Insights).
+Phase 2 (products and profit): the lines sold, by item, group, brand, the item a
+variant belongs to and its attributes; and what they cost. The cost follows
+ERPNext's own Gross Profit report (erpnext/accounts/report/gross_profit): a
+stock item's cost is what the stock ledger booked for it when the sale was
+posted, here the Sales Invoice the shift's close merged the sale into (or the
+outlet's own Sales Invoice); a bundle costs its components; a non-stock item
+costs nothing. A sale not posted yet (its shift still open) has no ledger entry,
+so its cost is estimated at the item's valuation rate in the outlet's
+warehouse, as the report does when it has no entry, and is shown as estimated.
+LumenPOS's own placeholder items (the gift card, the deposit) are not products
+and stay out.
+
+Who may see what: "See sales reports", "See cashier performance" and "See
+profit" in Who can do what, nobody but a manager until a shop names someone,
+and the whole of it can be switched off (LumenPOS Settings, Sales reports in
+Insights).
 """
 
 from __future__ import annotations
@@ -55,6 +68,10 @@ def can_see_cashier_report(user=None):
     return enabled() and permissions.can_see_cashier_report(user)
 
 
+def can_see_profit(user=None):
+    return enabled() and permissions.can_see_profit(user)
+
+
 def _period(from_date, to_date):
     start = getdate(from_date or nowdate())
     end = getdate(to_date or from_date or nowdate())
@@ -76,7 +93,7 @@ def _invoices(outlets, start, end):
         extra = " and is_pos = 1 and is_consolidated = 0" if doctype == "Sales Invoice" else ""
         found = frappe.db.sql(  # nosemgrep
             f"""
-            select name, %(doctype)s as doctype, owner, pos_profile, posting_date, posting_time,
+            select name, %(doctype)s as doctype, owner, pos_profile, customer, posting_date, posting_time,
                    is_return, total_qty, base_net_total, base_discount_amount,
                    base_total_taxes_and_charges, base_grand_total, base_rounded_total,
                    base_change_amount, account_for_change_amount
@@ -353,4 +370,381 @@ def cashiers(from_date: str | None = None, to_date: str | None = None, pos_profi
     return {
         "from_date": str(start), "to_date": str(end), "company": company, "currency": ccy,
         "outlets": outlets, "rows": rows,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Phase 2: products and profit
+# ---------------------------------------------------------------------------
+
+
+def _lines(outlets, start, end):
+    """Every line sold or returned at these outlets in the period, LumenPOS's
+    placeholder items left out, each with the invoice that posted it to the
+    books: a POS Invoice's merged Sales Invoice (empty until its shift closes),
+    or the outlet's own Sales Invoice. `doctype` below is one of SALE_DOCTYPES."""
+    if not outlets:
+        return []
+    from lumenpos.api.catalog import internal_item_codes
+
+    params = {"outlets": tuple(outlets), "start": start, "end": end,
+              "skip": tuple(internal_item_codes()) or ("",)}
+    rows = []
+    for doctype in SALE_DOCTYPES:
+        if doctype == "POS Invoice":
+            posted, extra = "inv.consolidated_invoice", ""
+        else:
+            posted, extra = "inv.name", " and inv.is_pos = 1 and inv.is_consolidated = 0"
+        rows.extend(frappe.db.sql(  # nosemgrep
+            f"""
+            select inv.name as invoice, {posted} as posted, inv.posting_date, inv.is_return,
+                   it.item_code, it.item_name, it.item_group, it.brand, it.warehouse,
+                   it.qty, it.stock_qty, it.base_net_amount
+            from `tab{doctype} Item` it
+            join `tab{doctype}` inv on inv.name = it.parent
+            where inv.docstatus = 1{extra} and inv.pos_profile in %(outlets)s
+              and inv.posting_date between %(start)s and %(end)s
+              and it.item_code not in %(skip)s
+            """,
+            params,
+            as_dict=True,
+        ))
+    return rows
+
+
+def _item_info(codes):
+    if not codes:
+        return {}
+    return {r.name: r for r in frappe.get_all(
+        "Item", filters={"name": ["in", list(codes)]},
+        fields=["name", "item_name", "is_stock_item", "variant_of", "valuation_rate"],
+        limit_page_length=0)}
+
+
+def _bundles(codes):
+    """Each Product Bundle among these items with its components and their
+    quantities per bundle."""
+    out = {}
+    if not codes:
+        return out
+    for b in frappe.get_all("Product Bundle", filters={"new_item_code": ["in", list(codes)]},
+                            fields=["name", "new_item_code"], limit_page_length=0):
+        out[b.new_item_code] = [
+            (r.item_code, flt(r.qty)) for r in frappe.get_all(
+                "Product Bundle Item", filters={"parent": b.name, "parenttype": "Product Bundle"},
+                fields=["item_code", "qty"], order_by="idx asc")
+        ]
+    return out
+
+
+def _ledger(posted):
+    """What the stock ledger booked for each posted invoice and item: the
+    value and the quantity that moved."""
+    out = {}
+    if not posted:
+        return out
+    for r in frappe.db.sql(
+        """
+        select voucher_no, item_code, sum(stock_value_difference) as value, sum(actual_qty) as qty
+        from `tabStock Ledger Entry`
+        where voucher_type = 'Sales Invoice' and voucher_no in %(posted)s and is_cancelled = 0
+        group by voucher_no, item_code
+        """,
+        {"posted": tuple(posted)},
+        as_dict=True,
+    ):
+        out[(r.voucher_no, r.item_code)] = (flt(r.value), flt(r.qty))
+    return out
+
+
+def _cost(lines):
+    """Give each line its cost (`cost`, company currency, negative on a return)
+    and whether it is estimated, as ERPNext's Gross Profit report costs an
+    invoice line: from the stock ledger of the invoice that posted it, a bundle
+    from its components, a non-stock item at nothing, and at the valuation rate
+    where nothing is posted yet."""
+    codes = {ln.item_code for ln in lines}
+    bundles = _bundles(codes)
+    parts = {c for b in bundles.values() for c, _q in b}
+    info = _item_info(codes | parts)
+    ledger = _ledger({ln.posted for ln in lines if ln.posted})
+    rates = {}
+    stock_codes = [c for c in (codes | parts) if cint((info.get(c) or {}).get("is_stock_item"))]
+    if stock_codes:
+        for b in frappe.get_all("Bin", filters={"item_code": ["in", stock_codes]},
+                                fields=["item_code", "warehouse", "valuation_rate"], limit_page_length=0):
+            rates[(b.item_code, b.warehouse)] = flt(b.valuation_rate)
+
+    def unit(code, posted, warehouse):
+        if posted and (posted, code) in ledger:
+            value, qty = ledger[(posted, code)]
+            if qty:
+                return value / qty, False
+        return rates.get((code, warehouse)) or flt((info.get(code) or {}).get("valuation_rate")), True
+
+    for ln in lines:
+        qty = flt(ln.stock_qty) or flt(ln.qty)
+        cost, estimated = 0.0, False
+        if ln.item_code in bundles:
+            for code, per in bundles[ln.item_code]:
+                if cint((info.get(code) or {}).get("is_stock_item")):
+                    u, e = unit(code, ln.posted, ln.warehouse)
+                    cost += qty * per * u
+                    estimated = estimated or e
+        elif cint((info.get(ln.item_code) or {}).get("is_stock_item")):
+            u, estimated = unit(ln.item_code, ln.posted, ln.warehouse)
+            cost = qty * u
+        ln.cost = cost
+        ln.estimated = estimated
+    return info
+
+
+def _grouped(lines, key, label, with_cost):
+    """Lines added up by `key(line)`: quantity sold and returned, net sales and,
+    with the cost, the gross profit and margin."""
+    by = {}
+    for ln in lines:
+        k = key(ln)
+        if k is None:
+            continue
+        row = by.setdefault(k, {"key": k, "label": label(ln), "sold": 0.0, "returned": 0.0, "net": 0.0, "cost": 0.0})
+        qty = flt(ln.qty)
+        if cint(ln.is_return):
+            row["returned"] += -qty
+        else:
+            row["sold"] += qty
+        row["net"] += flt(ln.base_net_amount)
+        if with_cost:
+            row["cost"] += flt(ln.cost)
+    out = []
+    for row in by.values():
+        row["qty"] = row["sold"] - row["returned"]
+        for f in ("sold", "returned", "qty"):
+            row[f] = flt(row[f], 3)
+        row["net"] = flt(row["net"], 2)
+        if with_cost:
+            row["cost"] = flt(row["cost"], 2)
+            row["profit"] = flt(row["net"] - row["cost"], 2)
+            row["margin"] = flt(row["profit"] / row["net"] * 100, 1) if row["net"] else None
+        else:
+            del row["cost"]
+        out.append(row)
+    out.sort(key=lambda r: (-r["net"], str(r["label"])))
+    return out
+
+
+@frappe.whitelist()
+def products(from_date: str | None = None, to_date: str | None = None, pos_profile: str | None = None,
+             company: str | None = None):
+    """What sold over a period: by item, item group, brand, the item a variant
+    belongs to, and each variant attribute's values. Net sales before tax; the
+    cost, gross profit and margin too for whoever may see the profit."""
+    if not can_see_sales_reports():
+        frappe.throw(_("You're not allowed to see the sales reports."), frappe.PermissionError)
+    start, end, outlets, company, ccy = _context(from_date, to_date, pos_profile, company)
+    lines = _lines(outlets, start, end)
+    with_cost = can_see_profit()
+    info = _cost(lines) if with_cost else _item_info({ln.item_code for ln in lines})
+
+    items = _grouped(lines, lambda ln: ln.item_code, lambda ln: ln.item_name or ln.item_code, with_cost)
+    meta = {}
+    for ln in lines:
+        meta.setdefault(ln.item_code, (ln.item_group or "", ln.brand or ""))
+    for row in items:
+        row["item_group"], row["brand"] = meta.get(row["key"], ("", ""))
+
+    templates_of = {c: (info.get(c) or {}).get("variant_of") for c in meta}
+    names = {}
+    wanted = {t for t in templates_of.values() if t}
+    if wanted:
+        names = {r.name: r.item_name for r in frappe.get_all("Item", filters={"name": ["in", list(wanted)]},
+                                                              fields=["name", "item_name"])}
+    templates = _grouped(lines, lambda ln: templates_of.get(ln.item_code) or None,
+                         lambda ln: names.get(templates_of.get(ln.item_code)) or templates_of.get(ln.item_code), with_cost)
+
+    attributes = []
+    variants = [c for c, t in templates_of.items() if t]
+    if variants:
+        values = {}
+        for r in frappe.get_all("Item Variant Attribute", filters={"parent": ["in", variants], "parenttype": "Item"},
+                                fields=["parent", "attribute", "attribute_value"], limit_page_length=0):
+            values.setdefault(r.attribute, {})[r.parent] = r.attribute_value
+        for attribute in sorted(values):
+            of = values[attribute]
+            rows = _grouped(lines, lambda ln, of=of: of.get(ln.item_code), lambda ln, of=of: of.get(ln.item_code), with_cost)
+            attributes.append({"attribute": attribute, "values": rows})
+
+    return {
+        "from_date": str(start), "to_date": str(end), "company": company, "currency": ccy, "outlets": outlets,
+        "with_profit": with_cost,
+        "items_total": len(items),
+        "items": items[:200],
+        "groups": _grouped(lines, lambda ln: ln.item_group or "", lambda ln: ln.item_group or "", with_cost),
+        "brands": _grouped(lines, lambda ln: ln.brand or "", lambda ln: ln.brand or "", with_cost),
+        "templates": templates,
+        "attributes": attributes,
+    }
+
+
+@frappe.whitelist()
+def profit(from_date: str | None = None, to_date: str | None = None, pos_profile: str | None = None,
+           company: str | None = None):
+    """Net sales, the cost of the goods sold, the gross profit and the margin
+    over a period, day by day and by item group, with the most and the least
+    profitable items. How much of the cost is estimated (shifts not closed yet)
+    is said apart."""
+    if not can_see_profit():
+        frappe.throw(_("You're not allowed to see the profit."), frappe.PermissionError)
+    start, end, outlets, company, ccy = _context(from_date, to_date, pos_profile, company)
+    lines = _lines(outlets, start, end)
+    _cost(lines)
+    net = sum(flt(ln.base_net_amount) for ln in lines)
+    cost = sum(flt(ln.cost) for ln in lines)
+    estimated = sum(flt(ln.cost) for ln in lines if ln.estimated)
+    totals = {
+        "net": flt(net, 2), "cost": flt(cost, 2), "profit": flt(net - cost, 2),
+        "margin": flt((net - cost) / net * 100, 1) if net else None,
+        "estimated_cost": flt(estimated, 2),
+        "estimated_lines": sum(1 for ln in lines if ln.estimated),
+    }
+    days = _grouped(lines, lambda ln: str(ln.posting_date), lambda ln: str(ln.posting_date), True)
+    days.sort(key=lambda r: r["key"])
+    items = _grouped(lines, lambda ln: ln.item_code, lambda ln: ln.item_name or ln.item_code, True)
+    sold = [r for r in items if r["net"] > 0]
+    return {
+        "from_date": str(start), "to_date": str(end), "company": company, "currency": ccy, "outlets": outlets,
+        "totals": totals,
+        "days": days,
+        "groups": sorted(_grouped(lines, lambda ln: ln.item_group or "", lambda ln: ln.item_group or "", True),
+                         key=lambda r: -r["profit"]),
+        "best": sorted(sold, key=lambda r: -r["profit"])[:10],
+        "lowest_margin": sorted(sold, key=lambda r: (r["margin"] if r["margin"] is not None else 0))[:10],
+    }
+
+
+# ---------------------------------------------------------------------------
+# Phase 3: customers and outlets
+# ---------------------------------------------------------------------------
+
+
+def _walk_ins(outlets):
+    """The customers that stand for "no customer": each outlet's own default
+    customer, and the walk-in of every other currency (lumenpos.currency names
+    them "Walk-in <currency>")."""
+    out = {c for c in frappe.get_all("POS Profile", filters={"name": ["in", list(outlets) or [""]]}, pluck="customer") if c}
+    out |= set(frappe.get_all("Customer", filters={"customer_name": ["like", "Walk-in %"]}, pluck="name"))
+    return out
+
+
+@frappe.whitelist()
+def customers(from_date: str | None = None, to_date: str | None = None, pos_profile: str | None = None,
+              company: str | None = None):
+    """Who bought over a period: how many named customers, how many came back,
+    how many are new, the average basket and how often they buy, the best and
+    the most recent ones, and what walk-in sales came to beside them."""
+    if not can_see_sales_reports():
+        frappe.throw(_("You're not allowed to see the sales reports."), frappe.PermissionError)
+    start, end, outlets, company, ccy = _context(from_date, to_date, pos_profile, company)
+    invoices = _invoices(outlets, start, end)
+    walk = _walk_ins(outlets)
+    named = [i for i in invoices if i.customer and i.customer not in walk]
+    anon = [i for i in invoices if not i.customer or i.customer in walk]
+
+    by = {}
+    for inv in named:
+        row = by.setdefault(inv.customer, {"customer": inv.customer, "sales": 0, "returns": 0, "total": 0.0, "last": ""})
+        total = flt(inv.base_rounded_total) or flt(inv.base_grand_total)
+        row["total"] += total
+        if cint(inv.is_return):
+            row["returns"] += 1
+        else:
+            row["sales"] += 1
+        when = f"{inv.posting_date} {str(inv.posting_time or '')}"
+        if when > row["last"]:
+            row["last"] = when
+    names = {}
+    created = {}
+    if by:
+        for c in frappe.get_all("Customer", filters={"name": ["in", list(by)]}, fields=["name", "customer_name", "creation"],
+                                limit_page_length=0):
+            names[c.name] = c.customer_name or c.name
+            created[c.name] = getdate(c.creation)
+    rows = []
+    for key, row in by.items():
+        row["name"] = names.get(key, key)
+        row["total"] = flt(row["total"], 2)
+        row["new"] = bool(created.get(key) and start <= created[key] <= end)
+        rows.append(row)
+
+    sales_named = [i for i in named if not cint(i.is_return)]
+    total_named = sum(flt(i.base_rounded_total) or flt(i.base_grand_total) for i in sales_named)
+    count = len(rows)
+    totals = {
+        "customers": count,
+        "repeat": sum(1 for r in rows if r["sales"] >= 2),
+        "new": sum(1 for r in rows if r["new"]),
+        "average_basket": flt(total_named / len(sales_named), 2) if sales_named else 0.0,
+        "frequency": flt(len(sales_named) / count, 2) if count else 0.0,
+        "named_total": flt(sum(r["total"] for r in rows), 2),
+        "walk_in_sales": sum(1 for i in anon if not cint(i.is_return)),
+        "walk_in_total": flt(sum(flt(i.base_rounded_total) or flt(i.base_grand_total) for i in anon), 2),
+    }
+    totals["repeat_rate"] = flt(totals["repeat"] / count * 100, 1) if count else 0.0
+    return {
+        "from_date": str(start), "to_date": str(end), "company": company, "currency": ccy, "outlets": outlets,
+        "totals": totals,
+        "top": sorted(rows, key=lambda r: (-r["total"], r["name"]))[:20],
+        "repeat": sorted([r for r in rows if r["sales"] >= 2], key=lambda r: (-r["sales"], -r["total"]))[:20],
+        "recent": sorted(rows, key=lambda r: r["last"], reverse=True)[:10],
+    }
+
+
+@frappe.whitelist()
+def outlets(from_date: str | None = None, to_date: str | None = None, pos_profile: str | None = None,
+            company: str | None = None):
+    """Each outlet over a period: its sales, returns, average sale and items
+    sold, its shifts and their over and short, the stock in its warehouse and
+    how many items there are at or below their reorder level, and its best
+    selling items."""
+    if not can_see_sales_reports():
+        frappe.throw(_("You're not allowed to see the sales reports."), frappe.PermissionError)
+    start, end, chosen, company, ccy = _context(from_date, to_date, pos_profile, company)
+    invoices = _invoices(chosen, start, end)
+    lines = _lines(chosen, start, end)
+    shifts = _shifts(chosen, start, end)
+    discounts = _line_discounts(invoices)
+    out = []
+    for outlet in chosen:
+        mine = [i for i in invoices if i.pos_profile == outlet]
+        f = _figures(mine, discounts)
+        warehouse = frappe.get_cached_value("POS Profile", outlet, "warehouse")
+        stock = 0.0
+        low = 0
+        if warehouse:
+            stock = flt(frappe.db.sql(
+                "select coalesce(sum(actual_qty), 0) from `tabBin` where warehouse = %s", (warehouse,))[0][0], 3)
+            low = cint(frappe.db.sql(
+                """
+                select count(*) from `tabItem Reorder` r
+                join `tabBin` b on b.item_code = r.parent and b.warehouse = r.warehouse
+                where r.parenttype = 'Item' and r.warehouse = %s and b.actual_qty <= r.warehouse_reorder_level
+                """,
+                (warehouse,),
+            )[0][0])
+        own = [s for s in shifts if s["pos_profile"] == outlet]
+        names = {i.name for i in mine}
+        top = _grouped([ln for ln in lines if ln.invoice in names], lambda ln: ln.item_code,
+                       lambda ln: ln.item_name or ln.item_code, False)[:5]
+        out.append({
+            "pos_profile": outlet, "warehouse": warehouse or "",
+            "sales": f["sales"], "returns": f["returns"], "net": f["net"], "total": f["total"],
+            "average_sale": f["average_sale"], "items_sold": f["items_sold"], "discounts": f["discounts"],
+            "shifts": len(own), "open_shifts": sum(1 for s in own if s["status"] == "Open"),
+            "differences": _differences(own, ccy),
+            "stock": stock, "low_stock": low, "top": top,
+        })
+    out.sort(key=lambda r: (-r["total"], r["pos_profile"]))
+    return {
+        "from_date": str(start), "to_date": str(end), "company": company, "currency": ccy, "outlets": chosen,
+        "rows": out,
     }

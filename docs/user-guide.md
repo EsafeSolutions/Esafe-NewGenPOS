@@ -198,12 +198,21 @@ nobody was named on come as their own row, so the page adds up to the
 outlet's net sales. **Download CSV** gives the same as a spreadsheet. The
 Register page and the X-report list the shift by salesperson.
 
+Who sees it: managers, and anyone named for **See sales by salesperson**
+(Settings, Approvals and permissions). Only they see the commission on the
+shift report.
+
+ERPNext's own Sales Person reports show this only for a Sales Invoice outlet:
+at a POS Invoice outlet (the default) the close merges the shift's sales into
+a Sales Invoice without the Sales Team, and those reports read no POS Invoice
+(ERPNext 13 to 16). The Salespeople page reads the till's own invoices.
+
 ### Sales reports in Insights (0.62.0)
-Two tabs of **Insights**, each over a period (today, yesterday, the last 7 days, this
+Six tabs of **Insights**, each over a period (today, yesterday, the last 7 days, this
 month, or any dates, counted by the site's own calendar) and for this outlet or every
 outlet of its company. Amounts are in the company currency, so a shop that sells in
-several currencies adds up in one. Both read the till's own sales (POS Invoices, and the
-Sales Invoices of an outlet that posts them directly), and both have **Download CSV**.
+several currencies adds up in one. All read the till's own sales (POS Invoices, and the
+Sales Invoices of an outlet that posts them directly), and all have **Download CSV**.
 
 - **Sales summary**: the number of sales, the average sale (tax included), net sales
   (before tax), the tax, the total with tax, the returns, the discounts given (off the
@@ -217,20 +226,32 @@ Sales Invoices of an outlet that posts them directly), and both have **Download 
   the average sale, the returns, the discounts given, the prices they typed at the till
   (from the audit log), their shifts, how many of them had a difference at the count,
   and their over and short.
-
-Managers see both. Anyone else needs **See sales reports** or **See cashier
-performance** in **Settings, General, Approvals and access, Permissions**: both are
-closed until a shop names someone. **Settings, General, Features, Sales reports in
+- **Products**: what sold, **by item**, **by item group**, **by brand**, and for items with
+  variants **by product with variants** (each variant counted under the item it belongs
+  to) and **by attribute** (size, colour, and so on). For each: the quantity sold and
+  returned, the net quantity and the net sales (before tax, returns taken off). Whoever
+  may see the profit also sees the cost, the gross profit and the gross margin.
+- **Profit**: net sales, the cost of goods, the gross profit and the gross margin, day
+  by day and by item group, with the most profitable items and those with the lowest
+  margin. The cost is what ERPNext booked for the goods when the sale was posted (the
+  stock ledger of the invoice the shift's close made, as ERPNext's own Gross Profit
+  report reads it), a product bundle through its components, a service at nothing.
+  Until a shift closes its sales are not posted yet, so their cost is estimated at the
+  valuation rate of the outlet's warehouse, and the page says how much of the cost that
+  is. It becomes what ERPNext books once the shift closes.
+- **Customers**: how many named customers bought, how many are new (added in the
+  period) and how many came back (two sales or more), the average basket, how many
+  sales each made, and what the walk-in sales came to beside them. Then the top
+  customers, the regulars and the most recent.
+- **Outlets**: each outlet side by side: sales, returns, net sales, total, average sale,
+  items sold, shifts (and how many are still open) and their over and short, the stock
+  in its warehouse now, how many items there are at or below the reorder level set on
+  the item in ERPNext, and its five best sellers.
+Managers see them all. Anyone else needs **See sales reports** (Sales summary,
+Products, Customers, Outlets), **See profit** (Profit, and the cost columns of
+Products) or **See cashier performance** (Cashiers) in **Settings, General, Approvals
+and access, Permissions**: all three are closed until a shop names someone. **Settings, General, Features, Sales reports in
 Insights** (on by default) takes them away altogether.
-
-Who sees it: managers, and anyone named for **See sales by salesperson**
-(Settings, Approvals and permissions). Only they see the commission on the
-shift report.
-
-ERPNext's own Sales Person reports show this only for a Sales Invoice outlet:
-at a POS Invoice outlet (the default) the close merges the shift's sales into
-a Sales Invoice without the Sales Team, and those reports read no POS Invoice
-(ERPNext 13 to 16). The Salespeople page reads the till's own invoices.
 
 ### Coupons
 Type the code → **Apply**. Coupon-locked promotions never reach the browser
@@ -1406,7 +1427,7 @@ which both LumenPOS roles are given.
 ### LumenPOS releases
 | Version | Highlights |
 |---|---|
-| 0.62.0 | **Sales reports in Insights** (the Zimbabwe shop, 2026-10-15: screenshots of another POS's dashboards; the owner agreed a plan in three phases, this is the first). Two new tabs of Insights, over any period and for one outlet or every outlet of the company, in the company currency: **Sales summary** (sales, average sale, net sales, tax, total with tax, returns, discounts given, items sold, the payments by method, the sales day by day or hour by hour, and every shift with what its close counted against what it expected, over and short added up) and **Cashiers** (each cashier's sales, average sale, returns, discounts, price edits from the audit log, shifts and over and short). Two new permissions, **See sales reports** and **See cashier performance**, closed until a shop names someone (managers always see them), and a switch, **Sales reports in Insights** (on). "Today" is the site's today, not the device's. In all thirteen languages. |
+| 0.62.0 | **Sales reports in Insights** (the Zimbabwe shop, 2026-10-15: screenshots of another POS's dashboards; the owner agreed a plan in three phases, all three are in this release). Six new tabs of Insights, over any period and for one outlet or every outlet of the company, in the company currency: **Sales summary** (sales, average sale, net sales, tax, total with tax, returns, discounts given, items sold, the payments by method, the sales day by day or hour by hour, and every shift with what its close counted against what it expected, over and short added up) , **Cashiers** (each cashier's sales, average sale, returns, discounts, price edits from the audit log, shifts and over and short), **Products** (by item, item group, brand, product with variants and attribute, quantities sold and returned, net sales, and the cost and gross margin for whoever may see the profit), **Profit** (net sales, cost of goods from what ERPNext booked in the stock ledger, estimated at the valuation rate until the shift closes and said so, gross profit and margin by day and item group, the most and least profitable items), **Customers** (named customers, new, came back, average basket, how often they buy, walk-in sales apart, top, regulars, most recent) and **Outlets** (each outlet side by side with its shifts, stock, items at or below the reorder level and best sellers). Three new permissions, **See sales reports**, **See profit** and **See cashier performance**, closed until a shop names someone (managers always see them), and a switch, **Sales reports in Insights** (on). "Today" is the site's today, not the device's. In all thirteen languages. |
 | 0.61.3 | **LumenPOS on the apps screen and the Frappe 16 desk** (the Zimbabwe shop, 2026-10-16: LumenPOS did not appear on their Frappe 16 desk, and an icon they made for it by hand was marked Deprecated). LumenPOS now declares itself to Frappe (`add_to_apps_screen`), so the apps screen of Frappe 15 and 16 lists it and opens the till, for whoever may open the till (read on POS Invoice, the same test the till makes first). On Frappe 16 it ships its own desk tile and sidebar (`desktop_icon/lumenpos.json`, `workspace_sidebar/lumenpos.json`), which Frappe imports on every update: Open POS, POS Invoice, register shifts and outlets, then offers and prices, customer balances, the controls, and LumenPOS Settings. An icon a shop made by hand under the same name is replaced by it. Frappe 13 and 14 are unchanged (the desk workspace as before). The four new sidebar labels are in all thirteen languages. |
 | 0.61.2 | **Other currencies on any sale** (the Zimbabwe shop, 2026-10-07: a ZWG sale showed each payment in both currencies, a USD sale did not). On a sale in the outlet's own money, **Amount in** now offers the shop's other currencies too: the cashier types the ZWG the customer hands over, the line reads "US$3.00 = ZWG 112.91" at the shift's rate, and the sale and the payment stay recorded in dollars, so nothing changes in the books. Help names it, and *What is new* tells shops that sell in other currencies. Also: help sentences drop a button label's closing colon, as they drop its "…". |
 | 0.61.1 | **What a customer owes, without their holds** (the owner agreed on 2026-10-04). *Owes*, on the payment screen's On account card and on the customer's page, was ERPNext's credit figure, which counts a hold that is not invoiced yet: a customer with a hold of 1,000 and no debt read "Owes 1,000" above a list that said nothing was owed. Now *Owes* is their balance in the books, and **Holds and orders not invoiced** shows apart. The limit is unchanged: holds still count against it, as ERPNext counts them, and when a sale is refused for the limit the message names the holds. **The shift clock** in the top bar reads like a clock, 07:01:20, and counts on the site's own time: a device set to another time zone (or a wrong time) used to show a new shift as hours old, and the Arabic read "7 ساعة". |

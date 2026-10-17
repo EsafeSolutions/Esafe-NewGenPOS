@@ -20,6 +20,10 @@
     </div>
 
     <SummaryPanel v-if="active === 'summary'" />
+    <ProductsPanel v-else-if="active === 'products'" />
+    <ProfitPanel v-else-if="active === 'profit'" />
+    <CustomerReportPanel v-else-if="active === 'customers'" />
+    <OutletsPanel v-else-if="active === 'outlets'" />
     <CashiersPanel v-else-if="active === 'cashiers'" />
     <SalespeoplePanel v-else-if="active === 'salespeople'" />
 
@@ -72,12 +76,20 @@ import { useSessionStore } from '../stores/session'
 import SalespeoplePanel from '../components/SalespeoplePanel.vue'
 import SummaryPanel from '../components/SummaryPanel.vue'
 import CashiersPanel from '../components/CashiersPanel.vue'
+import ProductsPanel from '../components/ProductsPanel.vue'
+import ProfitPanel from '../components/ProfitPanel.vue'
+import CustomerReportPanel from '../components/CustomerReportPanel.vue'
+import OutletsPanel from '../components/OutletsPanel.vue'
 
 const session = useSessionStore()
 const tabs = computed(() =>
   [
     // The reports of 0.62.0 first: they need no other app.
     session.permissions.sales_reports && { key: 'summary', label: 'Sales summary' },
+    session.permissions.sales_reports && { key: 'products', label: 'Products' },
+    session.permissions.profit_report && { key: 'profit', label: 'Profit' },
+    session.permissions.sales_reports && { key: 'customers', label: 'Customers' },
+    session.permissions.sales_reports && { key: 'outlets', label: 'Outlets' },
     session.permissions.cashier_report && { key: 'cashiers', label: 'Cashiers' },
     session.permissions.insights && { key: 'dashboard', label: 'Sales dashboard' },
     session.permissions.sales_by_person &&
@@ -268,6 +280,8 @@ onMounted(() => {
 }
 .ins-tabs {
   display: inline-flex;
+  flex-wrap: wrap;
+  max-width: 100%;
   align-self: flex-start;
   gap: 4px;
   padding: 4px;

@@ -47,6 +47,7 @@ SET_CREDIT = "Set a customer's credit"
 # The reports in Insights (0.62.0, lumenpos.api.reports).
 SALES_REPORTS = "See sales reports"
 CASHIER_REPORT = "See cashier performance"
+PROFIT = "See profit"
 
 LEGACY_FIELD = {
     PRICE_EDIT: "price_edit_role",
@@ -63,7 +64,7 @@ LEGACY_FIELD = {
 # reports of 0.62.0: the shop's takings and each cashier's record.
 CLOSED_BY_DEFAULT = {
     RETURN_EXCEED, SALES_BY_PERSON, SYSTEM_CHECK, SELL_ON_ACCOUNT, TAKE_PAYMENTS, SET_CREDIT,
-    SALES_REPORTS, CASHIER_REPORT,
+    SALES_REPORTS, CASHIER_REPORT, PROFIT,
 }
 
 
@@ -279,3 +280,10 @@ def can_see_cashier_report(user=None):
     """How each cashier did, in Insights. Nobody but a manager until a shop
     names someone."""
     return allowed(CASHIER_REPORT, user)
+
+
+def can_see_profit(user=None):
+    """What the goods cost and the profit on them, in Insights (the Profit tab,
+    and the cost columns of Products). Nobody but a manager until a shop names
+    someone."""
+    return allowed(PROFIT, user)

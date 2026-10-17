@@ -225,6 +225,7 @@ def get_user_permissions():
         # capability, both re-checked server-side in lumenpos.api.reports.
         "sales_reports": reports_mod.can_see_sales_reports(),
         "cashier_report": reports_mod.can_see_cashier_report(),
+        "profit_report": reports_mod.can_see_profit(),
         # Sales on account (0.60.0), each nobody's but a manager's until named.
         "sell_on_account": caps_mod.can_sell_on_account(),
         "take_customer_payments": caps_mod.can_take_customer_payments(),

@@ -1582,7 +1582,7 @@
             <input type="checkbox" class="setting-toggle" v-model="generalForm.reports_in_insights" :true-value="1" :false-value="0" />
             <span class="setting-text">
               <span class="setting-title">{{ t('Sales reports in Insights') }}</span>
-              <span class="setting-desc">{{ t('The sales and cash summary and how each cashier did, as tabs of Insights. Managers see them, and whoever you name for See sales reports or See cashier performance under Permissions.') }}</span>
+              <span class="setting-desc">{{ t('Sales, products, profit, customers, outlets and cashiers, as tabs of Insights. Managers see them, and whoever you name under Permissions for See sales reports, See profit or See cashier performance.') }}</span>
             </span>
           </label>
           <label class="setting-row">
@@ -2572,6 +2572,7 @@ const capabilityOptions = [
   "Set a customer's credit",
   'See sales reports',
   'See cashier performance',
+  'See profit',
 ]
 
 function addCapabilityRule() {
@@ -4117,6 +4118,7 @@ async function saveGeneral() {
         ...session.permissions,
         sales_reports: Boolean(info.permissions.sales_reports),
         cashier_report: Boolean(info.permissions.cashier_report),
+        profit_report: Boolean(info.permissions.profit_report),
       }
     }
     session.settings.enable_cashback = info.enable_cashback ?? 1

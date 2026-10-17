@@ -17,6 +17,7 @@ from lumenpos import __version__
 from lumenpos import erpnext_compat
 from lumenpos.api import insights
 from lumenpos.api import salespeople
+from lumenpos.api import reports
 from lumenpos import cash_out, cashback_rules, credit_sales, languages, scope, variance
 
 def _can_manage():
@@ -131,6 +132,7 @@ def get_settings():
         "enable_price_checker": 1 if doc.get("enable_price_checker") else 0,
         "salesperson_mode": salespeople.mode(),
         "enable_insights": 1 if insights.enabled() else 0,
+        "reports_in_insights": 1 if reports.enabled() else 0,
         "enable_cashback": 1 if cashback_rules.enabled() else 0,
         "enable_xreport": 1 if doc.get("enable_xreport") else 0,
         "enable_audit_log": 1 if doc.get("enable_audit_log") else 0,
@@ -360,6 +362,9 @@ def save_settings(payload: dict | str):
     if payload.get("salesperson_mode") in salespeople.MODES:
         doc.salesperson_mode = payload.get("salesperson_mode")
     doc.enable_insights = 1 if payload.get("enable_insights") else 0
+    # Before 0.62.0 a payload had no such key: an old tab must not switch it off.
+    if "reports_in_insights" in payload:
+        doc.reports_in_insights = 1 if payload.get("reports_in_insights") else 0
     doc.enable_cashback = 1 if payload.get("enable_cashback") else 0
     doc.enable_xreport = 1 if payload.get("enable_xreport") else 0
     doc.enable_audit_log = 1 if payload.get("enable_audit_log") else 0

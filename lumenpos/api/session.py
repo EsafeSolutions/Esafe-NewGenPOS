@@ -202,6 +202,7 @@ def get_user_permissions():
 
     from lumenpos.api import insights as insights_mod
     from lumenpos.api import permissions as caps_mod
+    from lumenpos.api import reports as reports_mod
 
     roles = set(frappe.get_roles())
     return {
@@ -220,6 +221,10 @@ def get_user_permissions():
         "can_reprint": caps_mod.can_reprint(),
         "sales_by_person": caps_mod.can_see_sales_by_person(),
         "system_check": caps_mod.can_see_system_check(),
+        # The reports in Insights (0.62.0): the shop's switch and the person's
+        # capability, both re-checked server-side in lumenpos.api.reports.
+        "sales_reports": reports_mod.can_see_sales_reports(),
+        "cashier_report": reports_mod.can_see_cashier_report(),
         # Sales on account (0.60.0), each nobody's but a manager's until named.
         "sell_on_account": caps_mod.can_sell_on_account(),
         "take_customer_payments": caps_mod.can_take_customer_payments(),

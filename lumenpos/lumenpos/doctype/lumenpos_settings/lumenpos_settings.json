@@ -115,6 +115,7 @@
   "receipt_custom_fields",
   "insights_section",
   "enable_insights",
+  "reports_in_insights",
   "cashback_section",
   "enable_cashback",
   "layaway_section",
@@ -863,6 +864,13 @@
    "label": "Enable Insights"
   },
   {
+   "default": "1",
+   "description": "The sales and cash summary and how each cashier did, as tabs of Insights, for whoever may see them (Who can do what).",
+   "fieldname": "reports_in_insights",
+   "fieldtype": "Check",
+   "label": "Sales reports in Insights"
+  },
+  {
    "fieldname": "cashback_section",
    "fieldtype": "Section Break",
    "label": "Cashback"
@@ -974,7 +982,7 @@
  "index_web_pages_for_search": 0,
  "issingle": 1,
  "links": [],
- "modified": "2026-10-04 10:00:00.000000",
+ "modified": "2026-10-17 18:00:00.000000",
  "modified_by": "Administrator",
  "module": "LumenPOS",
  "name": "LumenPOS Settings",

@@ -44,6 +44,9 @@ SYSTEM_CHECK = "See the system check"
 SELL_ON_ACCOUNT = "Sell on account"
 TAKE_PAYMENTS = "Take customer payments"
 SET_CREDIT = "Set a customer's credit"
+# The reports in Insights (0.62.0, lumenpos.api.reports).
+SALES_REPORTS = "See sales reports"
+CASHIER_REPORT = "See cashier performance"
 
 LEGACY_FIELD = {
     PRICE_EDIT: "price_edit_role",
@@ -56,8 +59,12 @@ LEGACY_FIELD = {
 # until a shop decides otherwise, so installing LumenPOS never locks a till.
 # The two reports added in 0.57.0 show staff performance and the state of the
 # whole site, so they stay with the managers until a shop names someone. So do
-# the three of sales on account (0.60.0): they lend the shop's money.
-CLOSED_BY_DEFAULT = {RETURN_EXCEED, SALES_BY_PERSON, SYSTEM_CHECK, SELL_ON_ACCOUNT, TAKE_PAYMENTS, SET_CREDIT}
+# the three of sales on account (0.60.0): they lend the shop's money. And the
+# reports of 0.62.0: the shop's takings and each cashier's record.
+CLOSED_BY_DEFAULT = {
+    RETURN_EXCEED, SALES_BY_PERSON, SYSTEM_CHECK, SELL_ON_ACCOUNT, TAKE_PAYMENTS, SET_CREDIT,
+    SALES_REPORTS, CASHIER_REPORT,
+}
 
 
 def _roles(user=None):
@@ -260,3 +267,15 @@ def can_take_customer_payments(user=None):
 def can_set_customer_credit(user=None):
     """Allow a customer on account and set their credit limit from the till."""
     return allowed(SET_CREDIT, user)
+
+
+def can_see_sales_reports(user=None):
+    """The sales and cash summary in Insights. Nobody but a manager until a shop
+    names someone."""
+    return allowed(SALES_REPORTS, user)
+
+
+def can_see_cashier_report(user=None):
+    """How each cashier did, in Insights. Nobody but a manager until a shop
+    names someone."""
+    return allowed(CASHIER_REPORT, user)

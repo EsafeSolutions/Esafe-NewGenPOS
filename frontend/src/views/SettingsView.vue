@@ -1579,6 +1579,13 @@
             </span>
           </label>
           <label class="setting-row">
+            <input type="checkbox" class="setting-toggle" v-model="generalForm.reports_in_insights" :true-value="1" :false-value="0" />
+            <span class="setting-text">
+              <span class="setting-title">{{ t('Sales reports in Insights') }}</span>
+              <span class="setting-desc">{{ t('The sales and cash summary and how each cashier did, as tabs of Insights. Managers see them, and whoever you name for See sales reports or See cashier performance under Permissions.') }}</span>
+            </span>
+          </label>
+          <label class="setting-row">
             <input type="checkbox" class="setting-toggle" v-model="generalForm.enable_cashback" :true-value="1" :false-value="0" />
             <span class="setting-text">
               <span class="setting-title">{{ t('Cashback') }}</span>
@@ -2563,6 +2570,8 @@ const capabilityOptions = [
   'Sell on account',
   'Take customer payments',
   "Set a customer's credit",
+  'See sales reports',
+  'See cashier performance',
 ]
 
 function addCapabilityRule() {
@@ -2629,6 +2638,7 @@ const generalForm = ref({
   enable_price_checker: 1,
   salesperson_mode: 'Optional',
   enable_insights: 1,
+  reports_in_insights: 1,
   enable_cashback: 1,
   enable_xreport: 1,
   enable_audit_log: 1,
@@ -3318,6 +3328,7 @@ async function load() {
     enable_price_checker: info.enable_price_checker ?? 1,
     salesperson_mode: info.salesperson_mode || 'Optional',
     enable_insights: info.enable_insights ?? 1,
+    reports_in_insights: info.reports_in_insights ?? 1,
     enable_cashback: info.enable_cashback ?? 1,
     enable_xreport: info.enable_xreport ?? 1,
     enable_audit_log: info.enable_audit_log ?? 1,
@@ -4100,6 +4111,14 @@ async function saveGeneral() {
       whats_new: info.help_whats_new ? 1 : 0,
     }
     session.settings.enable_insights = info.enable_insights ?? 1
+    // The report tabs come and go with their switch, no reload needed.
+    if (info.permissions) {
+      session.permissions = {
+        ...session.permissions,
+        sales_reports: Boolean(info.permissions.sales_reports),
+        cashier_report: Boolean(info.permissions.cashier_report),
+      }
+    }
     session.settings.enable_cashback = info.enable_cashback ?? 1
     session.settings.enable_xreport = info.enable_xreport ?? 1
     session.settings.enable_email_receipt = info.enable_email_receipt || 0

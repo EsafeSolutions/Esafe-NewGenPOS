@@ -3,9 +3,9 @@
      "LumenPOS" is a trademark of Lumen Solutions. See TRADEMARKS.md. -->
 <template>
   <div class="insights">
-    <!-- Two tabs when the person may see both: the Lumen Reports dashboard
-         (managers) and the salesperson report (managers and anyone named for
-         it). One of them alone shows without a tab bar. -->
+    <!-- A tab for each report the person may see: the sales summary and the
+         cashiers (0.62.0), the Lumen Reports dashboard (managers) and the
+         salesperson report. One of them alone shows without a tab bar. -->
     <div v-if="tabs.length > 1" class="ins-tabs">
       <button
         v-for="tab in tabs"
@@ -19,7 +19,9 @@
       </button>
     </div>
 
-    <SalespeoplePanel v-if="active === 'salespeople'" />
+    <SummaryPanel v-if="active === 'summary'" />
+    <CashiersPanel v-else-if="active === 'cashiers'" />
+    <SalespeoplePanel v-else-if="active === 'salespeople'" />
 
     <!-- Loading -->
     <div v-else-if="loading" class="state-card">
@@ -68,10 +70,15 @@ import { t, locale } from '../i18n'
 import { theme } from '../theme'
 import { useSessionStore } from '../stores/session'
 import SalespeoplePanel from '../components/SalespeoplePanel.vue'
+import SummaryPanel from '../components/SummaryPanel.vue'
+import CashiersPanel from '../components/CashiersPanel.vue'
 
 const session = useSessionStore()
 const tabs = computed(() =>
   [
+    // The reports of 0.62.0 first: they need no other app.
+    session.permissions.sales_reports && { key: 'summary', label: 'Sales summary' },
+    session.permissions.cashier_report && { key: 'cashiers', label: 'Cashiers' },
     session.permissions.insights && { key: 'dashboard', label: 'Sales dashboard' },
     session.permissions.sales_by_person &&
       (session.settings.salesperson_mode || 'Optional') !== 'Off' && { key: 'salespeople', label: 'Salespeople' },

@@ -333,6 +333,25 @@ export const TOPICS = [
   // Insights
   {
     route: '/insights',
+    title: 'Sales summary',
+    when: (s) => Boolean(s.permissions.sales_reports),
+    steps: [
+      'Sales, average sale, net sales, tax, returns and discounts for the period you pick, with the payments by method.',
+      'Day by day, or hour by hour for a single day.',
+      'Every shift of the period with what its close counted against what it expected, shorts in red.',
+    ],
+  },
+  {
+    route: '/insights',
+    title: 'Cashiers',
+    when: (s) => Boolean(s.permissions.cashier_report),
+    steps: [
+      'What each cashier rang up, their returns and discounts, and the prices they typed at the till.',
+      'Their shifts, and how far their counts were from what was expected.',
+    ],
+  },
+  {
+    route: '/insights',
     title: 'Sales dashboard',
     when: (s) => Boolean(s.permissions.insights),
     steps: [
@@ -436,6 +455,7 @@ export const TOURS = {
 // What is new, newest first. Shown once per person after an update, only the
 // entries newer than what they last saw and that apply to them.
 export const WHATS_NEW = [
+  { version: '0.62.0', title: 'Sales reports in Insights', text: 'Insights has two new tabs: a sales and cash summary for any period, and how each cashier did. Managers see them, and whoever you name under Permissions.', route: '/insights', when: (s) => Boolean(s.permissions.sales_reports || s.permissions.cashier_report) },
   { version: '0.61.2', title: 'Other currencies on any sale', text: 'On a sale in your own currency, the amount can now be typed in another currency too. The line shows both figures, at the rate of the shift.', route: '/', when: (s) => s.saleCurrencies.length > 0 },
   { version: '0.61.1', title: 'What a customer owes', text: 'Owes now shows only what the customer owes. Holds and orders not invoiced show on their own line, and still count against the credit limit.', route: '/customers', when: onAccount },
   { version: '0.61.1', title: 'The shift clock', text: 'The top bar shows how long the shift has been open as a clock, 07:01:20, on the site\'s time, whatever the device\'s time zone.' },

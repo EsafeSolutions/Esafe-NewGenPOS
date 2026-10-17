@@ -104,7 +104,7 @@
                 <tbody>
                   <tr v-for="row in report.series" :key="row.key">
                     <td><bdi>{{ report.by === 'hour' ? row.key + ':00' : row.key }}</bdi></td>
-                    <td class="num">{{ row.sales }}<span v-if="row.returns" class="muted">&nbsp;(−{{ row.returns }})</span></td>
+                    <td class="num">{{ row.sales }}<span v-if="row.returns" class="muted">&nbsp;<bdi dir="ltr">(−{{ row.returns }})</bdi></span></td>
                     <td class="num"><bdi>{{ m(row.net) }}</bdi></td>
                     <td class="num"><bdi>{{ m(row.total) }}</bdi></td>
                     <td class="bar-col"><span class="bar" :style="{ width: bar(row.total) }"></span></td>

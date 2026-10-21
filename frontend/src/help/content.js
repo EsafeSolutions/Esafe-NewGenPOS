@@ -193,6 +193,17 @@ export const TOPICS = [
   },
   {
     route: '/history',
+    title: 'A supervisor approves the refund',
+    when: (s) => (s.settings.refund_approval || 'Off') !== 'Off' && s.permissions.can_return !== false && !s.permissions.is_manager,
+    steps: [
+      'Your shop asks a supervisor to approve refunds, every refund or those above an amount.',
+      'When you tap Refund, a supervisor types their passcode at the till, or you send a request they approve from the Approvals tray.',
+      'An exchange that gives money back, and a hold being cancelled, are approved the same way.',
+      'Without a connection such a refund waits: the passcode is checked by the server.',
+    ],
+  },
+  {
+    route: '/history',
     title: 'Refund a sale on account',
     when: (s) => onAccount(s) && s.permissions.can_return !== false,
     steps: [
@@ -491,6 +502,8 @@ export const TOURS = {
 // What is new, newest first. Shown once per person after an update, only the
 // entries newer than what they last saw and that apply to them.
 export const WHATS_NEW = [
+  { version: '0.63.0', title: 'A supervisor approves refunds', text: 'Your shop can ask a supervisor to approve every refund, or those above an amount, with their passcode at the till or a request from the Approvals tray. Set it in Settings, General, Approvals and access, Refund approval.', route: '/settings', when: (s) => Boolean(s.permissions.settings) },
+  { version: '0.63.0', title: 'Refunds need a supervisor', text: 'A refund now waits for a supervisor\'s passcode or approved request before the money goes back.', route: '/history', when: (s) => (s.settings.refund_approval || 'Off') !== 'Off' && !s.permissions.is_manager },
   { version: '0.62.0', title: 'Products, profit, customers and outlets', text: 'Insights also shows what sold by item, group, brand and variant, the profit on it, your customers and how each outlet did.', route: '/insights', when: (s) => Boolean(s.permissions.sales_reports || s.permissions.profit_report) },
   { version: '0.62.0', title: 'Sales reports in Insights', text: 'Insights has two new tabs: a sales and cash summary for any period, and how each cashier did. Managers see them, and whoever you name under Permissions.', route: '/insights', when: (s) => Boolean(s.permissions.sales_reports || s.permissions.cashier_report) },
   { version: '0.61.2', title: 'Other currencies on any sale', text: 'On a sale in your own currency, the amount can now be typed in another currency too. The line shows both figures, at the rate of the shift.', route: '/', when: (s) => s.saleCurrencies.length > 0 },

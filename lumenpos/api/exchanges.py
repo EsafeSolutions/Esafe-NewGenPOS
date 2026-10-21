@@ -140,17 +140,29 @@ def quote_exchange(payload: dict | str):
     if payload.get("items"):
         quote_payload = dict(payload)
         for gone in ("return_items", "serials", "refund_payments", "refund_mode",
-                     "return_reason", "return_request", "original_invoice", "payments"):
+                     "return_reason", "return_request", "original_invoice", "payments",
+                     "refund_passcode", "refund_request"):
             quote_payload.pop(gone, None)
         quote_payload["pos_profile"] = profile_name
         new_total = flt(sales.quote_sale(quote_payload).get("payable"), 2)
 
+    refund = flt(max(returned_value - new_total, 0), 2)
+    # What is handed back needs a supervisor's approval where the shop asks
+    # for one (lumenpos.refund_approval): valued as create_return will value it.
+    from lumenpos import currency, refund_approval
+
+    refund_company = flt(refund * flt(return_doc.get("conversion_rate") or 1), 2)
     return {
         "returned_value": returned_value,
         "new_total": new_total,
         "due": flt(max(new_total - returned_value, 0), 2),
-        "refund": flt(max(returned_value - new_total, 0), 2),
+        "refund": refund,
         "allowed_refund_modes": sales._cashier_refund_modes(original),
+        "refund_approval": {
+            "needs_approval": refund_approval.needs_approval(refund_company),
+            "amount": refund_company,
+            "currency": currency.company_currency(original.company),
+        },
     }
 
 
@@ -162,6 +174,8 @@ def submit_exchange(payload: dict | str):
         "pos_profile", "original_invoice",
         "return_items": {"ITEM-001": 1}, "serials": {"ITEM-001": ["SN-1"]},
         "return_reason", "return_request", "refund_mode", "refund_payments",
+        "refund_passcode", "refund_request" (a supervisor's approval of the money
+        handed back, where the shop asks for one: lumenpos.refund_approval),
         "items": [...the new sale lines, same shape as submit_sale...],
         "payments": [...tenders for the difference, may be empty...],
         "customer", "sales_person", "coupon_codes", "note", "idempotency_key",
@@ -201,7 +215,8 @@ def submit_exchange(payload: dict | str):
     # credit note can be split to the cent, then posted with the tenders.
     sale_payload = dict(payload)
     for gone in ("return_items", "serials", "refund_payments", "refund_mode",
-                 "return_reason", "return_request", "original_invoice", "payments"):
+                 "return_reason", "return_request", "original_invoice", "payments",
+                 "refund_passcode", "refund_request"):
         sale_payload.pop(gone, None)
     sale_payload["is_exchange"] = 1
 
@@ -239,6 +254,8 @@ def submit_exchange(payload: dict | str):
         return_reason=payload.get("return_reason"),
         return_request=payload.get("return_request"),
         pos_profile=profile.name,
+        refund_passcode=payload.get("refund_passcode"),
+        refund_request=payload.get("refund_request"),
         _split_fn=split,
         _post_now=False,
     )

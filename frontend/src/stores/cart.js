@@ -807,6 +807,9 @@ export const useCartStore = defineStore('cart', {
         serials: this.exchange.serials,
         return_reason: this.exchange.reason,
         return_request: this.exchange.request,
+        // A supervisor's approval of the money handed back (0.63.0).
+        refund_passcode: this.exchange.refundApproval?.passcode || null,
+        refund_request: this.exchange.refundApproval?.request || null,
         refund_mode: refundMode || null,
         payments,
         gift_cards: giftCards || [],

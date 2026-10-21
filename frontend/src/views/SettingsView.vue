@@ -2172,8 +2172,9 @@
         <p class="muted hint-row">{{ modeHint }}</p>
 
         <!-- Passcode-based approval (a manager is at the till). The same PINs
-             approve a cash out (0.61.0) whatever the discount method. -->
-        <template v-if="generalForm.discount_approval_mode !== 'Request only' || generalForm.cash_out_approval !== 'Off'">
+             approve a cash out (0.61.0) and a refund (0.63.0) whatever the
+             discount method. -->
+        <template v-if="generalForm.discount_approval_mode !== 'Request only' || generalForm.cash_out_approval !== 'Off' || generalForm.refund_approval !== 'Off'">
           <div class="field-grid">
             <label class="field">
               <span>{{ t('Master passcode') }} {{ settingsInfo.has_passcode ? t('(set. Leave blank to keep)') : t('(optional)') }}</span>
@@ -2203,7 +2204,7 @@
 
         <!-- Request-based approval (a role-holder approves remotely). The same
              role approves discount, return and cash out requests. -->
-        <template v-if="generalForm.discount_approval_mode !== 'Passcode only' || generalForm.restrict_returns_to_window || generalForm.cash_out_approval !== 'Off'">
+        <template v-if="generalForm.discount_approval_mode !== 'Passcode only' || generalForm.restrict_returns_to_window || generalForm.cash_out_approval !== 'Off' || generalForm.refund_approval !== 'Off'">
           <div class="sub-label">{{ t('Approver role for requests') }}</div>
           <div class="field-grid">
             <label class="field">
@@ -2247,6 +2248,29 @@
           </label>
         </div>
         <p class="muted hint-row">{{ t('Who may put money in and who may take it out are two permissions, below.') }}</p>
+      </div>
+
+      <!-- Refund approval (lumenpos.refund_approval, 0.63.0) -->
+      <div class="sec-card" v-show="generalSection === 'approvals'" data-tour="settings-refund-approval">
+        <div class="sec-title"><Icon name="shield" /> {{ t('Refund approval') }}</div>
+        <p class="sec-note">{{ t('A supervisor approves money handed back on a refund.') }}</p>
+        <div class="field-grid">
+          <label class="field">
+            <span>{{ t('Supervisor approval for refunds') }}</span>
+            <select v-model="generalForm.refund_approval">
+              <option value="Off">{{ t('Off') }}</option>
+              <option value="Above an amount">{{ t('Above an amount') }}</option>
+              <option value="Always">{{ t('Always') }}</option>
+            </select>
+            <span class="setting-desc">{{ t("A supervisor approves with their passcode at the till (the approvers above) or a request from the Approvals tray. Managers need nobody's approval.") }}</span>
+          </label>
+          <label v-if="generalForm.refund_approval === 'Above an amount'" class="field">
+            <span>{{ t('Refund approval above') }}</span>
+            <input type="number" min="0" step="0.01" v-model.number="generalForm.refund_approval_amount" />
+            <span class="setting-desc">{{ t("In the company's currency. A sale in another currency is valued at its own rate.") }}</span>
+          </label>
+        </div>
+        <p class="muted hint-row">{{ t('Only money handed back counts: what pays for an exchange\'s new items or comes off what a customer owes does not. Cancelling a hold refunds every instalment at once and takes the passcode. Who may make returns at all is a permission, below.') }}</p>
       </div>
 
       <!-- Permissions -->
@@ -2589,6 +2613,8 @@ const generalForm = ref({
   cash_out_reason_required: 1,
   cash_out_approval: 'Off',
   cash_out_approval_amount: 0,
+  refund_approval: 'Off',
+  refund_approval_amount: 0,
   price_edit_role: '',
   return_role: '',
   return_exceed_role: '',
@@ -3273,6 +3299,8 @@ async function load() {
     cash_out_reason_required: info.cash_out_reason_required ? 1 : 0,
     cash_out_approval: info.cash_out_approval || 'Off',
     cash_out_approval_amount: info.cash_out_approval_amount || 0,
+    refund_approval: info.refund_approval || 'Off',
+    refund_approval_amount: info.refund_approval_amount || 0,
     price_edit_role: info.price_edit_role || '',
     return_role: info.return_role || '',
     return_exceed_role: info.return_exceed_role || '',
@@ -4088,6 +4116,8 @@ async function saveGeneral() {
     session.settings.cash_out_reason_required = info.cash_out_reason_required ? 1 : 0
     session.settings.cash_out_approval = info.cash_out_approval || 'Off'
     session.settings.cash_out_approval_amount = info.cash_out_approval_amount || 0
+    session.settings.refund_approval = info.refund_approval || 'Off'
+    session.settings.refund_approval_amount = info.refund_approval_amount || 0
     session.settings.restrict_returns_to_window = info.restrict_returns_to_window || 0
     session.settings.return_window_days = info.return_window_days || 0
     session.settings.return_reasons = info.return_reasons || []

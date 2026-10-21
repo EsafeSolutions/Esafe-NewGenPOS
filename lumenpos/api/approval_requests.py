@@ -5,7 +5,10 @@
 
 - **Discount**: a manual discount above LumenPOS Settings → Discount Limit, when the
   approval method allows requests.
-- **Return**: a regular return after the configured return window has passed.
+- **Return**: a regular return after the configured return window has passed,
+  a product the shop restricts, or (0.63.0, lumenpos.refund_approval) a refund
+  the shop wants a supervisor to approve. One request clears all three, for the
+  amount it was asked for.
 - **Cash Out**: money taken out of a drawer mid-shift, when LumenPOS Settings
   asks for an approval (lumenpos.cash_out, 0.61.0).
 
@@ -133,11 +136,16 @@ def create_request(
     else:  # Return
         if not return_invoice:
             frappe.throw(_("Select the invoice to return."))
-        # A return needs approval for either reason: the sale is past the return
-        # window, or the basket holds a product the shop restricts (POS Return
-        # Restriction). With neither in play there is nothing to approve.
-        if not settings.get("restrict_returns_to_window") and not _has_restricted_items(
-            return_invoice, pos_profile
+        # A return needs approval for any of three reasons: the sale is past the
+        # return window, the basket holds a product the shop restricts (POS
+        # Return Restriction), or the shop asks a supervisor to approve refunds
+        # (lumenpos.refund_approval). With none in play there is nothing to approve.
+        from lumenpos import refund_approval
+
+        if (
+            not settings.get("restrict_returns_to_window")
+            and refund_approval.mode() == "Off"
+            and not _has_restricted_items(return_invoice, pos_profile)
         ):
             frappe.throw(_("Return approval isn't required, returns are open."))
         # The sale may be a POS Invoice or a Sales Invoice (per the profile's
@@ -189,6 +197,9 @@ def create_request(
             "request_details": (details or "")[:2000] or None,
             "cash_amount": flt(amount, 2) if request_type == "Cash Out" else 0,
             "cash_drawer": (mode_of_payment or None) if request_type == "Cash Out" else None,
+            # What the refund hands back, in the company currency (the till
+            # sends it with every return request): the approval covers no more.
+            "refund_amount": max(flt(amount, 2), 0) if request_type == "Return" else 0,
             "status": "Pending",
         }
     )
@@ -215,6 +226,7 @@ def request_status(name: str):
         "decision_note": doc.decision_note,
         "discount_percent": doc.discount_percent,
         "cash_amount": doc.get("cash_amount"),
+        "refund_amount": doc.get("refund_amount"),
     }
 
 
@@ -254,7 +266,7 @@ def pending_requests(pos_profile: str | None = None):
             "name", "request_type", "register_session", "pos_profile", "cashier",
             "cashier_name", "customer_name", "discount_percent", "cart_total",
             "return_invoice", "invoice_age_days", "reason", "request_details", "creation",
-            "cash_amount", "cash_drawer",
+            "cash_amount", "cash_drawer", "refund_amount",
         ],
         order_by="creation asc",
         limit_page_length=50,
@@ -272,6 +284,11 @@ def pending_requests(pos_profile: str | None = None):
         if r.request_type == "Cash Out":
             code = _foreign_drawers(r.pos_profile).get(r.cash_drawer) if r.cash_drawer else None
             r.cash_currency = code or currency.company_currency(
+                frappe.get_cached_value("POS Profile", r.pos_profile, "company")
+            )
+        elif r.request_type == "Return" and flt(r.get("refund_amount")):
+            # A refund's amount is in the company currency (lumenpos.refund_approval).
+            r.refund_currency = currency.company_currency(
                 frappe.get_cached_value("POS Profile", r.pos_profile, "company")
             )
     return rows
@@ -354,6 +371,25 @@ def validate_return(request_name, return_invoice):
     doc = _validate(request_name, "Return")
     if doc.return_invoice and doc.return_invoice != return_invoice:
         frappe.throw(_("This return approval is for invoice {0}.").format(doc.return_invoice))
+    return doc.approver_name
+
+
+def validate_refund(request_name, return_invoice, amount, company):
+    """Submit-time check for a refund approval (lumenpos.refund_approval): the
+    Return request of this sale, approved for at least `amount` (company
+    currency). Returns the approver name."""
+    doc = _validate(request_name, "Return")
+    if doc.return_invoice and doc.return_invoice != return_invoice:
+        frappe.throw(_("This return approval is for invoice {0}.").format(doc.return_invoice))
+    if flt(amount) > flt(doc.get("refund_amount")) + 0.005:
+        from lumenpos import refund_approval
+
+        frappe.throw(
+            _("The approval covers a refund of {0}, not {1}. Ask again for this refund.").format(
+                refund_approval.money(doc.get("refund_amount"), company), refund_approval.money(amount, company)
+            ),
+            title=_("Refund approval"),
+        )
     return doc.approver_name
 
 

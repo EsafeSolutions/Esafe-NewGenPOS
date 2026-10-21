@@ -2248,7 +2248,33 @@ const insightsReports2 = {
   "Gross margin": "هامش الربح",
 }
 
+const refundApproval = {
+  "Refund {amount}": "استرجاع {amount}",
+  "Refund approval needed": "مطلوب اعتماد الاسترجاع",
+  "Refunding {amount} needs a supervisor's approval.": "استرجاع {amount} يحتاج اعتماد المشرف.",
+  "Supervisor passcode": "رمز المشرف",
+  "The manager rejected this refund.": "رفض المدير هذا الاسترجاع.",
+  "This refund needs a supervisor's approval, which needs a connection.": "هذا الاسترجاع يحتاج اعتماد المشرف، والاعتماد يحتاج اتصالا.",
+  "Refund approved": "تم اعتماد الاسترجاع",
+  "Refund approval": "اعتماد الاسترجاع",
+  "A supervisor approves money handed back on a refund.": "يعتمد المشرف المبالغ التي ترد للعميل عند الاسترجاع.",
+  "Supervisor approval for refunds": "اعتماد المشرف للاسترجاع",
+  "A supervisor approves with their passcode at the till (the approvers above) or a request from the Approvals tray. Managers need nobody's approval.": "يعتمد المشرف برمزه عند الكاشير (المعتمدون أعلاه)، أو يعتمد طلبا من الاعتمادات. ولا يحتاج المدراء اعتماد أحد.",
+  "Refund approval above": "حد اعتماد الاسترجاع",
+  "In the company's currency. A sale in another currency is valued at its own rate.": "بعملة الشركة. ويحسب البيع بعملة أخرى بسعر صرفه.",
+  "Only money handed back counts: what pays for an exchange's new items or comes off what a customer owes does not. Cancelling a hold refunds every instalment at once and takes the passcode. Who may make returns at all is a permission, below.": "يحسب فقط المبلغ الذي يرد للعميل، أما ما يدفع ثمن أصناف الاستبدال الجديدة أو يخصم من دين العميل فلا يحسب. وإلغاء الحجز يرد كل الدفعات مرة واحدة ويعتمد بالرمز. ومن يحق له الاسترجاع أصلا صلاحية في الأسفل.",
+  "A supervisor approves the refund": "يعتمد المشرف الاسترجاع",
+  "Your shop asks a supervisor to approve refunds, every refund or those above an amount.": "يطلب متجرك اعتماد المشرف للاسترجاع، لكل استرجاع أو لما يزيد على مبلغ معين.",
+  "When you tap Refund, a supervisor types their passcode at the till, or you send a request they approve from the Approvals tray.": "عند الضغط على استرجاع يكتب المشرف رمزه عند الكاشير، أو ترسل طلبا يعتمده من الاعتمادات.",
+  "An exchange that gives money back, and a hold being cancelled, are approved the same way.": "والاستبدال الذي يرد مبلغا للعميل، وإلغاء الحجز، يعتمدان بالطريقة نفسها.",
+  "Without a connection such a refund waits: the passcode is checked by the server.": "ودون اتصال ينتظر هذا الاسترجاع، لأن الخادم هو من يتحقق من الرمز.",
+  "A supervisor approves refunds": "يعتمد المشرف الاسترجاع",
+  "Your shop can ask a supervisor to approve every refund, or those above an amount, with their passcode at the till or a request from the Approvals tray. Set it in Settings, General, Approvals and access, Refund approval.": "يمكن لمتجرك أن يطلب اعتماد المشرف لكل استرجاع أو لما يزيد على مبلغ معين، برمزه عند الكاشير أو بطلب من الاعتمادات. اضبطه من الإعدادات، عام، الاعتمادات والصلاحيات، اعتماد الاسترجاع.",
+  "Refunds need a supervisor": "الاسترجاع يحتاج اعتماد المشرف",
+  "A refund now waits for a supervisor's passcode or approved request before the money goes back.": "أصبح الاسترجاع ينتظر رمز المشرف أو طلبا معتمدا قبل رد المبلغ.",
+}
+
 export const messages = {
   en: { ...prefixedEn },
-  ar: { ...common, ...settings, ...register, ...features, ...sell, ...txn, ...misc, ...approvals, ...returns, ...customersScreen, ...lifecycle, ...serialsAndGroups, ...permissions, ...insights, ...generalLayout, ...currencies, ...customerForm, ...salespeopleAndCheck, ...helpForStaff, ...lockedPeriods, ...varianceReasons, ...creditSales, ...cashOut, ...owesHolds, ...anyCurrency, ...insightsReports, ...insightsReports2, ...prefixedAr },
+  ar: { ...common, ...settings, ...register, ...features, ...sell, ...txn, ...misc, ...approvals, ...returns, ...customersScreen, ...lifecycle, ...serialsAndGroups, ...permissions, ...insights, ...generalLayout, ...currencies, ...customerForm, ...salespeopleAndCheck, ...helpForStaff, ...lockedPeriods, ...varianceReasons, ...creditSales, ...cashOut, ...owesHolds, ...anyCurrency, ...insightsReports, ...insightsReports2, ...refundApproval, ...prefixedAr },
 }

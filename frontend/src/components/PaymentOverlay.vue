@@ -244,12 +244,27 @@
         }}
       </p>
     </div>
+    <!-- An exchange that gives money back, where the shop asks a supervisor
+         to approve refunds (0.63.0, lumenpos.refund_approval). -->
+    <RefundApproval
+      v-if="refundAsk && exchange"
+      :amount="exchangeApproval.amount"
+      :currency="exchangeApproval.currency"
+      :invoice="exchange.invoice"
+      :details="exchangeDetails"
+      :reason="exchange.reason || ''"
+      :customer="exchange.customer || null"
+      :customer-name="exchange.customer_name || null"
+      @approved="onRefundApproved"
+      @close="refundAsk = false"
+    />
   </div>
 </template>
 
 <script setup>
 import Icon from './Icon.vue'
 import PaymentBrand from './PaymentBrand.vue'
+import RefundApproval from './RefundApproval.vue'
 import { ref, computed, onMounted } from 'vue'
 import { call } from '../api'
 import { useCartStore } from '../stores/cart'
@@ -719,6 +734,9 @@ async function loadExchange() {
     serverTotal.value = q.new_total
     exchangeCredit.value = q.returned_value
     exchangeRefund.value = q.refund
+    // A new quote is a new amount: an approval given for the old one is gone.
+    exchangeApproval.value = q.refund_approval || null
+    cart.exchange.refundApproval = null
     refundModes.value = q.allowed_refund_modes || []
     refundMode.value = refundModes.value.includes('Cash') ? 'Cash' : refundModes.value[0] || null
     amount.value = round2(Math.max(q.due, 0))
@@ -727,7 +745,26 @@ async function loadExchange() {
   }
 }
 
+// The money an exchange gives back, approved by a supervisor where the shop
+// asks for it: the server's quote says so (exchanges.quote_exchange).
+const exchangeApproval = ref(null)
+const refundAsk = ref(false)
+const exchangeDetails = computed(() =>
+  Object.entries(cart.exchange?.items || {})
+    .map(([code, qty]) => qty + ' x ' + code)
+    .join(String.fromCharCode(10))
+)
+function onRefundApproved(data) {
+  cart.exchange.refundApproval = data
+  refundAsk.value = false
+  complete()
+}
+
 async function complete() {
+  if (cart.exchange && exchangeApproval.value?.needs_approval && !cart.exchange.refundApproval) {
+    refundAsk.value = true
+    return
+  }
   try {
     const giftCards = payments.value
       .filter((p) => p.card_no)

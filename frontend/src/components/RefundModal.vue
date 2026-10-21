@@ -19,6 +19,18 @@
               {{ t('No connection: this refund is saved on this device and posts when the connection is back. Pay out exactly the amount shown.') }}
             </div>
           </div>
+          <!-- A refund the shop wants a supervisor to approve (0.63.0): their
+               passcode or a request is checked by the server, so not offline. -->
+          <div v-if="offlineNeedsApproval" class="approval-box rejected" data-tour="refund-offline-approval">
+            <div class="ap-warn">
+              {{ t("This refund needs a supervisor's approval, which needs a connection.") }}
+            </div>
+          </div>
+          <div v-if="refundOk && !isExchange" class="approval-box authorized">
+            <div class="ap-ok">
+              <Icon name="check" /> {{ t('Refund approved') }}<span v-if="refundOk.approver"> · {{ refundOk.approver }}</span>
+            </div>
+          </div>
           <div v-if="noOfflineMode" class="approval-box rejected">
             <div class="ap-warn">
               {{ t('This sale can only be refunded to store credit, a gift card or cashback, which need a connection.') }}
@@ -213,18 +225,31 @@
         <button
           v-else
           class="btn btn-danger"
-          :disabled="refundTotal <= 0 || !reasonValue || busy || needsApproval || !splitCovered || noOfflineMode"
+          :disabled="refundTotal <= 0 || !reasonValue || busy || needsApproval || !splitCovered || noOfflineMode || offlineNeedsApproval"
           @click="submit"
         >
           {{ busy ? t('Refunding…') : t('Refund') }}
         </button>
       </div>
     </div>
+    <RefundApproval
+      v-if="refundAsk"
+      :amount="refundAsk.amount"
+      :currency="refundAsk.currency"
+      :invoice="invoice"
+      :details="pickedDetails"
+      :reason="reasonValue"
+      :customer="customer"
+      :customer-name="customerName"
+      @approved="onRefundApproved"
+      @close="refundAsk = null"
+    />
   </div>
 </template>
 
 <script setup>
 import Icon from './Icon.vue'
+import RefundApproval from './RefundApproval.vue'
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { call } from '../api'
 import { useSessionStore } from '../stores/session'
@@ -242,6 +267,7 @@ import {
   markReturned,
 } from '../offline'
 import { estimateRefund, saleItems, offlineRefundModes } from '../refund'
+import { refundNeedsApproval } from '../refundApproval'
 
 // mode "exchange" reuses everything a return needs (line picking, serials, the
 // restriction and window approvals, the reason) and then hands the selection to
@@ -435,6 +461,30 @@ function describeRestriction(r) {
 // Offline, every tender the shop allows for this sale may be one that needs
 // the server (store credit, a gift card, cashback): then it waits.
 const noOfflineMode = computed(() => offline.value && !loading.value && !refundModes.value.length)
+
+// A supervisor's approval of the refund (lumenpos.refund_approval, 0.63.0).
+// Online the server says whether one is needed, valued as it will post
+// (sales.refund_check); without a connection the till cannot be given one.
+const refundAsk = ref(null) // {amount, currency} while the dialog is open
+const refundOk = ref(null) // {passcode} or {request}, with the approver's name
+const offlineNeedsApproval = computed(
+  () =>
+    offline.value &&
+    refundNeedsApproval(session.settings, session.permissions, Math.round(moneyBack.value * (sold.value.rate || 1) * 100) / 100)
+)
+const pickedDetails = computed(() =>
+  returnable.value
+    .filter((r) => (quantities.value[r.item_code] || 0) > 0)
+    .map((r) => quantities.value[r.item_code] + ' x ' + r.item_name)
+    .join(String.fromCharCode(10))
+)
+// An approval is for what was picked when it was given.
+watch(quantities, () => (refundOk.value = null), { deep: true })
+function onRefundApproved(data) {
+  refundOk.value = data
+  refundAsk.value = null
+  submit()
+}
 
 const needsApproval = computed(() => {
   if (blockedOutright.value.length) return true
@@ -793,6 +843,18 @@ async function submit() {
   }
   try {
     const { items, serials } = pickedItems()
+    if (!refundOk.value) {
+      const check = await call('lumenpos.api.sales.refund_check', {
+        invoice: props.invoice,
+        items,
+        serials,
+        pos_profile: session.posProfile,
+      })
+      if (check?.needs_approval) {
+        refundAsk.value = { amount: check.amount, currency: check.currency }
+        return
+      }
+    }
     const receipt = await call('lumenpos.api.sales.create_return', {
       invoice: props.invoice,
       items,
@@ -805,6 +867,8 @@ async function submit() {
       // otherwise the refund leaves this drawer under another outlet's name.
       pos_profile: session.posProfile,
       idempotency_key: returnKey,
+      refund_passcode: refundOk.value?.passcode || null,
+      refund_request: refundOk.value?.request || null,
     })
     session.notify(t('Refund completed'))
     useCatalogStore().applyStock(receipt?.stock_after) // returned goods go back on the tiles

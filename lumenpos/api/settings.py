@@ -18,7 +18,7 @@ from lumenpos import erpnext_compat
 from lumenpos.api import insights
 from lumenpos.api import salespeople
 from lumenpos.api import reports
-from lumenpos import cash_out, cashback_rules, credit_sales, languages, scope, variance
+from lumenpos import cash_out, cashback_rules, credit_sales, languages, refund_approval, scope, variance
 
 def _can_manage():
     """Can the user change LumenPOS-wide settings (the General tab)?"""
@@ -206,6 +206,8 @@ def get_settings():
         "credit_setup": _credit_setup(),
         # Taking money out of the drawer (lumenpos.cash_out, 0.61.0).
         **cash_out.client_facts(),
+        # A supervisor approves refunds (lumenpos.refund_approval, 0.63.0).
+        **refund_approval.client_facts(),
         "discount_limit_percent": flt(doc.discount_limit_percent),
         "discount_approval_mode": doc.get("discount_approval_mode") or "Passcode only",
         "approver_role": doc.get("approver_role") or "",
@@ -490,6 +492,12 @@ def save_settings(payload: dict | str):
         doc.cash_out_approval = payload.get("cash_out_approval")
     if "cash_out_approval_amount" in payload:
         doc.cash_out_approval_amount = max(flt(payload.get("cash_out_approval_amount")), 0)
+    # A supervisor approves refunds (lumenpos.refund_approval, 0.63.0). A screen
+    # from before sends none of these: leave them alone.
+    if payload.get("refund_approval") in refund_approval.MODES:
+        doc.refund_approval = payload.get("refund_approval")
+    if "refund_approval_amount" in payload:
+        doc.refund_approval_amount = max(flt(payload.get("refund_approval_amount")), 0)
     # Sales on account (lumenpos.credit_sales, 0.60.0). A screen from before
     # sends none of these: leave them alone.
     if "credit_sales_enabled" in payload:

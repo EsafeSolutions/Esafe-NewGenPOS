@@ -519,11 +519,14 @@ def complete_layaway(layaway: str, payments: list | str | None = None, pos_profi
 
 
 @frappe.whitelist()
-def cancel_layaway(layaway: str, refund_mode: str | None = None, refund_payments: list | str | None = None, reason: str | None = None, pos_profile: str | None = None):
+def cancel_layaway(layaway: str, refund_mode: str | None = None, refund_payments: list | str | None = None, reason: str | None = None, pos_profile: str | None = None, refund_passcode: str | None = None):
     """Give the money back and put the goods on the shelf.
 
     Every instalment is refunded through the ordinary return, so the refund
-    methods a shop configured apply here as well."""
+    methods a shop configured apply here as well. Where the shop asks a
+    supervisor to approve refunds (lumenpos.refund_approval, 0.63.0) the whole
+    refund is approved once, by `refund_passcode`, before the first instalment
+    goes back."""
     if isinstance(refund_payments, str):
         refund_payments = json.loads(refund_payments or "[]")
     _require_layaway_access()
@@ -533,21 +536,31 @@ def cancel_layaway(layaway: str, refund_mode: str | None = None, refund_payments
     # The refund goes out through the drawer of the outlet doing it.
     acting = _acting_profile(doc, pos_profile)
 
+    from lumenpos import refund_approval
+
+    open_rows = [row for row in doc.payments or [] if not row.refunded and row.invoice]
+    company = frappe.get_cached_value("POS Profile", acting.name, "company")
+    back = flt(sum(flt(row.amount) for row in open_rows), 2)
+    approver = None
+    if refund_approval.needs_approval(back):
+        approver = refund_approval.approve(back, company, open_rows[0].invoice, passcode=refund_passcode)
     refunds = []
-    for row in doc.payments or []:
-        if row.refunded or not row.invoice:
-            continue
-        credit = sales.create_return(
-            invoice=row.invoice,
-            items={deposits.item_code(): 1},
-            refund_mode=refund_mode or "Cash",
-            return_reason=reason or _("Hold cancelled"),
-            pos_profile=acting.name,
-            refund_payments=refund_payments or None,
-            _post_now=False,
-        )
-        row.refunded = 1
-        refunds.append(credit["name"])
+    frappe.flags.lumenpos_refund_approver = approver
+    try:
+        for row in open_rows:
+            credit = sales.create_return(
+                invoice=row.invoice,
+                items={deposits.item_code(): 1},
+                refund_mode=refund_mode or "Cash",
+                return_reason=reason or _("Hold cancelled"),
+                pos_profile=acting.name,
+                refund_payments=refund_payments or None,
+                _post_now=False,
+            )
+            row.refunded = 1
+            refunds.append(credit["name"])
+    finally:
+        frappe.flags.lumenpos_refund_approver = None
 
     doc.status = "Cancelled"
     if reason:

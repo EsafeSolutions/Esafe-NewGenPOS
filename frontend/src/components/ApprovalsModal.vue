@@ -34,6 +34,10 @@
               <div v-else class="headline">
                 {{ r.return_invoice }}<span v-if="r.invoice_age_days != null" class="muted"> · {{ t('{n} days old', { n: r.invoice_age_days }) }}</span>
               </div>
+              <!-- The money a refund hands back (0.63.0): the approval covers no more. -->
+              <div v-if="r.request_type === 'Return' && Number(r.refund_amount) > 0" class="refund-line">
+                {{ t('Refund {amount}', { amount: money(r.refund_amount, r.refund_currency) }) }}
+              </div>
               <div v-if="r.customer_name" class="muted">{{ t('Customer') }}: {{ r.customer_name }}</div>
               <div v-if="r.reason" class="reason">"{{ r.reason }}"</div>
               <pre v-if="r.request_details" class="req-details">{{ r.request_details }}</pre>
@@ -145,6 +149,7 @@ onUnmounted(() => clearInterval(timer))
 .type-chip.ret { background: rgba(245, 166, 35, 0.16); color: #9a6a0a; }
 .type-chip.cash { background: rgba(226, 48, 48, 0.12); color: var(--red); }
 .headline { font-size: 18px; font-weight: 800; margin: 2px 0; }
+.refund-line { font-size: 15px; font-weight: 800; color: var(--red); margin: 0 0 2px; }
 .req-meta { font-size: 13px; line-height: 1.5; }
 .reason { font-style: italic; color: var(--text-muted); margin-top: 4px; }
 .req-details {

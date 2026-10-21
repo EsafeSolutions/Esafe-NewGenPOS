@@ -120,11 +120,23 @@
         </p>
       </div>
     </div>
+    <!-- Refunding a hold, where the shop asks a supervisor to approve refunds
+         (0.63.0): every instalment goes back at once, so the passcode only. -->
+    <RefundApproval
+      v-if="refundAsk && open"
+      :amount="open.paid"
+      :currency="session.localCurrency"
+      :allow-request="false"
+      @approved="onRefundApproved"
+      @close="refundAsk = false"
+    />
   </div>
 </template>
 
 <script setup>
 import Icon from '../components/Icon.vue'
+import RefundApproval from '../components/RefundApproval.vue'
+import { refundNeedsApproval } from '../refundApproval'
 import { ref, computed, onMounted } from 'vue'
 import { call } from '../api'
 import { useSessionStore } from '../stores/session'
@@ -225,13 +237,24 @@ async function handOver() {
   }
 }
 
-async function cancelHold() {
+const refundAsk = ref(false)
+function onRefundApproved(data) {
+  refundAsk.value = false
+  cancelHold(data.passcode)
+}
+
+async function cancelHold(passcode) {
+  if (typeof passcode !== 'string' && refundNeedsApproval(session.settings, session.permissions, open.value.paid)) {
+    refundAsk.value = true
+    return
+  }
   busy.value = true
   try {
     const res = await call('lumenpos.api.layaway.cancel_layaway', {
       layaway: open.value.name,
       refund_mode: payMode.value,
       pos_profile: session.posProfile,
+      refund_passcode: typeof passcode === 'string' ? passcode : null,
     })
     open.value = res.layaway
     session.notify(t('Hold cancelled and refunded'))

@@ -58,6 +58,9 @@
   "cash_out_reason_required",
   "cash_out_approval",
   "cash_out_approval_amount",
+  "refund_approval_section",
+  "refund_approval",
+  "refund_approval_amount",
   "permissions_section",
   "price_edit_role",
   "return_role",
@@ -387,6 +390,26 @@
    "fieldname": "cash_out_approval_amount",
    "fieldtype": "Currency",
    "label": "Approval above"
+  },
+  {
+   "fieldname": "refund_approval_section",
+   "fieldtype": "Section Break",
+   "label": "Refund approval"
+  },
+  {
+   "default": "Off",
+   "description": "Off: as before. Above an amount: a supervisor approves a refund above the amount set. Always: every refund. A supervisor approves with their passcode at the till, or a request from the Approvals tray. Managers need nobody's approval. Only money handed back counts: what goes into an exchange or off a debt does not.",
+   "fieldname": "refund_approval",
+   "fieldtype": "Select",
+   "label": "Supervisor approval for refunds",
+   "options": "Off\nAbove an amount\nAlways"
+  },
+  {
+   "depends_on": "eval:doc.refund_approval=='Above an amount'",
+   "description": "In the company currency. A sale in another currency is valued at its own rate.",
+   "fieldname": "refund_approval_amount",
+   "fieldtype": "Currency",
+   "label": "Refund approval above"
   },
   {
    "description": "Restrict till actions to staff holding a role. Leave a role blank to allow everyone. System / LumenPOS Managers always pass.",
@@ -982,7 +1005,7 @@
  "index_web_pages_for_search": 0,
  "issingle": 1,
  "links": [],
- "modified": "2026-10-17 18:00:00.000000",
+ "modified": "2026-10-21 10:00:00.000000",
  "modified_by": "Administrator",
  "module": "LumenPOS",
  "name": "LumenPOS Settings",

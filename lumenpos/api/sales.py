@@ -2815,6 +2815,48 @@ def _sold_serials(invoice_doc):
 
 
 @frappe.whitelist()
+def refund_check(
+    invoice: str,
+    items: dict | str,
+    pos_profile: str | None = None,
+    serials: dict | str | None = None,
+):
+    """Does taking these items back need a supervisor's approval of the money
+    handed back (lumenpos.refund_approval, 0.63.0)? The credit note is built
+    and thrown away, as quote_exchange does, so the amount is the one
+    create_return will check: ERPNext's figure with its tax, less what comes
+    off a debt on a sale on account, in the company currency."""
+    _require_sell()
+    from lumenpos import refund_approval
+    from lumenpos.api import permissions
+
+    if not permissions.can_return():
+        frappe.throw(_("You're not allowed to make returns."), frappe.PermissionError)
+    if refund_approval.mode() == "Off" or permissions.is_manager():
+        return {"needs_approval": False, "amount": 0, "currency": None}
+    if isinstance(items, str):
+        items = json.loads(items)
+    if isinstance(serials, str):
+        serials = json.loads(serials)
+    items = {code: flt(qty) for code, qty in (items or {}).items() if flt(qty) > 0}
+    if not items:
+        return {"needs_approval": False, "amount": 0, "currency": None}
+    sale_doctype = _doctype_of(invoice)
+    original = frappe.get_doc(sale_doctype, invoice)
+    return_doc, _session = _build_return_doc(
+        original, sale_doctype, invoice, items, serials or {}, pos_profile, None
+    )
+    value = abs(flt(return_doc.rounded_total or return_doc.grand_total, 2))
+    debt = credit_sales.debt_part(original, value) if original.get("lumenpos_credit_entry") else 0.0
+    amount = flt((value - debt) * flt(return_doc.get("conversion_rate") or 1), 2)
+    return {
+        "needs_approval": refund_approval.needs_approval(amount),
+        "amount": amount,
+        "currency": currency.company_currency(original.company),
+    }
+
+
+@frappe.whitelist()
 def create_return(
     invoice: str,
     items: dict | str,
@@ -2827,6 +2869,8 @@ def create_return(
     idempotency_key: str | None = None,
     original_key: str | None = None,
     offline_refund: float | str | None = None,
+    refund_passcode: str | None = None,
+    refund_request: str | None = None,
     _split_fn: Callable | None = None,
     _post_now: bool = True,
 ):
@@ -2842,6 +2886,13 @@ def create_return(
     recorded on the credit note.
     return_request = an approved POS Approval Request (type Return) that
     authorizes a return made AFTER the configured return window has passed.
+
+    refund_passcode / refund_request = a supervisor's approval of the money
+    handed back, where LumenPOS Settings asks for one (lumenpos.refund_approval,
+    0.63.0): their passcode, or an approved Return request for at least that
+    amount (return_request serves when refund_request is not given). A Python
+    caller that checked the approval of a larger refund itself (a hold being
+    cancelled refunds every instalment) sets frappe.flags.lumenpos_refund_approver.
 
     idempotency_key = the till's key for THIS return: a retry of one that
     already posted (its answer was lost on the way back) gets that return's
@@ -3021,6 +3072,25 @@ def create_return(
             _("A refund does not go back onto a gift card or cashback. Refund that part as store credit."),
             title=_("Refund"),
         )
+    # A supervisor approves the money handed back (lumenpos.refund_approval):
+    # what pays for an exchange's new items or comes off a debt leaves no drawer.
+    from lumenpos import exchanges as exchange_clearing, refund_approval
+
+    handed_back = flt(
+        sum(
+            abs(flt(r["amount"])) for r in splits
+            if r["mode_of_payment"] not in (exchange_clearing.MODE_OF_PAYMENT, credit_sales.MODE_OF_PAYMENT)
+        )
+        * flt(return_doc.get("conversion_rate") or 1),
+        2,
+    )
+    refund_approver = frappe.flags.get("lumenpos_refund_approver")
+    used_request = None
+    if not refund_approver and refund_approval.needs_approval(handed_back):
+        used_request = None if refund_passcode else (refund_request or return_request)
+        refund_approver = refund_approval.approve(
+            handed_back, original.company, invoice, passcode=refund_passcode, request=used_request
+        )
     # A sale in another currency is refunded through tenders ERPNext accepts
     # for it (its own currency or the company's), never into store credit,
     # whose ledger holds the outlet's currency only (lumenpos.currency).
@@ -3055,6 +3125,12 @@ def create_return(
         return_doc.remarks = "\n".join(
             part
             for part in [return_doc.get("remarks"), _("Late return approved by {0}").format(return_approver)]
+            if part
+        )
+    if refund_approver:
+        return_doc.remarks = "\n".join(
+            part
+            for part in [return_doc.get("remarks"), _("Refund approved by {0}").format(refund_approver)]
             if part
         )
 
@@ -3100,6 +3176,10 @@ def create_return(
         from lumenpos.api import approval_requests
 
         approval_requests.consume(return_request, return_doc.name)
+    if used_request and used_request != (return_request if return_approver else None):
+        from lumenpos.api import approval_requests
+
+        approval_requests.consume(used_request, return_doc.name)
 
     from lumenpos.api import audit
 
@@ -3110,6 +3190,8 @@ def create_return(
         detail += f" · {return_reason}"
     if return_approver:
         detail += f" · {_('late return approved by {0}').format(return_approver)}"
+    if refund_approver:
+        detail += f" · {_('refund approved by {0}').format(refund_approver)}"
     if offline:
         detail += " · " + _("made without a connection")
         if abs(gap) > 0.005:

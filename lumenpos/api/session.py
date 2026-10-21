@@ -389,7 +389,7 @@ def _client_settings(profile_name=None):
 
     from frappe.utils import cint
 
-    from lumenpos import accounting_periods, cash_out, credit_sales, languages, variance
+    from lumenpos import accounting_periods, cash_out, credit_sales, languages, refund_approval, variance
     from lumenpos.api import approval_requests
 
     doc = frappe.get_cached_doc("LumenPOS Settings")
@@ -447,6 +447,8 @@ def _client_settings(profile_name=None):
         **credit_sales.client_facts(),
         # Taking money out of the drawer (lumenpos.cash_out, 0.61.0).
         **cash_out.client_facts(),
+        # A supervisor approves refunds (lumenpos.refund_approval, 0.63.0).
+        **refund_approval.client_facts(),
         "delivery_apps": [
             {
                 "app_name": row.app_name,

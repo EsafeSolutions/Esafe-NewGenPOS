@@ -20,6 +20,7 @@
   "return_invoice",
   "invoice_age_days",
   "cash_amount",
+  "refund_amount",
   "cash_drawer",
   "reason",
   "request_details",
@@ -128,6 +129,13 @@
    "read_only": 1
   },
   {
+   "description": "A return request: the money the refund hands back, in the company currency, when the shop asks for refund approval.",
+   "fieldname": "refund_amount",
+   "fieldtype": "Currency",
+   "label": "Refund amount",
+   "read_only": 1
+  },
+  {
    "fieldname": "cash_drawer",
    "fieldtype": "Link",
    "label": "Drawer",
@@ -207,7 +215,7 @@
  ],
  "index_web_pages_for_search": 0,
  "links": [],
- "modified": "2026-10-04 10:00:00.000000",
+ "modified": "2026-10-21 10:00:00.000000",
  "modified_by": "Administrator",
  "module": "LumenPOS",
  "name": "POS Approval Request",

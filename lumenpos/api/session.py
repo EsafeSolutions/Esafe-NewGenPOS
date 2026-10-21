@@ -398,6 +398,7 @@ def _client_settings(profile_name=None):
         "discount_limit_percent": doc.discount_limit_percent or 0,
         "discount_approval_mode": doc.get("discount_approval_mode") or "Passcode only",
         "can_approve_requests": approval_requests.can_approve(),
+        "approval_requests_in_use": 1 if approval_requests.in_use() else 0,
         "restrict_returns_to_window": 1 if doc.get("restrict_returns_to_window") else 0,
         "return_window_days": cint(doc.get("return_window_days")) or 0,
         "show_out_of_stock": 1 if doc.get("show_out_of_stock") else 0,

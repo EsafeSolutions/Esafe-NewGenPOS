@@ -15,6 +15,7 @@ from frappe.utils.password import get_decrypted_password
 
 from lumenpos import __version__
 from lumenpos import erpnext_compat
+from lumenpos.api import approval_requests
 from lumenpos.api import insights
 from lumenpos.api import salespeople
 from lumenpos.api import reports
@@ -208,6 +209,7 @@ def get_settings():
         **cash_out.client_facts(),
         # A supervisor approves refunds (lumenpos.refund_approval, 0.63.0).
         **refund_approval.client_facts(),
+        "approval_requests_in_use": 1 if approval_requests.in_use() else 0,
         "discount_limit_percent": flt(doc.discount_limit_percent),
         "discount_approval_mode": doc.get("discount_approval_mode") or "Passcode only",
         "approver_role": doc.get("approver_role") or "",

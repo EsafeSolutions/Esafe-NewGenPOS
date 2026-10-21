@@ -171,14 +171,18 @@ export const useSessionStore = defineStore('session', {
     returnReasons: (s) => s.settings?.return_reasons || [],
     // Over-limit discount approval flow (Settings → Discount Approval).
     discountApprovalMode: (s) => s.settings?.discount_approval_mode || 'Passcode only',
-    // This user may approve requests AND at least one request type is enabled
-    // (discount requests on, or returns limited to a window), so the Approvals
-    // tray is worth showing.
+    // This user may approve requests AND at least one request type is in use,
+    // so the Approvals tray is worth showing. The server says so for the whole
+    // site (approval_requests.in_use, 0.63.0: refunds and restricted products
+    // too); a server from before falls back on the settings the till knows.
     canApprove: (s) =>
       Boolean(s.settings?.can_approve_requests) &&
-      ((s.settings?.discount_approval_mode || 'Passcode only') !== 'Passcode only' ||
-        Boolean(s.settings?.restrict_returns_to_window) ||
-        (s.settings?.cash_out_approval || 'Off') !== 'Off'),
+      (s.settings?.approval_requests_in_use != null
+        ? Boolean(s.settings.approval_requests_in_use)
+        : (s.settings?.discount_approval_mode || 'Passcode only') !== 'Passcode only' ||
+          Boolean(s.settings?.restrict_returns_to_window) ||
+          (s.settings?.cash_out_approval || 'Off') !== 'Off' ||
+          (s.settings?.refund_approval || 'Off') !== 'Off'),
     // The Settings gear is worth showing only if the user can manage at least
     // one back-office area.
     canManageAny: (s) => {

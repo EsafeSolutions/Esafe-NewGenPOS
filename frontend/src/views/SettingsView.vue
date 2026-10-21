@@ -4118,6 +4118,7 @@ async function saveGeneral() {
     session.settings.cash_out_approval_amount = info.cash_out_approval_amount || 0
     session.settings.refund_approval = info.refund_approval || 'Off'
     session.settings.refund_approval_amount = info.refund_approval_amount || 0
+    session.settings.approval_requests_in_use = info.approval_requests_in_use ? 1 : 0
     session.settings.restrict_returns_to_window = info.restrict_returns_to_window || 0
     session.settings.return_window_days = info.return_window_days || 0
     session.settings.return_reasons = info.return_reasons || []

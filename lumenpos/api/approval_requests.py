@@ -61,6 +61,21 @@ def can_approve(user=None):
     return bool(role and role in roles)
 
 
+def in_use():
+    """Is any kind of request switched on, so an approver's Approvals tray is
+    worth showing? Discount requests, returns limited to a window, a product
+    the shop takes back only with an approval (POS Return Restriction), cash
+    out (0.61.0) or refund approval (0.63.0). The tray covers every outlet, so
+    this asks the whole site, not the approver's own outlet."""
+    if approval_mode() != "Passcode only" or _settings().get("restrict_returns_to_window"):
+        return True
+    from lumenpos import cash_out, refund_approval
+
+    if cash_out.mode() != "Off" or refund_approval.mode() != "Off":
+        return True
+    return bool(frappe.db.exists("POS Return Restriction", {"enabled": 1, "allow_with_approval": 1}))
+
+
 def _require_approver():
     if not can_approve():
         frappe.throw(

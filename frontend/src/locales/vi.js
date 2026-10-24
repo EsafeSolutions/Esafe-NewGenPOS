@@ -1966,4 +1966,9 @@ export default {
   "Registers that sell from the same warehouse are one outlet, with each register's own sales and shifts inside it. To split them, give each POS Profile its own Outlet name in ERPNext.": "Các quầy thu ngân bán từ cùng một kho là một cửa hàng, bên trong có doanh số và ca của từng quầy thu ngân. Để tách ra, hãy đặt cho mỗi Hồ sơ POS một tên Cửa hàng riêng trong ERPNext.",
   "Outlets and their registers": "Cửa hàng và quầy thu ngân",
   "Registers that sell from the same warehouse are now one outlet: in the reports, where you can pick one register or the whole outlet, and on the till, which reads Outlet · Register.": "Các quầy thu ngân bán từ cùng một kho giờ là một cửa hàng: trong báo cáo, nơi bạn có thể chọn một quầy thu ngân hoặc cả cửa hàng, và trên màn hình bán hàng, nơi hiển thị Cửa hàng · Quầy thu ngân.",
+  "Reports only": "Chỉ báo cáo",
+  "Reports for management without a till": "Báo cáo cho ban quản lý không cần quầy thu ngân",
+  "Give a user the LumenPOS Reports role in ERPNext and LumenPOS opens on these reports alone, for every outlet of their companies, with no POS Profile, shift or sales. Add the LumenPOS Cashier role as well to let them sell too.": "Cấp vai trò LumenPOS Reports cho người dùng trong ERPNext, LumenPOS sẽ chỉ mở các báo cáo này cho họ, cho tất cả cửa hàng của các công ty của họ, không cần Hồ sơ POS, ca hay giao dịch bán. Cấp thêm vai trò LumenPOS Cashier nếu muốn họ bán hàng nữa.",
+  "Reports for management": "Báo cáo cho ban quản lý",
+  "Give a user the LumenPOS Reports role in ERPNext and LumenPOS opens on the Insights reports alone, for every outlet of their companies, with no POS Profile or shift. Switch it off in Settings, General, Insights.": "Cấp vai trò LumenPOS Reports cho người dùng trong ERPNext, LumenPOS sẽ chỉ mở các báo cáo Insights cho họ, cho tất cả cửa hàng của các công ty của họ, không cần Hồ sơ POS hay ca. Tắt tại Cài đặt, Chung, Insights.",
 }

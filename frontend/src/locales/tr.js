@@ -1966,4 +1966,9 @@ export default {
   "Registers that sell from the same warehouse are one outlet, with each register's own sales and shifts inside it. To split them, give each POS Profile its own Outlet name in ERPNext.": "Aynı depodan satış yapan kasalar tek bir şubedir, her kasanın kendi satışları ve vardiyaları bu şubenin içinde yer alır. Onları ayırmak için ERPNext'te her POS Profiline kendi Şube adını verin.",
   "Outlets and their registers": "Şubeler ve kasaları",
   "Registers that sell from the same warehouse are now one outlet: in the reports, where you can pick one register or the whole outlet, and on the till, which reads Outlet · Register.": "Aynı depodan satış yapan kasalar artık tek bir şube: raporlarda tek bir kasayı ya da tüm şubeyi seçebilirsiniz, satış ekranında da Şube · Kasa yazar.",
+  "Reports only": "Yalnızca raporlar",
+  "Reports for management without a till": "Kasa olmadan yönetim için raporlar",
+  "Give a user the LumenPOS Reports role in ERPNext and LumenPOS opens on these reports alone, for every outlet of their companies, with no POS Profile, shift or sales. Add the LumenPOS Cashier role as well to let them sell too.": "Bir kullanıcıya ERPNext'te LumenPOS Reports rolünü verin, LumenPOS onun için şirketlerinin tüm şubelerinde POS Profili, vardiya ve satış olmadan yalnızca bu raporlarla açılır. Satış da yapabilmesi için LumenPOS Cashier rolünü de ekleyin.",
+  "Reports for management": "Yönetim için raporlar",
+  "Give a user the LumenPOS Reports role in ERPNext and LumenPOS opens on the Insights reports alone, for every outlet of their companies, with no POS Profile or shift. Switch it off in Settings, General, Insights.": "Bir kullanıcıya ERPNext'te LumenPOS Reports rolünü verin, LumenPOS onun için şirketlerinin tüm şubelerinde POS Profili ve vardiya olmadan yalnızca Insights raporlarıyla açılır. Ayarlar, Genel, Insights bölümünden kapatabilirsiniz.",
 }

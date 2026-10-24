@@ -503,6 +503,7 @@ export const TOURS = {
 // What is new, newest first. Shown once per person after an update, only the
 // entries newer than what they last saw and that apply to them.
 export const WHATS_NEW = [
+  { version: '0.65.0', title: 'Reports for management', text: 'Give a user the LumenPOS Reports role in ERPNext and LumenPOS opens on the Insights reports alone, for every outlet of their companies, with no POS Profile or shift. Switch it off in Settings, General, Insights.', route: '/settings', when: manager },
   { version: '0.64.0', title: 'Outlets and their registers', text: 'Registers that sell from the same warehouse are now one outlet: in the reports, where you can pick one register or the whole outlet, and on the till, which reads Outlet · Register.', route: '/insights', when: (s) => (s.outlets || []).some((o) => o.size > 1) },
   { version: '0.63.0', title: 'A supervisor approves refunds', text: 'Your shop can ask a supervisor to approve every refund, or those above an amount, with their passcode at the till or a request from the Approvals tray. Set it in Settings, General, Approvals and access, Refund approval.', route: '/settings', when: (s) => Boolean(s.permissions.settings) },
   { version: '0.63.0', title: 'Refunds need a supervisor', text: 'A refund now waits for a supervisor\'s passcode or approved request before the money goes back.', route: '/history', when: (s) => (s.settings.refund_approval || 'Off') !== 'Off' && !s.permissions.is_manager },

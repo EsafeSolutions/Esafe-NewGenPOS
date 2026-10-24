@@ -1049,3 +1049,7 @@
 "Give each cashier their own register (POS Profile) on the same warehouse: they stay one outlet. Or let a shift belong to the register in Settings.","Дайте каждому кассиру свою кассу (профиль точки продаж) на том же складе: они останутся одним магазином. Или в настройках сделайте так, чтобы смена принадлежала кассе."
 "That outlet is not one of {0}'s.","Этот магазин не принадлежит {0}."
 "Registers with the same outlet are one shop in LumenPOS. Leave it empty: registers that sell from the same warehouse are one outlet.","Кассы с одинаковым магазином в LumenPOS считаются одним магазином. Если оставить поле пустым, кассы, которые продают с одного склада, образуют один магазин."
+"There is no outlet in a company you may see, so there is no report to show yet.","Ни в одной компании, которую вам разрешено видеть, нет магазина, поэтому показать отчёты пока нельзя."
+"The shop has not let the LumenPOS Reports role see any report. A manager names it in Settings, General, Approvals and access, Permissions.","Роли LumenPOS Reports пока не разрешено просматривать ни один отчёт. Менеджер добавляет её в разделе Настройки, Общие, Согласования и доступ, Права доступа."
+"Reports for management without a till","Отчёты для руководства без кассы"
+"Whoever holds the LumenPOS Reports role opens LumenPOS on the reports alone, for every outlet of their companies, with no POS Profile, shift or sales.","Пользователь с ролью LumenPOS Reports открывает LumenPOS только на отчётах, по всем магазинам своих компаний, без профиля точки продаж, смены и продаж."

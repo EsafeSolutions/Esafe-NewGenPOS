@@ -1966,4 +1966,9 @@ export default {
   "Registers that sell from the same warehouse are one outlet, with each register's own sales and shifts inside it. To split them, give each POS Profile its own Outlet name in ERPNext.": "เครื่องคิดเงินที่ขายจากคลังสินค้าเดียวกันนับเป็นสาขาเดียว โดยมียอดขายและกะของแต่ละเครื่องคิดเงินอยู่ภายในสาขานั้น หากต้องการแยก ให้ตั้งชื่อสาขาแยกกันให้แต่ละโปรไฟล์ POS ใน ERPNext",
   "Outlets and their registers": "สาขาและเครื่องคิดเงิน",
   "Registers that sell from the same warehouse are now one outlet: in the reports, where you can pick one register or the whole outlet, and on the till, which reads Outlet · Register.": "ตอนนี้เครื่องคิดเงินที่ขายจากคลังสินค้าเดียวกันนับเป็นสาขาเดียวแล้ว ทั้งในรายงาน ซึ่งเลือกดูได้ทีละเครื่องคิดเงินหรือทั้งสาขา และบนหน้าจอขาย ซึ่งแสดงเป็น สาขา · เครื่องคิดเงิน",
+  "Reports only": "รายงานเท่านั้น",
+  "Reports for management without a till": "รายงานสำหรับผู้บริหารโดยไม่ต้องใช้เครื่องคิดเงิน",
+  "Give a user the LumenPOS Reports role in ERPNext and LumenPOS opens on these reports alone, for every outlet of their companies, with no POS Profile, shift or sales. Add the LumenPOS Cashier role as well to let them sell too.": "มอบบทบาท LumenPOS Reports ให้ผู้ใช้ใน ERPNext แล้ว LumenPOS จะเปิดเฉพาะรายงานเหล่านี้ให้ผู้ใช้นั้น สำหรับทุกสาขาของบริษัทที่ผู้ใช้สังกัด โดยไม่ต้องมีโปรไฟล์ POS กะ หรือการขาย หากต้องการให้ขายได้ด้วย ให้เพิ่มบทบาท LumenPOS Cashier",
+  "Reports for management": "รายงานสำหรับผู้บริหาร",
+  "Give a user the LumenPOS Reports role in ERPNext and LumenPOS opens on the Insights reports alone, for every outlet of their companies, with no POS Profile or shift. Switch it off in Settings, General, Insights.": "มอบบทบาท LumenPOS Reports ให้ผู้ใช้ใน ERPNext แล้ว LumenPOS จะเปิดเฉพาะรายงานใน Insights ให้ผู้ใช้นั้น สำหรับทุกสาขาของบริษัทที่ผู้ใช้สังกัด โดยไม่ต้องมีโปรไฟล์ POS หรือกะ ปิดได้ที่ การตั้งค่า, ทั่วไป, Insights",
 }

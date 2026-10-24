@@ -2285,7 +2285,15 @@ const outletsRegisters = {
   "Registers that sell from the same warehouse are now one outlet: in the reports, where you can pick one register or the whole outlet, and on the till, which reads Outlet · Register.": "أصبحت نقاط البيع التي تبيع من نفس المستودع فرعا واحدا: في التقارير، حيث تختار نقطة بيع واحدة أو الفرع كله، وفي شاشة البيع التي تكتب الفرع · نقطة البيع.",
 }
 
+const reportsAccess = {
+  "Reports only": "التقارير فقط",
+  "Reports for management without a till": "تقارير للإدارة بدون نقطة بيع",
+  "Give a user the LumenPOS Reports role in ERPNext and LumenPOS opens on these reports alone, for every outlet of their companies, with no POS Profile, shift or sales. Add the LumenPOS Cashier role as well to let them sell too.": "امنح المستخدم دور LumenPOS Reports في ERPNext فيفتح له LumenPOS على هذه التقارير وحدها، لكل فروع شركاته، بدون ملف نقطة بيع ولا وردية ولا مبيعات. وأضف له دور LumenPOS Cashier أيضا إذا أردت أن يبيع.",
+  "Reports for management": "تقارير للإدارة",
+  "Give a user the LumenPOS Reports role in ERPNext and LumenPOS opens on the Insights reports alone, for every outlet of their companies, with no POS Profile or shift. Switch it off in Settings, General, Insights.": "امنح المستخدم دور LumenPOS Reports في ERPNext فيفتح له LumenPOS على تقارير الإحصائيات وحدها، لكل فروع شركاته، بدون ملف نقطة بيع ولا وردية. ويمكن إيقافه من الإعدادات، عام، الإحصائيات.",
+}
+
 export const messages = {
   en: { ...prefixedEn },
-  ar: { ...common, ...settings, ...register, ...features, ...sell, ...txn, ...misc, ...approvals, ...returns, ...customersScreen, ...lifecycle, ...serialsAndGroups, ...permissions, ...insights, ...generalLayout, ...currencies, ...customerForm, ...salespeopleAndCheck, ...helpForStaff, ...lockedPeriods, ...varianceReasons, ...creditSales, ...cashOut, ...owesHolds, ...anyCurrency, ...insightsReports, ...insightsReports2, ...refundApproval, ...outletsRegisters, ...prefixedAr },
+  ar: { ...common, ...settings, ...register, ...features, ...sell, ...txn, ...misc, ...approvals, ...returns, ...customersScreen, ...lifecycle, ...serialsAndGroups, ...permissions, ...insights, ...generalLayout, ...currencies, ...customerForm, ...salespeopleAndCheck, ...helpForStaff, ...lockedPeriods, ...varianceReasons, ...creditSales, ...cashOut, ...owesHolds, ...anyCurrency, ...insightsReports, ...insightsReports2, ...refundApproval, ...outletsRegisters, ...reportsAccess, ...prefixedAr },
 }

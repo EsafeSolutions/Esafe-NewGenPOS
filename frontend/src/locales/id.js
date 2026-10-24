@@ -1966,4 +1966,9 @@ export default {
   "Registers that sell from the same warehouse are one outlet, with each register's own sales and shifts inside it. To split them, give each POS Profile its own Outlet name in ERPNext.": "Mesin kasir yang berjualan dari gudang yang sama adalah satu gerai, dengan penjualan dan shift tiap mesin kasir di dalamnya. Untuk memisahkannya, beri setiap Profil POS nama Gerai sendiri di ERPNext.",
   "Outlets and their registers": "Gerai dan mesin kasirnya",
   "Registers that sell from the same warehouse are now one outlet: in the reports, where you can pick one register or the whole outlet, and on the till, which reads Outlet · Register.": "Mesin kasir yang berjualan dari gudang yang sama kini menjadi satu gerai: di laporan, tempat Anda bisa memilih satu mesin kasir atau seluruh gerai, dan di layar penjualan, yang menampilkan Gerai · Mesin kasir.",
+  "Reports only": "Hanya laporan",
+  "Reports for management without a till": "Laporan untuk manajemen tanpa mesin kasir",
+  "Give a user the LumenPOS Reports role in ERPNext and LumenPOS opens on these reports alone, for every outlet of their companies, with no POS Profile, shift or sales. Add the LumenPOS Cashier role as well to let them sell too.": "Berikan peran LumenPOS Reports kepada pengguna di ERPNext, maka LumenPOS hanya membuka laporan ini untuknya, untuk semua gerai perusahaannya, tanpa Profil POS, shift, atau penjualan. Tambahkan juga peran LumenPOS Cashier agar ia dapat menjual.",
+  "Reports for management": "Laporan untuk manajemen",
+  "Give a user the LumenPOS Reports role in ERPNext and LumenPOS opens on the Insights reports alone, for every outlet of their companies, with no POS Profile or shift. Switch it off in Settings, General, Insights.": "Berikan peran LumenPOS Reports kepada pengguna di ERPNext, maka LumenPOS hanya membuka laporan Insights untuknya, untuk semua gerai perusahaannya, tanpa Profil POS atau shift. Nonaktifkan di Pengaturan, Umum, Insights.",
 }

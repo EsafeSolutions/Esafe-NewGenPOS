@@ -158,9 +158,14 @@ def _outlets(pos_profile, company, outlet=None):
     outlet (lumenpos.outlets, 0.64.0: `outlet` is its key, with its company),
     or every register of one company this person may work at."""
     from lumenpos.api import session as session_api
+    from lumenpos import reports_access
 
+    # Whoever holds the LumenPOS Reports role reads every register of their
+    # companies, assigned or not (0.65.0).
+    viewing = set(reports_access.registers())
     if pos_profile:
-        permissions.assert_outlet(pos_profile)
+        if pos_profile not in viewing:
+            permissions.assert_outlet(pos_profile)
         return [pos_profile], frappe.get_cached_value("POS Profile", pos_profile, "company")
     if not company:
         frappe.throw(_("Pick an outlet or a company."))
@@ -170,7 +175,7 @@ def _outlets(pos_profile, company, outlet=None):
     mine = set(session_api._user_profiles() or [])
     outlets = [
         p for p in frappe.get_all("POS Profile", filters={"company": company, "disabled": 0}, pluck="name")
-        if p in mine and permissions.can_use_outlet(p)
+        if p in viewing or (p in mine and permissions.can_use_outlet(p))
     ]
     if outlet:
         from lumenpos import outlets as outlet_groups

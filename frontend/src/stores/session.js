@@ -44,6 +44,10 @@ export const useSessionStore = defineStore('session', {
     // [{outlet, name, company, registers, size}], registers = the ones this
     // person may use, size = how many the outlet has in all.
     outlets: [],
+    // The reports alone, no till (LumenPOS Reports role, 0.65.0): no register,
+    // shift or products, the Insights reports of every outlet of these companies.
+    reportsOnly: false,
+    companyList: [],
     otherOpenRegisters: [],
     company: null,
     currency: 'USD',
@@ -155,7 +159,34 @@ export const useSessionStore = defineStore('session', {
     myOutlet: (s) => (s.outlets || []).find((o) => o.registers.includes(s.posProfile)) || null,
     // What a report takes for a scope: "register" (this one), "outlet" (all of
     // its outlet's registers this person may use) or "company".
+    // What a person with the reports alone may pick: each company whole, then
+    // each of its outlets. {value, label, args} with args as a report takes them.
+    reportChoices: (s) => {
+      if (!s.reportsOnly) return []
+      const companies = s.companyList?.length ? s.companyList : [s.company]
+      const many = companies.length > 1
+      const out = []
+      for (const company of companies) {
+        out.push({
+          value: `company:${company}`,
+          label: t('Every outlet of {company}', { company }),
+          args: { pos_profile: null, company, outlet: null },
+        })
+        for (const o of (s.outlets || []).filter((x) => x.company === company)) {
+          out.push({
+            value: `outlet:${o.outlet}`,
+            label: many ? `${o.name} · ${company}` : o.name,
+            args: { pos_profile: null, company, outlet: o.outlet },
+          })
+        }
+      }
+      return out
+    },
     reportScope: (s) => (scope) => {
+      if (s.reportsOnly) {
+        const choices = s.reportChoices || []
+        return (choices.find((c) => c.value === scope) || choices[0] || { args: { pos_profile: null, company: s.company, outlet: null } }).args
+      }
       const outlet = (s.outlets || []).find((o) => o.registers.includes(s.posProfile))
       if (scope === 'company') return { pos_profile: null, company: s.company, outlet: null }
       if (scope === 'outlet' && outlet && outlet.size > 1) return { pos_profile: null, company: s.company, outlet: outlet.outlet }
@@ -311,6 +342,8 @@ export const useSessionStore = defineStore('session', {
       this.availableProfiles = data.available_profiles || []
       this.profileCompanies = data.profile_companies || {}
       this.outlets = data.outlets || []
+      this.reportsOnly = Boolean(data.reports_only)
+      this.companyList = data.companies || []
       this.company = data.company
       this.currency = data.currency
       this.priceList = data.price_list

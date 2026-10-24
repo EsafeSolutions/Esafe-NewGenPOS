@@ -29,7 +29,10 @@
           <input v-model="fromDate" type="date" class="cf-in" @change="load" />
           <input v-model="toDate" type="date" class="cf-in" @change="load" />
         </template>
-        <select v-model="scope" class="cf-in" @change="load">
+        <select v-if="session.reportsOnly" v-model="scope" class="cf-in" @change="load">
+          <option v-for="c in session.reportChoices" :key="c.value" :value="c.value">{{ c.label }}</option>
+        </select>
+        <select v-else v-model="scope" class="cf-in" @change="load">
           <option v-if="(session.myOutlet?.size || 0) > 1" value="register">{{ t('This register') }}: {{ session.posProfile }}</option>
           <option value="outlet">{{ t('This outlet') }}: {{ (session.myOutlet?.size || 0) > 1 ? session.myOutlet.name : session.posProfile }}</option>
           <option value="company">{{ t('Every outlet of {company}', { company: session.company }) }}</option>
@@ -70,7 +73,7 @@ const PERIODS = [
   { key: 'custom', label: 'Custom' },
 ]
 const period = ref('today')
-const scope = ref('outlet')
+const scope = ref(session.reportsOnly ? session.reportChoices[0]?.value || '' : 'outlet')
 const fromDate = ref('')
 const toDate = ref('')
 const report = ref(null)

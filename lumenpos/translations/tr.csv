@@ -1047,3 +1047,7 @@
 "Give each cashier their own register (POS Profile) on the same warehouse: they stay one outlet. Or let a shift belong to the register in Settings.","Her kasiyere aynı depoda kendi kasasını (POS Profili) verin: tek bir şube olarak kalırlar. Ya da Ayarlar'da vardiyayı kasaya bağlayın."
 "That outlet is not one of {0}'s.","Bu şube {0} şirketine ait değil."
 "Registers with the same outlet are one shop in LumenPOS. Leave it empty: registers that sell from the same warehouse are one outlet.","Aynı şubeye sahip kasalar LumenPOS'ta tek bir şubedir. Boş bırakılırsa, aynı depodan satış yapan kasalar tek bir şube sayılır."
+"There is no outlet in a company you may see, so there is no report to show yet.","Görebileceğiniz hiçbir şirkette şube yok, bu yüzden henüz gösterilecek rapor yok."
+"The shop has not let the LumenPOS Reports role see any report. A manager names it in Settings, General, Approvals and access, Permissions.","Mağaza, LumenPOS Reports rolünün hiçbir raporu görmesine izin vermemiş. Bir yönetici rolü Ayarlar, Genel, Onaylar ve erişim, Yetkiler bölümünde ekler."
+"Reports for management without a till","Kasa olmadan yönetim için raporlar"
+"Whoever holds the LumenPOS Reports role opens LumenPOS on the reports alone, for every outlet of their companies, with no POS Profile, shift or sales.","LumenPOS Reports rolüne sahip olan kişi için LumenPOS, şirketlerinin tüm şubelerinde POS Profili, vardiya ve satış olmadan yalnızca raporlarla açılır."

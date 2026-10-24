@@ -9,7 +9,8 @@ from frappe.utils import cint, flt
 # Permissions Manager. Cashiers sell + run the register; managers also edit the
 # back office (promotions, bundles, price books, settings). Actual access is
 # governed by standard DocType permissions, so these can be tuned freely.
-LumenPOS_ROLES = ["LumenPOS Cashier", "LumenPOS Manager"]
+# LumenPOS Reports (0.65.0, lumenpos.reports_access): the reports alone, no till.
+LumenPOS_ROLES = ["LumenPOS Cashier", "LumenPOS Manager", "LumenPOS Reports"]
 
 # Core ERPNext doctypes the LumenPOS roles need so they are turnkey: granting a
 # user "LumenPOS Cashier" should let them load the POS, sell, and run the register
@@ -270,7 +271,7 @@ PERIOD_SWITCHES = ("warn_locked_periods",)
 CASH_OUT_SWITCHES = ("cash_out_reason_required",)
 # The reports in Insights (0.62.0, lumenpos.api.reports). Who sees them is the
 # shop's call in Who can do what; the switch only takes them away altogether.
-REPORT_SWITCHES = ("reports_in_insights",)
+REPORT_SWITCHES = ("reports_in_insights", "reports_without_till")
 
 
 def _switches_on_once(fields):

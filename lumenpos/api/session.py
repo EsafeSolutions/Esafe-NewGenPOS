@@ -25,6 +25,12 @@ def ping():
 def get_bootstrap(pos_profile: str | None = None):
     """Everything the POS needs to start: profile, payment modes, item groups,
     promotions, currency and the current register session."""
+    from lumenpos import reports_access
+
+    # Management with the LumenPOS Reports role alone: the reports, no till
+    # (0.65.0). Before the POS Invoice check, which they need not pass.
+    if reports_access.reports_only():
+        return _reports_bootstrap()
     if not frappe.has_permission("POS Invoice", "read"):
         frappe.throw(
             _("You do not have access to the POS. Ask an administrator to grant you the LumenPOS Cashier role (or POS Invoice access)."),
@@ -150,6 +156,66 @@ def get_bootstrap(pos_profile: str | None = None):
         # Help for staff: the shop's switches and what this person has seen
         # (lumenpos.api.help).
         "help": help_state(),
+    }
+
+
+def _reports_bootstrap():
+    """What LumenPOS needs to open on the reports alone (lumenpos.reports_access):
+    who, the companies and their outlets, which reports, the languages. No
+    outlet, shift, products or prices: this person sells nothing."""
+    from lumenpos import outlets as outlet_groups
+    from lumenpos import reports_access
+    from lumenpos import currency as sale_currency
+    from lumenpos.api import insights as insights_mod
+    from lumenpos.api import reports as reports_mod
+
+    registers = reports_access.registers()
+    company = reports_access.default_company()
+    if not registers or not company:
+        frappe.throw(_("There is no outlet in a company you may see, so there is no report to show yet."))
+    perms = {
+        "reports_only": True,
+        "sales_reports": reports_mod.can_see_sales_reports(),
+        "cashier_report": reports_mod.can_see_cashier_report(),
+        "profit_report": reports_mod.can_see_profit(),
+        "sales_by_person": salespeople.mode() != "Off" and reports_mod.permissions.can_see_sales_by_person(),
+        "insights": bool(insights_mod.enabled() and reports_mod.permissions.is_manager()),
+    }
+    if not (perms["sales_reports"] or perms["cashier_report"] or perms["profit_report"] or perms["sales_by_person"]):
+        frappe.throw(
+            _("The shop has not let the LumenPOS Reports role see any report. A manager names it in Settings, General, Approvals and access, Permissions."),
+            frappe.PermissionError,
+        )
+    groups = outlet_groups.for_registers(registers)
+    profile_companies = {
+        p.name: p.company
+        for p in frappe.get_all("POS Profile", filters={"name": ["in", registers]}, fields=["name", "company"])
+    }
+    from lumenpos import languages
+
+    return {
+        "reports_only": 1,
+        "user": frappe.session.user,
+        "user_fullname": frappe.utils.get_fullname(frappe.session.user),
+        "desk_theme": frappe.db.get_value("User", frappe.session.user, "desk_theme") or "Automatic",
+        "pos_profile": None,
+        "company": company,
+        "companies": reports_access.companies(),
+        "currency": sale_currency.company_currency(company),
+        "server_now": str(frappe.utils.now_datetime()),
+        "permissions": perms,
+        "available_profiles": [],
+        "profile_companies": profile_companies,
+        "outlets": [
+            {"outlet": g["outlet"], "name": g["name"], "company": g["company"], "registers": g["registers"], "size": g["size"]}
+            for g in groups
+        ],
+        "settings": {
+            "till_languages": languages.offered(),
+            "salesperson_mode": salespeople.mode(),
+        },
+        # The help walks the till's screens: not for someone who has none.
+        "help": {"in_till": 0, "offer_tour": 0, "whats_new": 0, "seen_version": "", "tours_done": []},
     }
 
 
@@ -743,6 +809,8 @@ def can_open_till() -> bool:
     user: the same test get_bootstrap makes before anything else. Not
     whitelisted, Frappe calls it itself."""
     try:
-        return bool(frappe.has_permission("POS Invoice", "read"))
+        from lumenpos import reports_access
+
+        return bool(frappe.has_permission("POS Invoice", "read")) or reports_access.is_viewer()
     except Exception:
         return False

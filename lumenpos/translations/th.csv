@@ -1049,3 +1049,7 @@
 "Give each cashier their own register (POS Profile) on the same warehouse: they stay one outlet. Or let a shift belong to the register in Settings.","ให้แคชเชียร์แต่ละคนมีเครื่องคิดเงินของตนเอง (โปรไฟล์ POS) บนคลังสินค้าเดียวกัน โดยยังนับเป็นสาขาเดียว หรือตั้งให้กะเป็นของเครื่องคิดเงินในการตั้งค่า"
 "That outlet is not one of {0}'s.","สาขานี้ไม่ใช่ของ {0}"
 "Registers with the same outlet are one shop in LumenPOS. Leave it empty: registers that sell from the same warehouse are one outlet.","เครื่องคิดเงินที่มีสาขาเดียวกันนับเป็นร้านเดียวใน LumenPOS ปล่อยว่างไว้ได้ เครื่องคิดเงินที่ขายจากคลังสินค้าเดียวกันจะนับเป็นสาขาเดียว"
+"There is no outlet in a company you may see, so there is no report to show yet.","ไม่มีสาขาในบริษัทที่คุณมีสิทธิ์ดู จึงยังไม่มีรายงานให้แสดง"
+"The shop has not let the LumenPOS Reports role see any report. A manager names it in Settings, General, Approvals and access, Permissions.","ร้านยังไม่อนุญาตให้บทบาท LumenPOS Reports ดูรายงานใดเลย ผู้จัดการกำหนดได้ที่ การตั้งค่า, ทั่วไป, การอนุมัติและสิทธิ์การเข้าถึง, สิทธิ์"
+"Reports for management without a till","รายงานสำหรับผู้บริหารโดยไม่ต้องใช้เครื่องคิดเงิน"
+"Whoever holds the LumenPOS Reports role opens LumenPOS on the reports alone, for every outlet of their companies, with no POS Profile, shift or sales.","ผู้ที่มีบทบาท LumenPOS Reports จะเปิด LumenPOS ได้เฉพาะรายงาน สำหรับทุกสาขาของบริษัทที่ตนสังกัด โดยไม่ต้องมีโปรไฟล์ POS กะ หรือการขาย"

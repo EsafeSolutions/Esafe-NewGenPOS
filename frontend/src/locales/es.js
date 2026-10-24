@@ -1966,4 +1966,9 @@ export default {
   "Registers that sell from the same warehouse are one outlet, with each register's own sales and shifts inside it. To split them, give each POS Profile its own Outlet name in ERPNext.": "Las cajas que venden del mismo almacén son una sucursal, con las ventas y los turnos de cada caja dentro de ella. Para separarlas, dé a cada Perfil de PdV su propio nombre de sucursal en ERPNext.",
   "Outlets and their registers": "Sucursales y sus cajas",
   "Registers that sell from the same warehouse are now one outlet: in the reports, where you can pick one register or the whole outlet, and on the till, which reads Outlet · Register.": "Las cajas que venden del mismo almacén ahora son una sucursal: en los informes, donde puede elegir una caja o toda la sucursal, y en la caja, que muestra Sucursal · Caja.",
+  "Reports only": "Solo informes",
+  "Reports for management without a till": "Informes para la dirección sin caja",
+  "Give a user the LumenPOS Reports role in ERPNext and LumenPOS opens on these reports alone, for every outlet of their companies, with no POS Profile, shift or sales. Add the LumenPOS Cashier role as well to let them sell too.": "Asigne a un usuario el rol LumenPOS Reports en ERPNext y LumenPOS se abrirá solo con estos informes, para todas las sucursales de sus empresas, sin Perfil de PdV, turno ni ventas. Agréguele también el rol LumenPOS Cashier para que pueda vender.",
+  "Reports for management": "Informes para la dirección",
+  "Give a user the LumenPOS Reports role in ERPNext and LumenPOS opens on the Insights reports alone, for every outlet of their companies, with no POS Profile or shift. Switch it off in Settings, General, Insights.": "Asigne a un usuario el rol LumenPOS Reports en ERPNext y LumenPOS se abrirá solo con los informes de Insights, para todas las sucursales de sus empresas, sin Perfil de PdV ni turno. Desactívelo en Configuración, General, Insights.",
 }

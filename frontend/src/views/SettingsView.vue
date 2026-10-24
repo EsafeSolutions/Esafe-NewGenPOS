@@ -1585,6 +1585,13 @@
               <span class="setting-desc">{{ t('Sales, products, profit, customers, outlets and cashiers, as tabs of Insights. Managers see them, and whoever you name under Permissions for See sales reports, See profit or See cashier performance.') }}</span>
             </span>
           </label>
+          <label class="setting-row" data-tour="settings-reports-only">
+            <input type="checkbox" class="setting-toggle" v-model="generalForm.reports_without_till" :true-value="1" :false-value="0" />
+            <span class="setting-text">
+              <span class="setting-title">{{ t('Reports for management without a till') }}</span>
+              <span class="setting-desc">{{ t('Give a user the LumenPOS Reports role in ERPNext and LumenPOS opens on these reports alone, for every outlet of their companies, with no POS Profile, shift or sales. Add the LumenPOS Cashier role as well to let them sell too.') }}</span>
+            </span>
+          </label>
           <label class="setting-row">
             <input type="checkbox" class="setting-toggle" v-model="generalForm.enable_cashback" :true-value="1" :false-value="0" />
             <span class="setting-text">
@@ -2666,6 +2673,7 @@ const generalForm = ref({
   salesperson_mode: 'Optional',
   enable_insights: 1,
   reports_in_insights: 1,
+  reports_without_till: 1,
   enable_cashback: 1,
   enable_xreport: 1,
   enable_audit_log: 1,
@@ -3358,6 +3366,7 @@ async function load() {
     salesperson_mode: info.salesperson_mode || 'Optional',
     enable_insights: info.enable_insights ?? 1,
     reports_in_insights: info.reports_in_insights ?? 1,
+    reports_without_till: info.reports_without_till ?? 1,
     enable_cashback: info.enable_cashback ?? 1,
     enable_xreport: info.enable_xreport ?? 1,
     enable_audit_log: info.enable_audit_log ?? 1,

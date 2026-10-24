@@ -1052,3 +1052,7 @@
 "Give each cashier their own register (POS Profile) on the same warehouse: they stay one outlet. Or let a shift belong to the register in Settings.","Dê a cada operador o próprio caixa (Perfil do PDV) no mesmo armazém: eles continuam sendo uma loja. Ou faça o turno pertencer ao caixa em Configurações."
 "That outlet is not one of {0}'s.","Essa loja não é de {0}."
 "Registers with the same outlet are one shop in LumenPOS. Leave it empty: registers that sell from the same warehouse are one outlet.","Caixas com a mesma loja são uma só loja no LumenPOS. Deixe vazio: caixas que vendem do mesmo armazém são uma loja."
+"There is no outlet in a company you may see, so there is no report to show yet.","Não há nenhuma loja em uma empresa que você possa ver, então ainda não há relatório para mostrar."
+"The shop has not let the LumenPOS Reports role see any report. A manager names it in Settings, General, Approvals and access, Permissions.","A função LumenPOS Reports ainda não tem permissão para ver nenhum relatório. Um gerente a indica em Configurações, Geral, Aprovações e acesso, Permissões."
+"Reports for management without a till","Relatórios para a gerência sem caixa"
+"Whoever holds the LumenPOS Reports role opens LumenPOS on the reports alone, for every outlet of their companies, with no POS Profile, shift or sales.","Quem tem a função LumenPOS Reports abre o LumenPOS só com os relatórios, para todas as lojas das suas empresas, sem Perfil do PDV, turno ou vendas."

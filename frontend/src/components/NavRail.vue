@@ -15,11 +15,12 @@
         </g>
       </svg>
     </div>
-    <router-link to="/" class="rail-item" exact-active-class="active">
+    <!-- The reports alone (0.65.0): Insights, the theme and the way back to ERPNext. -->
+    <router-link v-if="!session.reportsOnly" to="/" class="rail-item" exact-active-class="active">
       <svg viewBox="0 0 24 24"><path d="M7 18a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm10 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM3 2h2.5l3.1 11.6A2 2 0 0 0 10.5 15h8.2a2 2 0 0 0 1.9-1.4L23 6H6.1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <span :class="fit(t('Sell'))">{{ t('Sell') }}</span>
     </router-link>
-    <router-link v-if="session.permissions.view_history !== false" to="/history" class="rail-item" active-class="active">
+    <router-link v-if="!session.reportsOnly && session.permissions.view_history !== false" to="/history" class="rail-item" active-class="active">
       <svg viewBox="0 0 24 24"><path d="M12 8v5l3.5 2M21 12a9 9 0 1 1-9-9 9 9 0 0 1 9 9z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <span :class="fit(t('History'))">{{ t('History') }}</span>
     </router-link>
@@ -31,7 +32,7 @@
       <svg viewBox="0 0 24 24"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
       <span :class="fit(t('Holds'))">{{ t('Holds') }}</span>
     </router-link>
-    <router-link to="/register" class="rail-item" active-class="active">
+    <router-link v-if="!session.reportsOnly" to="/register" class="rail-item" active-class="active">
       <svg viewBox="0 0 24 24"><path d="M3 9h18v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9zm3-5h12l2 5H4l2-5zm5 9h2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <span :class="fit(t('Register'))">{{ t('Register') }}</span>
     </router-link>
@@ -86,6 +87,7 @@ const session = useSessionStore()
 // open: switching the feature off must not strand a customer's deposit.
 const holdsVisible = computed(
   () =>
+    !session.reportsOnly &&
     (session.settings.enable_layaway || session.settings.open_holds) &&
     session.permissions.can_hold_goods !== false
 )

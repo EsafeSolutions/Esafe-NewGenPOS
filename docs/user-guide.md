@@ -1,6 +1,6 @@
 # LumenPOS: Complete User Guide
 
-*Applies to LumenPOS v0.64.0. This document is updated with every feature change.*
+*Applies to LumenPOS v0.65.0. This document is updated with every feature change.*
 
 > **Note on this document.** Sections 1 to 17 below were written up to v0.17 and are
 > being brought forward release by release; the **changelog in section 18 is
@@ -206,6 +206,21 @@ ERPNext's own Sales Person reports show this only for a Sales Invoice outlet:
 at a POS Invoice outlet (the default) the close merges the shift's sales into
 a Sales Invoice without the Sales Team, and those reports read no POS Invoice
 (ERPNext 13 to 16). The Salespeople page reads the till's own invoices.
+
+### Reports for management without a till (0.65.0)
+Owners and managers who read the figures but never sell do not need a POS Profile. Give their
+ERPNext user the **LumenPOS Reports** role (User, Roles). LumenPOS then opens on the Insights
+reports alone: no register, no shift, no products, the top bar reads **Reports only**.
+
+- They read every outlet of the companies their ERPNext User Permissions allow (every company when
+  they have none), assigned or not: each company whole, or one outlet of it.
+- They see the sales summary, products, customers, outlets, profit, cashiers and salespeople, while
+  your shop names nobody for those reports under Approvals and access, Permissions. Once you name
+  someone there, those rows decide: name the LumenPOS Reports role in them to keep it.
+- With the LumenPOS Cashier or LumenPOS Manager role as well, the person works the whole till, and
+  the reports cover every outlet of their companies.
+- **Settings, General, Insights, Reports for management without a till** switches it off for
+  everyone. The server checks the role, the switch and the outlets on every report.
 
 ### Outlets and their registers (0.64.0)
 A POS Profile is a **register**: one till, with its own shift and drawer. An **outlet** is the
@@ -1469,6 +1484,7 @@ which both LumenPOS roles are given.
 ### LumenPOS releases
 | Version | Highlights |
 |---|---|
+| 0.65.0 | **Reports for management without a till** (the Zimbabwe shop, Matonop, 2026-10-23: the reports for management users who need no POS Profile). The new **LumenPOS Reports** role opens LumenPOS on the Insights reports alone, for every outlet of the companies the user may see, with no POS Profile, shift or sales. The four reports of Who can do what pass for the role while a shop names nobody for them. A switch in Settings, General, Insights. In all thirteen languages. |
 | 0.64.0 | **Outlets and their registers** (the Zimbabwe shop, 2026-10-23: three cashiers, each on their own POS Profile because ERPNext 16 holds one open shift per POS Profile, one warehouse, showed as three outlets; the owner asked for the best practice for every shop). Registers that sell from the same warehouse are one outlet, or the ones carrying the same new **Outlet** field on POS Profile. The till reads Outlet · Register, the reports pick a register, an outlet or the company, the Outlets tab nests each register's sales and shifts, and the system check names grouped outlets and, on ERPNext 16 with a shift per cashier, registers several cashiers share. In all thirteen languages. |
 | 0.63.0 | **A supervisor approves refunds** (the Zimbabwe shop, 2026-10-20: "when processing a refund is it possible to enable supervisor authorization for the process to continue, password or pin?"). Settings, General, Approvals and access, **Refund approval**: Off (default), Above an amount (company currency) or Always. The supervisor's passcode at the till (master or approver PINs) or a return request carrying the amount, approved from the Approvals tray. The server values the refund as it posts (`sales.refund_check`) and checks the approval again in `create_return`. Only money handed back counts: an exchange only for the difference it gives back, a hold cancel for all its instalments at once (passcode). Managers exempt. Offline such a refund waits for a connection. Also: the **Approvals** tray now shows whenever any kind of request is in use on the site, as the server says. Before, it showed only for discount requests, a return window or cash out, so a product the shop takes back only with an approval left the approver without a tray. In all thirteen languages. |
 | 0.62.0 | **Sales reports in Insights** (the Zimbabwe shop, 2026-10-15: screenshots of another POS's dashboards; the owner agreed a plan in three phases, all three are in this release). Six new tabs of Insights, over any period and for one outlet or every outlet of the company, in the company currency: **Sales summary** (sales, average sale, net sales, tax, total with tax, returns, discounts given, items sold, the payments by method, the sales day by day or hour by hour, and every shift with what its close counted against what it expected, over and short added up) , **Cashiers** (each cashier's sales, average sale, returns, discounts, price edits from the audit log, shifts and over and short), **Products** (by item, item group, brand, product with variants and attribute, quantities sold and returned, net sales, and the cost and gross margin for whoever may see the profit), **Profit** (net sales, cost of goods from what ERPNext booked in the stock ledger, estimated at the valuation rate until the shift closes and said so, gross profit and margin by day and item group, the most and least profitable items), **Customers** (named customers, new, came back, average basket, how often they buy, walk-in sales apart, top, regulars, most recent) and **Outlets** (each outlet side by side with its shifts, stock, items at or below the reorder level and best sellers). Three new permissions, **See sales reports**, **See profit** and **See cashier performance**, closed until a shop names someone (managers always see them), and a switch, **Sales reports in Insights** (on). "Today" is the site's today, not the device's. In all thirteen languages. |

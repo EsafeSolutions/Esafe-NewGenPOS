@@ -1049,3 +1049,7 @@
 "Give each cashier their own register (POS Profile) on the same warehouse: they stay one outlet. Or let a shift belong to the register in Settings.","Beri setiap kasir mesin kasir sendiri (Profil POS) di gudang yang sama: tetap satu gerai. Atau atur agar shift menjadi milik mesin kasir di Pengaturan."
 "That outlet is not one of {0}'s.","Gerai itu bukan milik {0}."
 "Registers with the same outlet are one shop in LumenPOS. Leave it empty: registers that sell from the same warehouse are one outlet.","Mesin kasir dengan gerai yang sama adalah satu toko di LumenPOS. Biarkan kosong: mesin kasir yang berjualan dari gudang yang sama adalah satu gerai."
+"There is no outlet in a company you may see, so there is no report to show yet.","Tidak ada gerai di perusahaan yang boleh Anda lihat, jadi belum ada laporan untuk ditampilkan."
+"The shop has not let the LumenPOS Reports role see any report. A manager names it in Settings, General, Approvals and access, Permissions.","Toko belum mengizinkan peran LumenPOS Reports melihat laporan apa pun. Manajer menambahkannya di Pengaturan, Umum, Persetujuan dan akses, Hak akses."
+"Reports for management without a till","Laporan untuk manajemen tanpa mesin kasir"
+"Whoever holds the LumenPOS Reports role opens LumenPOS on the reports alone, for every outlet of their companies, with no POS Profile, shift or sales.","Pemegang peran LumenPOS Reports membuka LumenPOS hanya pada laporan, untuk semua gerai perusahaannya, tanpa Profil POS, shift, atau penjualan."

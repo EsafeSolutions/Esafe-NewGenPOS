@@ -1966,4 +1966,9 @@ export default {
   "Registers that sell from the same warehouse are one outlet, with each register's own sales and shifts inside it. To split them, give each POS Profile its own Outlet name in ERPNext.": "从同一仓库销售的收银台属于同一门店，门店内包含每台收银台各自的销售和班次。如需分开，请在 ERPNext 中为每个 POS 配置设置各自的门店名称。",
   "Outlets and their registers": "门店及其收银台",
   "Registers that sell from the same warehouse are now one outlet: in the reports, where you can pick one register or the whole outlet, and on the till, which reads Outlet · Register.": "从同一仓库销售的收银台现在合为一个门店：在报表中可选择单台收银台或整个门店，收银界面显示为 门店 · 收银台。",
+  "Reports only": "仅报表",
+  "Reports for management without a till": "无需收银台的管理层报表",
+  "Give a user the LumenPOS Reports role in ERPNext and LumenPOS opens on these reports alone, for every outlet of their companies, with no POS Profile, shift or sales. Add the LumenPOS Cashier role as well to let them sell too.": "在 ERPNext 中为用户授予 LumenPOS Reports 角色后，LumenPOS 将只为其打开这些报表，涵盖其所属公司的所有门店，无需 POS 配置、班次或销售。如需让其也能销售，请再添加 LumenPOS Cashier 角色。",
+  "Reports for management": "管理层报表",
+  "Give a user the LumenPOS Reports role in ERPNext and LumenPOS opens on the Insights reports alone, for every outlet of their companies, with no POS Profile or shift. Switch it off in Settings, General, Insights.": "在 ERPNext 中为用户授予 LumenPOS Reports 角色后，LumenPOS 将只为其打开 Insights 报表，涵盖其所属公司的所有门店，无需 POS 配置或班次。可在设置 > 常规 > Insights 中关闭。",
 }

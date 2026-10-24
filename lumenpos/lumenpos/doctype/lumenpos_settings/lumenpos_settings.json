@@ -119,6 +119,7 @@
   "insights_section",
   "enable_insights",
   "reports_in_insights",
+  "reports_without_till",
   "cashback_section",
   "enable_cashback",
   "layaway_section",
@@ -894,6 +895,13 @@
    "label": "Sales reports in Insights"
   },
   {
+   "default": "1",
+   "description": "Whoever holds the LumenPOS Reports role opens LumenPOS on the reports alone, for every outlet of their companies, with no POS Profile, shift or sales.",
+   "fieldname": "reports_without_till",
+   "fieldtype": "Check",
+   "label": "Reports for management without a till"
+  },
+  {
    "fieldname": "cashback_section",
    "fieldtype": "Section Break",
    "label": "Cashback"
@@ -1005,7 +1013,7 @@
  "index_web_pages_for_search": 0,
  "issingle": 1,
  "links": [],
- "modified": "2026-10-21 10:00:00.000000",
+ "modified": "2026-10-24 21:00:00.000000",
  "modified_by": "Administrator",
  "module": "LumenPOS",
  "name": "LumenPOS Settings",

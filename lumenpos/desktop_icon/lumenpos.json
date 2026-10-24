@@ -10,7 +10,7 @@
  "label": "LumenPOS",
  "link_to": "LumenPOS",
  "link_type": "Workspace Sidebar",
- "modified": "2026-10-17 13:00:00.000000",
+ "modified": "2026-10-24 21:00:00.000000",
  "modified_by": "Administrator",
  "name": "LumenPOS",
  "owner": "Administrator",
@@ -24,6 +24,10 @@
   {
    "doctype": "Has Role",
    "role": "LumenPOS Manager"
+  },
+  {
+   "doctype": "Has Role",
+   "role": "LumenPOS Reports"
   },
   {
    "doctype": "Has Role",

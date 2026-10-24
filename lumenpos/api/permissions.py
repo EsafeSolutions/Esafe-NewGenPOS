@@ -66,6 +66,10 @@ CLOSED_BY_DEFAULT = {
     RETURN_EXCEED, SALES_BY_PERSON, SYSTEM_CHECK, SELL_ON_ACCOUNT, TAKE_PAYMENTS, SET_CREDIT,
     SALES_REPORTS, CASHIER_REPORT, PROFIT,
 }
+# The reports a holder of the LumenPOS Reports role sees while a shop names
+# nobody for them (lumenpos.reports_access, 0.65.0): that role exists to read
+# them. Once a shop names someone, its rows decide, as for everyone.
+REPORTS_ROLE_DEFAULT = {SALES_REPORTS, CASHIER_REPORT, PROFIT, SALES_BY_PERSON}
 
 
 def _roles(user=None):
@@ -154,6 +158,11 @@ def allowed(capability, user=None):
         return True
     rows = _rules(capability)
     if not rows:
+        if capability in REPORTS_ROLE_DEFAULT:
+            from lumenpos import reports_access
+
+            if reports_access.is_viewer(user):
+                return True
         return capability not in CLOSED_BY_DEFAULT
     who = user or frappe.session.user
     roles = _roles(user)

@@ -99,6 +99,7 @@
             {{ t('Syncing') }} {{ session.queuedCount }}…
           </button>
           <button
+            v-if="!session.reportsOnly"
             class="register-pill"
             data-tour="register-pill"
             :class="{ open: session.registerOpen }"
@@ -109,7 +110,12 @@
           </button>
           <!-- The outlet, switchable here too (a manager covering outlets of
                two companies no longer has to close a shift to change over). -->
-          <span class="topbar-user">
+          <!-- The reports alone (0.65.0): who, and that this screen is reports only. -->
+          <span v-if="session.reportsOnly" class="topbar-user">
+            <span class="user-name">{{ session.userFullname }} ·</span>
+            {{ t('Reports only') }}
+          </span>
+          <span v-else class="topbar-user">
             <span class="user-name">{{ session.userFullname }} ·</span>
             <select
               v-if="session.availableProfiles.length > 1"
@@ -124,13 +130,15 @@
           </span>
         </div>
       </header>
-      <StorageWarning />
+      <StorageWarning v-if="!session.reportsOnly" />
       <main class="content">
-        <router-view :key="session.posProfile" />
+        <!-- The reports alone: no other screen mounts, not even for the moment
+             before the move to Insights (the Sell screen would ask for products). -->
+        <router-view v-if="!session.reportsOnly || route.path === '/insights'" :key="session.posProfile" />
         <!-- The open-register prompt only blocks the Sell screen; the nav
              rail and other tabs (Register, History, Settings) stay usable. -->
         <!-- A tour shows the Sell screen under it, so the prompt steps aside. -->
-        <OpenRegisterOverlay v-if="!session.registerOpen && route.path === '/' && !help.tourId" />
+        <OpenRegisterOverlay v-if="!session.reportsOnly && !session.registerOpen && route.path === '/' && !help.tourId" />
       </main>
     </div>
     <div v-if="session.toast" class="toast" :class="{ error: session.toast.isError }">
@@ -159,7 +167,7 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { call } from './api'
 import { useSessionStore } from './stores/session'
 import { useCatalogStore } from './stores/catalog'
@@ -201,7 +209,15 @@ async function switchOutlet(event) {
   catalog.cacheCustomers()
 }
 const route = useRoute()
+const router = useRouter()
 const isDisplay = computed(() => route.path === '/display')
+// The reports alone (0.65.0): Insights is the only screen there is.
+watch(
+  () => [session.reportsOnly, route.path],
+  ([only, path]) => {
+    if (only && path !== '/insights') router.replace('/insights')
+  }
+)
 
 // The language control in the top bar.
 const langOpen = ref(false)
@@ -321,6 +337,7 @@ onMounted(async () => {
   ensurePersistentStorage()
   session.watchConnection()
   await session.bootstrap()
+  if (session.loaded && !session.error && session.reportsOnly) return
   if (session.loaded && !session.error) {
     catalog.fetch()
     catalog.cacheFullCatalog() // background fill of the offline cache

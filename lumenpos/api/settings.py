@@ -19,7 +19,7 @@ from lumenpos.api import approval_requests
 from lumenpos.api import insights
 from lumenpos.api import salespeople
 from lumenpos.api import reports
-from lumenpos import cash_out, cashback_rules, credit_sales, languages, refund_approval, scope, variance
+from lumenpos import cash_out, cashback_rules, credit_sales, languages, refund_approval, reports_access, scope, variance
 
 def _can_manage():
     """Can the user change LumenPOS-wide settings (the General tab)?"""
@@ -134,6 +134,7 @@ def get_settings():
         "salesperson_mode": salespeople.mode(),
         "enable_insights": 1 if insights.enabled() else 0,
         "reports_in_insights": 1 if reports.enabled() else 0,
+        "reports_without_till": 1 if reports_access.enabled() else 0,
         "enable_cashback": 1 if cashback_rules.enabled() else 0,
         "enable_xreport": 1 if doc.get("enable_xreport") else 0,
         "enable_audit_log": 1 if doc.get("enable_audit_log") else 0,
@@ -369,6 +370,9 @@ def save_settings(payload: dict | str):
     # Before 0.62.0 a payload had no such key: an old tab must not switch it off.
     if "reports_in_insights" in payload:
         doc.reports_in_insights = 1 if payload.get("reports_in_insights") else 0
+    # Before 0.65.0 likewise.
+    if "reports_without_till" in payload:
+        doc.reports_without_till = 1 if payload.get("reports_without_till") else 0
     doc.enable_cashback = 1 if payload.get("enable_cashback") else 0
     doc.enable_xreport = 1 if payload.get("enable_xreport") else 0
     doc.enable_audit_log = 1 if payload.get("enable_audit_log") else 0

@@ -1048,3 +1048,7 @@
 "Give each cashier their own register (POS Profile) on the same warehouse: they stay one outlet. Or let a shift belong to the register in Settings.","Hãy cấp cho mỗi thu ngân một quầy thu ngân riêng (Hồ sơ POS) trên cùng một kho: chúng vẫn là một cửa hàng. Hoặc đặt ca thuộc về quầy thu ngân trong Cài đặt."
 "That outlet is not one of {0}'s.","Cửa hàng này không thuộc {0}."
 "Registers with the same outlet are one shop in LumenPOS. Leave it empty: registers that sell from the same warehouse are one outlet.","Các quầy thu ngân có cùng giá trị Cửa hàng được tính là một cửa hàng trong LumenPOS. Để trống: các quầy thu ngân bán từ cùng một kho là một cửa hàng."
+"There is no outlet in a company you may see, so there is no report to show yet.","Không có cửa hàng nào trong các công ty bạn được xem, nên chưa có báo cáo để hiển thị."
+"The shop has not let the LumenPOS Reports role see any report. A manager names it in Settings, General, Approvals and access, Permissions.","Cửa hàng chưa cho phép vai trò LumenPOS Reports xem báo cáo nào. Quản lý thêm vai trò này tại Cài đặt, Chung, Phê duyệt và quyền truy cập, Phân quyền."
+"Reports for management without a till","Báo cáo cho ban quản lý không cần quầy thu ngân"
+"Whoever holds the LumenPOS Reports role opens LumenPOS on the reports alone, for every outlet of their companies, with no POS Profile, shift or sales.","Người có vai trò LumenPOS Reports mở LumenPOS chỉ với các báo cáo, cho tất cả cửa hàng của các công ty của họ, không cần Hồ sơ POS, ca hay giao dịch bán."

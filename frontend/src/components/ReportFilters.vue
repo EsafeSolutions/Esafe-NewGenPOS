@@ -16,7 +16,11 @@
       <input v-model="fromDate" type="date" class="cf-in" @change="emitChange" />
       <input v-model="toDate" type="date" class="cf-in" @change="emitChange" />
     </template>
-    <select v-model="scope" class="cf-in" @change="emitChange">
+    <!-- The reports alone (0.65.0): every company whole, or one outlet of it. -->
+    <select v-if="session.reportsOnly" v-model="scope" class="cf-in" @change="emitChange">
+      <option v-for="c in session.reportChoices" :key="c.value" :value="c.value">{{ c.label }}</option>
+    </select>
+    <select v-else v-model="scope" class="cf-in" @change="emitChange">
       <!-- An outlet of several registers (0.64.0): this register, or all of them. -->
       <option v-if="shared" value="register">{{ t('This register') }}: {{ session.posProfile }}</option>
       <option value="outlet">{{ t('This outlet') }}: {{ outletName }}</option>
@@ -43,7 +47,11 @@ const PERIODS = [
 const period = ref('today')
 const shared = computed(() => (session.myOutlet?.size || 0) > 1)
 const outletName = computed(() => (shared.value ? session.myOutlet.name : session.posProfile))
-const scope = ref(props.defaultScope === 'company' ? 'company' : 'outlet')
+const scope = ref(
+  session.reportsOnly
+    ? session.reportChoices[0]?.value || ''
+    : props.defaultScope === 'company' ? 'company' : 'outlet'
+)
 const fromDate = ref('')
 const toDate = ref('')
 

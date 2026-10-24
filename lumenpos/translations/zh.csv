@@ -1049,3 +1049,7 @@
 "Give each cashier their own register (POS Profile) on the same warehouse: they stay one outlet. Or let a shift belong to the register in Settings.","为每位收银员在同一仓库下设置各自的收银台（POS 配置）：它们仍属于同一门店。或在设置中让班次归属于收银台。"
 "That outlet is not one of {0}'s.","该门店不属于 {0}。"
 "Registers with the same outlet are one shop in LumenPOS. Leave it empty: registers that sell from the same warehouse are one outlet.","门店相同的收银台在 LumenPOS 中视为同一店铺。留空时，从同一仓库销售的收银台属于同一门店。"
+"There is no outlet in a company you may see, so there is no report to show yet.","您可查看的公司中没有任何门店，因此暂无可显示的报表。"
+"The shop has not let the LumenPOS Reports role see any report. A manager names it in Settings, General, Approvals and access, Permissions.","本店尚未允许 LumenPOS Reports 角色查看任何报表。请经理在设置 > 常规 > 审批与权限 > 权限中添加该角色。"
+"Reports for management without a till","无需收银台的管理层报表"
+"Whoever holds the LumenPOS Reports role opens LumenPOS on the reports alone, for every outlet of their companies, with no POS Profile, shift or sales.","拥有 LumenPOS Reports 角色的用户打开 LumenPOS 时只显示报表，涵盖其所属公司的所有门店，无需 POS 配置、班次或销售。"

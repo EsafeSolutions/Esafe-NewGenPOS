@@ -1966,4 +1966,9 @@ export default {
   "Registers that sell from the same warehouse are one outlet, with each register's own sales and shifts inside it. To split them, give each POS Profile its own Outlet name in ERPNext.": "Кассы, которые продают с одного склада, образуют один магазин, и внутри него видны продажи и смены каждой кассы. Чтобы разделить их, задайте каждому профилю точки продаж своё название магазина в ERPNext.",
   "Outlets and their registers": "Магазины и их кассы",
   "Registers that sell from the same warehouse are now one outlet: in the reports, where you can pick one register or the whole outlet, and on the till, which reads Outlet · Register.": "Кассы, которые продают с одного склада, теперь один магазин: в отчётах, где можно выбрать одну кассу или весь магазин, и на экране продаж, где написано Магазин · Касса.",
+  "Reports only": "Только отчёты",
+  "Reports for management without a till": "Отчёты для руководства без кассы",
+  "Give a user the LumenPOS Reports role in ERPNext and LumenPOS opens on these reports alone, for every outlet of their companies, with no POS Profile, shift or sales. Add the LumenPOS Cashier role as well to let them sell too.": "Выдайте пользователю роль LumenPOS Reports в ERPNext, и LumenPOS будет открываться у него только на этих отчётах, по всем магазинам его компаний, без профиля точки продаж, смены и продаж. Добавьте также роль LumenPOS Cashier, чтобы он мог и продавать.",
+  "Reports for management": "Отчёты для руководства",
+  "Give a user the LumenPOS Reports role in ERPNext and LumenPOS opens on the Insights reports alone, for every outlet of their companies, with no POS Profile or shift. Switch it off in Settings, General, Insights.": "Выдайте пользователю роль LumenPOS Reports в ERPNext, и LumenPOS будет открываться у него только на отчётах Insights, по всем магазинам его компаний, без профиля точки продаж и смены. Отключается в разделе Настройки, Общие, Insights.",
 }

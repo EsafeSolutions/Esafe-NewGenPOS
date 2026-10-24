@@ -153,9 +153,10 @@ def shift_rows(session_name, sale_doctype):
     return data if any(r["sales_person"] for r in data) else []
 
 
-def _outlets(pos_profile, company):
-    """The outlets a report covers: the one asked for, or every outlet of one
-    company this person may work at."""
+def _outlets(pos_profile, company, outlet=None):
+    """The registers a report covers: the one asked for, the registers of one
+    outlet (lumenpos.outlets, 0.64.0: `outlet` is its key, with its company),
+    or every register of one company this person may work at."""
     from lumenpos.api import session as session_api
 
     if pos_profile:
@@ -171,11 +172,19 @@ def _outlets(pos_profile, company):
         p for p in frappe.get_all("POS Profile", filters={"company": company, "disabled": 0}, pluck="name")
         if p in mine and permissions.can_use_outlet(p)
     ]
+    if outlet:
+        from lumenpos import outlets as outlet_groups
+
+        members = outlet_groups.registers_of(outlet, company)
+        if members is None:
+            frappe.throw(_("That outlet is not one of {0}'s.").format(company))
+        outlets = [p for p in outlets if p in members]
     return outlets, company
 
 
 @frappe.whitelist()
-def report(from_date: str | None = None, to_date: str | None = None, pos_profile: str | None = None, company: str | None = None):
+def report(from_date: str | None = None, to_date: str | None = None, pos_profile: str | None = None, company: str | None = None,
+           outlet: str | None = None):
     """Sales by salesperson over a period, for one outlet or every outlet of a
     company: count and net amount of sales and of returns, the net, and the
     commission ERPNext worked out. Amounts are before tax, in the company
@@ -188,7 +197,7 @@ def report(from_date: str | None = None, to_date: str | None = None, pos_profile
         start, end = end, start
     if (end - start).days > 370:
         frappe.throw(_("Pick a period of one year or less."))
-    outlets, company = _outlets(pos_profile, company)
+    outlets, company = _outlets(pos_profile, company, outlet)
     rows = []
     if outlets:
         params = {"outlets": tuple(outlets), "start": start, "end": end}

@@ -1958,4 +1958,12 @@ export default {
   "Your shop can ask a supervisor to approve every refund, or those above an amount, with their passcode at the till or a request from the Approvals tray. Set it in Settings, General, Approvals and access, Refund approval.": "Mağazanız her iadenin ya da bir tutarın üzerindeki iadelerin bir sorumlu tarafından onaylanmasını isteyebilir: kasada onay şifresiyle ya da Onaylar kutusundan bir taleple. Bunu Ayarlar, Genel, Onaylar ve erişim, İade onayı bölümünden ayarlayın.",
   "Refunds need a supervisor": "İadeler sorumlu onayı ister",
   "A refund now waits for a supervisor's passcode or approved request before the money goes back.": "Bir iade artık para geri verilmeden önce sorumlunun onay şifresini ya da onaylanmış bir talebi bekler.",
+  "{count} registers": "{count} kasa",
+  "Registers": "Kasalar",
+  "{count} sales": "{count} satış",
+  "This register": "Bu kasa",
+  "Per cashier lets several people share one counter, each with their own drawer and Z-report. On ERPNext 16 a register (POS Profile) sells with only one open shift, so there each cashier needs their own register. Registers that sell from the same warehouse are still one outlet.": "Kasiyer başına seçeneği, birkaç kişinin tek bir tezgâhı paylaşmasını sağlar, her birinin kendi çekmecesi ve Z raporu olur. ERPNext 16'da bir kasa (POS Profili) yalnızca tek bir açık vardiyayla satış yapar, bu yüzden orada her kasiyerin kendi kasası olmalıdır. Aynı depodan satış yapan kasalar yine tek bir şubedir.",
+  "Registers that sell from the same warehouse are one outlet, with each register's own sales and shifts inside it. To split them, give each POS Profile its own Outlet name in ERPNext.": "Aynı depodan satış yapan kasalar tek bir şubedir, her kasanın kendi satışları ve vardiyaları bu şubenin içinde yer alır. Onları ayırmak için ERPNext'te her POS Profiline kendi Şube adını verin.",
+  "Outlets and their registers": "Şubeler ve kasaları",
+  "Registers that sell from the same warehouse are now one outlet: in the reports, where you can pick one register or the whole outlet, and on the till, which reads Outlet · Register.": "Aynı depodan satış yapan kasalar artık tek bir şube: raporlarda tek bir kasayı ya da tüm şubeyi seçebilirsiniz, satış ekranında da Şube · Kasa yazar.",
 }

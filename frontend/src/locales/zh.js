@@ -1958,4 +1958,12 @@ export default {
   "Your shop can ask a supervisor to approve every refund, or those above an amount, with their passcode at the till or a request from the Approvals tray. Set it in Settings, General, Approvals and access, Refund approval.": "您的门店可以要求每笔退款或超过设定金额的退款经主管批准，主管可在收银台输入授权码，或在审批栏中批准申请。请在“设置 > 常规 > 审批与权限 > 退款审批”中设置。",
   "Refunds need a supervisor": "退款需主管批准",
   "A refund now waits for a supervisor's passcode or approved request before the money goes back.": "现在，退款需等待主管输入授权码或批准申请后，才会退还钱款。",
+  "{count} registers": "{count} 台收银台",
+  "Registers": "收银台",
+  "{count} sales": "{count} 笔销售",
+  "This register": "本收银台",
+  "Per cashier lets several people share one counter, each with their own drawer and Z-report. On ERPNext 16 a register (POS Profile) sells with only one open shift, so there each cashier needs their own register. Registers that sell from the same warehouse are still one outlet.": "按收银员模式可让多人共用一个柜台，每人都有自己的钱箱和 Z 报表。在 ERPNext 16 中，一台收银台（POS 配置）只能用一个开启的班次销售，因此在该版本中每位收银员都需要自己的收银台。从同一仓库销售的收银台仍属于同一门店。",
+  "Registers that sell from the same warehouse are one outlet, with each register's own sales and shifts inside it. To split them, give each POS Profile its own Outlet name in ERPNext.": "从同一仓库销售的收银台属于同一门店，门店内包含每台收银台各自的销售和班次。如需分开，请在 ERPNext 中为每个 POS 配置设置各自的门店名称。",
+  "Outlets and their registers": "门店及其收银台",
+  "Registers that sell from the same warehouse are now one outlet: in the reports, where you can pick one register or the whole outlet, and on the till, which reads Outlet · Register.": "从同一仓库销售的收银台现在合为一个门店：在报表中可选择单台收银台或整个门店，收银界面显示为 门店 · 收银台。",
 }

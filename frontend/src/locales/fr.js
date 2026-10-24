@@ -1958,4 +1958,12 @@ export default {
   "Your shop can ask a supervisor to approve every refund, or those above an amount, with their passcode at the till or a request from the Approvals tray. Set it in Settings, General, Approvals and access, Refund approval.": "Votre magasin peut demander qu'un superviseur approuve chaque remboursement, ou ceux au-delà d'un montant, avec son code d'accès à la caisse ou par une demande depuis le volet Approbations. À régler dans Paramètres, Général, Approbations et accès, Approbation des remboursements.",
   "Refunds need a supervisor": "Remboursements soumis à un superviseur",
   "A refund now waits for a supervisor's passcode or approved request before the money goes back.": "Un remboursement attend désormais le code d'accès d'un superviseur ou une demande approuvée avant que l'argent soit rendu.",
+  "{count} registers": "{count} caisses",
+  "Registers": "Caisses",
+  "{count} sales": "{count} ventes",
+  "This register": "Cette caisse",
+  "Per cashier lets several people share one counter, each with their own drawer and Z-report. On ERPNext 16 a register (POS Profile) sells with only one open shift, so there each cashier needs their own register. Registers that sell from the same warehouse are still one outlet.": "Le mode par caissier permet à plusieurs personnes de partager un même comptoir, chacune avec son tiroir-caisse et son rapport Z. Sous ERPNext 16, une caisse (Profil PDV) ne vend qu'avec une seule session de caisse ouverte : chaque caissier y a donc besoin de sa propre caisse. Les caisses qui vendent depuis le même entrepôt restent un seul magasin.",
+  "Registers that sell from the same warehouse are one outlet, with each register's own sales and shifts inside it. To split them, give each POS Profile its own Outlet name in ERPNext.": "Les caisses qui vendent depuis le même entrepôt forment un seul magasin, avec les ventes et les sessions de chaque caisse à l'intérieur. Pour les séparer, donnez à chaque Profil PDV son propre nom de magasin dans ERPNext.",
+  "Outlets and their registers": "Les magasins et leurs caisses",
+  "Registers that sell from the same warehouse are now one outlet: in the reports, where you can pick one register or the whole outlet, and on the till, which reads Outlet · Register.": "Les caisses qui vendent depuis le même entrepôt forment désormais un seul magasin : dans les rapports, où vous pouvez choisir une caisse ou le magasin entier, et à la caisse, qui affiche Magasin · Caisse.",
 }

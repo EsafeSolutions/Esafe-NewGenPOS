@@ -30,7 +30,8 @@
           <input v-model="toDate" type="date" class="cf-in" @change="load" />
         </template>
         <select v-model="scope" class="cf-in" @change="load">
-          <option value="outlet">{{ t('This outlet') }}: {{ session.posProfile }}</option>
+          <option v-if="(session.myOutlet?.size || 0) > 1" value="register">{{ t('This register') }}: {{ session.posProfile }}</option>
+          <option value="outlet">{{ t('This outlet') }}: {{ (session.myOutlet?.size || 0) > 1 ? session.myOutlet.name : session.posProfile }}</option>
           <option value="company">{{ t('Every outlet of {company}', { company: session.company }) }}</option>
         </select>
       </div>
@@ -112,8 +113,7 @@ async function load() {
     report.value = await call('lumenpos.api.salespeople.report', {
       from_date: fromDate.value,
       to_date: toDate.value || fromDate.value,
-      pos_profile: scope.value === 'outlet' ? session.posProfile : null,
-      company: scope.value === 'company' ? session.company : null,
+      ...session.reportScope(scope.value),
     })
   } catch (e) {
     report.value = null

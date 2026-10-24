@@ -38,7 +38,12 @@ export const useSessionStore = defineStore('session', {
     posProfile: null,
     invoiceMode: 'POS Invoice',
     availableProfiles: [],
-    profileCompanies: {}, // outlet -> its company
+    profileCompanies: {}, // register -> its company
+    // The outlet each register stands in (lumenpos.outlets, 0.64.0): registers
+    // that sell from one warehouse, or carry one Outlet name, are one outlet.
+    // [{outlet, name, company, registers, size}], registers = the ones this
+    // person may use, size = how many the outlet has in all.
+    outlets: [],
     otherOpenRegisters: [],
     company: null,
     currency: 'USD',
@@ -137,10 +142,25 @@ export const useSessionStore = defineStore('session', {
     multiCompany() {
       return this.companies.length > 1
     },
-    outletLabel: (s) => (name) =>
-      new Set(Object.values(s.profileCompanies || {})).size > 1 && s.profileCompanies?.[name]
-        ? `${name} · ${s.profileCompanies[name]}`
-        : name,
+    // A register as the till names it: "Outlet · Register" where its outlet
+    // has several registers, then its company where the site has several.
+    outletLabel: (s) => (name) => {
+      const outlet = (s.outlets || []).find((o) => o.registers.includes(name))
+      const base = outlet && outlet.size > 1 && outlet.name !== name ? `${outlet.name} · ${name}` : name
+      return new Set(Object.values(s.profileCompanies || {})).size > 1 && s.profileCompanies?.[name]
+        ? `${base} · ${s.profileCompanies[name]}`
+        : base
+    },
+    // The outlet this till's register stands in, or null.
+    myOutlet: (s) => (s.outlets || []).find((o) => o.registers.includes(s.posProfile)) || null,
+    // What a report takes for a scope: "register" (this one), "outlet" (all of
+    // its outlet's registers this person may use) or "company".
+    reportScope: (s) => (scope) => {
+      const outlet = (s.outlets || []).find((o) => o.registers.includes(s.posProfile))
+      if (scope === 'company') return { pos_profile: null, company: s.company, outlet: null }
+      if (scope === 'outlet' && outlet && outlet.size > 1) return { pos_profile: null, company: s.company, outlet: outlet.outlet }
+      return { pos_profile: s.posProfile, company: null, outlet: null }
+    },
     // A payment method as the till names it: the tender LumenPOS made for
     // sales on account reads "On account" in every language, as on the
     // payment screen. Takes one name or a comma-joined list of them.
@@ -290,6 +310,7 @@ export const useSessionStore = defineStore('session', {
       this.invoiceMode = data.invoice_mode || 'POS Invoice'
       this.availableProfiles = data.available_profiles || []
       this.profileCompanies = data.profile_companies || {}
+      this.outlets = data.outlets || []
       this.company = data.company
       this.currency = data.currency
       this.priceList = data.price_list

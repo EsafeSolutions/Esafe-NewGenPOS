@@ -131,6 +131,9 @@ def get_bootstrap(pos_profile: str | None = None):
             p.name: p.company
             for p in frappe.get_all("POS Profile", filters={"name": ["in", _user_profiles() or [""]]}, fields=["name", "company"])
         },
+        # The outlet each register stands in (lumenpos.outlets, 0.64.0): the till
+        # names a register by its outlet, and the reports pick an outlet.
+        "outlets": _outlets_for_till(),
         "printer_configured": bool(profile.get("lumenpos_printer_ip")),
         "print_format": profile.print_format,
         "store_credit_mode": "Store Credit",
@@ -694,6 +697,19 @@ def _other_open_registers(current_profile):
         }
         for r in rows
     ]
+
+
+def _outlets_for_till():
+    from lumenpos import outlets
+
+    try:
+        return [
+            {"outlet": g["outlet"], "name": g["name"], "company": g["company"], "registers": g["registers"], "size": g["size"]}
+            for g in outlets.for_registers(_user_profiles())
+        ]
+    except Exception:
+        frappe.log_error(title="LumenPOS: outlets for the till")
+        return []
 
 
 def _user_profiles():

@@ -1404,7 +1404,7 @@
               <option value="Per cashier">{{ t('The cashier, each opens their own shift and sells only on it') }}</option>
               <option value="Per outlet">{{ t('The outlet, one shift per register, any cashier sells on it') }}</option>
             </select>
-            <span class="setting-desc">{{ t('Per cashier lets several people share one counter, each with their own drawer and Z-report. On ERPNext 16 an outlet sells with only one open shift, so there each cashier needs their own POS Profile.') }}</span>
+            <span class="setting-desc">{{ t('Per cashier lets several people share one counter, each with their own drawer and Z-report. On ERPNext 16 a register (POS Profile) sells with only one open shift, so there each cashier needs their own register. Registers that sell from the same warehouse are still one outlet.') }}</span>
           </label>
           <label class="setting-row">
             <input type="checkbox" class="setting-toggle" v-model="generalForm.one_shift_per_user" :true-value="1" :false-value="0" />

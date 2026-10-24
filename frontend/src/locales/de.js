@@ -1958,4 +1958,12 @@ export default {
   "Your shop can ask a supervisor to approve every refund, or those above an amount, with their passcode at the till or a request from the Approvals tray. Set it in Settings, General, Approvals and access, Refund approval.": "Ihr Geschäft kann für jede Erstattung oder für die über einem Betrag die Freigabe eines Schichtleiters verlangen, mit seinem Freigabecode an der Kasse oder über eine Anfrage im Bereich Freigaben. Legen Sie das unter Einstellungen, Allgemein, Freigaben und Zugriff, Erstattungsfreigabe fest.",
   "Refunds need a supervisor": "Erstattungen brauchen einen Schichtleiter",
   "A refund now waits for a supervisor's passcode or approved request before the money goes back.": "Eine Erstattung wartet jetzt auf den Freigabecode eines Schichtleiters oder eine freigegebene Anfrage, bevor das Geld zurückgeht.",
+  "{count} registers": "{count} Kassen",
+  "Registers": "Kassen",
+  "{count} sales": "{count} Verkäufe",
+  "This register": "Diese Kasse",
+  "Per cashier lets several people share one counter, each with their own drawer and Z-report. On ERPNext 16 a register (POS Profile) sells with only one open shift, so there each cashier needs their own register. Registers that sell from the same warehouse are still one outlet.": "Pro Kassierer können sich mehrere Personen eine Theke teilen, jede mit eigener Kassenschublade und eigenem Z-Bericht. In ERPNext 16 verkauft eine Kasse (POS-Profil) nur mit einer offenen Schicht, dort braucht daher jeder Kassierer eine eigene Kasse. Kassen, die aus demselben Lager verkaufen, bleiben eine Filiale.",
+  "Registers that sell from the same warehouse are one outlet, with each register's own sales and shifts inside it. To split them, give each POS Profile its own Outlet name in ERPNext.": "Kassen, die aus demselben Lager verkaufen, sind eine Filiale, mit den Verkäufen und Schichten jeder Kasse darin. Um sie zu trennen, geben Sie jedem POS-Profil in ERPNext einen eigenen Filialnamen.",
+  "Outlets and their registers": "Filialen und ihre Kassen",
+  "Registers that sell from the same warehouse are now one outlet: in the reports, where you can pick one register or the whole outlet, and on the till, which reads Outlet · Register.": "Kassen, die aus demselben Lager verkaufen, sind jetzt eine Filiale: in den Berichten, wo Sie eine Kasse oder die ganze Filiale wählen, und an der Kasse, die Filiale · Kasse anzeigt.",
 }

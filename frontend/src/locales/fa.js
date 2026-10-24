@@ -1958,4 +1958,12 @@ export default {
   "Your shop can ask a supervisor to approve every refund, or those above an amount, with their passcode at the till or a request from the Approvals tray. Set it in Settings, General, Approvals and access, Refund approval.": "فروشگاه شما می‌تواند برای هر استرداد وجه، یا برای استردادهای بیش از مبلغ معین، تأیید سرپرست را بخواهد، با رمز تأیید او در صندوق یا با درخواستی از بخش تأییدها. آن را در تنظیمات، عمومی، تأییدها و دسترسی، تأیید استرداد وجه تنظیم کنید.",
   "Refunds need a supervisor": "استرداد وجه به سرپرست نیاز دارد",
   "A refund now waits for a supervisor's passcode or approved request before the money goes back.": "اکنون استرداد وجه پیش از برگرداندن پول منتظر رمز تأیید سرپرست یا درخواست تأییدشده می‌ماند.",
+  "{count} registers": "{count} صندوق",
+  "Registers": "صندوق‌ها",
+  "{count} sales": "{count} فروش",
+  "This register": "این صندوق",
+  "Per cashier lets several people share one counter, each with their own drawer and Z-report. On ERPNext 16 a register (POS Profile) sells with only one open shift, so there each cashier needs their own register. Registers that sell from the same warehouse are still one outlet.": "حالت به ازای هر صندوقدار به چند نفر اجازه می‌دهد از یک پیشخوان مشترک استفاده کنند و هر کدام کشوی پول و گزارش Z خودشان را داشته باشند. در ERPNext 16 هر صندوق (نمایه POS) فقط با یک شیفت باز می‌فروشد، پس آنجا هر صندوقدار به صندوق خودش نیاز دارد. صندوق‌هایی که از یک انبار می‌فروشند همچنان یک شعبه هستند.",
+  "Registers that sell from the same warehouse are one outlet, with each register's own sales and shifts inside it. To split them, give each POS Profile its own Outlet name in ERPNext.": "صندوق‌هایی که از یک انبار می‌فروشند یک شعبه هستند و فروش‌ها و شیفت‌های هر صندوق داخل آن دیده می‌شود. برای جدا کردنشان، در ERPNext به هر نمایه POS نام شعبه جداگانه بدهید.",
+  "Outlets and their registers": "شعبه‌ها و صندوق‌هایشان",
+  "Registers that sell from the same warehouse are now one outlet: in the reports, where you can pick one register or the whole outlet, and on the till, which reads Outlet · Register.": "صندوق‌هایی که از یک انبار می‌فروشند اکنون یک شعبه هستند: در گزارش‌ها، جایی که می‌توانید یک صندوق یا کل شعبه را انتخاب کنید، و در صفحه فروش که شعبه · صندوق را نشان می‌دهد.",
 }

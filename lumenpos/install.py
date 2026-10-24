@@ -772,6 +772,15 @@ def make_custom_fields():
     create_custom_fields(
         {
             "POS Profile": [
+                # The outlet this register stands in (lumenpos.outlets, 0.64.0).
+                dict(
+                    fieldname="lumenpos_outlet",
+                    label="Outlet",
+                    fieldtype="Data",
+                    insert_after="warehouse",
+                    description="Registers with the same outlet are one shop in LumenPOS. Leave it empty: "
+                    "registers that sell from the same warehouse are one outlet.",
+                ),
                 dict(
                     fieldname="lumenpos_options_section",
                     label="LumenPOS Options",

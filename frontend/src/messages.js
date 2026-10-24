@@ -2274,7 +2274,18 @@ const refundApproval = {
   "A refund now waits for a supervisor's passcode or approved request before the money goes back.": "أصبح الاسترجاع ينتظر رمز المشرف أو طلبا معتمدا قبل رد المبلغ.",
 }
 
+const outletsRegisters = {
+  "{count} registers": "{count} نقاط بيع",
+  "Registers": "نقاط البيع",
+  "{count} sales": "{count} مبيعات",
+  "This register": "نقطة البيع هذه",
+  "Per cashier lets several people share one counter, each with their own drawer and Z-report. On ERPNext 16 a register (POS Profile) sells with only one open shift, so there each cashier needs their own register. Registers that sell from the same warehouse are still one outlet.": "وردية لكل كاشير تتيح لأكثر من شخص العمل على نفس الكاونتر، لكل واحد درجه وتقريره. وفي ERPNext 16 تبيع نقطة البيع (ملف نقطة البيع) بوردية مفتوحة واحدة فقط، لذلك يحتاج كل كاشير نقطة بيع خاصة به. ونقاط البيع التي تبيع من نفس المستودع تبقى فرعا واحدا.",
+  "Registers that sell from the same warehouse are one outlet, with each register's own sales and shifts inside it. To split them, give each POS Profile its own Outlet name in ERPNext.": "نقاط البيع التي تبيع من نفس المستودع فرع واحد، وبداخله مبيعات وورديات كل نقطة بيع. ولفصلها أعط كل ملف نقطة بيع اسم فرع خاصا به في ERPNext.",
+  "Outlets and their registers": "الفروع ونقاط البيع",
+  "Registers that sell from the same warehouse are now one outlet: in the reports, where you can pick one register or the whole outlet, and on the till, which reads Outlet · Register.": "أصبحت نقاط البيع التي تبيع من نفس المستودع فرعا واحدا: في التقارير، حيث تختار نقطة بيع واحدة أو الفرع كله، وفي شاشة البيع التي تكتب الفرع · نقطة البيع.",
+}
+
 export const messages = {
   en: { ...prefixedEn },
-  ar: { ...common, ...settings, ...register, ...features, ...sell, ...txn, ...misc, ...approvals, ...returns, ...customersScreen, ...lifecycle, ...serialsAndGroups, ...permissions, ...insights, ...generalLayout, ...currencies, ...customerForm, ...salespeopleAndCheck, ...helpForStaff, ...lockedPeriods, ...varianceReasons, ...creditSales, ...cashOut, ...owesHolds, ...anyCurrency, ...insightsReports, ...insightsReports2, ...refundApproval, ...prefixedAr },
+  ar: { ...common, ...settings, ...register, ...features, ...sell, ...txn, ...misc, ...approvals, ...returns, ...customersScreen, ...lifecycle, ...serialsAndGroups, ...permissions, ...insights, ...generalLayout, ...currencies, ...customerForm, ...salespeopleAndCheck, ...helpForStaff, ...lockedPeriods, ...varianceReasons, ...creditSales, ...cashOut, ...owesHolds, ...anyCurrency, ...insightsReports, ...insightsReports2, ...refundApproval, ...outletsRegisters, ...prefixedAr },
 }

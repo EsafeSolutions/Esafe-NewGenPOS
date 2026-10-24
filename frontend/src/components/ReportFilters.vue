@@ -17,14 +17,16 @@
       <input v-model="toDate" type="date" class="cf-in" @change="emitChange" />
     </template>
     <select v-model="scope" class="cf-in" @change="emitChange">
-      <option value="outlet">{{ t('This outlet') }}: {{ session.posProfile }}</option>
+      <!-- An outlet of several registers (0.64.0): this register, or all of them. -->
+      <option v-if="shared" value="register">{{ t('This register') }}: {{ session.posProfile }}</option>
+      <option value="outlet">{{ t('This outlet') }}: {{ outletName }}</option>
       <option value="company">{{ t('Every outlet of {company}', { company: session.company }) }}</option>
     </select>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { t } from '../i18n'
 import { useSessionStore } from '../stores/session'
 
@@ -39,6 +41,8 @@ const PERIODS = [
   { key: 'custom', label: 'Custom' },
 ]
 const period = ref('today')
+const shared = computed(() => (session.myOutlet?.size || 0) > 1)
+const outletName = computed(() => (shared.value ? session.myOutlet.name : session.posProfile))
 const scope = ref(props.defaultScope === 'company' ? 'company' : 'outlet')
 const fromDate = ref('')
 const toDate = ref('')
@@ -61,8 +65,7 @@ function emitChange() {
   emit('change', {
     from_date: fromDate.value,
     to_date: toDate.value || fromDate.value,
-    pos_profile: scope.value === 'outlet' ? session.posProfile : null,
-    company: scope.value === 'company' ? session.company : null,
+    ...session.reportScope(scope.value),
   })
 }
 

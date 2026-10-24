@@ -267,23 +267,23 @@ def _names(users):
         "User", filters={"name": ["in", list(users)]}, fields=["name", "full_name"])}
 
 
-def _context(from_date, to_date, pos_profile, company):
+def _context(from_date, to_date, pos_profile, company, outlet=None):
     from lumenpos import currency
 
     start, end = _period(from_date, to_date)
-    outlets, company = _outlets(pos_profile, company)
+    outlets, company = _outlets(pos_profile, company, outlet)
     return start, end, outlets, company, currency.company_currency(company)
 
 
 @frappe.whitelist()
 def sales_summary(from_date: str | None = None, to_date: str | None = None, pos_profile: str | None = None,
-                  company: str | None = None):
+                  company: str | None = None, outlet: str | None = None):
     """Sales, returns, tax, payments and the cash counted at the close, over a
     period, for one outlet or every outlet of a company. Day by day over a
     longer period, hour by hour over one day."""
     if not can_see_sales_reports():
         frappe.throw(_("You're not allowed to see the sales reports."), frappe.PermissionError)
-    start, end, outlets, company, ccy = _context(from_date, to_date, pos_profile, company)
+    start, end, outlets, company, ccy = _context(from_date, to_date, pos_profile, company, outlet)
     invoices = _invoices(outlets, start, end)
     discounts = _line_discounts(invoices)
 
@@ -317,14 +317,14 @@ def sales_summary(from_date: str | None = None, to_date: str | None = None, pos_
 
 @frappe.whitelist()
 def cashiers(from_date: str | None = None, to_date: str | None = None, pos_profile: str | None = None,
-             company: str | None = None):
+             company: str | None = None, outlet: str | None = None):
     """How each cashier did over a period: the sales and returns they rang up,
     what they gave off the list price, the price edits the audit log holds
     for them, their shifts and how far their counts were from what was
     expected."""
     if not can_see_cashier_report():
         frappe.throw(_("You're not allowed to see how each cashier did."), frappe.PermissionError)
-    start, end, outlets, company, ccy = _context(from_date, to_date, pos_profile, company)
+    start, end, outlets, company, ccy = _context(from_date, to_date, pos_profile, company, outlet)
     invoices = _invoices(outlets, start, end)
     discounts = _line_discounts(invoices)
     mine = {}
@@ -535,13 +535,13 @@ def _grouped(lines, key, label, with_cost):
 
 @frappe.whitelist()
 def products(from_date: str | None = None, to_date: str | None = None, pos_profile: str | None = None,
-             company: str | None = None):
+             company: str | None = None, outlet: str | None = None):
     """What sold over a period: by item, item group, brand, the item a variant
     belongs to, and each variant attribute's values. Net sales before tax; the
     cost, gross profit and margin too for whoever may see the profit."""
     if not can_see_sales_reports():
         frappe.throw(_("You're not allowed to see the sales reports."), frappe.PermissionError)
-    start, end, outlets, company, ccy = _context(from_date, to_date, pos_profile, company)
+    start, end, outlets, company, ccy = _context(from_date, to_date, pos_profile, company, outlet)
     lines = _lines(outlets, start, end)
     with_cost = can_see_profit()
     info = _cost(lines) if with_cost else _item_info({ln.item_code for ln in lines})
@@ -588,14 +588,14 @@ def products(from_date: str | None = None, to_date: str | None = None, pos_profi
 
 @frappe.whitelist()
 def profit(from_date: str | None = None, to_date: str | None = None, pos_profile: str | None = None,
-           company: str | None = None):
+           company: str | None = None, outlet: str | None = None):
     """Net sales, the cost of the goods sold, the gross profit and the margin
     over a period, day by day and by item group, with the most and the least
     profitable items. How much of the cost is estimated (shifts not closed yet)
     is said apart."""
     if not can_see_profit():
         frappe.throw(_("You're not allowed to see the profit."), frappe.PermissionError)
-    start, end, outlets, company, ccy = _context(from_date, to_date, pos_profile, company)
+    start, end, outlets, company, ccy = _context(from_date, to_date, pos_profile, company, outlet)
     lines = _lines(outlets, start, end)
     _cost(lines)
     net = sum(flt(ln.base_net_amount) for ln in lines)
@@ -638,13 +638,13 @@ def _walk_ins(outlets):
 
 @frappe.whitelist()
 def customers(from_date: str | None = None, to_date: str | None = None, pos_profile: str | None = None,
-              company: str | None = None):
+              company: str | None = None, outlet: str | None = None):
     """Who bought over a period: how many named customers, how many came back,
     how many are new, the average basket and how often they buy, the best and
     the most recent ones, and what walk-in sales came to beside them."""
     if not can_see_sales_reports():
         frappe.throw(_("You're not allowed to see the sales reports."), frappe.PermissionError)
-    start, end, outlets, company, ccy = _context(from_date, to_date, pos_profile, company)
+    start, end, outlets, company, ccy = _context(from_date, to_date, pos_profile, company, outlet)
     invoices = _invoices(outlets, start, end)
     walk = _walk_ins(outlets)
     named = [i for i in invoices if i.customer and i.customer not in walk]
@@ -701,29 +701,33 @@ def customers(from_date: str | None = None, to_date: str | None = None, pos_prof
 
 @frappe.whitelist()
 def outlets(from_date: str | None = None, to_date: str | None = None, pos_profile: str | None = None,
-            company: str | None = None):
-    """Each outlet over a period: its sales, returns, average sale and items
-    sold, its shifts and their over and short, the stock in its warehouse and
-    how many items there are at or below their reorder level, and its best
-    selling items."""
+            company: str | None = None, outlet: str | None = None):
+    """Each outlet over a period (lumenpos.outlets, 0.64.0: the registers that
+    sell from one warehouse, or carry one outlet name, are one outlet): its
+    sales, returns, average sale and items sold, its shifts and their over and
+    short, the stock in its warehouses and how many items there are at or below
+    their reorder level, its best selling items, and each of its registers with
+    its own sales and shifts."""
     if not can_see_sales_reports():
         frappe.throw(_("You're not allowed to see the sales reports."), frappe.PermissionError)
-    start, end, chosen, company, ccy = _context(from_date, to_date, pos_profile, company)
+    start, end, chosen, company, ccy = _context(from_date, to_date, pos_profile, company, outlet)
+    from lumenpos import outlets as outlet_groups
+
     invoices = _invoices(chosen, start, end)
     lines = _lines(chosen, start, end)
     shifts = _shifts(chosen, start, end)
     discounts = _line_discounts(invoices)
     out = []
-    for outlet in chosen:
-        mine = [i for i in invoices if i.pos_profile == outlet]
+    for group in outlet_groups.for_registers(chosen):
+        registers = [r for r in group["registers"] if r in chosen]
+        mine = [i for i in invoices if i.pos_profile in registers]
         f = _figures(mine, discounts)
-        warehouse = frappe.get_cached_value("POS Profile", outlet, "warehouse")
         stock = 0.0
         low = 0
-        if warehouse:
-            stock = flt(frappe.db.sql(
-                "select coalesce(sum(actual_qty), 0) from `tabBin` where warehouse = %s", (warehouse,))[0][0], 3)
-            low = cint(frappe.db.sql(
+        for warehouse in group["warehouses"]:
+            stock += flt(frappe.db.sql(
+                "select coalesce(sum(actual_qty), 0) from `tabBin` where warehouse = %s", (warehouse,))[0][0])
+            low += cint(frappe.db.sql(
                 """
                 select count(*) from `tabItem Reorder` r
                 join `tabBin` b on b.item_code = r.parent and b.warehouse = r.warehouse
@@ -731,19 +735,32 @@ def outlets(from_date: str | None = None, to_date: str | None = None, pos_profil
                 """,
                 (warehouse,),
             )[0][0])
-        own = [s for s in shifts if s["pos_profile"] == outlet]
+        own = [s for s in shifts if s["pos_profile"] in registers]
         names = {i.name for i in mine}
         top = _grouped([ln for ln in lines if ln.invoice in names], lambda ln: ln.item_code,
                        lambda ln: ln.item_name or ln.item_code, False)[:5]
+        tills = []
+        for register in registers:
+            theirs = [i for i in mine if i.pos_profile == register]
+            g = _figures(theirs, discounts)
+            shifts_here = [s for s in own if s["pos_profile"] == register]
+            tills.append({
+                "pos_profile": register, "sales": g["sales"], "returns": g["returns"], "total": g["total"],
+                "shifts": len(shifts_here), "open_shifts": sum(1 for s in shifts_here if s["status"] == "Open"),
+                "differences": _differences(shifts_here, ccy),
+            })
+        tills.sort(key=lambda r: (-r["total"], r["pos_profile"]))
         out.append({
-            "pos_profile": outlet, "warehouse": warehouse or "",
+            "outlet": group["outlet"], "name": group["name"], "warehouses": group["warehouses"],
+            "pos_profile": registers[0] if len(registers) == 1 else None,
+            "warehouse": ", ".join(group["warehouses"]),
             "sales": f["sales"], "returns": f["returns"], "net": f["net"], "total": f["total"],
             "average_sale": f["average_sale"], "items_sold": f["items_sold"], "discounts": f["discounts"],
             "shifts": len(own), "open_shifts": sum(1 for s in own if s["status"] == "Open"),
             "differences": _differences(own, ccy),
-            "stock": stock, "low_stock": low, "top": top,
+            "stock": flt(stock, 3), "low_stock": low, "top": top, "registers": tills,
         })
-    out.sort(key=lambda r: (-r["total"], r["pos_profile"]))
+    out.sort(key=lambda r: (-r["total"], r["name"]))
     return {
         "from_date": str(start), "to_date": str(end), "company": company, "currency": ccy, "outlets": chosen,
         "rows": out,

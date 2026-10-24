@@ -27,9 +27,10 @@
       <div v-else-if="error" class="empty neg">{{ error }}</div>
       <div v-else-if="!report || !report.rows.length" class="muted empty">{{ t('No outlet to show.') }}</div>
       <div v-else class="outlets">
-        <article v-for="o in report.rows" :key="o.pos_profile" class="outlet">
+        <article v-for="o in report.rows" :key="o.outlet" class="outlet">
           <header class="o-head">
-            <span class="o-name"><bdi>{{ o.pos_profile }}</bdi></span>
+            <span class="o-name"><bdi>{{ o.name }}</bdi></span>
+            <span v-if="o.registers.length > 1" class="tag reg">{{ t('{count} registers', { count: o.registers.length }) }}</span>
             <span v-if="o.open_shifts" class="tag">{{ t('{count} open', { count: o.open_shifts }) }}</span>
             <span class="muted small o-wh"><bdi>{{ o.warehouse }}</bdi></span>
           </header>
@@ -52,6 +53,16 @@
             <div><dt>{{ t('Stock in the warehouse') }}</dt><dd>{{ qty(o.stock) }}</dd></div>
             <div><dt>{{ t('At or below reorder level') }}</dt><dd :class="{ short: o.low_stock }">{{ o.low_stock }}</dd></div>
           </dl>
+          <!-- Its registers (0.64.0): each till's own sales and shifts. -->
+          <div v-if="o.registers.length > 1" class="o-regs">
+            <div class="muted small">{{ t('Registers') }}</div>
+            <div v-for="r in o.registers" :key="r.pos_profile" class="o-reg">
+              <span class="r-name"><bdi>{{ r.pos_profile }}</bdi></span>
+              <span v-if="r.open_shifts" class="tag">{{ t('{count} open', { count: r.open_shifts }) }}</span>
+              <span class="r-figs muted small">{{ t('{count} sales', { count: r.sales }) }} · <bdi>{{ m(r.total) }}</bdi></span>
+              <span v-for="d in r.differences" :key="d.currency" class="small" :class="diffClass(d.difference)"><bdi>{{ diffText(d.difference, d.currency) }}</bdi></span>
+            </div>
+          </div>
           <div v-if="o.top.length" class="o-top">
             <div class="muted small">{{ t('Best sellers') }}</div>
             <ol>
@@ -108,12 +119,12 @@ function download() {
     const text = String(v ?? '')
     return /[",\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text
   }
-  const head = [t('Outlet'), t('Sales'), t('Total with tax'), t('Average sale'), t('Returns'), t('Items sold'), t('Shifts'),
+  const head = [t('Outlet'), t('Registers'), t('Sales'), t('Total with tax'), t('Average sale'), t('Returns'), t('Items sold'), t('Shifts'),
     t('Over and short'), t('Stock in the warehouse'), t('At or below reorder level')]
   const lines = [head.map(cell).join(',')]
   for (const o of r.rows) {
     const diff = o.differences.map((d) => `${d.currency} ${d.difference}`).join(' ')
-    lines.push([o.pos_profile, o.sales, o.total, o.average_sale, o.returns, o.items_sold, o.shifts, diff, o.stock, o.low_stock].map(cell).join(','))
+    lines.push([o.name, o.registers.map((r) => r.pos_profile).join(' / '), o.sales, o.total, o.average_sale, o.returns, o.items_sold, o.shifts, diff, o.stock, o.low_stock].map(cell).join(','))
   }
   const blob = new Blob([String.fromCharCode(0xfeff) + lines.join('\n')], { type: 'text/csv;charset=utf-8' })
   const link = document.createElement('a')
@@ -142,6 +153,11 @@ function download() {
 .o-figs dt { font-size: 12px; color: var(--text-muted); }
 .o-figs dd { margin: 2px 0 0; font-weight: 700; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .d-line { display: block; }
+.o-regs { margin-top: 10px; border-top: 1px solid var(--border-subtle); padding-top: 8px; }
+.o-reg { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; padding: 3px 0; font-size: 13px; }
+.r-name { font-weight: 600; }
+.r-figs { margin-inline-start: auto; }
+.tag.reg { background: var(--surface-2, rgba(127, 127, 127, 0.12)); color: var(--text); }
 .o-top { margin-top: 10px; border-top: 1px solid var(--border-subtle); padding-top: 8px; }
 .o-top ol { margin: 4px 0 0; padding-inline-start: 18px; font-size: 13px; }
 .ok { color: var(--text-muted); }

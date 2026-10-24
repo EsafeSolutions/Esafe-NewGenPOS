@@ -1958,4 +1958,12 @@ export default {
   "Your shop can ask a supervisor to approve every refund, or those above an amount, with their passcode at the till or a request from the Approvals tray. Set it in Settings, General, Approvals and access, Refund approval.": "Sua loja pode pedir que um supervisor aprove todo reembolso, ou os acima de um valor, com o código dele no caixa ou com um pedido na bandeja de Aprovações. Defina em Configurações, Geral, Aprovações e acesso, Aprovação de reembolso.",
   "Refunds need a supervisor": "Reembolsos exigem um supervisor",
   "A refund now waits for a supervisor's passcode or approved request before the money goes back.": "Agora um reembolso aguarda o código de um supervisor ou um pedido aprovado antes de o dinheiro ser devolvido.",
+  "{count} registers": "{count} caixas",
+  "Registers": "Caixas",
+  "{count} sales": "{count} vendas",
+  "This register": "Este caixa",
+  "Per cashier lets several people share one counter, each with their own drawer and Z-report. On ERPNext 16 a register (POS Profile) sells with only one open shift, so there each cashier needs their own register. Registers that sell from the same warehouse are still one outlet.": "Por operador permite que várias pessoas dividam um balcão, cada uma com sua própria gaveta e Relatório Z. No ERPNext 16 um caixa (Perfil do PDV) vende com um só turno aberto, então lá cada operador precisa do próprio caixa. Caixas que vendem do mesmo armazém continuam sendo uma loja.",
+  "Registers that sell from the same warehouse are one outlet, with each register's own sales and shifts inside it. To split them, give each POS Profile its own Outlet name in ERPNext.": "Caixas que vendem do mesmo armazém são uma loja, com as vendas e os turnos de cada caixa dentro dela. Para separá-los, dê a cada Perfil do PDV o próprio nome de loja no ERPNext.",
+  "Outlets and their registers": "Lojas e seus caixas",
+  "Registers that sell from the same warehouse are now one outlet: in the reports, where you can pick one register or the whole outlet, and on the till, which reads Outlet · Register.": "Caixas que vendem do mesmo armazém agora são uma loja: nos relatórios, onde você escolhe um caixa ou a loja inteira, e no PDV, que mostra Loja · Caixa.",
 }

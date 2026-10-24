@@ -115,6 +115,35 @@ def _check_outlets():
             level = INFO if level == OK else level
             detail += " " + _("Nobody is assigned to it yet (POS Profile, Applicable for Users).")
         out.append(_row("outlets", level, _("Outlet {0}").format(p.name), detail.strip()))
+    out += _check_registers()
+    return out
+
+
+def _check_registers():
+    """Registers grouped into one outlet (lumenpos.outlets, 0.64.0), and on
+    ERPNext 16 a register several cashiers share while each must open their own
+    shift: ERPNext 16 holds one open shift per POS Profile."""
+    from lumenpos import outlets
+    from lumenpos.api.session import shift_scope
+
+    out = []
+    for group in outlets.groups():
+        if len(group["registers"]) > 1:
+            out.append(_row("outlets", INFO, _("Outlet {0}: {1} registers").format(group["name"], len(group["registers"])),
+                            _("They count as one outlet in the reports: they sell from the same warehouse or carry the same Outlet name."),
+                            items=group["registers"],
+                            fix=_("To split them, give each POS Profile its own Outlet name.")))
+    if erpnext_compat.one_open_shift_per_outlet() and shift_scope() == "Per cashier":
+        shared = []
+        for p in frappe.get_all("POS Profile", filters={"disabled": 0}, pluck="name"):
+            users = frappe.get_all("POS Profile User", filters={"parent": p, "parenttype": "POS Profile"}, pluck="user")
+            if len(set(users)) > 1:
+                shared.append("%s: %s" % (p, ", ".join(sorted(set(users)))))
+        if shared:
+            out.append(_row("outlets", WARN, _("Registers several cashiers share: {0}").format(len(shared)),
+                            _("Each cashier opens their own shift, but ERPNext 16 holds one open shift per register, so only one of them can sell at a time."),
+                            items=shared,
+                            fix=_("Give each cashier their own register (POS Profile) on the same warehouse: they stay one outlet. Or let a shift belong to the register in Settings.")))
     return out
 
 

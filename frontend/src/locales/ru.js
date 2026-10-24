@@ -1958,4 +1958,12 @@ export default {
   "Your shop can ask a supervisor to approve every refund, or those above an amount, with their passcode at the till or a request from the Approvals tray. Set it in Settings, General, Approvals and access, Refund approval.": "Ваш магазин может требовать, чтобы руководитель согласовывал каждый возврат или возвраты свыше суммы, кодом доступа на кассе или запросом в панели Согласования. Настройте это в разделе Настройки, Общие, Согласования и доступ, Согласование возврата.",
   "Refunds need a supervisor": "Возврат с согласованием руководителя",
   "A refund now waits for a supervisor's passcode or approved request before the money goes back.": "Теперь возврат ждёт кода доступа руководителя или согласованного запроса, прежде чем деньги будут возвращены.",
+  "{count} registers": "Касс: {count}",
+  "Registers": "Кассы",
+  "{count} sales": "Продаж: {count}",
+  "This register": "Эта касса",
+  "Per cashier lets several people share one counter, each with their own drawer and Z-report. On ERPNext 16 a register (POS Profile) sells with only one open shift, so there each cashier needs their own register. Registers that sell from the same warehouse are still one outlet.": "Если смена принадлежит кассиру, несколько человек могут работать за одним прилавком, у каждого свой денежный ящик и Z-отчёт. В ERPNext 16 касса (профиль точки продаж) продаёт только при одной открытой смене, поэтому там каждому кассиру нужна своя касса. Кассы, которые продают с одного склада, всё равно остаются одним магазином.",
+  "Registers that sell from the same warehouse are one outlet, with each register's own sales and shifts inside it. To split them, give each POS Profile its own Outlet name in ERPNext.": "Кассы, которые продают с одного склада, образуют один магазин, и внутри него видны продажи и смены каждой кассы. Чтобы разделить их, задайте каждому профилю точки продаж своё название магазина в ERPNext.",
+  "Outlets and their registers": "Магазины и их кассы",
+  "Registers that sell from the same warehouse are now one outlet: in the reports, where you can pick one register or the whole outlet, and on the till, which reads Outlet · Register.": "Кассы, которые продают с одного склада, теперь один магазин: в отчётах, где можно выбрать одну кассу или весь магазин, и на экране продаж, где написано Магазин · Касса.",
 }

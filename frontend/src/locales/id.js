@@ -1958,4 +1958,12 @@ export default {
   "Your shop can ask a supervisor to approve every refund, or those above an amount, with their passcode at the till or a request from the Approvals tray. Set it in Settings, General, Approvals and access, Refund approval.": "Toko Anda dapat meminta supervisor menyetujui setiap pengembalian dana, atau yang di atas jumlah tertentu, dengan kode aksesnya di mesin kasir atau permintaan dari panel Persetujuan. Atur di Pengaturan, Umum, Persetujuan dan akses, Persetujuan pengembalian dana.",
   "Refunds need a supervisor": "Pengembalian dana perlu supervisor",
   "A refund now waits for a supervisor's passcode or approved request before the money goes back.": "Kini pengembalian dana menunggu kode akses supervisor atau permintaan yang disetujui sebelum uang dikembalikan.",
+  "{count} registers": "{count} mesin kasir",
+  "Registers": "Mesin kasir",
+  "{count} sales": "{count} penjualan",
+  "This register": "Mesin kasir ini",
+  "Per cashier lets several people share one counter, each with their own drawer and Z-report. On ERPNext 16 a register (POS Profile) sells with only one open shift, so there each cashier needs their own register. Registers that sell from the same warehouse are still one outlet.": "Opsi per kasir memungkinkan beberapa orang berbagi satu meja kasir, masing-masing dengan laci dan Laporan Z sendiri. Di ERPNext 16, satu mesin kasir (Profil POS) hanya bisa berjualan dengan satu shift terbuka, jadi di sana setiap kasir perlu mesin kasir sendiri. Mesin kasir yang berjualan dari gudang yang sama tetap dihitung satu gerai.",
+  "Registers that sell from the same warehouse are one outlet, with each register's own sales and shifts inside it. To split them, give each POS Profile its own Outlet name in ERPNext.": "Mesin kasir yang berjualan dari gudang yang sama adalah satu gerai, dengan penjualan dan shift tiap mesin kasir di dalamnya. Untuk memisahkannya, beri setiap Profil POS nama Gerai sendiri di ERPNext.",
+  "Outlets and their registers": "Gerai dan mesin kasirnya",
+  "Registers that sell from the same warehouse are now one outlet: in the reports, where you can pick one register or the whole outlet, and on the till, which reads Outlet · Register.": "Mesin kasir yang berjualan dari gudang yang sama kini menjadi satu gerai: di laporan, tempat Anda bisa memilih satu mesin kasir atau seluruh gerai, dan di layar penjualan, yang menampilkan Gerai · Mesin kasir.",
 }

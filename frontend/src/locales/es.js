@@ -1958,4 +1958,12 @@ export default {
   "Your shop can ask a supervisor to approve every refund, or those above an amount, with their passcode at the till or a request from the Approvals tray. Set it in Settings, General, Approvals and access, Refund approval.": "Su tienda puede pedir que un supervisor apruebe cada reembolso, o los que superan un importe, con su clave en la caja o con una solicitud desde la bandeja de Aprobaciones. Ajústelo en Configuración, General, Aprobaciones y acceso, Aprobación de reembolsos.",
   "Refunds need a supervisor": "Los reembolsos requieren un supervisor",
   "A refund now waits for a supervisor's passcode or approved request before the money goes back.": "Ahora un reembolso espera la clave de un supervisor o una solicitud aprobada antes de devolver el dinero.",
+  "{count} registers": "{count} cajas",
+  "Registers": "Cajas",
+  "{count} sales": "{count} ventas",
+  "This register": "Esta caja",
+  "Per cashier lets several people share one counter, each with their own drawer and Z-report. On ERPNext 16 a register (POS Profile) sells with only one open shift, so there each cashier needs their own register. Registers that sell from the same warehouse are still one outlet.": "La opción por cajero permite que varias personas compartan un mostrador, cada una con su propio cajón e Informe Z. En ERPNext 16 una caja (Perfil de PdV) vende con un solo turno abierto, así que ahí cada cajero necesita su propia caja. Las cajas que venden del mismo almacén siguen siendo una sucursal.",
+  "Registers that sell from the same warehouse are one outlet, with each register's own sales and shifts inside it. To split them, give each POS Profile its own Outlet name in ERPNext.": "Las cajas que venden del mismo almacén son una sucursal, con las ventas y los turnos de cada caja dentro de ella. Para separarlas, dé a cada Perfil de PdV su propio nombre de sucursal en ERPNext.",
+  "Outlets and their registers": "Sucursales y sus cajas",
+  "Registers that sell from the same warehouse are now one outlet: in the reports, where you can pick one register or the whole outlet, and on the till, which reads Outlet · Register.": "Las cajas que venden del mismo almacén ahora son una sucursal: en los informes, donde puede elegir una caja o toda la sucursal, y en la caja, que muestra Sucursal · Caja.",
 }

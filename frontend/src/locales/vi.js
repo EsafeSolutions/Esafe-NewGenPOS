@@ -1958,4 +1958,12 @@ export default {
   "Your shop can ask a supervisor to approve every refund, or those above an amount, with their passcode at the till or a request from the Approvals tray. Set it in Settings, General, Approvals and access, Refund approval.": "Cửa hàng của bạn có thể yêu cầu giám sát phê duyệt mọi lần hoàn tiền trả hàng, hoặc các lần vượt quá một số tiền, bằng mã xác nhận tại quầy thu ngân hoặc yêu cầu từ khay Phê duyệt. Thiết lập tại Cài đặt, Chung, Phê duyệt và quyền truy cập, Phê duyệt hoàn tiền trả hàng.",
   "Refunds need a supervisor": "Hoàn tiền trả hàng cần giám sát",
   "A refund now waits for a supervisor's passcode or approved request before the money goes back.": "Giờ đây, lần hoàn tiền trả hàng phải chờ mã xác nhận của giám sát hoặc yêu cầu đã được phê duyệt trước khi trả tiền lại.",
+  "{count} registers": "{count} quầy thu ngân",
+  "Registers": "Quầy thu ngân",
+  "{count} sales": "{count} giao dịch bán",
+  "This register": "Quầy thu ngân này",
+  "Per cashier lets several people share one counter, each with their own drawer and Z-report. On ERPNext 16 a register (POS Profile) sells with only one open shift, so there each cashier needs their own register. Registers that sell from the same warehouse are still one outlet.": "Chế độ theo thu ngân cho phép nhiều người dùng chung một quầy, mỗi người có ngăn kéo tiền và Báo cáo Z riêng. Trên ERPNext 16, một quầy thu ngân (Hồ sơ POS) chỉ bán được với một ca đang mở, nên ở đó mỗi thu ngân cần một quầy thu ngân riêng. Các quầy thu ngân bán từ cùng một kho vẫn là một cửa hàng.",
+  "Registers that sell from the same warehouse are one outlet, with each register's own sales and shifts inside it. To split them, give each POS Profile its own Outlet name in ERPNext.": "Các quầy thu ngân bán từ cùng một kho là một cửa hàng, bên trong có doanh số và ca của từng quầy thu ngân. Để tách ra, hãy đặt cho mỗi Hồ sơ POS một tên Cửa hàng riêng trong ERPNext.",
+  "Outlets and their registers": "Cửa hàng và quầy thu ngân",
+  "Registers that sell from the same warehouse are now one outlet: in the reports, where you can pick one register or the whole outlet, and on the till, which reads Outlet · Register.": "Các quầy thu ngân bán từ cùng một kho giờ là một cửa hàng: trong báo cáo, nơi bạn có thể chọn một quầy thu ngân hoặc cả cửa hàng, và trên màn hình bán hàng, nơi hiển thị Cửa hàng · Quầy thu ngân.",
 }

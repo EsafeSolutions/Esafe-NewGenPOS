@@ -1,6 +1,6 @@
 # LumenPOS: Complete User Guide
 
-*Applies to LumenPOS v0.63.0. This document is updated with every feature change.*
+*Applies to LumenPOS v0.64.0. This document is updated with every feature change.*
 
 > **Note on this document.** Sections 1 to 17 below were written up to v0.17 and are
 > being brought forward release by release; the **changelog in section 18 is
@@ -206,6 +206,27 @@ ERPNext's own Sales Person reports show this only for a Sales Invoice outlet:
 at a POS Invoice outlet (the default) the close merges the shift's sales into
 a Sales Invoice without the Sales Team, and those reports read no POS Invoice
 (ERPNext 13 to 16). The Salespeople page reads the till's own invoices.
+
+### Outlets and their registers (0.64.0)
+A POS Profile is a **register**: one till, with its own shift and drawer. An **outlet** is the
+shop its registers stand in. Registers that sell from the same warehouse are one outlet, with
+nothing to set up. To split a warehouse between outlets, or to keep one outlet over several
+warehouses, fill **Outlet** on each POS Profile (beside the warehouse): registers with the same
+Outlet name are one outlet, whatever their warehouse. Outlets never cross companies.
+
+- The till reads **Outlet · Register** when its outlet has more than one register.
+- Every report in Insights picks **This register**, **This outlet** (all its registers you may use)
+  or every outlet of the company. The **Outlets** tab shows one card per outlet, with each
+  register's sales, shifts and over and short inside it.
+- An outlet is named by its Outlet field, else by its register when it has only one, else by its
+  warehouse without the company abbreviation.
+
+ERPNext 16 holds **one open shift per POS Profile**: a second cashier cannot open their own shift
+on a register that already has one (ERPNext 15 allowed it). So where each cashier counts their own
+drawer, give each cashier their own register on the same warehouse: they stay one outlet. Where one
+shared drawer is enough, let the shift belong to the register (Settings, General, Register and
+shifts). **Settings, System check** lists the outlets with several registers and, on ERPNext 16
+with a shift per cashier, the registers several cashiers share.
 
 ### Sales reports in Insights (0.62.0)
 Six tabs of **Insights**, each over a period (today, yesterday, the last 7 days, this
@@ -1448,6 +1469,7 @@ which both LumenPOS roles are given.
 ### LumenPOS releases
 | Version | Highlights |
 |---|---|
+| 0.64.0 | **Outlets and their registers** (the Zimbabwe shop, 2026-10-23: three cashiers, each on their own POS Profile because ERPNext 16 holds one open shift per POS Profile, one warehouse, showed as three outlets; the owner asked for the best practice for every shop). Registers that sell from the same warehouse are one outlet, or the ones carrying the same new **Outlet** field on POS Profile. The till reads Outlet · Register, the reports pick a register, an outlet or the company, the Outlets tab nests each register's sales and shifts, and the system check names grouped outlets and, on ERPNext 16 with a shift per cashier, registers several cashiers share. In all thirteen languages. |
 | 0.63.0 | **A supervisor approves refunds** (the Zimbabwe shop, 2026-10-20: "when processing a refund is it possible to enable supervisor authorization for the process to continue, password or pin?"). Settings, General, Approvals and access, **Refund approval**: Off (default), Above an amount (company currency) or Always. The supervisor's passcode at the till (master or approver PINs) or a return request carrying the amount, approved from the Approvals tray. The server values the refund as it posts (`sales.refund_check`) and checks the approval again in `create_return`. Only money handed back counts: an exchange only for the difference it gives back, a hold cancel for all its instalments at once (passcode). Managers exempt. Offline such a refund waits for a connection. Also: the **Approvals** tray now shows whenever any kind of request is in use on the site, as the server says. Before, it showed only for discount requests, a return window or cash out, so a product the shop takes back only with an approval left the approver without a tray. In all thirteen languages. |
 | 0.62.0 | **Sales reports in Insights** (the Zimbabwe shop, 2026-10-15: screenshots of another POS's dashboards; the owner agreed a plan in three phases, all three are in this release). Six new tabs of Insights, over any period and for one outlet or every outlet of the company, in the company currency: **Sales summary** (sales, average sale, net sales, tax, total with tax, returns, discounts given, items sold, the payments by method, the sales day by day or hour by hour, and every shift with what its close counted against what it expected, over and short added up) , **Cashiers** (each cashier's sales, average sale, returns, discounts, price edits from the audit log, shifts and over and short), **Products** (by item, item group, brand, product with variants and attribute, quantities sold and returned, net sales, and the cost and gross margin for whoever may see the profit), **Profit** (net sales, cost of goods from what ERPNext booked in the stock ledger, estimated at the valuation rate until the shift closes and said so, gross profit and margin by day and item group, the most and least profitable items), **Customers** (named customers, new, came back, average basket, how often they buy, walk-in sales apart, top, regulars, most recent) and **Outlets** (each outlet side by side with its shifts, stock, items at or below the reorder level and best sellers). Three new permissions, **See sales reports**, **See profit** and **See cashier performance**, closed until a shop names someone (managers always see them), and a switch, **Sales reports in Insights** (on). "Today" is the site's today, not the device's. In all thirteen languages. |
 | 0.61.3 | **LumenPOS on the apps screen and the Frappe 16 desk** (the Zimbabwe shop, 2026-10-16: LumenPOS did not appear on their Frappe 16 desk, and an icon they made for it by hand was marked Deprecated). LumenPOS now declares itself to Frappe (`add_to_apps_screen`), so the apps screen of Frappe 15 and 16 lists it and opens the till, for whoever may open the till (read on POS Invoice, the same test the till makes first). On Frappe 16 it ships its own desk tile and sidebar (`desktop_icon/lumenpos.json`, `workspace_sidebar/lumenpos.json`), which Frappe imports on every update: Open POS, POS Invoice, register shifts and outlets, then offers and prices, customer balances, the controls, and LumenPOS Settings. An icon a shop made by hand under the same name is replaced by it. Frappe 13 and 14 are unchanged (the desk workspace as before). The four new sidebar labels are in all thirteen languages. |

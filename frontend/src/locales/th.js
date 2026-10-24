@@ -1958,4 +1958,12 @@ export default {
   "Your shop can ask a supervisor to approve every refund, or those above an amount, with their passcode at the till or a request from the Approvals tray. Set it in Settings, General, Approvals and access, Refund approval.": "ร้านของคุณกำหนดให้หัวหน้างานอนุมัติการคืนเงินทุกครั้ง หรือเฉพาะที่เกินจำนวนที่กำหนดได้ ด้วยรหัสผ่านของหัวหน้างานที่เครื่องคิดเงิน หรือคำขอจากแผงการอนุมัติ ตั้งค่าได้ที่ การตั้งค่า, ทั่วไป, การอนุมัติและสิทธิ์การเข้าถึง, การอนุมัติการคืนเงิน",
   "Refunds need a supervisor": "การคืนเงินต้องให้หัวหน้างานอนุมัติ",
   "A refund now waits for a supervisor's passcode or approved request before the money goes back.": "ตอนนี้การคืนเงินต้องรอรหัสผ่านของหัวหน้างานหรือคำขอที่อนุมัติแล้ว ก่อนจ่ายเงินคืน",
+  "{count} registers": "{count} เครื่องคิดเงิน",
+  "Registers": "เครื่องคิดเงิน",
+  "{count} sales": "{count} รายการขาย",
+  "This register": "เครื่องคิดเงินนี้",
+  "Per cashier lets several people share one counter, each with their own drawer and Z-report. On ERPNext 16 a register (POS Profile) sells with only one open shift, so there each cashier needs their own register. Registers that sell from the same warehouse are still one outlet.": "แบบแยกตามแคชเชียร์ช่วยให้หลายคนใช้เคาน์เตอร์เดียวกันได้ โดยแต่ละคนมีลิ้นชักเก็บเงินและรายงาน Z ของตนเอง บน ERPNext 16 เครื่องคิดเงินหนึ่งเครื่อง (โปรไฟล์ POS) ขายได้ด้วยกะที่เปิดอยู่เพียงกะเดียว แคชเชียร์แต่ละคนจึงต้องมีเครื่องคิดเงินของตนเอง เครื่องคิดเงินที่ขายจากคลังสินค้าเดียวกันยังคงนับเป็นสาขาเดียว",
+  "Registers that sell from the same warehouse are one outlet, with each register's own sales and shifts inside it. To split them, give each POS Profile its own Outlet name in ERPNext.": "เครื่องคิดเงินที่ขายจากคลังสินค้าเดียวกันนับเป็นสาขาเดียว โดยมียอดขายและกะของแต่ละเครื่องคิดเงินอยู่ภายในสาขานั้น หากต้องการแยก ให้ตั้งชื่อสาขาแยกกันให้แต่ละโปรไฟล์ POS ใน ERPNext",
+  "Outlets and their registers": "สาขาและเครื่องคิดเงิน",
+  "Registers that sell from the same warehouse are now one outlet: in the reports, where you can pick one register or the whole outlet, and on the till, which reads Outlet · Register.": "ตอนนี้เครื่องคิดเงินที่ขายจากคลังสินค้าเดียวกันนับเป็นสาขาเดียวแล้ว ทั้งในรายงาน ซึ่งเลือกดูได้ทีละเครื่องคิดเงินหรือทั้งสาขา และบนหน้าจอขาย ซึ่งแสดงเป็น สาขา · เครื่องคิดเงิน",
 }

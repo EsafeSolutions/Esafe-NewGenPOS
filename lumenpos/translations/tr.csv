@@ -1051,3 +1051,6 @@
 "The shop has not let the LumenPOS Reports role see any report. A manager names it in Settings, General, Approvals and access, Permissions.","Mağaza, LumenPOS Reports rolünün hiçbir raporu görmesine izin vermemiş. Bir yönetici rolü Ayarlar, Genel, Onaylar ve erişim, Yetkiler bölümünde ekler."
 "Reports for management without a till","Kasa olmadan yönetim için raporlar"
 "Whoever holds the LumenPOS Reports role opens LumenPOS on the reports alone, for every outlet of their companies, with no POS Profile, shift or sales.","LumenPOS Reports rolüne sahip olan kişi için LumenPOS, şirketlerinin tüm şubelerinde POS Profili, vardiya ve satış olmadan yalnızca raporlarla açılır."
+"Paid In","Ödeme Para Birimi"
+"Amount Paid In That Currency","O Para Biriminde Ödenen Tutar"
+"The currency the customer handed over, when it was not the company's.","Şirketin para birimi değilse, müşterinin ödeme yaptığı para birimi."

@@ -75,7 +75,13 @@ doc_events = {
         # ERPNext 16 leaves loyalty points owing on a POS Invoice (see there).
         "before_submit": "lumenpos.erpnext_compat.settle_points_outstanding",
     },
-    "Sales Invoice": {"before_insert": "lumenpos.demo_data.apply_demo_stamp"},
+    "Sales Invoice": {
+        "before_insert": [
+            "lumenpos.demo_data.apply_demo_stamp",
+            # The close's merged invoice keeps no "paid in" figures (lumenpos.paid_in).
+            "lumenpos.paid_in.clear_on_merged",
+        ],
+    },
     "Stock Entry": {"before_insert": "lumenpos.demo_data.apply_demo_stamp"},
     "POS Opening Entry": {"before_insert": "lumenpos.demo_data.apply_demo_stamp"},
     "POS Closing Entry": {"before_insert": "lumenpos.demo_data.apply_demo_stamp"},

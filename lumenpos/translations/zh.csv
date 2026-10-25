@@ -1053,3 +1053,6 @@
 "The shop has not let the LumenPOS Reports role see any report. A manager names it in Settings, General, Approvals and access, Permissions.","本店尚未允许 LumenPOS Reports 角色查看任何报表。请经理在设置 > 常规 > 审批与权限 > 权限中添加该角色。"
 "Reports for management without a till","无需收银台的管理层报表"
 "Whoever holds the LumenPOS Reports role opens LumenPOS on the reports alone, for every outlet of their companies, with no POS Profile, shift or sales.","拥有 LumenPOS Reports 角色的用户打开 LumenPOS 时只显示报表，涵盖其所属公司的所有门店，无需 POS 配置、班次或销售。"
+"Paid In","付款币种"
+"Amount Paid In That Currency","该币种付款金额"
+"The currency the customer handed over, when it was not the company's.","客户付款所用的货币（非公司货币时）。"

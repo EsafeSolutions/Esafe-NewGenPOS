@@ -1971,4 +1971,8 @@ export default {
   "Give a user the LumenPOS Reports role in ERPNext and LumenPOS opens on these reports alone, for every outlet of their companies, with no POS Profile, shift or sales. Add the LumenPOS Cashier role as well to let them sell too.": "在 ERPNext 中为用户授予 LumenPOS Reports 角色后，LumenPOS 将只为其打开这些报表，涵盖其所属公司的所有门店，无需 POS 配置、班次或销售。如需让其也能销售，请再添加 LumenPOS Cashier 角色。",
   "Reports for management": "管理层报表",
   "Give a user the LumenPOS Reports role in ERPNext and LumenPOS opens on the Insights reports alone, for every outlet of their companies, with no POS Profile or shift. Switch it off in Settings, General, Insights.": "在 ERPNext 中为用户授予 LumenPOS Reports 角色后，LumenPOS 将只为其打开 Insights 报表，涵盖其所属公司的所有门店，无需 POS 配置或班次。可在设置 > 常规 > Insights 中关闭。",
+  "Taken in other currencies": "以其他货币收取",
+  "In its own currency": "原币金额",
+  "Payments in their own currency": "按原币显示收款",
+  "In Insights, the sales summary shows under each payment method what it took in other currencies, in their own money, with a total per currency. An amount typed in another currency at the till is kept with the payment for it.": "在 Insights 中，销售汇总会在每种支付方式下显示以其他货币收取的金额，按原币列出，并给出每种货币的合计。在收银台以其他货币输入的金额会随该笔收款一并保存。",
 }

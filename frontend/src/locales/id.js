@@ -1971,4 +1971,8 @@ export default {
   "Give a user the LumenPOS Reports role in ERPNext and LumenPOS opens on these reports alone, for every outlet of their companies, with no POS Profile, shift or sales. Add the LumenPOS Cashier role as well to let them sell too.": "Berikan peran LumenPOS Reports kepada pengguna di ERPNext, maka LumenPOS hanya membuka laporan ini untuknya, untuk semua gerai perusahaannya, tanpa Profil POS, shift, atau penjualan. Tambahkan juga peran LumenPOS Cashier agar ia dapat menjual.",
   "Reports for management": "Laporan untuk manajemen",
   "Give a user the LumenPOS Reports role in ERPNext and LumenPOS opens on the Insights reports alone, for every outlet of their companies, with no POS Profile or shift. Switch it off in Settings, General, Insights.": "Berikan peran LumenPOS Reports kepada pengguna di ERPNext, maka LumenPOS hanya membuka laporan Insights untuknya, untuk semua gerai perusahaannya, tanpa Profil POS atau shift. Nonaktifkan di Pengaturan, Umum, Insights.",
+  "Taken in other currencies": "Diterima dalam mata uang lain",
+  "In its own currency": "Dalam mata uang asli",
+  "Payments in their own currency": "Pembayaran dalam mata uang aslinya",
+  "In Insights, the sales summary shows under each payment method what it took in other currencies, in their own money, with a total per currency. An amount typed in another currency at the till is kept with the payment for it.": "Di Insights, ringkasan penjualan menampilkan di bawah setiap metode pembayaran jumlah yang diterima dalam mata uang lain, dalam mata uang aslinya, dengan total per mata uang. Jumlah yang diketik dalam mata uang lain di kasir disimpan bersama pembayarannya.",
 }

@@ -1971,4 +1971,8 @@ export default {
   "Give a user the LumenPOS Reports role in ERPNext and LumenPOS opens on these reports alone, for every outlet of their companies, with no POS Profile, shift or sales. Add the LumenPOS Cashier role as well to let them sell too.": "มอบบทบาท LumenPOS Reports ให้ผู้ใช้ใน ERPNext แล้ว LumenPOS จะเปิดเฉพาะรายงานเหล่านี้ให้ผู้ใช้นั้น สำหรับทุกสาขาของบริษัทที่ผู้ใช้สังกัด โดยไม่ต้องมีโปรไฟล์ POS กะ หรือการขาย หากต้องการให้ขายได้ด้วย ให้เพิ่มบทบาท LumenPOS Cashier",
   "Reports for management": "รายงานสำหรับผู้บริหาร",
   "Give a user the LumenPOS Reports role in ERPNext and LumenPOS opens on the Insights reports alone, for every outlet of their companies, with no POS Profile or shift. Switch it off in Settings, General, Insights.": "มอบบทบาท LumenPOS Reports ให้ผู้ใช้ใน ERPNext แล้ว LumenPOS จะเปิดเฉพาะรายงานใน Insights ให้ผู้ใช้นั้น สำหรับทุกสาขาของบริษัทที่ผู้ใช้สังกัด โดยไม่ต้องมีโปรไฟล์ POS หรือกะ ปิดได้ที่ การตั้งค่า, ทั่วไป, Insights",
+  "Taken in other currencies": "รับเป็นสกุลเงินอื่น",
+  "In its own currency": "ในสกุลเงินที่ชำระ",
+  "Payments in their own currency": "การชำระเงินในสกุลเงินที่ชำระ",
+  "In Insights, the sales summary shows under each payment method what it took in other currencies, in their own money, with a total per currency. An amount typed in another currency at the till is kept with the payment for it.": "ใน Insights สรุปยอดขายจะแสดงใต้วิธีการชำระเงินแต่ละวิธีว่ารับเงินเป็นสกุลเงินอื่นเท่าใด เป็นจำนวนเงินในสกุลนั้นเอง พร้อมยอดรวมของแต่ละสกุลเงิน จำนวนเงินที่ป้อนเป็นสกุลเงินอื่นที่เครื่องคิดเงินจะถูกเก็บไว้กับการชำระเงินนั้น",
 }

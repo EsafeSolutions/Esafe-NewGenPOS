@@ -96,7 +96,7 @@ def _invoices(outlets, start, end):
             select name, %(doctype)s as doctype, owner, pos_profile, customer, posting_date, posting_time,
                    is_return, total_qty, base_net_total, base_discount_amount,
                    base_total_taxes_and_charges, base_grand_total, base_rounded_total,
-                   base_change_amount, account_for_change_amount
+                   base_change_amount, account_for_change_amount, currency, change_amount
             from `tab{doctype}`
             where docstatus = 1{extra} and pos_profile in %(outlets)s
               and posting_date between %(start)s and %(end)s
@@ -140,25 +140,44 @@ def _line_discounts(invoices):
 def _payments(invoices, company):
     """What each payment method took over these sales, in the company currency,
     the change given taken off the method whose account gave it (the drawer),
-    or off the first cash method when no method holds that account."""
+    or off the first cash method when no method holds that account. Each method
+    also lists what it took in other currencies, in their own money (`paid_in`,
+    0.66.0, lumenpos.paid_in), change given in that money taken off the same way."""
+    from lumenpos import currency
+    from lumenpos import paid_in
+
+    local = currency.company_currency(company)
+    with_fields = paid_in.has_fields()
     result = {}
+    foreign = {}
     for doctype, names in _by_doctype(invoices).items():
+        extra = ", p.lumenpos_paid_currency as paid_currency, p.lumenpos_paid_amount as paid_amount" if with_fields else ""
         rows = frappe.db.sql(  # nosemgrep
-            """
-            select mode_of_payment, sum(base_amount) as amount
-            from `tabSales Invoice Payment`
-            where parenttype = %(doctype)s and parent in %(names)s
-            group by mode_of_payment
+            f"""
+            select p.mode_of_payment, p.amount, p.base_amount, inv.currency{extra}
+            from `tabSales Invoice Payment` p
+            join `tab{doctype}` inv on inv.name = p.parent
+            where p.parenttype = %(doctype)s and p.parent in %(names)s
             """,
             {"doctype": doctype, "names": tuple(names)},
             as_dict=True,
         )
         for r in rows:
-            result[r.mode_of_payment] = flt(result.get(r.mode_of_payment)) + flt(r.amount)
+            result[r.mode_of_payment] = flt(result.get(r.mode_of_payment)) + flt(r.base_amount)
+            code, paid = paid_in.of_row(r, company, local)
+            if code:
+                by = foreign.setdefault(r.mode_of_payment, {})
+                by[code] = flt(by.get(code)) + paid
     change = {}
+    change_foreign = {}
     for inv in invoices:
         if flt(inv.base_change_amount):
             change[inv.account_for_change_amount] = flt(change.get(inv.account_for_change_amount)) + flt(inv.base_change_amount)
+            sale = inv.get("currency")
+            given_in = frappe.get_cached_value("Account", inv.account_for_change_amount, "account_currency") if inv.account_for_change_amount else None
+            if sale and sale != local and given_in == sale and flt(inv.get("change_amount")):
+                key = (inv.account_for_change_amount, sale)
+                change_foreign[key] = flt(change_foreign.get(key)) + flt(inv.change_amount)
     if change:
         accounts = {}
         for mode in result:
@@ -166,11 +185,35 @@ def _payments(invoices, company):
             if account:
                 accounts.setdefault(account, mode)
         cash = [m for m in result if frappe.get_cached_value("Mode of Payment", m, "type") == "Cash"]
+
+        def target_of(account):
+            return accounts.get(account) or (cash[0] if cash else None)
+
         for account, amount in change.items():
-            target = accounts.get(account) or (cash[0] if cash else None)
+            target = target_of(account)
             if target:
                 result[target] = flt(result[target]) - amount
-    return [{"mode_of_payment": m, "amount": flt(a, 2)} for m, a in sorted(result.items(), key=lambda kv: -kv[1])]
+        for (account, code), amount in change_foreign.items():
+            target = target_of(account)
+            if target and code in foreign.get(target, {}):
+                foreign[target][code] = flt(foreign[target][code]) - amount
+    return [
+        {
+            "mode_of_payment": m,
+            "amount": flt(a, 2),
+            "paid_in": [{"currency": c, "amount": flt(v, 2)} for c, v in sorted((foreign.get(m) or {}).items()) if flt(v, 2)],
+        }
+        for m, a in sorted(result.items(), key=lambda kv: -kv[1])
+    ]
+
+
+def _paid_in_totals(payments):
+    """Everything taken in each other currency, over every method."""
+    totals = {}
+    for p in payments:
+        for x in p.get("paid_in") or []:
+            totals[x["currency"]] = flt(totals.get(x["currency"])) + flt(x["amount"])
+    return [{"currency": c, "amount": flt(v, 2)} for c, v in sorted(totals.items()) if flt(v, 2)]
 
 
 def _figures(invoices, discounts):
@@ -300,6 +343,7 @@ def sales_summary(from_date: str | None = None, to_date: str | None = None, pos_
         series.append({"key": key, "sales": f["sales"], "returns": f["returns"], "net": f["net"],
                        "tax": f["tax"], "total": f["total"]})
 
+    payments = _payments(invoices, company)
     shifts = _shifts(outlets, start, end)
     names = _names({s["opened_by"] for s in shifts})
     for s in shifts:
@@ -308,7 +352,8 @@ def sales_summary(from_date: str | None = None, to_date: str | None = None, pos_
         "from_date": str(start), "to_date": str(end), "company": company, "currency": ccy,
         "outlets": outlets, "by": "hour" if one_day else "day",
         "totals": _figures(invoices, discounts),
-        "payments": _payments(invoices, company),
+        "payments": payments,
+        "paid_in": _paid_in_totals(payments),
         "series": series,
         "shifts": shifts,
         "differences": _differences(shifts, ccy),

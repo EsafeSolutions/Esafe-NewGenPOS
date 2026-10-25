@@ -2293,7 +2293,14 @@ const reportsAccess = {
   "Give a user the LumenPOS Reports role in ERPNext and LumenPOS opens on the Insights reports alone, for every outlet of their companies, with no POS Profile or shift. Switch it off in Settings, General, Insights.": "امنح المستخدم دور LumenPOS Reports في ERPNext فيفتح له LumenPOS على تقارير الإحصائيات وحدها، لكل فروع شركاته، بدون ملف نقطة بيع ولا وردية. ويمكن إيقافه من الإعدادات، عام، الإحصائيات.",
 }
 
+const paidIn = {
+  "Taken in other currencies": "المحصل بعملات أخرى",
+  "In its own currency": "بعملتها الأصلية",
+  "Payments in their own currency": "المدفوعات بعملتها الأصلية",
+  "In Insights, the sales summary shows under each payment method what it took in other currencies, in their own money, with a total per currency. An amount typed in another currency at the till is kept with the payment for it.": "في الإحصائيات، يعرض ملخص المبيعات تحت كل طريقة دفع ما حصلته بعملات أخرى بمبلغها الأصلي، مع إجمالي لكل عملة. والمبلغ الذي يكتب بعملة أخرى في نقطة البيع يحفظ مع الدفعة نفسها.",
+}
+
 export const messages = {
   en: { ...prefixedEn },
-  ar: { ...common, ...settings, ...register, ...features, ...sell, ...txn, ...misc, ...approvals, ...returns, ...customersScreen, ...lifecycle, ...serialsAndGroups, ...permissions, ...insights, ...generalLayout, ...currencies, ...customerForm, ...salespeopleAndCheck, ...helpForStaff, ...lockedPeriods, ...varianceReasons, ...creditSales, ...cashOut, ...owesHolds, ...anyCurrency, ...insightsReports, ...insightsReports2, ...refundApproval, ...outletsRegisters, ...reportsAccess, ...prefixedAr },
+  ar: { ...common, ...settings, ...register, ...features, ...sell, ...txn, ...misc, ...approvals, ...returns, ...customersScreen, ...lifecycle, ...serialsAndGroups, ...permissions, ...insights, ...generalLayout, ...currencies, ...customerForm, ...salespeopleAndCheck, ...helpForStaff, ...lockedPeriods, ...varianceReasons, ...creditSales, ...cashOut, ...owesHolds, ...anyCurrency, ...insightsReports, ...insightsReports2, ...refundApproval, ...outletsRegisters, ...reportsAccess, ...paidIn, ...prefixedAr },
 }

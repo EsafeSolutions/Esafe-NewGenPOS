@@ -1052,3 +1052,6 @@
 "The shop has not let the LumenPOS Reports role see any report. A manager names it in Settings, General, Approvals and access, Permissions.","فروشگاه به نقش LumenPOS Reports اجازه دیدن هیچ گزارشی را نداده است. مدیر آن را در تنظیمات، عمومی، تأییدها و دسترسی، مجوزها اضافه می‌کند."
 "Reports for management without a till","گزارش‌ها برای مدیریت بدون صندوق"
 "Whoever holds the LumenPOS Reports role opens LumenPOS on the reports alone, for every outlet of their companies, with no POS Profile, shift or sales.","هر کس نقش LumenPOS Reports را داشته باشد، LumenPOS برایش فقط با گزارش‌ها باز می‌شود، برای همه شعبه‌های شرکت‌هایش، بدون نمایه POS، شیفت یا فروش."
+"Paid In","ارز پرداخت"
+"Amount Paid In That Currency","مبلغ پرداختی به آن ارز"
+"The currency the customer handed over, when it was not the company's.","ارزی که مشتری با آن پرداخت کرد، اگر ارز شرکت نبود."

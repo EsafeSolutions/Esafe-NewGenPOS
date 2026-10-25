@@ -1053,3 +1053,6 @@
 "The shop has not let the LumenPOS Reports role see any report. A manager names it in Settings, General, Approvals and access, Permissions.","لم يسمح المتجر لدور LumenPOS Reports برؤية أي تقرير. يضيفه المدير من الإعدادات، عام، الاعتمادات والصلاحيات، الصلاحيات."
 "Reports for management without a till","تقارير للإدارة بدون نقطة بيع"
 "Whoever holds the LumenPOS Reports role opens LumenPOS on the reports alone, for every outlet of their companies, with no POS Profile, shift or sales.","من يحمل دور LumenPOS Reports يفتح له LumenPOS على التقارير وحدها، لكل فروع شركاته، بدون ملف نقطة بيع ولا وردية ولا مبيعات."
+"Paid In","عملة الدفع"
+"Amount Paid In That Currency","المبلغ المدفوع بتلك العملة"
+"The currency the customer handed over, when it was not the company's.","العملة التي دفع بها العميل، إذا لم تكن عملة الشركة."

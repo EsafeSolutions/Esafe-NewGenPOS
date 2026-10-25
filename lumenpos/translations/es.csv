@@ -1053,3 +1053,6 @@
 "The shop has not let the LumenPOS Reports role see any report. A manager names it in Settings, General, Approvals and access, Permissions.","La tienda no ha permitido que el rol LumenPOS Reports vea ningún informe. Un gerente lo indica en Configuración, General, Aprobaciones y acceso, Permisos."
 "Reports for management without a till","Informes para la dirección sin caja"
 "Whoever holds the LumenPOS Reports role opens LumenPOS on the reports alone, for every outlet of their companies, with no POS Profile, shift or sales.","Quien tenga el rol LumenPOS Reports abre LumenPOS solo con los informes, para todas las sucursales de sus empresas, sin Perfil de PdV, turno ni ventas."
+"Paid In","Pagado en"
+"Amount Paid In That Currency","Importe pagado en esa moneda"
+"The currency the customer handed over, when it was not the company's.","La moneda que entregó el cliente, cuando no era la de la empresa."

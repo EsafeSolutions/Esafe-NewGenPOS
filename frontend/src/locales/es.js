@@ -1971,4 +1971,8 @@ export default {
   "Give a user the LumenPOS Reports role in ERPNext and LumenPOS opens on these reports alone, for every outlet of their companies, with no POS Profile, shift or sales. Add the LumenPOS Cashier role as well to let them sell too.": "Asigne a un usuario el rol LumenPOS Reports en ERPNext y LumenPOS se abrirá solo con estos informes, para todas las sucursales de sus empresas, sin Perfil de PdV, turno ni ventas. Agréguele también el rol LumenPOS Cashier para que pueda vender.",
   "Reports for management": "Informes para la dirección",
   "Give a user the LumenPOS Reports role in ERPNext and LumenPOS opens on the Insights reports alone, for every outlet of their companies, with no POS Profile or shift. Switch it off in Settings, General, Insights.": "Asigne a un usuario el rol LumenPOS Reports en ERPNext y LumenPOS se abrirá solo con los informes de Insights, para todas las sucursales de sus empresas, sin Perfil de PdV ni turno. Desactívelo en Configuración, General, Insights.",
+  "Taken in other currencies": "Cobrado en otras monedas",
+  "In its own currency": "En su moneda original",
+  "Payments in their own currency": "Pagos en su moneda original",
+  "In Insights, the sales summary shows under each payment method what it took in other currencies, in their own money, with a total per currency. An amount typed in another currency at the till is kept with the payment for it.": "En Insights, el resumen de ventas muestra bajo cada forma de pago lo que se cobró en otras monedas, con su importe original y un total por moneda. Un importe ingresado en otra moneda en la caja se guarda con su pago.",
 }

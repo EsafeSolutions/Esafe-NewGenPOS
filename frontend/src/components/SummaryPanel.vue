@@ -80,12 +80,20 @@
                 <tbody>
                   <tr v-for="p in report.payments" :key="p.mode_of_payment">
                     <td><bdi>{{ session.modeLabel ? session.modeLabel(p.mode_of_payment) : p.mode_of_payment }}</bdi></td>
-                    <td class="num"><bdi>{{ m(p.amount) }}</bdi></td>
+                    <td class="num">
+                      <bdi>{{ m(p.amount) }}</bdi>
+                      <!-- What it took in other money (0.66.0): the customer's own currency. -->
+                      <div v-for="x in p.paid_in || []" :key="x.currency" class="paid-in"><bdi>{{ money(x.amount, x.currency) }}</bdi></div>
+                    </td>
                     <td class="num">{{ share(p.amount) }}</td>
                   </tr>
                 </tbody>
               </table>
             </div>
+            <p v-if="(report.paid_in || []).length" class="muted small paid-in-total">
+              {{ t('Taken in other currencies') }}:
+              <template v-for="(x, i) in report.paid_in" :key="x.currency"><span v-if="i">&nbsp;·&nbsp;</span><bdi>{{ money(x.amount, x.currency) }}</bdi></template>
+            </p>
           </section>
 
           <section class="block">
@@ -236,8 +244,9 @@ function download() {
   row(t('Discounts given'), r.totals.discounts)
   row(t('Items sold'), r.totals.items_sold)
   row('')
-  row(t('Method'), t('Amount'))
-  for (const p of r.payments) row(p.mode_of_payment, p.amount)
+  row(t('Method'), t('Amount'), t('In its own currency'))
+  for (const p of r.payments) row(p.mode_of_payment, p.amount, ...(p.paid_in || []).flatMap((x) => [x.currency, x.amount]))
+  for (const x of r.paid_in || []) row(t('Taken in other currencies'), '', x.currency, x.amount)
   row('')
   row(r.by === 'hour' ? t('Hour') : t('Day'), t('Sales'), t('Returns'), t('Net sales'), t('Tax'), t('Total with tax'))
   for (const s of r.series) row(s.key, s.sales, s.returns, s.net, s.tax, s.total)
@@ -265,6 +274,9 @@ function download() {
 .rep-title { font-weight: 700; font-size: 16px; }
 .range { padding: 10px 14px 0; }
 .empty { padding: 26px; text-align: center; }
+/* A method's takings in other money, under its amount (0.66.0). */
+.paid-in { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+.paid-in-total { margin: 0; padding: 8px 14px 12px; }
 .neg { color: var(--red); }
 .pad { padding: 0 14px 12px; }
 .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; padding: 12px 14px; }

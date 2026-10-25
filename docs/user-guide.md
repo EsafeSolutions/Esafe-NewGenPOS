@@ -1,6 +1,6 @@
 # LumenPOS: Complete User Guide
 
-*Applies to LumenPOS v0.65.0. This document is updated with every feature change.*
+*Applies to LumenPOS v0.66.0. This document is updated with every feature change.*
 
 > **Note on this document.** Sections 1 to 17 below were written up to v0.17 and are
 > being brought forward release by release; the **changelog in section 18 is
@@ -206,6 +206,23 @@ ERPNext's own Sales Person reports show this only for a Sales Invoice outlet:
 at a POS Invoice outlet (the default) the close merges the shift's sales into
 a Sales Invoice without the Sales Team, and those reports read no POS Invoice
 (ERPNext 13 to 16). The Salespeople page reads the till's own invoices.
+
+### Payments in their own currency (0.66.0)
+Where your shop sells in other currencies, the **Payments** table of the sales summary in Insights
+shows, under each method's amount in your company currency, what it took in other currencies in
+their own money (ZWG 135.00 under US$5.00), and a line below the table totals each currency. The
+CSV download carries the same figures.
+
+- An amount typed in another currency at the till (**Amount in** on the payment screen) is kept with
+  the payment, on the payment row of the invoice (**Paid In** and **Amount Paid In That Currency**),
+  when it is worth what the payment books at the shift's rate.
+- A sale made in another currency shows its own money for the methods of that currency, sales made
+  before this update included. A sale in your company currency paid by typing another currency
+  shows it from this update on: before, the till did not keep the typed figure.
+- Change given back in the sale's currency is taken off, as for the company currency.
+- When the shift closes, ERPNext merges its sales into one Sales Invoice and adds up each method's
+  amount: the merged invoice keeps no Paid In figures (each sale keeps its own, and the reports read
+  the sales).
 
 ### Reports for management without a till (0.65.0)
 Owners and managers who read the figures but never sell do not need a POS Profile. Give their
@@ -1484,6 +1501,7 @@ which both LumenPOS roles are given.
 ### LumenPOS releases
 | Version | Highlights |
 |---|---|
+| 0.66.0 | **Payments in their own currency** (the Zimbabwe shop, Phillip, 2026-10-25: "the payments are only showing in the functional currency"). The Payments table of the sales summary shows what each method took in other currencies in their own money, with a total per currency and the same in the CSV. An amount typed in another currency at the till is now kept on the payment row (two new fields on Sales Invoice Payment), checked against the shift's rate; a sale in another currency shows its own money, older ones included. The merged invoice of the close keeps none (ERPNext adds up only the amounts there). In all thirteen languages. |
 | 0.65.0 | **Reports for management without a till** (the Zimbabwe shop, Matonop, 2026-10-23: the reports for management users who need no POS Profile). The new **LumenPOS Reports** role opens LumenPOS on the Insights reports alone, for every outlet of the companies the user may see, with no POS Profile, shift or sales. The four reports of Who can do what pass for the role while a shop names nobody for them. A switch in Settings, General, Insights. In all thirteen languages. |
 | 0.64.0 | **Outlets and their registers** (the Zimbabwe shop, 2026-10-23: three cashiers, each on their own POS Profile because ERPNext 16 holds one open shift per POS Profile, one warehouse, showed as three outlets; the owner asked for the best practice for every shop). Registers that sell from the same warehouse are one outlet, or the ones carrying the same new **Outlet** field on POS Profile. The till reads Outlet · Register, the reports pick a register, an outlet or the company, the Outlets tab nests each register's sales and shifts, and the system check names grouped outlets and, on ERPNext 16 with a shift per cashier, registers several cashiers share. In all thirteen languages. |
 | 0.63.0 | **A supervisor approves refunds** (the Zimbabwe shop, 2026-10-20: "when processing a refund is it possible to enable supervisor authorization for the process to continue, password or pin?"). Settings, General, Approvals and access, **Refund approval**: Off (default), Above an amount (company currency) or Always. The supervisor's passcode at the till (master or approver PINs) or a return request carrying the amount, approved from the Approvals tray. The server values the refund as it posts (`sales.refund_check`) and checks the approval again in `create_return`. Only money handed back counts: an exchange only for the difference it gives back, a hold cancel for all its instalments at once (passcode). Managers exempt. Offline such a refund waits for a connection. Also: the **Approvals** tray now shows whenever any kind of request is in use on the site, as the server says. Before, it showed only for discount requests, a return window or cash out, so a product the shop takes back only with an approval left the approver without a tray. In all thirteen languages. |

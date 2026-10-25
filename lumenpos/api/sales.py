@@ -726,6 +726,11 @@ def submit_sale(payload: dict | str):
         _restriction_items(invoice), payload.get("payments"), profile.name
     )
     _apply_payment_references(invoice, payload.get("payments"))
+    # What each payment was handed over in, when not the company's own money
+    # (lumenpos.paid_in, 0.66.0): kept on the row for the reports.
+    from lumenpos import paid_in
+
+    paid_in.record(invoice, payload.get("payments"), session["name"])
     # Pin liability-backed tenders (gift card, store credit) to THEIR liability
     # account so ERPNext can't resolve them to the company Receivable (debtors):
     # a payment leg on a Receivable account posts WITHOUT a party and fails

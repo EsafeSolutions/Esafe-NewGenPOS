@@ -1971,4 +1971,8 @@ export default {
   "Give a user the LumenPOS Reports role in ERPNext and LumenPOS opens on these reports alone, for every outlet of their companies, with no POS Profile, shift or sales. Add the LumenPOS Cashier role as well to let them sell too.": "نقش LumenPOS Reports را در ERPNext به کاربر بدهید تا LumenPOS برای او فقط با همین گزارش‌ها باز شود، برای همه شعبه‌های شرکت‌هایش، بدون نمایه POS، شیفت یا فروش. برای اینکه بتواند فروش هم انجام دهد، نقش LumenPOS Cashier را هم اضافه کنید.",
   "Reports for management": "گزارش‌ها برای مدیریت",
   "Give a user the LumenPOS Reports role in ERPNext and LumenPOS opens on the Insights reports alone, for every outlet of their companies, with no POS Profile or shift. Switch it off in Settings, General, Insights.": "نقش LumenPOS Reports را در ERPNext به کاربر بدهید تا LumenPOS برای او فقط با گزارش‌های Insights باز شود، برای همه شعبه‌های شرکت‌هایش، بدون نمایه POS یا شیفت. می‌توانید آن را از تنظیمات، عمومی، Insights خاموش کنید.",
+  "Taken in other currencies": "دریافتی به ارزهای دیگر",
+  "In its own currency": "به ارز خودش",
+  "Payments in their own currency": "پرداخت‌ها به ارز خودشان",
+  "In Insights, the sales summary shows under each payment method what it took in other currencies, in their own money, with a total per currency. An amount typed in another currency at the till is kept with the payment for it.": "در Insights، خلاصه فروش زیر هر روش پرداخت نشان می‌دهد چه مبلغی به ارزهای دیگر دریافت شده است، به همان ارز، با جمع هر ارز. مبلغی که در صندوق به ارز دیگری وارد شود، همراه با همان پرداخت نگه داشته می‌شود.",
 }

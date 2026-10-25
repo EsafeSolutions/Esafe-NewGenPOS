@@ -1053,3 +1053,6 @@
 "The shop has not let the LumenPOS Reports role see any report. A manager names it in Settings, General, Approvals and access, Permissions.","Роли LumenPOS Reports пока не разрешено просматривать ни один отчёт. Менеджер добавляет её в разделе Настройки, Общие, Согласования и доступ, Права доступа."
 "Reports for management without a till","Отчёты для руководства без кассы"
 "Whoever holds the LumenPOS Reports role opens LumenPOS on the reports alone, for every outlet of their companies, with no POS Profile, shift or sales.","Пользователь с ролью LumenPOS Reports открывает LumenPOS только на отчётах, по всем магазинам своих компаний, без профиля точки продаж, смены и продаж."
+"Paid In","Валюта оплаты"
+"Amount Paid In That Currency","Сумма в этой валюте"
+"The currency the customer handed over, when it was not the company's.","Валюта, которой заплатил клиент, если это не валюта компании."

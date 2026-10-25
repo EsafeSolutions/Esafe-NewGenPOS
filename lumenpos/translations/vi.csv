@@ -1052,3 +1052,6 @@
 "The shop has not let the LumenPOS Reports role see any report. A manager names it in Settings, General, Approvals and access, Permissions.","Cửa hàng chưa cho phép vai trò LumenPOS Reports xem báo cáo nào. Quản lý thêm vai trò này tại Cài đặt, Chung, Phê duyệt và quyền truy cập, Phân quyền."
 "Reports for management without a till","Báo cáo cho ban quản lý không cần quầy thu ngân"
 "Whoever holds the LumenPOS Reports role opens LumenPOS on the reports alone, for every outlet of their companies, with no POS Profile, shift or sales.","Người có vai trò LumenPOS Reports mở LumenPOS chỉ với các báo cáo, cho tất cả cửa hàng của các công ty của họ, không cần Hồ sơ POS, ca hay giao dịch bán."
+"Paid In","Thanh toán bằng"
+"Amount Paid In That Currency","Số tiền trả bằng tiền tệ đó"
+"The currency the customer handed over, when it was not the company's.","Tiền tệ khách hàng đã đưa, khi không phải tiền tệ của công ty."

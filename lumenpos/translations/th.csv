@@ -1053,3 +1053,6 @@
 "The shop has not let the LumenPOS Reports role see any report. A manager names it in Settings, General, Approvals and access, Permissions.","ร้านยังไม่อนุญาตให้บทบาท LumenPOS Reports ดูรายงานใดเลย ผู้จัดการกำหนดได้ที่ การตั้งค่า, ทั่วไป, การอนุมัติและสิทธิ์การเข้าถึง, สิทธิ์"
 "Reports for management without a till","รายงานสำหรับผู้บริหารโดยไม่ต้องใช้เครื่องคิดเงิน"
 "Whoever holds the LumenPOS Reports role opens LumenPOS on the reports alone, for every outlet of their companies, with no POS Profile, shift or sales.","ผู้ที่มีบทบาท LumenPOS Reports จะเปิด LumenPOS ได้เฉพาะรายงาน สำหรับทุกสาขาของบริษัทที่ตนสังกัด โดยไม่ต้องมีโปรไฟล์ POS กะ หรือการขาย"
+"Paid In","ชำระเป็นสกุลเงิน"
+"Amount Paid In That Currency","จำนวนเงินที่ชำระในสกุลเงินนั้น"
+"The currency the customer handed over, when it was not the company's.","สกุลเงินที่ลูกค้าใช้ชำระ เมื่อไม่ใช่สกุลเงินของบริษัท"

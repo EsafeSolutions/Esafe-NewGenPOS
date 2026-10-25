@@ -1053,3 +1053,6 @@
 "The shop has not let the LumenPOS Reports role see any report. A manager names it in Settings, General, Approvals and access, Permissions.","Toko belum mengizinkan peran LumenPOS Reports melihat laporan apa pun. Manajer menambahkannya di Pengaturan, Umum, Persetujuan dan akses, Hak akses."
 "Reports for management without a till","Laporan untuk manajemen tanpa mesin kasir"
 "Whoever holds the LumenPOS Reports role opens LumenPOS on the reports alone, for every outlet of their companies, with no POS Profile, shift or sales.","Pemegang peran LumenPOS Reports membuka LumenPOS hanya pada laporan, untuk semua gerai perusahaannya, tanpa Profil POS, shift, atau penjualan."
+"Paid In","Dibayar Dalam"
+"Amount Paid In That Currency","Jumlah Dibayar dalam Mata Uang Itu"
+"The currency the customer handed over, when it was not the company's.","Mata uang yang diserahkan pelanggan, jika bukan mata uang perusahaan."

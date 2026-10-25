@@ -1971,4 +1971,8 @@ export default {
   "Give a user the LumenPOS Reports role in ERPNext and LumenPOS opens on these reports alone, for every outlet of their companies, with no POS Profile, shift or sales. Add the LumenPOS Cashier role as well to let them sell too.": "Cấp vai trò LumenPOS Reports cho người dùng trong ERPNext, LumenPOS sẽ chỉ mở các báo cáo này cho họ, cho tất cả cửa hàng của các công ty của họ, không cần Hồ sơ POS, ca hay giao dịch bán. Cấp thêm vai trò LumenPOS Cashier nếu muốn họ bán hàng nữa.",
   "Reports for management": "Báo cáo cho ban quản lý",
   "Give a user the LumenPOS Reports role in ERPNext and LumenPOS opens on the Insights reports alone, for every outlet of their companies, with no POS Profile or shift. Switch it off in Settings, General, Insights.": "Cấp vai trò LumenPOS Reports cho người dùng trong ERPNext, LumenPOS sẽ chỉ mở các báo cáo Insights cho họ, cho tất cả cửa hàng của các công ty của họ, không cần Hồ sơ POS hay ca. Tắt tại Cài đặt, Chung, Insights.",
+  "Taken in other currencies": "Đã thu bằng tiền tệ khác",
+  "In its own currency": "Theo tiền tệ gốc",
+  "Payments in their own currency": "Thanh toán theo tiền tệ gốc",
+  "In Insights, the sales summary shows under each payment method what it took in other currencies, in their own money, with a total per currency. An amount typed in another currency at the till is kept with the payment for it.": "Trong Insights, phần tổng hợp bán hàng hiển thị dưới mỗi phương thức thanh toán số tiền đã thu bằng tiền tệ khác, theo đúng tiền tệ đó, kèm tổng cộng cho từng tiền tệ. Số tiền nhập bằng tiền tệ khác tại quầy thu ngân được lưu cùng khoản thanh toán tương ứng.",
 }

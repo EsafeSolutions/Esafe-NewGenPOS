@@ -944,6 +944,30 @@ def make_custom_fields():
                     print_hide=1,
                 )
             ],
+            # What a payment was handed over in, when not the company's own money
+            # (lumenpos.paid_in, 0.66.0). The payment rows of POS Invoice and Sales
+            # Invoice are both this doctype.
+            "Sales Invoice Payment": [
+                dict(
+                    fieldname="lumenpos_paid_currency",
+                    label="Paid In",
+                    fieldtype="Link",
+                    options="Currency",
+                    insert_after="amount",
+                    read_only=1,
+                    print_hide=1,
+                    description="The currency the customer handed over, when it was not the company's.",
+                ),
+                dict(
+                    fieldname="lumenpos_paid_amount",
+                    label="Amount Paid In That Currency",
+                    fieldtype="Currency",
+                    options="lumenpos_paid_currency",
+                    insert_after="lumenpos_paid_currency",
+                    read_only=1,
+                    print_hide=1,
+                ),
+            ],
             # Declare the shift's drawer cash in/out on the official Z-report so
             # the movements are visible/traceable beside the reconciliation (the
             # cash row's expected_amount already nets them in).

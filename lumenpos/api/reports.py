@@ -207,6 +207,16 @@ def _payments(invoices, company):
     ]
 
 
+def _sale_moment(posting_date, posting_time):
+    """"YYYY-MM-DD HH:MM:SS" for a sale, which sorts as text in time order."""
+    from frappe.utils import get_datetime
+
+    try:
+        return get_datetime(f"{posting_date} {posting_time or '0:00:00'}").strftime("%Y-%m-%d %H:%M:%S")
+    except Exception:
+        return f"{posting_date} 00:00:00"
+
+
 def _paid_in_totals(payments):
     """Everything taken in each other currency, over every method."""
     totals = {}
@@ -704,7 +714,10 @@ def customers(from_date: str | None = None, to_date: str | None = None, pos_prof
             row["returns"] += 1
         else:
             row["sales"] += 1
-        when = f"{inv.posting_date} {str(inv.posting_time or '')}"
+        # A real date and time, written with its leading zeros: posting_time comes
+        # back as a timedelta ("9:57:38"), and as text 9:57 sorted after 10:03, so
+        # a customer of the morning headed the recent list all day (0.66.0).
+        when = _sale_moment(inv.posting_date, inv.posting_time)
         if when > row["last"]:
             row["last"] = when
     names = {}

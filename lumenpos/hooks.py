@@ -87,6 +87,8 @@ doc_events = {
         ],
     },
     "Stock Entry": {"before_insert": "lumenpos.demo_data.apply_demo_stamp"},
+    # A deleted merged count gives its shared count back (lumenpos.api.stock_app).
+    "Stock Reconciliation": {"on_trash": "lumenpos.api.stock_app.on_reconciliation_trash"},
     "POS Opening Entry": {"before_insert": "lumenpos.demo_data.apply_demo_stamp"},
     "POS Closing Entry": {"before_insert": "lumenpos.demo_data.apply_demo_stamp"},
     "Payment Entry": {"before_insert": "lumenpos.demo_data.apply_demo_stamp"},

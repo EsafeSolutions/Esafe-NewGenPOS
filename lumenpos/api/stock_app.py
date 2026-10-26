@@ -201,11 +201,15 @@ def stock_save(doc: str | dict):
         for key in ("docstatus", "owner", "creation", "modified", "modified_by", "name", "doctype"):
             data.pop(key, None)
         target.update(data)
+        if doctype == "Stock Reconciliation":
+            _refuse_unposted(_unposted(target))
         target.save()
     else:
         data.pop("name", None)
         data["docstatus"] = 0
         target = frappe.get_doc(data)
+        if doctype == "Stock Reconciliation":
+            _refuse_unposted(_unposted(target))
         target.insert()
         target.add_comment("Comment", APP_MARKER)
     return target.as_dict()
@@ -238,14 +242,7 @@ def stock_submit(doctype: str, name: str, action: str | None = None):
     _guard(doctype, need="submit")
     doc = frappe.get_doc(doctype, name)
     if doctype == "Stock Reconciliation":
-        held = _unposted(doc)
-        if held:
-            frappe.throw(
-                _(
-                    "Close the open shifts first: {0} items of this count are in sales not posted yet ({1}). "
-                    "Closing them afterwards would take those goods off again."
-                ).format(len(held), ", ".join(sorted({n for h in held for n in h["invoices"]})[:5]))
-            )
+        _refuse_unposted(_unposted(doc))
     if _has_workflow(doctype):
         from frappe.model.workflow import apply_workflow
 
@@ -549,6 +546,7 @@ def count_session_merge(session: str, zero_uncounted: int | str | None = None):
                 rows.append({"item_code": code, "warehouse": doc.warehouse, "qty": 0})
     if not rows:
         frappe.throw(_("Every counted item matches the quantity on the shelf. There is nothing to adjust."))
+    _refuse_unposted(_unposted(frappe._dict(items=rows, set_warehouse=doc.warehouse)))
     devices = frappe.db.count(DEVICE_DT, {"session": session})
     reco = frappe.get_doc({
         "doctype": "Stock Reconciliation",
@@ -580,6 +578,29 @@ def count_session_close(session: str):
 
 
 # ----------------------------------------------- before a count is submitted --
+
+
+def _refuse_unposted(held):
+    """A stock count is not saved, merged or submitted while sales of an open
+    shift hold any of its items. ERPNext drops a count row equal to the Bin
+    (remove_items_with_no_change), and the Bin still holds those sales, so a
+    real difference would vanish from the draft (found 2026-10-26 by the Lumen
+    Stock live suite); and submitting before the close would take the sales
+    off again when the shift closes."""
+    if held:
+        frappe.throw(
+            _(
+                "Close the open shifts first: {0} items of this count are in sales not posted yet ({1}). "
+                "Closing them afterwards would take those goods off again."
+            ).format(len(held), ", ".join(sorted({n for h in held for n in h["invoices"]})[:5]))
+        )
+
+
+def on_reconciliation_trash(doc, method=None):
+    """Deleting a merged draft count gives its shared count back (Open), so it
+    can be merged again; the link would otherwise stop the delete."""
+    for name in frappe.get_all(SESSION_DT, filters={"reconciliation": doc.name}, pluck="name"):
+        frappe.db.set_value(SESSION_DT, name, {"reconciliation": None, "status": "Open", "merged_on": None})
 
 
 def _unposted(reco):
@@ -618,7 +639,10 @@ def _unposted(reco):
         line["qty"] += flt(r.qty)
         if r.invoice not in line["invoices"]:
             line["invoices"].append(r.invoice)
-    return sorted(out.values(), key=lambda x: (x["item_code"], x["warehouse"]))
+    # A sale and its return in the same open shift hold nothing: the Bin will
+    # not move for them, so the count is right as it is.
+    held = [line for line in out.values() if abs(line["qty"]) > 1e-9]
+    return sorted(held, key=lambda x: (x["item_code"], x["warehouse"]))
 
 
 def _counted_since(reconciliation, reco):

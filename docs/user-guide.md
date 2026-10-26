@@ -1,6 +1,6 @@
 # LumenPOS: Complete User Guide
 
-*Applies to LumenPOS v0.68.0. This document is updated with every feature change.*
+*Applies to LumenPOS v0.68.1. This document is updated with every feature change.*
 
 > **Note on this document.** Sections 1 to 17 below were written up to v0.17 and are
 > being brought forward release by release; the **changelog in section 18 is
@@ -239,9 +239,11 @@ the phone, so their ERPNext permissions apply (a stock count needs ERPNext's Sto
   Only differences go into the draft. In the desk, **POS Count Session** shows every phone, every item, the
   total, what is on the shelf and the difference, with **Export to Excel**.
 - **What is on the shelf:** a sale at the till moves no stock until its shift is closed, so the quantity a count is
-  compared with is the stock less the sales of open shifts. A count is not submitted from the app while sales of
-  an open shift hold any of its items: close the shift first. In the desk, submitting such a count shows a red
-  warning naming the sales.
+  compared with is the stock less the sales of open shifts. Phones keep counting while a shift is open, but a count
+  is not saved, merged or submitted from the app while sales of an open shift hold any of its items: close the
+  shift first. (ERPNext leaves out of a stock count every item whose count equals the stock it holds, and that
+  stock still includes those sales, so a real difference would be lost.) In the desk, such a count shows a red
+  warning naming the sales. Deleting a merged draft gives its shared count back, open, to merge again.
 - **Moved after counting:** before a count made with the app is submitted, the desk lists the counted items that
   were sold, moved or received after they were counted, with the documents that moved them.
 - **Settings, General, Features, Lumen Stock app** switches the app off, or any part of it: counts, stock
@@ -1543,6 +1545,7 @@ which both LumenPOS roles are given.
 ### LumenPOS releases
 | Version | Highlights |
 |---|---|
+| 0.68.1 | **A stock count waits for the close of an open shift.** Found by the Lumen Stock app's own test against LumenPOS: ERPNext drops a count row equal to the stock it holds, and while a shift is open that stock still includes its sales, so a difference vanished from a merged count. Now a count holding items that sales of an open shift hold is not saved or merged from the app until the shift is closed (counting goes on). Deleting a merged draft gives its shared count back instead of being refused by the link. |
 | 0.68.0 | **Stock take with the Lumen Stock phone app** (the second half of the Zimbabwe shop's 2026-10-25 request). A LumenPOS site now serves the Lumen Stock app itself, with the same methods as the Lumen Connector: counts alone or with several phones at once (merged into one Stock Reconciliation, only the differences), stock entries, purchase receipts, approvals with or without a workflow, linking a new barcode, an Excel export. The quantity a count is compared with is what is on the shelf (sales of an open shift taken off), and a count is not submitted from the app while sales of an open shift hold its items. New documents POS Count Session and POS Count Device, a Lumen Stock app section in Settings, a Use the stock app permission. In all thirteen languages. |
 | 0.67.0 | **Barcode and price labels** (the Sage RMS comparison the Zimbabwe shop sent, 2026-10-25: label printing and stock take came first). A Labels screen prints labels on a roll or an A4 sheet: items from a scan, a search, a Purchase Receipt, Stock Entry or Purchase Invoice (with their quantities) or the prices changed since a date; the price tax included as ERPNext works it out, in other currencies too; the item's own EAN-13 or UPC-A barcode, else its code as Code 128 (drawn by LumenPOS itself, checked against an independent encoder). A switch in Settings and a Print labels permission. In all thirteen languages. |
 | 0.66.0 | **Payments in their own currency** (the Zimbabwe shop, Phillip, 2026-10-25: "the payments are only showing in the functional currency"). The Payments table of the sales summary shows what each method took in other currencies in their own money, with a total per currency and the same in the CSV. An amount typed in another currency at the till is now kept on the payment row (two new fields on Sales Invoice Payment), checked against the shift's rate; a sale in another currency shows its own money, older ones included. The merged invoice of the close keeps none (ERPNext adds up only the amounts there). Also fixed: the Customers report sorted its recent customers by the last sale's time written as text, so a sale at 9:57 came before one at 10:03 and a morning customer headed the list all day. In all thirteen languages. |

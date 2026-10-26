@@ -145,7 +145,12 @@ def _rows(profile, wanted):
             fields=["name", "item_name", "stock_uom", "disabled", "is_sales_item"],
         )
     }
-    order = [c for c in order if c in items]
+    # A disabled item is not on sale, so no label: and ERPNext refuses it in the
+    # invoice that works out the tax, which took the whole list down with it
+    # (a price changed today on an item switched off, suite 54 on 2026-10-26).
+    order = [c for c in order if c in items and not cint(items[c].disabled)]
+    if not order:
+        return []
     uom_map = {c: items[c].stock_uom for c in order}
     prices = effective_prices(profile, order, stock_uom_map=uom_map)
     factors = _tax_factors(profile, order, prices)
@@ -172,7 +177,6 @@ def _rows(profile, wanted):
                 ],
                 "qty": qty[code] or 1,
                 "unpriced": not price,
-                "disabled": cint(items[code].disabled),
             }
         )
     return out

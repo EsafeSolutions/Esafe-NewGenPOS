@@ -134,6 +134,15 @@ def _has_workflow(doctype):
     return bool(get_workflow_name(doctype))
 
 
+def _default_warehouse():
+    """Stock Settings' default warehouse, as the connector answers. ERPNext 16
+    dropped that field (reading it there raises), so there the person's own
+    default warehouse stands in."""
+    if frappe.get_meta("Stock Settings").has_field("default_warehouse"):
+        return frappe.db.get_single_value("Stock Settings", "default_warehouse") or ""
+    return frappe.defaults.get_user_default("Warehouse") or ""
+
+
 @frappe.whitelist()
 def ping():
     """A light probe: the app learns that LumenPOS serves it, and which version."""
@@ -170,7 +179,7 @@ def stock_app_config():
         "permissions": perms,
         "workflows": workflows,
         "company": frappe.defaults.get_user_default("Company") or "",
-        "default_warehouse": frappe.db.get_single_value("Stock Settings", "default_warehouse") or "",
+        "default_warehouse": _default_warehouse(),
         "user": frappe.session.user,
         "full_name": get_fullname(frappe.session.user),
     }

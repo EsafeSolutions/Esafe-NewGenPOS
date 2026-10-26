@@ -2071,7 +2071,7 @@ export default {
   "Download for handheld scanners": "Descargar para escáneres portátiles",
   "A count is checked against what is on the shelf: sales of an open shift leave the stock only when the shift is closed, so close the shifts before you save or merge a count.": "Un conteo se compara con lo que hay en estantería: las ventas de un turno abierto salen del inventario solo al cerrar el turno, así que cierre los turnos antes de guardar o fusionar un conteo.",
   "Serial number {serial} is already counted.": "El número de serie {serial} ya está contado.",
-  "{n} items differ from the shelf and went into the count, {m} matched.": "{n} artículos difieren de la estantería y entraron en el conteo, {m} coincidieron.",
+  "Differences put into the count: {n}. Matching the shelf: {m}.": "{n} artículos difieren de la estantería y entraron en el conteo, {m} coincidieron.",
   "Submit the stock count {name}? The stock is set to the counted quantities.": "¿Validar el conteo de inventario {name}? Las existencias quedan con las cantidades contadas.",
   "Stock count {name} is submitted.": "El conteo de inventario {name} está validado.",
   "Merge every device of {name} into one stock count draft? Send your own count first.": "¿Fusionar todos los dispositivos de {name} en un solo borrador de conteo de inventario? Envíe primero su propio conteo.",

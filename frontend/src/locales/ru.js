@@ -2071,7 +2071,7 @@ export default {
   "Download for handheld scanners": "Скачать для ТСД",
   "A count is checked against what is on the shelf: sales of an open shift leave the stock only when the shift is closed, so close the shifts before you save or merge a count.": "Пересчёт сверяется с тем, что лежит на полке: продажи открытой смены списываются с остатка только при закрытии смены, поэтому закройте смены, прежде чем сохранять или объединять пересчёт.",
   "Serial number {serial} is already counted.": "Серийный номер {serial} уже посчитан.",
-  "{n} items differ from the shelf and went into the count, {m} matched.": "Товаров с расхождением, вошедших в пересчёт: {n}. Совпало: {m}.",
+  "Differences put into the count: {n}. Matching the shelf: {m}.": "Товаров с расхождением, вошедших в пересчёт: {n}. Совпало: {m}.",
   "Submit the stock count {name}? The stock is set to the counted quantities.": "Утвердить инвентаризацию запасов {name}? Остаток будет установлен по посчитанным количествам.",
   "Stock count {name} is submitted.": "Инвентаризация запасов {name} утверждена.",
   "Merge every device of {name} into one stock count draft? Send your own count first.": "Объединить все устройства пересчёта {name} в один черновик инвентаризации запасов? Сначала отправьте свой пересчёт.",

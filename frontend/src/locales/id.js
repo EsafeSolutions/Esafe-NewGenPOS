@@ -2071,7 +2071,7 @@ export default {
   "Download for handheld scanners": "Unduh untuk pemindai genggam",
   "A count is checked against what is on the shelf: sales of an open shift leave the stock only when the shift is closed, so close the shifts before you save or merge a count.": "Hasil hitung dibandingkan dengan stok di rak: penjualan dari shift yang masih terbuka baru mengurangi stok saat shift ditutup, jadi tutup shift sebelum menyimpan atau menggabungkan hasil hitung.",
   "Serial number {serial} is already counted.": "Nomor seri {serial} sudah dihitung.",
-  "{n} items differ from the shelf and went into the count, {m} matched.": "{n} barang berbeda dari stok di rak dan masuk ke penghitungan, {m} sesuai.",
+  "Differences put into the count: {n}. Matching the shelf: {m}.": "{n} barang berbeda dari stok di rak dan masuk ke penghitungan, {m} sesuai.",
   "Submit the stock count {name}? The stock is set to the counted quantities.": "Kirim penghitungan stok {name}? Stok akan diatur ke kuantitas hasil hitung.",
   "Stock count {name} is submitted.": "Penghitungan stok {name} sudah dikirim.",
   "Merge every device of {name} into one stock count draft? Send your own count first.": "Gabungkan semua perangkat {name} menjadi satu draf penghitungan stok? Kirim dulu hasil hitung Anda sendiri.",

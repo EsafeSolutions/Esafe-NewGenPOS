@@ -2071,7 +2071,7 @@ export default {
   "Download for handheld scanners": "Tải về cho máy quét cầm tay",
   "A count is checked against what is on the shelf: sales of an open shift leave the stock only when the shift is closed, so close the shifts before you save or merge a count.": "Kết quả kiểm đếm được so với số trên kệ: đơn bán của ca đang mở chỉ trừ tồn kho khi đóng ca, vì vậy hãy đóng các ca trước khi lưu hoặc hợp nhất kết quả kiểm đếm.",
   "Serial number {serial} is already counted.": "Số sê-ri {serial} đã được đếm.",
-  "{n} items differ from the shelf and went into the count, {m} matched.": "{n} mặt hàng khác với số trên kệ và đã được đưa vào phiếu kiểm kho, {m} mặt hàng khớp.",
+  "Differences put into the count: {n}. Matching the shelf: {m}.": "{n} mặt hàng khác với số trên kệ và đã được đưa vào phiếu kiểm kho, {m} mặt hàng khớp.",
   "Submit the stock count {name}? The stock is set to the counted quantities.": "Gửi phiếu kiểm kho {name}? Tồn kho sẽ được đặt bằng số lượng đã đếm.",
   "Stock count {name} is submitted.": "Đã gửi phiếu kiểm kho {name}.",
   "Merge every device of {name} into one stock count draft? Send your own count first.": "Hợp nhất mọi thiết bị của {name} thành một phiếu kiểm kho nháp? Hãy gửi kết quả đếm của bạn trước.",

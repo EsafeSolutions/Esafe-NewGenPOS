@@ -2071,7 +2071,7 @@ export default {
   "Download for handheld scanners": "ดาวน์โหลดสำหรับเครื่องสแกนแบบพกพา",
   "A count is checked against what is on the shelf: sales of an open shift leave the stock only when the shift is closed, so close the shifts before you save or merge a count.": "ผลการนับจะเทียบกับจำนวนบนชั้นวาง: การขายของกะที่เปิดอยู่จะตัดสต็อกเมื่อปิดกะเท่านั้น ดังนั้นโปรดปิดกะก่อนบันทึกหรือรวมผลการนับ",
   "Serial number {serial} is already counted.": "หมายเลขซีเรียล {serial} นับแล้ว",
-  "{n} items differ from the shelf and went into the count, {m} matched.": "สินค้า {n} รายการไม่ตรงกับชั้นวางและถูกรวมในการนับ ตรงกัน {m} รายการ",
+  "Differences put into the count: {n}. Matching the shelf: {m}.": "สินค้า {n} รายการไม่ตรงกับชั้นวางและถูกรวมในการนับ ตรงกัน {m} รายการ",
   "Submit the stock count {name}? The stock is set to the counted quantities.": "ส่งการนับสต็อก {name} หรือไม่? สต็อกจะถูกตั้งเป็นจำนวนที่นับได้",
   "Stock count {name} is submitted.": "ส่งการนับสต็อก {name} แล้ว",
   "Merge every device of {name} into one stock count draft? Send your own count first.": "รวมทุกอุปกรณ์ของ {name} เป็นฉบับร่างการนับสต็อกฉบับเดียวหรือไม่? โปรดส่งผลการนับของคุณก่อน",

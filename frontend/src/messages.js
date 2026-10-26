@@ -2404,7 +2404,7 @@ const stockCount = {
   "Download for handheld scanners": "تنزيل لأجهزة المسح المحمولة",
   "A count is checked against what is on the shelf: sales of an open shift leave the stock only when the shift is closed, so close the shifts before you save or merge a count.": "يقارن الجرد بما على الرف: مبيعات الوردية المفتوحة لا تخصم من المخزون إلا عند إغلاق الوردية، لذا أغلق الورديات قبل حفظ الجرد أو دمجه.",
   "Serial number {serial} is already counted.": "الرقم التسلسلي {serial} تم جرده من قبل.",
-  "{n} items differ from the shelf and went into the count, {m} matched.": "أصناف تختلف عن الرف ودخلت الجرد: {n}، وأصناف مطابقة: {m}.",
+  "Differences put into the count: {n}. Matching the shelf: {m}.": "أصناف تختلف عن الرف ودخلت الجرد: {n}، وأصناف مطابقة: {m}.",
   "Submit the stock count {name}? The stock is set to the counted quantities.": "اعتماد جرد المخزون {name}؟ سيصبح المخزون مساويا للكميات المجرودة.",
   "Stock count {name} is submitted.": "تم اعتماد جرد المخزون {name}.",
   "Merge every device of {name} into one stock count draft? Send your own count first.": "دمج كل أجهزة {name} في مسودة جرد مخزون واحدة؟ أرسل جردك أولا.",

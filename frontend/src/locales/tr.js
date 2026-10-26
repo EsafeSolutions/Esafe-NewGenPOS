@@ -2071,7 +2071,7 @@ export default {
   "Download for handheld scanners": "El terminalleri için indir",
   "A count is checked against what is on the shelf: sales of an open shift leave the stock only when the shift is closed, so close the shifts before you save or merge a count.": "Sayım raftakiyle karşılaştırılır: açık bir vardiyanın satışları stoktan ancak vardiya kapatıldığında düşer, bu yüzden bir sayımı kaydetmeden veya birleştirmeden önce vardiyaları kapatın.",
   "Serial number {serial} is already counted.": "{serial} seri numarası zaten sayıldı.",
-  "{n} items differ from the shelf and went into the count, {m} matched.": "{n} ürün raftakinden farklı çıktı ve sayıma eklendi, {m} ürün eşleşti.",
+  "Differences put into the count: {n}. Matching the shelf: {m}.": "{n} ürün raftakinden farklı çıktı ve sayıma eklendi, {m} ürün eşleşti.",
   "Submit the stock count {name}? The stock is set to the counted quantities.": "{name} Stok Sayımı gönderilsin mi? Stok, sayılan miktarlara ayarlanır.",
   "Stock count {name} is submitted.": "{name} Stok Sayımı gönderildi.",
   "Merge every device of {name} into one stock count draft? Send your own count first.": "{name} sayımındaki tüm cihazlar tek bir Stok Sayımı taslağında birleştirilsin mi? Önce kendi sayımınızı gönderin.",

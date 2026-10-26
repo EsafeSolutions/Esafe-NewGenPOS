@@ -40,7 +40,7 @@
         <div v-if="joined" class="joined">
           <div>
             <b><bdi>{{ joined.title || joined.name }}</bdi></b>
-            <span class="muted small"> <bdi dir="ltr">{{ joined.name }}</bdi><span v-if="joined.full_count"> · {{ t('Full count') }}</span></span>
+            <span class="muted small after"><bdi dir="ltr">{{ joined.name }}</bdi><span v-if="joined.full_count"> · {{ t('Full count') }}</span></span>
           </div>
           <div class="muted small">
             {{ t('{n} devices', { n: status.devices ? status.devices.length : 0 }) }} · {{ t('{n} items', { n: status.items || 0 }) }}
@@ -323,7 +323,7 @@ async function saveAlone() {
       name: recoName.value || null, zero_uncounted: zeroUncounted.value ? 1 : 0,
     })
     recoName.value = res.name
-    info.value = t('{n} items differ from the shelf and went into the count, {m} matched.', { n: res.rows, m: res.unchanged })
+    info.value = t('Differences put into the count: {n}. Matching the shelf: {m}.', { n: res.rows, m: res.unchanged })
     persist()
     await loadActions()
   })
@@ -412,7 +412,7 @@ async function merge() {
     joined.value = null
     lines.value = []
     mode.value = 'alone'
-    info.value = t('{n} items differ from the shelf and went into the count, {m} matched.', { n: res.rows, m: res.unchanged })
+    info.value = t('Differences put into the count: {n}. Matching the shelf: {m}.', { n: res.rows, m: res.unchanged })
     persist()
     await loadActions()
   })
@@ -484,6 +484,7 @@ onBeforeUnmount(() => clearInterval(timer))
 .mode:disabled { opacity: 0.5; cursor: default }
 .shared-pick, .joined { padding: 0 14px 12px; display: flex; flex-direction: column; gap: 8px }
 .joined { flex-direction: row; justify-content: space-between; flex-wrap: wrap; align-items: baseline }
+.after { margin-inline-start: 8px }
 .start { display: flex; flex-wrap: wrap; gap: 8px; align-items: center }
 .src-title { font-size: 12.5px; font-weight: 700; color: var(--text-muted) }
 .add-row { padding: 0 14px }
@@ -522,8 +523,11 @@ onBeforeUnmount(() => clearInterval(timer))
 }
 @media (max-width: 520px) {
   .count { padding: 8px; gap: 10px }
+  .head { flex-direction: column; align-items: stretch }
+  .modes .mode { flex: 1 }
   .rt th, .rt td { padding: 7px 5px }
-  .rt td:first-child { overflow-wrap: anywhere }
+  .rt th.num { white-space: normal }
+  .rt td:first-child { min-width: 110px; overflow-wrap: anywhere }
   .qty { width: 56px; padding: 5px 4px }
 }
 </style>

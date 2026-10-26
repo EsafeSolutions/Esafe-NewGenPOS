@@ -2071,7 +2071,7 @@ export default {
   "Download for handheld scanners": "دانلود برای اسکنرهای دستی",
   "A count is checked against what is on the shelf: sales of an open shift leave the stock only when the shift is closed, so close the shifts before you save or merge a count.": "شمارش با موجودی روی قفسه مقایسه می‌شود: فروش‌های یک شیفت باز فقط هنگام بستن شیفت از موجودی کم می‌شوند، پس پیش از ذخیره یا ادغام شمارش، شیفت‌ها را ببندید.",
   "Serial number {serial} is already counted.": "شماره سریال {serial} از قبل شمارش شده است.",
-  "{n} items differ from the shelf and went into the count, {m} matched.": "{n} کالا با قفسه تفاوت داشتند و در شمارش آمدند، {m} کالا برابر بودند.",
+  "Differences put into the count: {n}. Matching the shelf: {m}.": "{n} کالا با قفسه تفاوت داشتند و در شمارش آمدند، {m} کالا برابر بودند.",
   "Submit the stock count {name}? The stock is set to the counted quantities.": "شمارش موجودی {name} ارسال شود؟ موجودی برابر مقدارهای شمارش‌شده قرار می‌گیرد.",
   "Stock count {name} is submitted.": "شمارش موجودی {name} ارسال شد.",
   "Merge every device of {name} into one stock count draft? Send your own count first.": "همه دستگاه‌های {name} در یک پیش‌نویس شمارش موجودی ادغام شوند؟ ابتدا شمارش خودتان را بفرستید.",

@@ -2071,7 +2071,7 @@ export default {
   "Download for handheld scanners": "下载手持扫描枪版",
   "A count is checked against what is on the shelf: sales of an open shift leave the stock only when the shift is closed, so close the shifts before you save or merge a count.": "盘点结果会与在架数量比对：未结班次的销售要到班次关闭时才会扣减库存，因此请在保存或合并盘点前关闭班次。",
   "Serial number {serial} is already counted.": "序列号 {serial} 已盘点。",
-  "{n} items differ from the shelf and went into the count, {m} matched.": "{n} 个商品与在架数量不同，已列入盘点，{m} 个一致。",
+  "Differences put into the count: {n}. Matching the shelf: {m}.": "{n} 个商品与在架数量不同，已列入盘点，{m} 个一致。",
   "Submit the stock count {name}? The stock is set to the counted quantities.": "提交库存盘点单 {name}？库存将设为盘点数量。",
   "Stock count {name} is submitted.": "库存盘点单 {name} 已提交。",
   "Merge every device of {name} into one stock count draft? Send your own count first.": "将 {name} 的所有设备合并为一张库存盘点单草稿？请先上传您自己的盘点。",

@@ -2071,7 +2071,7 @@ export default {
   "Download for handheld scanners": "Télécharger pour terminaux portables",
   "A count is checked against what is on the shelf: sales of an open shift leave the stock only when the shift is closed, so close the shifts before you save or merge a count.": "Un comptage est comparé à ce qui est en rayon : les ventes d'une session de caisse ouverte ne sortent du stock qu'à la fermeture de la session, fermez donc les sessions avant d'enregistrer ou de fusionner un comptage.",
   "Serial number {serial} is already counted.": "Le numéro de série {serial} est déjà compté.",
-  "{n} items differ from the shelf and went into the count, {m} matched.": "{n} articles diffèrent du rayon et ont été ajoutés au comptage, {m} étaient conformes.",
+  "Differences put into the count: {n}. Matching the shelf: {m}.": "{n} articles diffèrent du rayon et ont été ajoutés au comptage, {m} étaient conformes.",
   "Submit the stock count {name}? The stock is set to the counted quantities.": "Valider le comptage de stock {name} ? Le stock prend les quantités comptées.",
   "Stock count {name} is submitted.": "Le comptage de stock {name} est validé.",
   "Merge every device of {name} into one stock count draft? Send your own count first.": "Fusionner tous les appareils de {name} en un seul brouillon de comptage de stock ? Envoyez d'abord votre propre comptage.",

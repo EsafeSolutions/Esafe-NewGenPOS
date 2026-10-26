@@ -2071,7 +2071,7 @@ export default {
   "Download for handheld scanners": "Für Handscanner herunterladen",
   "A count is checked against what is on the shelf: sales of an open shift leave the stock only when the shift is closed, so close the shifts before you save or merge a count.": "Eine Zählung wird mit dem Bestand im Regal verglichen: Verkäufe einer offenen Schicht verlassen den Bestand erst beim Schließen der Schicht. Schließen Sie daher die Schichten, bevor Sie eine Zählung speichern oder zusammenführen.",
   "Serial number {serial} is already counted.": "Seriennummer {serial} ist bereits gezählt.",
-  "{n} items differ from the shelf and went into the count, {m} matched.": "{n} Artikel weichen vom Regal ab und sind in der Zählung, {m} stimmten überein.",
+  "Differences put into the count: {n}. Matching the shelf: {m}.": "{n} Artikel weichen vom Regal ab und sind in der Zählung, {m} stimmten überein.",
   "Submit the stock count {name}? The stock is set to the counted quantities.": "Bestandsabgleich {name} buchen? Der Bestand wird auf die gezählten Mengen gesetzt.",
   "Stock count {name} is submitted.": "Bestandsabgleich {name} ist gebucht.",
   "Merge every device of {name} into one stock count draft? Send your own count first.": "Alle Geräte von {name} zu einem Entwurf eines Bestandsabgleichs zusammenführen? Senden Sie zuerst Ihre eigene Zählung.",

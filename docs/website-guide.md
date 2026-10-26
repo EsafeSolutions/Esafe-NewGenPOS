@@ -23,13 +23,15 @@ A fast, single-screen point of sale for ERPNext / Frappe (v13 through v16). This
 13. [Receipts and printing](#receipts-and-printing)
 14. [Working offline](#working-offline)
 15. [Serial numbers](#serial-numbers)
-16. [Multi-company and invoice modes](#multi-company-and-invoice-modes)
-17. [Permissions and the audit log](#permissions-and-the-audit-log)
-18. [Keeping a big shop fast](#keeping-a-big-shop-fast)
-19. [Insights](#insights)
-20. [Language](#language)
-21. [Troubleshooting and FAQ](#troubleshooting-and-faq)
-22. [Support](#support)
+16. [Barcode and price labels](#barcode-and-price-labels)
+17. [Stock take with the Lumen Stock app](#stock-take-with-the-lumen-stock-app)
+18. [Multi-company and invoice modes](#multi-company-and-invoice-modes)
+19. [Permissions and the audit log](#permissions-and-the-audit-log)
+20. [Keeping a big shop fast](#keeping-a-big-shop-fast)
+21. [Insights](#insights)
+22. [Language](#language)
+23. [Troubleshooting and FAQ](#troubleshooting-and-faq)
+24. [Support](#support)
 
 ---
 
@@ -37,7 +39,7 @@ A fast, single-screen point of sale for ERPNext / Frappe (v13 through v16). This
 
 LumenPOS is a retail till that runs on top of ERPNext. It gives your cashiers a quick, modern selling screen, search or scan, tap to add, take payment, print, while every sale posts as a normal ERPNext invoice with the right stock and accounting behind it. Nothing is kept in a side system: your inventory, customers, and books stay in ERPNext.
 
-It's designed for real counters, so it also handles the things a shop needs day to day: its own promotions, cashback, gift cards, store credit, loyalty points, returns, cash-drawer reconciliation, and selling while the internet is down.
+It's designed for real counters, so it also handles the things a shop needs day to day: its own promotions, cashback, gift cards, store credit, loyalty points, returns, cash-drawer reconciliation, barcode and price labels, stock take with the Lumen Stock phone app, and selling while the internet is down.
 
 ---
 
@@ -308,6 +310,32 @@ For serialised products, LumenPOS enforces scanning so the right unit is sold:
 
 ---
 
+## Barcode and price labels
+
+The **Labels** screen prints shelf and product labels on a label printer roll or on an A4 sheet of labels.
+
+- **Pick the items** by scanning or searching, take every item a **Purchase Receipt**, **Stock Entry** or stock-updating **Purchase Invoice** brought in (one label per unit received), or every item whose price changed since a date.
+- **The price** on the label is what a walk-in customer pays at this outlet, price books included and **tax included**, worked out the way ERPNext works it out (item tax templates too). Where you sell in other currencies, the label can show those prices as well.
+- **The barcode** is the item's own EAN-13 or UPC-A. An item without one prints its item code as a Code 128 barcode, which the till scans too.
+- **Sizes:** rolls of 50 x 25, 40 x 30, 58 x 40 and 38 x 25 mm, A4 sheets of 3 x 8 or 4 x 10, or a custom size. Choose what prints: shop name, item name, price, other currencies, barcode, item code.
+- A switch in **Settings** turns the screen off, and the **Print labels** permission limits who may print.
+
+---
+
+## Stock take with the Lumen Stock app
+
+LumenPOS works with **Lumen Stock**, a phone app for warehouse and shop-floor stock work. Staff count stock, receive and transfer goods, and record purchase receipts from an Android phone or a handheld scanner, and every document lands in ERPNext as a normal Stock Reconciliation, Stock Entry or Purchase Receipt, saved as the person who made it, so their ERPNext permissions apply.
+
+- **Count with several phones at once.** Open a shared count for a warehouse, each phone sends what it counts, and a supervisor merges everything into one stock count. The same item counted on two phones is added up, serial numbers are combined, and only the differences go into the count. A full count sets anything nobody counted to zero.
+- **Counts that match the shelf.** A sale at the till moves stock only when its shift is closed. LumenPOS compares a count with what is really on the shelf, and a count is not submitted from the app while sales of an open shift still hold its items, so closing the shift afterwards never takes the same goods off twice.
+- **Moved after counting.** Before a count is submitted, the items that were sold, moved or received after they were counted are listed with the documents that moved them.
+- **In the desk** each shared count shows every phone, every item, the total, what is on the shelf and the difference, with an Excel export.
+- **Settings** switch the app off or any part of it (counts, stock entries, purchase receipts, approving from the app, shared counts, blind counting, linking a new barcode to an item, the Excel export), and the **Use the stock app** permission limits who may use it.
+
+Lumen Stock also works on ERPNext sites without LumenPOS.
+
+---
+
 ## Multi-company and invoice modes
 
 **Multi-company.** If your site runs several companies, LumenPOS scopes accounts per company, so a sale never posts to another company's ledger. Set per-company accounts under **Settings → Company Accounts**.
@@ -357,7 +385,7 @@ The same page shows the offline catalogue and customer cache sizes, the connecti
 
 ## Language
 
-LumenPOS is bilingual: **English and Arabic**, with full right-to-left layout. Switch language from the top bar. New installs follow your ERPNext desk theme (light/dark) until you override it.
+LumenPOS speaks **thirteen languages**: English, Arabic, Spanish, German, Chinese (Simplified), French, Thai, Indonesian, Vietnamese, Portuguese (Brazil), Persian, Russian and Turkish, with full right-to-left layout for Arabic and Persian. Switch language from the top bar, and the server's own messages answer in the same language. Settings chooses which languages the till offers. New installs follow your ERPNext desk theme (light/dark) until you override it.
 
 ---
 

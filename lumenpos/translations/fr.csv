@@ -1141,3 +1141,4 @@
 "Warn when counted items moved","Avertir si des articles comptés ont bougé"
 "Before a count is submitted, list the counted items that were sold, moved or received after they were counted.","Avant de valider un comptage, liste les articles comptés qui ont été vendus, déplacés ou reçus après leur comptage."
 "Use the stock app","Utiliser l'application de stock"
+"Stock Reconciliation {0} was deleted. The shared count is open again.","La Réconciliation du Stock {0} a été supprimée. Le comptage partagé est de nouveau ouvert."

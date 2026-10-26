@@ -1141,3 +1141,4 @@
 "Warn when counted items moved","Предупреждать о движении пересчитанных товаров"
 "Before a count is submitted, list the counted items that were sold, moved or received after they were counted.","Перед утверждением пересчёта показать пересчитанные товары, которые после пересчёта были проданы, перемещены или поступили."
 "Use the stock app","Использование складского приложения"
+"Stock Reconciliation {0} was deleted. The shared count is open again.","Документ «Инвентаризация запасов» {0} удалён. Совместный пересчёт снова открыт."

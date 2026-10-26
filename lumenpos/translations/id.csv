@@ -1141,3 +1141,4 @@
 "Warn when counted items moved","Peringatkan bila barang terhitung bergerak"
 "Before a count is submitted, list the counted items that were sold, moved or received after they were counted.","Sebelum hasil hitung dikirim, tampilkan barang terhitung yang terjual, dipindahkan, atau diterima setelah dihitung."
 "Use the stock app","Gunakan aplikasi stok"
+"Stock Reconciliation {0} was deleted. The shared count is open again.","Rekonsiliasi Persediaan {0} telah dihapus. Penghitungan bersama dibuka kembali."

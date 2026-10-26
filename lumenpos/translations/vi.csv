@@ -1140,3 +1140,4 @@
 "Warn when counted items moved","Cảnh báo khi hàng đã đếm có biến động"
 "Before a count is submitted, list the counted items that were sold, moved or received after they were counted.","Trước khi gửi kết quả kiểm đếm, liệt kê các mặt hàng đã đếm nhưng sau đó được bán, chuyển hoặc nhận thêm."
 "Use the stock app","Dùng ứng dụng kho"
+"Stock Reconciliation {0} was deleted. The shared count is open again.","Đã xóa Đối soát tồn kho {0}. Kiểm đếm chung đã mở lại."

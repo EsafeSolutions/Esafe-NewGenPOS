@@ -1140,3 +1140,4 @@
 "Warn when counted items moved","هشدار برای کالاهای شمارش‌شده‌ای که جابه‌جا شده‌اند"
 "Before a count is submitted, list the counted items that were sold, moved or received after they were counted.","پیش از ارسال شمارش، کالاهای شمارش‌شده‌ای که پس از شمارش فروخته، جابه‌جا یا دریافت شده‌اند فهرست می‌شوند."
 "Use the stock app","استفاده از اپلیکیشن انبار"
+"Stock Reconciliation {0} was deleted. The shared count is open again.","تطبیق موجودی {0} حذف شد. شمارش مشترک دوباره باز است."

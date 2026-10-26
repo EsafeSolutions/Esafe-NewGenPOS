@@ -1141,3 +1141,4 @@
 "Warn when counted items moved","已盘商品发生变动时提醒"
 "Before a count is submitted, list the counted items that were sold, moved or received after they were counted.","提交盘点前，列出盘点后又被售出、移动或收货的已盘商品。"
 "Use the stock app","使用库存应用"
+"Stock Reconciliation {0} was deleted. The shared count is open again.","库存调账 {0} 已删除。共享盘点已重新开放。"

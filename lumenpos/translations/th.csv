@@ -1141,3 +1141,4 @@
 "Warn when counted items moved","เตือนเมื่อสินค้าที่นับแล้วมีการเคลื่อนไหว"
 "Before a count is submitted, list the counted items that were sold, moved or received after they were counted.","ก่อนส่งผลการนับ แสดงรายการสินค้าที่นับแล้วซึ่งถูกขาย ย้าย หรือรับเข้าหลังจากนับ"
 "Use the stock app","ใช้แอปสต็อก"
+"Stock Reconciliation {0} was deleted. The shared count is open again.","ลบการกระทบยอดสต็อก {0} แล้ว การนับร่วมกันเปิดอีกครั้ง"

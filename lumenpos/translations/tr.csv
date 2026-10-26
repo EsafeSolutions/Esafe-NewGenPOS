@@ -1139,3 +1139,4 @@
 "Warn when counted items moved","Sayılan ürünlerde hareket olursa uyar"
 "Before a count is submitted, list the counted items that were sold, moved or received after they were counted.","Sayım gönderilmeden önce, sayıldıktan sonra satılan, taşınan veya teslim alınan ürünleri listele."
 "Use the stock app","Stok uygulamasını kullan"
+"Stock Reconciliation {0} was deleted. The shared count is open again.","Stok Sayımı {0} silindi. Ortak sayım yeniden açık."

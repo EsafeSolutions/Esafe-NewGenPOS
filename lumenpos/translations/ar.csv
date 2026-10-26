@@ -1141,3 +1141,4 @@
 "Warn when counted items moved","التنبيه عند حركة أصناف بعد جردها"
 "Before a count is submitted, list the counted items that were sold, moved or received after they were counted.","قبل اعتماد الجرد، تعرض الأصناف التي بيعت أو نقلت أو استلمت بعد جردها."
 "Use the stock app","استخدام تطبيق المخزون"
+"Stock Reconciliation {0} was deleted. The shared count is open again.","تم حذف جرد المخزون {0}. الجرد المشترك مفتوح مرة أخرى."

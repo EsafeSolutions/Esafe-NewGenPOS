@@ -393,6 +393,21 @@ def count_session_push(session: str, device_id: str, data: str | dict, device_la
 
 
 @frappe.whitelist()
+def count_session_device(session: str, device_id: str):
+    """One phone's own lines in a shared count, as it last sent them. A phone
+    that joins a reopened count reads them first, so its next push does not
+    replace them with nothing (Lumen Connector 0.10.0, same answer)."""
+    _shared_guard()
+    _count_session(session, must_be_open=False)
+    row = frappe.db.get_value(
+        DEVICE_DT, {"session": session, "device_id": device_id}, ["data", "device_label", "last_sync"], as_dict=True
+    )
+    if not row:
+        return {"data": {}, "device_label": "", "last_sync": ""}
+    return {"data": _device_lines(row.data), "device_label": row.device_label or "", "last_sync": str(row.last_sync or "")}
+
+
+@frappe.whitelist()
 def count_session_status(session: str):
     """Progress of a shared count: every phone, and the merged totals."""
     _shared_guard()
@@ -601,6 +616,9 @@ def on_reconciliation_trash(doc, method=None):
     can be merged again; the link would otherwise stop the delete."""
     for name in frappe.get_all(SESSION_DT, filters={"reconciliation": doc.name}, pluck="name"):
         frappe.db.set_value(SESSION_DT, name, {"reconciliation": None, "status": "Open", "merged_on": None})
+        frappe.get_doc(SESSION_DT, name).add_comment(
+            "Comment", _("Stock Reconciliation {0} was deleted. The shared count is open again.").format(doc.name)
+        )
 
 
 def _unposted(reco):

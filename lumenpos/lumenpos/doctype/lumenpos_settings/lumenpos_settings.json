@@ -95,6 +95,18 @@
   "enable_till_lock",
   "auto_lock_minutes",
   "enable_quick_keys",
+  "stock_app_section",
+  "enable_stock_app",
+  "stock_allow_count",
+  "stock_allow_stock_entry",
+  "stock_allow_purchase_receipt",
+  "stock_allow_submit",
+  "stock_app_col",
+  "stock_allow_shared_count",
+  "stock_blind_count",
+  "stock_allow_link_barcode",
+  "stock_allow_export",
+  "stock_warn_moved",
   "quick_keys_section",
   "quick_keys",
   "receipt_section",
@@ -632,6 +644,82 @@
    "label": "Quick keys / favourites"
   },
   {
+   "fieldname": "stock_app_section",
+   "fieldtype": "Section Break",
+   "label": "Lumen Stock app",
+   "collapsible": 1,
+   "description": "The Lumen Stock phone app counts stock (alone or with several phones at once) and makes stock entries and purchase receipts, saved as the person on the phone, so ERPNext permissions apply. Who may use it: Approvals and access, Permissions, Use the stock app."
+  },
+  {
+   "default": "1",
+   "fieldname": "enable_stock_app",
+   "fieldtype": "Check",
+   "label": "Lumen Stock app",
+   "description": "Off: the app is refused on this site."
+  },
+  {
+   "default": "1",
+   "fieldname": "stock_allow_count",
+   "fieldtype": "Check",
+   "label": "Stock counts"
+  },
+  {
+   "default": "1",
+   "fieldname": "stock_allow_stock_entry",
+   "fieldtype": "Check",
+   "label": "Stock entries"
+  },
+  {
+   "default": "1",
+   "fieldname": "stock_allow_purchase_receipt",
+   "fieldtype": "Check",
+   "label": "Purchase receipts"
+  },
+  {
+   "default": "1",
+   "fieldname": "stock_allow_submit",
+   "fieldtype": "Check",
+   "label": "Approve from the app",
+   "description": "Off: what the app saves stays a draft for the desk to submit."
+  },
+  {
+   "fieldname": "stock_app_col",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "1",
+   "fieldname": "stock_allow_shared_count",
+   "fieldtype": "Check",
+   "label": "Several phones count together",
+   "description": "A shared count: each phone sends its lines, a supervisor merges them into one Stock Reconciliation."
+  },
+  {
+   "default": "0",
+   "fieldname": "stock_blind_count",
+   "fieldtype": "Check",
+   "label": "Count blind",
+   "description": "The quantity in the system is not shown while counting."
+  },
+  {
+   "default": "1",
+   "fieldname": "stock_allow_link_barcode",
+   "fieldtype": "Check",
+   "label": "Link a new barcode to an item"
+  },
+  {
+   "default": "1",
+   "fieldname": "stock_allow_export",
+   "fieldtype": "Check",
+   "label": "Export a count to Excel"
+  },
+  {
+   "default": "1",
+   "fieldname": "stock_warn_moved",
+   "fieldtype": "Check",
+   "label": "Warn when counted items moved",
+   "description": "Before a count is submitted, list the counted items that were sold, moved or received after they were counted."
+  },
+  {
    "depends_on": "enable_quick_keys",
    "fieldname": "quick_keys_section",
    "fieldtype": "Section Break",
@@ -1021,7 +1109,7 @@
  "index_web_pages_for_search": 0,
  "issingle": 1,
  "links": [],
- "modified": "2026-10-26 12:00:00.000000",
+ "modified": "2026-10-26 18:00:00.000000",
  "modified_by": "Administrator",
  "module": "LumenPOS",
  "name": "LumenPOS Settings",

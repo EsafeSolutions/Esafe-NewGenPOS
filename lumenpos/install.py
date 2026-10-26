@@ -135,6 +135,7 @@ def ensure_setup():
     default_cash_out_switches_on()
     default_report_switches_on()
     default_label_switches_on()
+    default_stock_app_switches_on()
     recost_open_holds()
     ensure_currencies()
     ensure_hot_indexes()
@@ -320,6 +321,14 @@ def default_report_switches_on():
 def default_label_switches_on():
     """The labels screen ships ON."""
     _switches_on_once(LABEL_SWITCHES)
+
+
+def default_stock_app_switches_on():
+    """The Lumen Stock app and its parts ship ON (counting blind stays off, as
+    in the Lumen Connector)."""
+    from lumenpos.api.stock_app import STOCK_FLAG_FIELDS, SWITCH
+
+    _switches_on_once((SWITCH,) + tuple(field for field, default in STOCK_FLAG_FIELDS.values() if default))
 
 
 def backfill_store_credit_references():

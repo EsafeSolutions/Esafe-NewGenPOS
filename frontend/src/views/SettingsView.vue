@@ -1690,6 +1690,30 @@
         </template>
       </div>
 
+      <!-- The Lumen Stock phone app (0.68.0, lumenpos.api.stock_app) -->
+      <div class="sec-card" v-show="generalSection === 'features'" data-tour="settings-stock-app">
+        <div class="sec-title"><Icon name="barcode" /> {{ t('Lumen Stock app') }}</div>
+        <p class="sec-note">{{ t('The Lumen Stock phone app counts stock, alone or with several phones at once, and makes stock entries and purchase receipts. It saves them as the person on the phone, so their ERPNext permissions apply. Who may use it is set under Permissions, Use the stock app.') }}</p>
+        <div class="setting-list">
+          <label class="setting-row">
+            <input type="checkbox" class="setting-toggle" v-model="generalForm.enable_stock_app" :true-value="1" :false-value="0" />
+            <span class="setting-text">
+              <span class="setting-title">{{ t('Lumen Stock app') }}</span>
+              <span class="setting-desc">{{ t('Off: the app is refused on this site.') }}</span>
+            </span>
+          </label>
+          <template v-if="generalForm.enable_stock_app">
+            <label v-for="row in stockAppRows" :key="row.field" class="setting-row">
+              <input type="checkbox" class="setting-toggle" v-model="generalForm[row.field]" :true-value="1" :false-value="0" />
+              <span class="setting-text">
+                <span class="setting-title">{{ row.title }}</span>
+                <span class="setting-desc">{{ row.desc }}</span>
+              </span>
+            </label>
+          </template>
+        </div>
+      </div>
+
       <!-- Languages -->
       <div class="sec-card" v-show="generalSection === 'languages'">
         <div class="sec-title"><Icon name="globe" /> {{ t('Languages') }}</div>
@@ -2612,7 +2636,21 @@ const capabilityOptions = [
   'See cashier performance',
   'See profit',
   'Print labels',
+  'Use the stock app',
 ]
+
+// The parts of the Lumen Stock app a shop can switch off (0.68.0).
+const stockAppRows = computed(() => [
+  { field: 'stock_allow_count', title: t('Stock counts'), desc: t('Count a warehouse and save the count as a Stock Reconciliation draft.') },
+  { field: 'stock_allow_stock_entry', title: t('Stock entries'), desc: t('Receive, issue and transfer goods with a Stock Entry.') },
+  { field: 'stock_allow_purchase_receipt', title: t('Purchase receipts'), desc: t('Receive a supplier delivery with a Purchase Receipt.') },
+  { field: 'stock_allow_submit', title: t('Approve from the app'), desc: t('Off: what the app saves stays a draft for the desk to submit.') },
+  { field: 'stock_allow_shared_count', title: t('Several phones count together'), desc: t('A shared count: each phone sends its lines, and a supervisor merges them into one Stock Reconciliation.') },
+  { field: 'stock_blind_count', title: t('Count blind'), desc: t('The quantity in the system is not shown while counting.') },
+  { field: 'stock_allow_link_barcode', title: t('Link a new barcode to an item'), desc: t('A barcode found on a box is added to the item, so every phone and till knows it.') },
+  { field: 'stock_allow_export', title: t('Export a count to Excel'), desc: t('Every item of a shared count with each phone\'s quantity, the total and the difference.') },
+  { field: 'stock_warn_moved', title: t('Warn when counted items moved'), desc: t('Before a count is submitted, list the counted items that were sold, moved or received after they were counted.') },
+])
 
 function addCapabilityRule() {
   generalForm.value.capability_rules.push({ capability: 'Make returns', role: '', user: '' })
@@ -2679,6 +2717,16 @@ const generalForm = ref({
   service_charge_account: '',
   enable_price_checker: 1,
   enable_labels: 1,
+  enable_stock_app: 1,
+  stock_allow_count: 1,
+  stock_allow_stock_entry: 1,
+  stock_allow_purchase_receipt: 1,
+  stock_allow_submit: 1,
+  stock_allow_shared_count: 1,
+  stock_blind_count: 0,
+  stock_allow_link_barcode: 1,
+  stock_allow_export: 1,
+  stock_warn_moved: 1,
   salesperson_mode: 'Optional',
   enable_insights: 1,
   reports_in_insights: 1,
@@ -3373,6 +3421,16 @@ async function load() {
     service_charge_account: info.service_charge_account || '',
     enable_price_checker: info.enable_price_checker ?? 1,
     enable_labels: info.enable_labels ?? 1,
+    enable_stock_app: info.enable_stock_app ?? 1,
+    stock_allow_count: info.stock_allow_count ?? 1,
+    stock_allow_stock_entry: info.stock_allow_stock_entry ?? 1,
+    stock_allow_purchase_receipt: info.stock_allow_purchase_receipt ?? 1,
+    stock_allow_submit: info.stock_allow_submit ?? 1,
+    stock_allow_shared_count: info.stock_allow_shared_count ?? 1,
+    stock_blind_count: info.stock_blind_count ?? 0,
+    stock_allow_link_barcode: info.stock_allow_link_barcode ?? 1,
+    stock_allow_export: info.stock_allow_export ?? 1,
+    stock_warn_moved: info.stock_warn_moved ?? 1,
     salesperson_mode: info.salesperson_mode || 'Optional',
     enable_insights: info.enable_insights ?? 1,
     reports_in_insights: info.reports_in_insights ?? 1,

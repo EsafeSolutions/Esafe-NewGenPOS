@@ -50,6 +50,9 @@ CASHIER_REPORT = "See cashier performance"
 PROFIT = "See profit"
 # Barcode and price labels (0.67.0, lumenpos.api.labels): open until a shop names someone.
 PRINT_LABELS = "Print labels"
+# The Lumen Stock phone app (0.68.0, lumenpos.api.stock_app): open until a shop
+# names someone, ERPNext's own stock permissions decide the rest.
+STOCK_APP = "Use the stock app"
 
 LEGACY_FIELD = {
     PRICE_EDIT: "price_edit_role",

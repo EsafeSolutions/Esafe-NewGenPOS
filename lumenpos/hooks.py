@@ -25,6 +25,10 @@ add_to_apps_screen = [
 ]
 
 after_install = "lumenpos.install.after_install"
+
+# The Lumen Stock app (0.68.0): before a stock count is submitted in the desk,
+# what moved after it was counted and what open shifts still hold.
+doctype_js = {"Stock Reconciliation": "public/js/stock_reconciliation.js"}
 # Runs on every app update (Frappe Cloud deploy), keeps the LumenPOS roles and
 # custom fields in place on existing sites without shell access.
 after_migrate = "lumenpos.install.ensure_setup"

@@ -2347,7 +2347,32 @@ const labelsPrint = {
   "A Labels screen prints barcode and price labels on a label printer or an A4 sheet, with the price tax included: from a scan, a search, a Purchase Receipt or a Stock Entry, or the prices changed since a date.": "شاشة الملصقات تطبع ملصقات الباركود والأسعار على طابعة ملصقات أو ورقة A4، والسعر شامل الضريبة: من المسح أو البحث أو إستلام المشتريات أو قيد المخزون، أو الأسعار المتغيرة منذ تاريخ.",
 }
 
+const stockApp = {
+  "Lumen Stock app": "تطبيق Lumen Stock",
+  "The Lumen Stock phone app counts stock, alone or with several phones at once, and makes stock entries and purchase receipts. It saves them as the person on the phone, so their ERPNext permissions apply. Who may use it is set under Permissions, Use the stock app.": "تطبيق Lumen Stock على الجوال يجرد المخزون، بجوال واحد أو بعدة جوالات معا، وينشئ قيود المخزون وإستلام المشتريات. ويحفظها باسم الشخص الذي يستخدم الجوال، فتطبق عليه صلاحياته في ERPNext. ومن يحق له استخدامه يحدد في الصلاحيات، استخدام تطبيق المخزون.",
+  "Off: the app is refused on this site.": "عند الإيقاف: يرفض الموقع التطبيق.",
+  "Stock counts": "جرد المخزون",
+  "Count a warehouse and save the count as a Stock Reconciliation draft.": "جرد مستودع وحفظ الجرد مسودة جرد مخزون.",
+  "Stock entries": "قيود المخزون",
+  "Receive, issue and transfer goods with a Stock Entry.": "استلام البضاعة وصرفها ونقلها بقيد مخزون.",
+  "Purchase receipts": "إستلام المشتريات",
+  "Receive a supplier delivery with a Purchase Receipt.": "استلام توريد المورد بإستلام مشتريات.",
+  "Approve from the app": "الاعتماد من التطبيق",
+  "Off: what the app saves stays a draft for the desk to submit.": "عند الإيقاف: يبقى ما يحفظه التطبيق مسودة يعتمدها النظام.",
+  "Several phones count together": "جرد مشترك بعدة جوالات",
+  "A shared count: each phone sends its lines, and a supervisor merges them into one Stock Reconciliation.": "جرد مشترك: يرسل كل جوال أسطره، ثم يدمجها المشرف في جرد مخزون واحد.",
+  "Count blind": "الجرد دون إظهار الكمية",
+  "The quantity in the system is not shown while counting.": "لا تظهر الكمية المسجلة في النظام أثناء الجرد.",
+  "Link a new barcode to an item": "ربط باركود جديد بصنف",
+  "A barcode found on a box is added to the item, so every phone and till knows it.": "يضاف الباركود الموجود على العلبة إلى الصنف، فتتعرف عليه كل الجوالات ونقاط البيع.",
+  "Export a count to Excel": "تصدير الجرد إلى Excel",
+  "Every item of a shared count with each phone's quantity, the total and the difference.": "كل أصناف الجرد المشترك مع كمية كل جوال والإجمالي والفرق.",
+  "Warn when counted items moved": "التنبيه عند حركة أصناف بعد جردها",
+  "Before a count is submitted, list the counted items that were sold, moved or received after they were counted.": "قبل اعتماد الجرد، تعرض الأصناف التي بيعت أو نقلت أو استلمت بعد جردها.",
+  "Use the stock app": "استخدام تطبيق المخزون",
+}
+
 export const messages = {
   en: { ...prefixedEn },
-  ar: { ...common, ...settings, ...register, ...features, ...sell, ...txn, ...misc, ...approvals, ...returns, ...customersScreen, ...lifecycle, ...serialsAndGroups, ...permissions, ...insights, ...generalLayout, ...currencies, ...customerForm, ...salespeopleAndCheck, ...helpForStaff, ...lockedPeriods, ...varianceReasons, ...creditSales, ...cashOut, ...owesHolds, ...anyCurrency, ...insightsReports, ...insightsReports2, ...refundApproval, ...outletsRegisters, ...reportsAccess, ...paidIn, ...labelsPrint, ...prefixedAr },
+  ar: { ...common, ...settings, ...register, ...features, ...sell, ...txn, ...misc, ...approvals, ...returns, ...customersScreen, ...lifecycle, ...serialsAndGroups, ...permissions, ...insights, ...generalLayout, ...currencies, ...customerForm, ...salespeopleAndCheck, ...helpForStaff, ...lockedPeriods, ...varianceReasons, ...creditSales, ...cashOut, ...owesHolds, ...anyCurrency, ...insightsReports, ...insightsReports2, ...refundApproval, ...outletsRegisters, ...reportsAccess, ...paidIn, ...labelsPrint, ...stockApp, ...prefixedAr },
 }

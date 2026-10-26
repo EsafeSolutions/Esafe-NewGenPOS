@@ -346,4 +346,11 @@ onMounted(() => {
   .labels { grid-template-columns: 1fr }
   .sources { grid-template-columns: 1fr }
 }
+@media (max-width: 520px) {
+  .labels { padding: 8px; gap: 10px }
+  .rt th, .rt td { padding: 7px 5px }
+  .rt td:first-child { overflow-wrap: anywhere }
+  .qty { width: 46px; padding: 5px 4px }
+  .rt .btn-ghost { padding: 4px }
+}
 </style>

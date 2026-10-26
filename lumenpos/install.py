@@ -326,9 +326,9 @@ def default_label_switches_on():
 def default_stock_app_switches_on():
     """The Lumen Stock app and its parts ship ON (counting blind stays off, as
     in the Lumen Connector)."""
-    from lumenpos.api.stock_app import STOCK_FLAG_FIELDS, SWITCH
+    from lumenpos.api.stock_app import STOCK_FLAG_FIELDS, SWITCH, TILL_SWITCH
 
-    _switches_on_once((SWITCH,) + tuple(field for field, default in STOCK_FLAG_FIELDS.values() if default))
+    _switches_on_once((SWITCH, TILL_SWITCH) + tuple(field for field, default in STOCK_FLAG_FIELDS.values() if default))
 
 
 def backfill_store_credit_references():

@@ -98,6 +98,7 @@
   "stock_app_section",
   "enable_stock_app",
   "stock_allow_count",
+  "stock_count_in_till",
   "stock_allow_stock_entry",
   "stock_allow_purchase_receipt",
   "stock_allow_submit",
@@ -665,6 +666,13 @@
   },
   {
    "default": "1",
+   "fieldname": "stock_count_in_till",
+   "fieldtype": "Check",
+   "label": "Count from LumenPOS",
+   "description": "A Stock count screen in the till: count with a barcode scanner, alone or together with the phones of a shared count. Needs Stock counts on."
+  },
+  {
+   "default": "1",
    "fieldname": "stock_allow_stock_entry",
    "fieldtype": "Check",
    "label": "Stock entries"
@@ -1109,7 +1117,7 @@
  "index_web_pages_for_search": 0,
  "issingle": 1,
  "links": [],
- "modified": "2026-10-26 18:00:00.000000",
+ "modified": "2026-10-27 09:00:00.000000",
  "modified_by": "Administrator",
  "module": "LumenPOS",
  "name": "LumenPOS Settings",

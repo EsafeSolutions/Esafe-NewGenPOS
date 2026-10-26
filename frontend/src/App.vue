@@ -324,6 +324,7 @@ const pageTitle = computed(
       '/register': t('Register'),
       '/insights': t('Insights'),
       '/labels': t('Labels'),
+      '/count': t('Stock count'),
       '/settings': t('Settings'),
     })[route.path] || t('Sell')
 )

@@ -273,6 +273,7 @@ def get_user_permissions():
     from lumenpos.api import permissions as caps_mod
     from lumenpos.api import reports as reports_mod
     from lumenpos.api.labels import can_print_labels as labels_perm
+    from lumenpos.api.stock_app import can_count_in_till
 
     roles = set(frappe.get_roles())
     return {
@@ -298,6 +299,8 @@ def get_user_permissions():
         "profit_report": reports_mod.can_see_profit(),
         # Barcode and price labels (0.67.0): the switch and the capability.
         "print_labels": labels_perm(),
+        # The Stock count screen (0.69.0): the switches, the capability and ERPNext create on Stock Reconciliation.
+        "stock_count": can_count_in_till(),
         # Sales on account (0.60.0), each nobody's but a manager's until named.
         "sell_on_account": caps_mod.can_sell_on_account(),
         "take_customer_payments": caps_mod.can_take_customer_payments(),

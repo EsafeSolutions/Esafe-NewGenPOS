@@ -1,6 +1,6 @@
 # LumenPOS: Complete User Guide
 
-*Applies to LumenPOS v0.68.1. This document is updated with every feature change.*
+*Applies to LumenPOS v0.69.0. This document is updated with every feature change.*
 
 > **Note on this document.** Sections 1 to 17 below were written up to v0.17 and are
 > being brought forward release by release; the **changelog in section 18 is
@@ -250,6 +250,29 @@ the phone, so their ERPNext permissions apply (a stock count needs ERPNext's Sto
   entries, purchase receipts, approving from the app, shared counts, counting blind (the system's quantity not
   shown), linking a new barcode to an item, the Excel export, the moved warning. **Approvals and access,
   Permissions, Use the stock app** limits who may use it (open to everyone until you name someone).
+
+### Stock count from the till (0.69.0)
+The till has its own **Stock count** screen (side rail), for a shop that counts with the barcode scanner it
+already has. Pick the warehouse (the outlet's own is picked for you), then scan: every scan adds one, a serialised item
+is counted by scanning each serial number, and a search finds an item without a barcode. Unless counting blind is
+on, each line shows what is on the shelf and the difference.
+
+- **Count alone:** Save the count makes a Stock Reconciliation draft holding only the items that differ from the
+  shelf (a **full count** also sets every item nobody counted to zero), and Submit posts it where you may submit
+  stock counts. Saving again updates the same draft. The count stays on the device until it is saved.
+- **Shared count:** the till joins a shared count of the same warehouse, like one more phone: start one or pick an
+  open one, send your lines (they are also sent every minute while you count), then merge every device into one
+  draft, or close the count without one. Leave stops taking part on this screen and keeps the count open.
+- The same rule as the app: a count is not saved or merged while sales of an open shift hold any of its items.
+  Close the shift first.
+- **Who sees it:** the Lumen Stock app and Stock counts switched on, **Count from LumenPOS** switched on (Settings,
+  General, Features, Lumen Stock app, on by default), the **Use the stock app** permission, and ERPNext's own right
+  to create a Stock Reconciliation (the Stock Manager role, for example). A cashier without them never sees the
+  screen, and the server refuses the calls.
+- **Get the app:** the same Settings card has the download links of the Lumen Stock app, one for Android phones and
+  one for older handheld scanners. The person counting signs in with their own ERPNext account.
+- Labels are switched the same way: **Settings, General, Features, Barcode and price labels**. Off, the Labels
+  screen leaves the side rail for everyone.
 
 ### Payments in their own currency (0.66.0)
 Where your shop sells in other currencies, the **Payments** table of the sales summary in Insights
@@ -1545,6 +1568,7 @@ which both LumenPOS roles are given.
 ### LumenPOS releases
 | Version | Highlights |
 |---|---|
+| 0.69.0 | **Stock count from the till.** A Stock count screen in the till counts a warehouse with the barcode scanner: alone (a Stock Reconciliation draft with only the differences, then submit) or as one more device of a shared count with the Lumen Stock phones (send, merge, close). Same shelf rule as the app: not saved or merged while sales of an open shift hold its items. Shown only with Count from LumenPOS on (a new switch, on by default), the Use the stock app permission and ERPNext's right to create a Stock Reconciliation, and checked again on the server. The Lumen Stock app section of Settings now has the download links for phones and handheld scanners. In all thirteen languages. |
 | 0.68.1 | **A stock count waits for the close of an open shift.** Found by the Lumen Stock app's own test against LumenPOS: ERPNext drops a count row equal to the stock it holds, and while a shift is open that stock still includes its sales, so a difference vanished from a merged count. Now a count holding items that sales of an open shift hold is not saved or merged from the app until the shift is closed (counting goes on). Deleting a merged draft gives its shared count back instead of being refused by the link, and says so on the shared count. A phone can read back its own lines of a shared count (count_session_device, as in the Lumen Connector 0.10.0), so a phone joining a reopened count keeps what it sent. |
 | 0.68.0 | **Stock take with the Lumen Stock phone app** (the second half of the Zimbabwe shop's 2026-10-25 request). A LumenPOS site now serves the Lumen Stock app itself, with the same methods as the Lumen Connector: counts alone or with several phones at once (merged into one Stock Reconciliation, only the differences), stock entries, purchase receipts, approvals with or without a workflow, linking a new barcode, an Excel export. The quantity a count is compared with is what is on the shelf (sales of an open shift taken off), and a count is not submitted from the app while sales of an open shift hold its items. New documents POS Count Session and POS Count Device, a Lumen Stock app section in Settings, a Use the stock app permission. In all thirteen languages. |
 | 0.67.0 | **Barcode and price labels** (the Sage RMS comparison the Zimbabwe shop sent, 2026-10-25: label printing and stock take came first). A Labels screen prints labels on a roll or an A4 sheet: items from a scan, a search, a Purchase Receipt, Stock Entry or Purchase Invoice (with their quantities) or the prices changed since a date; the price tax included as ERPNext works it out, in other currencies too; the item's own EAN-13 or UPC-A barcode, else its code as Code 128 (drawn by LumenPOS itself, checked against an independent encoder). A switch in Settings and a Print labels permission. In all thirteen languages. |

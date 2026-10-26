@@ -1702,6 +1702,14 @@
               <span class="setting-desc">{{ t('Off: the app is refused on this site.') }}</span>
             </span>
           </label>
+          <div class="stock-dl">
+            <span class="setting-title">{{ t('Get the app') }}</span>
+            <span class="setting-desc">{{ t('Android phones and handheld scanners. Sign in with the ERPNext account of the person counting.') }}</span>
+            <div class="stock-dl-row">
+              <a class="btn btn-outline" href="https://lumen-solutions.co/downloads/LumenStock.apk" target="_blank" rel="noopener"><Icon name="download" /> {{ t('Download for phones') }}</a>
+              <a class="btn btn-outline" href="https://lumen-solutions.co/downloads/LumenStock-handheld.apk" target="_blank" rel="noopener"><Icon name="download" /> {{ t('Download for handheld scanners') }}</a>
+            </div>
+          </div>
           <template v-if="generalForm.enable_stock_app">
             <label v-for="row in stockAppRows" :key="row.field" class="setting-row">
               <input type="checkbox" class="setting-toggle" v-model="generalForm[row.field]" :true-value="1" :false-value="0" />
@@ -2642,6 +2650,7 @@ const capabilityOptions = [
 // The parts of the Lumen Stock app a shop can switch off (0.68.0).
 const stockAppRows = computed(() => [
   { field: 'stock_allow_count', title: t('Stock counts'), desc: t('Count a warehouse and save the count as a Stock Reconciliation draft.') },
+  { field: 'stock_count_in_till', title: t('Count from LumenPOS'), desc: t('A Stock count screen in the till: count with a barcode scanner, alone or together with the phones of a shared count.') },
   { field: 'stock_allow_stock_entry', title: t('Stock entries'), desc: t('Receive, issue and transfer goods with a Stock Entry.') },
   { field: 'stock_allow_purchase_receipt', title: t('Purchase receipts'), desc: t('Receive a supplier delivery with a Purchase Receipt.') },
   { field: 'stock_allow_submit', title: t('Approve from the app'), desc: t('Off: what the app saves stays a draft for the desk to submit.') },
@@ -2719,6 +2728,7 @@ const generalForm = ref({
   enable_labels: 1,
   enable_stock_app: 1,
   stock_allow_count: 1,
+  stock_count_in_till: 1,
   stock_allow_stock_entry: 1,
   stock_allow_purchase_receipt: 1,
   stock_allow_submit: 1,
@@ -3423,6 +3433,7 @@ async function load() {
     enable_labels: info.enable_labels ?? 1,
     enable_stock_app: info.enable_stock_app ?? 1,
     stock_allow_count: info.stock_allow_count ?? 1,
+    stock_count_in_till: info.stock_count_in_till ?? 1,
     stock_allow_stock_entry: info.stock_allow_stock_entry ?? 1,
     stock_allow_purchase_receipt: info.stock_allow_purchase_receipt ?? 1,
     stock_allow_submit: info.stock_allow_submit ?? 1,
@@ -4835,6 +4846,10 @@ button.sec-title.collapsible + * { margin-top: 14px; }
 .setting-text { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
 .setting-title { font-weight: 600; font-size: 13.5px; color: var(--text); }
 .setting-desc { font-size: 12.75px; color: var(--text-muted); line-height: 1.55; }
+.stock-dl { display: flex; flex-direction: column; gap: 3px; padding: 12px 0 12px 34px; border-bottom: 1px solid var(--border-subtle); }
+[dir='rtl'] .stock-dl { padding: 12px 34px 12px 0; }
+.stock-dl-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.stock-dl-row .btn { text-decoration: none; }
 
 .rule-row {
   display: flex;

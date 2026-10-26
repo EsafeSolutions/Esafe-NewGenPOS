@@ -45,6 +45,11 @@
       <svg viewBox="0 0 24 24"><path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9-9-9zM7.5 7.5h.01" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <span :class="fit(t('Labels'))">{{ t('Labels') }}</span>
     </router-link>
+    <!-- Stock count (0.69.0): the switches, the capability and ERPNext create on Stock Reconciliation. -->
+    <router-link v-if="!session.reportsOnly && session.permissions.stock_count" to="/count" class="rail-item" active-class="active" data-tour="count-rail">
+      <svg viewBox="0 0 24 24"><path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2M8 8v8M11 8v8M14 8v8M17 8v8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span :class="fit(t('Stock count'))">{{ t('Stock count') }}</span>
+    </router-link>
     <button
       v-if="session.canApprove"
       type="button"

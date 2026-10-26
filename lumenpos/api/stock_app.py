@@ -63,8 +63,15 @@ STOCK_FLAG_FIELDS = {
     "warn_moved": ("stock_warn_moved", 1),
 }
 SWITCH = "enable_stock_app"
+# The Stock count screen in the till (0.69.0), on top of the app's switches.
+TILL_SWITCH = "stock_count_in_till"
 # Every field of the section, for Settings (get and save) and the install.
-FIELDS = (SWITCH,) + tuple(field for field, _default in STOCK_FLAG_FIELDS.values())
+FIELDS = (SWITCH, TILL_SWITCH) + tuple(field for field, _default in STOCK_FLAG_FIELDS.values())
+# The Lumen Stock app's two Android builds on the Lumen website (same names for every version).
+DOWNLOADS = {
+    "phone": "https://lumen-solutions.co/downloads/LumenStock.apk",
+    "handheld": "https://lumen-solutions.co/downloads/LumenStock-handheld.apk",
+}
 
 
 def _stored():
@@ -89,13 +96,14 @@ def flags() -> dict:
 
     out = {key: read(field, default) for key, (field, default) in STOCK_FLAG_FIELDS.items()}
     out["enabled"] = read(SWITCH, 1)
+    out["count_in_till"] = read(TILL_SWITCH, 1)
     return out
 
 
 def settings_values() -> dict:
     """The section for the Settings screen, by field name."""
     f = flags()
-    out = {SWITCH: f["enabled"]}
+    out = {SWITCH: f["enabled"], TILL_SWITCH: f["count_in_till"]}
     for key, (field, _default) in STOCK_FLAG_FIELDS.items():
         out[field] = f[key]
     return out
@@ -103,6 +111,164 @@ def settings_values() -> dict:
 
 def can_use(user=None) -> bool:
     return bool(flags()["enabled"]) and permissions.allowed(permissions.STOCK_APP, user)
+
+
+def can_count_in_till(user=None) -> bool:
+    """The till's Stock count screen: the app, counts and the screen switched on,
+    the "Use the stock app" capability, and ERPNext's own create on Stock
+    Reconciliation (a stock count is a Stock Manager's document)."""
+    f = flags()
+    if not (f["enabled"] and f["count"] and f["count_in_till"]):
+        return False
+    return permissions.allowed(permissions.STOCK_APP, user) and bool(
+        frappe.has_permission("Stock Reconciliation", "create", user=user)
+    )
+
+
+def _till_guard(pos_profile=None):
+    if not flags()["count_in_till"]:
+        frappe.throw(_("Counting from LumenPOS is turned off in LumenPOS Settings."), frappe.PermissionError)
+    _guard("Stock Reconciliation")
+    if not frappe.has_permission("Stock Reconciliation", "create"):
+        frappe.throw(_("You're not allowed to create stock counts."), frappe.PermissionError)
+    if pos_profile and not permissions.can_use_outlet(pos_profile):
+        frappe.throw(_("You're not allowed to use this outlet."), frappe.PermissionError)
+
+
+def _readable_warehouse(warehouse):
+    if not warehouse or not frappe.db.exists("Warehouse", warehouse):
+        frappe.throw(_("Warehouse {0} was not found.").format(warehouse))
+    if not frappe.has_permission("Warehouse", "read", doc=warehouse):
+        frappe.throw(_("You have no access to warehouse {0}.").format(warehouse), frappe.PermissionError)
+
+
+def _item_row(item, warehouse, blind, serial=None):
+    shelf = None if blind else flt(_shelf(warehouse).get(item.name))
+    return {
+        "item_code": item.name,
+        "item_name": item.item_name or item.name,
+        "stock_uom": item.stock_uom,
+        "has_serial_no": cint(item.has_serial_no),
+        "serial_no": serial or "",
+        "shelf": shelf,
+    }
+
+
+_ITEM_FIELDS = ["name", "item_name", "stock_uom", "has_serial_no", "is_stock_item", "disabled"]
+
+
+@frappe.whitelist()
+def count_setup(pos_profile: str):
+    """What the till's Stock count screen starts from: the outlet's warehouse,
+    the warehouses of its company the person may see, the switches that shape
+    the screen, and the links to the phone app."""
+    _till_guard(pos_profile)
+    profile = frappe.get_cached_doc("POS Profile", pos_profile)
+    warehouses = frappe.get_list(
+        "Warehouse",
+        filters={"is_group": 0, "company": profile.company},
+        pluck="name",
+        order_by="name asc",
+        limit_page_length=500,
+    )
+    f = flags()
+    return {
+        "warehouse": profile.warehouse if profile.warehouse in warehouses else (warehouses[0] if warehouses else ""),
+        "warehouses": warehouses,
+        "blind": f["blind_count"],
+        "shared": f["shared_count"],
+        "submit": f["submit"],
+        "downloads": DOWNLOADS,
+    }
+
+
+@frappe.whitelist()
+def count_lookup(warehouse: str, code: str):
+    """A scanned code: an item barcode, an item code, or a serial number (its
+    item, the serial counted). Only stock items that are not disabled."""
+    _till_guard()
+    _readable_warehouse(warehouse)
+    code = (code or "").strip()
+    if not code:
+        return {"found": 0}
+    blind = flags()["blind_count"]
+    serial = None
+    item_code = frappe.db.get_value("Item Barcode", {"barcode": code}, "parent")
+    if not item_code and frappe.db.exists("Item", code):
+        item_code = code
+    if not item_code and frappe.db.exists("Serial No", code):
+        item_code = frappe.db.get_value("Serial No", code, "item_code")
+        serial = code
+    if not item_code:
+        return {"found": 0}
+    item = frappe.db.get_value("Item", item_code, _ITEM_FIELDS, as_dict=True)
+    if not item or cint(item.disabled) or not cint(item.is_stock_item):
+        return {"found": 0, "reason": _("{0} is not a stock item that can be counted.").format(item_code)}
+    if cint(item.has_serial_no) and not serial:
+        return {"found": 1, "needs_serial": 1, **_item_row(item, warehouse, blind)}
+    return {"found": 1, **_item_row(item, warehouse, blind, serial)}
+
+
+@frappe.whitelist()
+def count_search(warehouse: str, text: str):
+    """Stock items whose code or name holds the text (at most 20), with what is
+    on the shelf unless the count is blind."""
+    _till_guard()
+    _readable_warehouse(warehouse)
+    text = (text or "").strip()
+    if len(text) < 2:
+        return []
+    blind = flags()["blind_count"]
+    items = frappe.get_all(
+        "Item",
+        filters={"is_stock_item": 1, "disabled": 0},
+        or_filters={"name": ["like", f"%{text}%"], "item_name": ["like", f"%{text}%"]},
+        fields=_ITEM_FIELDS,
+        order_by="item_name asc",
+        limit_page_length=20,
+    )
+    return [_item_row(item, warehouse, blind) for item in items]
+
+
+@frappe.whitelist(methods=["POST"])
+def count_save(pos_profile: str, warehouse: str, lines: str | list, name: str | None = None, zero_uncounted: int | str = 0):
+    """Save a count made at the till as a Stock Reconciliation draft (a new one,
+    or the same draft again): only the items that differ from the shelf, saved
+    through stock_save, so the app's rules and ERPNext's own checks apply.
+    lines = [{item_code, qty, serials: [...]}]"""
+    _till_guard(pos_profile)
+    _readable_warehouse(warehouse)
+    data = frappe.parse_json(lines) if isinstance(lines, str) else lines
+    merged = {}
+    for line in data or []:
+        code = (line or {}).get("item_code")
+        if not code:
+            continue
+        entry = merged.setdefault(code, {"qty": 0.0, "serials": set()})
+        serials = [s for s in ((line or {}).get("serials") or []) if s]
+        if serials:
+            entry["serials"].update(serials)
+        else:
+            entry["qty"] += max(0.0, flt((line or {}).get("qty")))
+    for entry in merged.values():
+        if entry["serials"]:
+            entry["qty"] = float(len(entry["serials"]))
+    if not merged:
+        frappe.throw(_("Nothing has been counted yet."))
+    rows, unchanged = _count_rows(warehouse, merged, zero_uncounted)
+    doc = {
+        "doctype": "Stock Reconciliation",
+        "purpose": "Stock Reconciliation",
+        "company": frappe.db.get_value("Warehouse", warehouse, "company"),
+        "posting_date": nowdate(),
+        "items": rows,
+    }
+    if frappe.get_meta("Stock Reconciliation").has_field("set_warehouse"):
+        doc["set_warehouse"] = warehouse
+    if name:
+        doc["name"] = name
+    saved = stock_save(frappe.as_json(doc))
+    return {"name": saved["name"], "rows": len(saved.get("items") or []), "unchanged": unchanged}
 
 
 def _guard(doctype, need=None):
@@ -526,18 +692,12 @@ def _same_count(line, current):
     return abs(line["qty"] - current["qty"]) < 1e-9
 
 
-@frappe.whitelist(methods=["POST"])
-def count_session_merge(session: str, zero_uncounted: int | str | None = None):
-    """Merge every phone's count into one Stock Reconciliation draft. Items not
-    counted are set to zero for a full count (or when asked)."""
-    _shared_guard()
-    doc = _count_session(session)
-    if zero_uncounted is None:
-        zero_uncounted = doc.full_count
-    merged = _merged_lines(session)
-    if not merged:
-        frappe.throw(_("Nothing has been counted in this session yet."))
-    system = _system_stock(doc.warehouse, merged)
+def _count_rows(warehouse, merged, zero_uncounted=0):
+    """Stock Reconciliation rows for counted lines {item_code: {qty, serials}}:
+    only the items that differ from the shelf, plus zero rows for what nobody
+    counted when asked. Answers (rows, how many matched). Refuses a count with
+    nothing to adjust."""
+    system = _system_stock(warehouse, merged)
     serial_fields = frappe.get_meta("Stock Reconciliation Item").has_field("use_serial_batch_fields")
     rows = []
     unchanged = 0
@@ -549,7 +709,7 @@ def count_session_merge(session: str, zero_uncounted: int | str | None = None):
             # counted in another order was kept as if it had changed.
             unchanged += 1
             continue
-        row = {"item_code": code, "warehouse": doc.warehouse, "qty": line["qty"]}
+        row = {"item_code": code, "warehouse": warehouse, "qty": line["qty"]}
         if line["serials"]:
             row["serial_no"] = "\n".join(sorted(line["serials"]))
             if serial_fields:
@@ -558,9 +718,24 @@ def count_session_merge(session: str, zero_uncounted: int | str | None = None):
     if cint(zero_uncounted):
         for code, current in system.items():
             if code not in merged and current["qty"] > 0:
-                rows.append({"item_code": code, "warehouse": doc.warehouse, "qty": 0})
+                rows.append({"item_code": code, "warehouse": warehouse, "qty": 0})
     if not rows:
         frappe.throw(_("Every counted item matches the quantity on the shelf. There is nothing to adjust."))
+    return rows, unchanged
+
+
+@frappe.whitelist(methods=["POST"])
+def count_session_merge(session: str, zero_uncounted: int | str | None = None):
+    """Merge every phone's count into one Stock Reconciliation draft. Items not
+    counted are set to zero for a full count (or when asked)."""
+    _shared_guard()
+    doc = _count_session(session)
+    if zero_uncounted is None:
+        zero_uncounted = doc.full_count
+    merged = _merged_lines(session)
+    if not merged:
+        frappe.throw(_("Nothing has been counted in this session yet."))
+    rows, unchanged = _count_rows(doc.warehouse, merged, zero_uncounted)
     _refuse_unposted(_unposted(frappe._dict(items=rows, set_warehouse=doc.warehouse)))
     devices = frappe.db.count(DEVICE_DT, {"session": session})
     reco = frappe.get_doc({

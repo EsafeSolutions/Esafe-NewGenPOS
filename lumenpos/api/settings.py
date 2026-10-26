@@ -19,6 +19,7 @@ from lumenpos.api import approval_requests
 from lumenpos.api import insights
 from lumenpos.api import salespeople
 from lumenpos.api import reports
+from lumenpos.api import labels
 from lumenpos import cash_out, cashback_rules, credit_sales, languages, refund_approval, reports_access, scope, variance
 
 def _can_manage():
@@ -131,6 +132,7 @@ def get_settings():
         "service_charge_percent": flt(doc.get("service_charge_percent")),
         "service_charge_account": doc.get("service_charge_account") or "",
         "enable_price_checker": 1 if doc.get("enable_price_checker") else 0,
+        "enable_labels": 1 if labels.enabled() else 0,
         "salesperson_mode": salespeople.mode(),
         "enable_insights": 1 if insights.enabled() else 0,
         "reports_in_insights": 1 if reports.enabled() else 0,
@@ -364,6 +366,9 @@ def save_settings(payload: dict | str):
     doc.service_charge_percent = flt(payload.get("service_charge_percent"))
     doc.service_charge_account = payload.get("service_charge_account") or None
     doc.enable_price_checker = 1 if payload.get("enable_price_checker") else 0
+    # Before 0.67.0 a payload had no such key: an old tab must not switch it off.
+    if "enable_labels" in payload:
+        doc.enable_labels = 1 if payload.get("enable_labels") else 0
     if payload.get("salesperson_mode") in salespeople.MODES:
         doc.salesperson_mode = payload.get("salesperson_mode")
     doc.enable_insights = 1 if payload.get("enable_insights") else 0

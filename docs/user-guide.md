@@ -1,6 +1,6 @@
 # LumenPOS: Complete User Guide
 
-*Applies to LumenPOS v0.66.0. This document is updated with every feature change.*
+*Applies to LumenPOS v0.67.0. This document is updated with every feature change.*
 
 > **Note on this document.** Sections 1 to 17 below were written up to v0.17 and are
 > being brought forward release by release; the **changelog in section 18 is
@@ -206,6 +206,25 @@ ERPNext's own Sales Person reports show this only for a Sales Invoice outlet:
 at a POS Invoice outlet (the default) the close merges the shift's sales into
 a Sales Invoice without the Sales Team, and those reports read no POS Invoice
 (ERPNext 13 to 16). The Salespeople page reads the till's own invoices.
+
+### Barcode and price labels (0.67.0)
+The **Labels** screen (on the left rail) prints labels with the item's name, its price and its barcode, on
+a label printer (a roll) or on an A4 sheet of labels.
+
+- **Add items** by scanning a barcode or searching; with **From a document**, every item a Purchase Receipt,
+  a Stock Entry or a Purchase Invoice that updated stock brought in, with its quantity (one label per unit
+  received); with **Prices changed since**, every item whose price on this outlet's price list was set or
+  changed since a date, one label each. Change the copies of any line before printing.
+- **The price** is what a walk-in customer pays at this outlet, price books included and **tax included**, as
+  ERPNext works it out for the item (its item tax template too). Where your shop shows other currencies, the
+  label can show the price in them as well, at today's rate.
+- **The barcode** is the item's own (an EAN-13 or UPC-A first, from the item's Barcodes table); an item without
+  one prints its item code as a Code 128 barcode, which the till scans too.
+- **Label size:** rolls of 50 x 25, 40 x 30, 58 x 40 or 38 x 25 mm, A4 sheets of 3 x 8 or 4 x 10, or a custom size.
+  Pick what prints (shop name, item name, price, other currencies, barcode, item code). The device remembers
+  your choice. In the print window choose the label printer, margins none, scale 100%.
+- **Settings, General, Features, Barcode and price labels** switches the screen off; **Approvals and access,
+  Permissions, Print labels** limits who may print (open to everyone until you name someone).
 
 ### Payments in their own currency (0.66.0)
 Where your shop sells in other currencies, the **Payments** table of the sales summary in Insights
@@ -1501,6 +1520,7 @@ which both LumenPOS roles are given.
 ### LumenPOS releases
 | Version | Highlights |
 |---|---|
+| 0.67.0 | **Barcode and price labels** (the Sage RMS comparison the Zimbabwe shop sent, 2026-10-25: label printing and stock take came first). A Labels screen prints labels on a roll or an A4 sheet: items from a scan, a search, a Purchase Receipt, Stock Entry or Purchase Invoice (with their quantities) or the prices changed since a date; the price tax included as ERPNext works it out, in other currencies too; the item's own EAN-13 or UPC-A barcode, else its code as Code 128 (drawn by LumenPOS itself, checked against an independent encoder). A switch in Settings and a Print labels permission. In all thirteen languages. |
 | 0.66.0 | **Payments in their own currency** (the Zimbabwe shop, Phillip, 2026-10-25: "the payments are only showing in the functional currency"). The Payments table of the sales summary shows what each method took in other currencies in their own money, with a total per currency and the same in the CSV. An amount typed in another currency at the till is now kept on the payment row (two new fields on Sales Invoice Payment), checked against the shift's rate; a sale in another currency shows its own money, older ones included. The merged invoice of the close keeps none (ERPNext adds up only the amounts there). Also fixed: the Customers report sorted its recent customers by the last sale's time written as text, so a sale at 9:57 came before one at 10:03 and a morning customer headed the list all day. In all thirteen languages. |
 | 0.65.0 | **Reports for management without a till** (the Zimbabwe shop, Matonop, 2026-10-23: the reports for management users who need no POS Profile). The new **LumenPOS Reports** role opens LumenPOS on the Insights reports alone, for every outlet of the companies the user may see, with no POS Profile, shift or sales. The four reports of Who can do what pass for the role while a shop names nobody for them. A switch in Settings, General, Insights. In all thirteen languages. |
 | 0.64.0 | **Outlets and their registers** (the Zimbabwe shop, 2026-10-23: three cashiers, each on their own POS Profile because ERPNext 16 holds one open shift per POS Profile, one warehouse, showed as three outlets; the owner asked for the best practice for every shop). Registers that sell from the same warehouse are one outlet, or the ones carrying the same new **Outlet** field on POS Profile. The till reads Outlet · Register, the reports pick a register, an outlet or the company, the Outlets tab nests each register's sales and shifts, and the system check names grouped outlets and, on ERPNext 16 with a shift per cashier, registers several cashiers share. In all thirteen languages. |

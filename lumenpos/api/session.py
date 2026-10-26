@@ -272,6 +272,7 @@ def get_user_permissions():
     from lumenpos.api import insights as insights_mod
     from lumenpos.api import permissions as caps_mod
     from lumenpos.api import reports as reports_mod
+    from lumenpos.api.labels import can_print_labels as labels_perm
 
     roles = set(frappe.get_roles())
     return {
@@ -295,6 +296,8 @@ def get_user_permissions():
         "sales_reports": reports_mod.can_see_sales_reports(),
         "cashier_report": reports_mod.can_see_cashier_report(),
         "profit_report": reports_mod.can_see_profit(),
+        # Barcode and price labels (0.67.0): the switch and the capability.
+        "print_labels": labels_perm(),
         # Sales on account (0.60.0), each nobody's but a manager's until named.
         "sell_on_account": caps_mod.can_sell_on_account(),
         "take_customer_payments": caps_mod.can_take_customer_payments(),
@@ -460,6 +463,7 @@ def _client_settings(profile_name=None):
 
     from lumenpos import accounting_periods, cash_out, credit_sales, languages, refund_approval, variance
     from lumenpos.api import approval_requests
+    from lumenpos.api import labels as labels_mod
 
     doc = frappe.get_cached_doc("LumenPOS Settings")
     data = {
@@ -479,6 +483,7 @@ def _client_settings(profile_name=None):
         "enable_service_charge": 1 if doc.get("enable_service_charge") else 0,
         "service_charge_percent": flt(doc.get("service_charge_percent")),
         "enable_price_checker": 1 if doc.get("enable_price_checker") else 0,
+        "enable_labels": 1 if labels_mod.enabled() else 0,
         "salesperson_mode": salespeople.mode(),
         "enable_layaway": 1 if doc.get("enable_layaway") else 0,
         "layaway_days": cint(doc.get("layaway_days")) or 0,

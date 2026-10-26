@@ -29,6 +29,7 @@ export const SCREENS = {
   '/holds': 'Holds',
   '/register': 'Register',
   '/insights': 'Insights',
+  '/labels': 'Labels',
   '/settings': 'Settings',
 }
 
@@ -258,6 +259,19 @@ export const TOPICS = [
       ['{take} takes their payment into the drawer. The oldest sales are settled first, or tick the ones they pay.', { take: 'Take a payment' }],
       'Print the payment receipt from the same card.',
       'Whoever may set a customer\'s credit allows them on account and sets their limit there too.',
+    ],
+  },
+
+  // Labels
+  {
+    route: '/labels',
+    title: 'Barcode and price labels',
+    steps: [
+      'Scan a barcode or search for an item to add it. Each item prints as many labels as its copies.',
+      ['{doc} adds every item a Purchase Receipt or a Stock Entry brought in, with its quantities.', { doc: 'From a document' }],
+      ['{since} adds every item whose price changed since a date, one label each.', { since: 'Prices changed since' }],
+      'Pick the label size and what prints on it. The preview shows the first labels.',
+      ['{print} opens the print window: choose the label printer, no margins, scale 100%.', { print: 'Print labels' }],
     ],
   },
 
@@ -503,6 +517,7 @@ export const TOURS = {
 // What is new, newest first. Shown once per person after an update, only the
 // entries newer than what they last saw and that apply to them.
 export const WHATS_NEW = [
+  { version: '0.67.0', title: 'Barcode and price labels', text: 'A Labels screen prints barcode and price labels on a label printer or an A4 sheet, with the price tax included: from a scan, a search, a Purchase Receipt or a Stock Entry, or the prices changed since a date.', route: '/labels', when: (s) => Boolean(s.settings.enable_labels && s.permissions.print_labels) },
   { version: '0.66.0', title: 'Payments in their own currency', text: 'In Insights, the sales summary shows under each payment method what it took in other currencies, in their own money, with a total per currency. An amount typed in another currency at the till is kept with the payment for it.', route: '/insights', when: (s) => Boolean(s.multiCurrency?.enabled) && Boolean(s.permissions.sales_reports) },
   { version: '0.65.0', title: 'Reports for management', text: 'Give a user the LumenPOS Reports role in ERPNext and LumenPOS opens on the Insights reports alone, for every outlet of their companies, with no POS Profile or shift. Switch it off in Settings, General, Insights.', route: '/settings', when: manager },
   { version: '0.64.0', title: 'Outlets and their registers', text: 'Registers that sell from the same warehouse are now one outlet: in the reports, where you can pick one register or the whole outlet, and on the till, which reads Outlet · Register.', route: '/insights', when: (s) => (s.outlets || []).some((o) => o.size > 1) },

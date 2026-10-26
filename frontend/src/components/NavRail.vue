@@ -40,6 +40,11 @@
       <svg viewBox="0 0 24 24"><path d="M3 3v18h18M8 17v-6m5 6V7m5 10v-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <span :class="fit(t('Insights'))">{{ t('Insights') }}</span>
     </router-link>
+    <!-- Barcode and price labels (0.67.0): the shop's switch and the person's permission. -->
+    <router-link v-if="!session.reportsOnly && session.settings.enable_labels && session.permissions.print_labels" to="/labels" class="rail-item" active-class="active" data-tour="labels-rail">
+      <svg viewBox="0 0 24 24"><path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9-9-9zM7.5 7.5h.01" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span :class="fit(t('Labels'))">{{ t('Labels') }}</span>
+    </router-link>
     <button
       v-if="session.canApprove"
       type="button"

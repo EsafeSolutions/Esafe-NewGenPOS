@@ -48,6 +48,8 @@ SET_CREDIT = "Set a customer's credit"
 SALES_REPORTS = "See sales reports"
 CASHIER_REPORT = "See cashier performance"
 PROFIT = "See profit"
+# Barcode and price labels (0.67.0, lumenpos.api.labels): open until a shop names someone.
+PRINT_LABELS = "Print labels"
 
 LEGACY_FIELD = {
     PRICE_EDIT: "price_edit_role",

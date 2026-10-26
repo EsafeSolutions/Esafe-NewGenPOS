@@ -134,6 +134,7 @@ def ensure_setup():
     default_period_switches_on()
     default_cash_out_switches_on()
     default_report_switches_on()
+    default_label_switches_on()
     recost_open_holds()
     ensure_currencies()
     ensure_hot_indexes()
@@ -272,6 +273,8 @@ CASH_OUT_SWITCHES = ("cash_out_reason_required",)
 # The reports in Insights (0.62.0, lumenpos.api.reports). Who sees them is the
 # shop's call in Who can do what; the switch only takes them away altogether.
 REPORT_SWITCHES = ("reports_in_insights", "reports_without_till")
+# Barcode and price labels (0.67.0, lumenpos.api.labels).
+LABEL_SWITCHES = ("enable_labels",)
 
 
 def _switches_on_once(fields):
@@ -312,6 +315,11 @@ def default_cash_out_switches_on():
 def default_report_switches_on():
     """The reports in Insights ship ON."""
     _switches_on_once(REPORT_SWITCHES)
+
+
+def default_label_switches_on():
+    """The labels screen ships ON."""
+    _switches_on_once(LABEL_SWITCHES)
 
 
 def backfill_store_credit_references():

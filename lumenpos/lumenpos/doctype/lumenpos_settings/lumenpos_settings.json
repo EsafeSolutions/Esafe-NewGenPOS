@@ -86,6 +86,7 @@
   "service_charge_account",
   "features_col",
   "enable_price_checker",
+  "enable_labels",
   "salesperson_mode",
   "enable_xreport",
   "enable_audit_log",
@@ -566,6 +567,13 @@
    "label": "Price / stock checker"
   },
   {
+   "default": "1",
+   "description": "A Labels screen in the till prints barcode and price labels: items from a search, a scan, a Purchase Receipt, a Stock Entry or the prices changed since a date. Who may print them: Approvals and access, Permissions, Print labels.",
+   "fieldname": "enable_labels",
+   "fieldtype": "Check",
+   "label": "Barcode and price labels"
+  },
+  {
    "default": "Optional",
    "description": "Optional (the default): the cashier may pick who sold. Required: a sale without a salesperson is refused. Off: the till asks for nobody and records nobody.",
    "fieldname": "salesperson_mode",
@@ -1013,7 +1021,7 @@
  "index_web_pages_for_search": 0,
  "issingle": 1,
  "links": [],
- "modified": "2026-10-24 21:00:00.000000",
+ "modified": "2026-10-26 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "LumenPOS",
  "name": "LumenPOS Settings",

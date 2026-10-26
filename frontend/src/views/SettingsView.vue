@@ -1562,6 +1562,13 @@
               <span class="setting-desc">{{ t('Adds a Price check button on the sell screen to look up an item\'s price and stock without selling it.') }}</span>
             </span>
           </label>
+          <label class="setting-row" data-tour="settings-labels">
+            <input type="checkbox" class="setting-toggle" v-model="generalForm.enable_labels" :true-value="1" :false-value="0" />
+            <span class="setting-text">
+              <span class="setting-title">{{ t('Barcode and price labels') }}</span>
+              <span class="setting-desc">{{ t('A Labels screen prints barcode and price labels on a label printer or an A4 sheet: items from a search, a scan, a Purchase Receipt or Stock Entry, or the prices changed since a date. Who may print them is set under Permissions, Print labels.') }}</span>
+            </span>
+          </label>
           <label class="field span-2" style="display:block; margin: 6px 0 10px">
             <span class="setting-title">{{ t('Salesperson at the till') }}</span>
             <select v-model="generalForm.salesperson_mode" class="cf-in" style="width: 100%; margin-top: 4px">
@@ -2604,6 +2611,7 @@ const capabilityOptions = [
   'See sales reports',
   'See cashier performance',
   'See profit',
+  'Print labels',
 ]
 
 function addCapabilityRule() {
@@ -2670,6 +2678,7 @@ const generalForm = ref({
   service_charge_percent: 0,
   service_charge_account: '',
   enable_price_checker: 1,
+  enable_labels: 1,
   salesperson_mode: 'Optional',
   enable_insights: 1,
   reports_in_insights: 1,
@@ -3363,6 +3372,7 @@ async function load() {
     service_charge_percent: info.service_charge_percent || 0,
     service_charge_account: info.service_charge_account || '',
     enable_price_checker: info.enable_price_checker ?? 1,
+    enable_labels: info.enable_labels ?? 1,
     salesperson_mode: info.salesperson_mode || 'Optional',
     enable_insights: info.enable_insights ?? 1,
     reports_in_insights: info.reports_in_insights ?? 1,
@@ -4137,6 +4147,7 @@ async function saveGeneral() {
     session.settings.enable_service_charge = info.enable_service_charge || 0
     session.settings.service_charge_percent = info.service_charge_percent || 0
     session.settings.enable_price_checker = info.enable_price_checker ?? 1
+    session.settings.enable_labels = info.enable_labels ?? 1
     session.settings.salesperson_mode = info.salesperson_mode || 'Optional'
     session.settings.variance_reason_mode = info.variance_reason_mode || 'Optional'
     session.settings.variance_reason_threshold = info.variance_reason_threshold || 0

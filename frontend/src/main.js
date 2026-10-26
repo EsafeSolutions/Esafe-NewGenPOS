@@ -15,6 +15,7 @@ import HoldsView from './views/HoldsView.vue'
 import RegisterView from './views/RegisterView.vue'
 import InsightsView from './views/InsightsView.vue'
 import SettingsView from './views/SettingsView.vue'
+import LabelsView from './views/LabelsView.vue'
 import CustomerDisplayView from './views/CustomerDisplayView.vue'
 import './styles.css'
 
@@ -28,6 +29,7 @@ const router = createRouter({
     { path: '/register', component: RegisterView },
     { path: '/insights', component: InsightsView },
     { path: '/settings', component: SettingsView },
+    { path: '/labels', component: LabelsView },
     // Second-screen customer-facing display, chrome-free, no bootstrap.
     { path: '/display', component: CustomerDisplayView },
   ],

@@ -145,7 +145,7 @@ onUnmounted(() => clearInterval(timer))
   padding: 3px 10px;
   border-radius: 999px;
 }
-.type-chip.disc { background: rgba(20, 99, 255, 0.14); color: var(--brand-dark); }
+.type-chip.disc { background: rgba(19, 167, 149, 0.14); color: var(--brand-dark); }
 .type-chip.ret { background: rgba(245, 166, 35, 0.16); color: #9a6a0a; }
 .type-chip.cash { background: rgba(226, 48, 48, 0.12); color: var(--red); }
 .headline { font-size: 18px; font-weight: 800; margin: 2px 0; }

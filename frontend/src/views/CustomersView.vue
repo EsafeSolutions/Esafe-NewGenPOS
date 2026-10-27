@@ -341,8 +341,8 @@ async function openReceipt(tx) {
   border-radius: 9px;
   border: 1px solid transparent;
 }
-.cust-row:hover { background: var(--hover-bg, rgba(20, 99, 255,0.06)); }
-.cust-row.active { background: rgba(20, 99, 255, 0.1); border-color: var(--brand); }
+.cust-row:hover { background: var(--hover-bg, rgba(19, 167, 149,0.06)); }
+.cust-row.active { background: rgba(19, 167, 149, 0.1); border-color: var(--brand); }
 .cust-name { font-weight: 600; }
 .cust-detail { flex: 1; overflow-y: auto; padding: 20px 24px; min-width: 0; }
 .empty-detail {
@@ -387,7 +387,7 @@ async function openReceipt(tx) {
   border-bottom: 1px solid var(--border);
 }
 .txn-row { cursor: pointer; }
-.txn-row:hover { background: var(--hover-bg, rgba(20, 99, 255,0.06)); }
+.txn-row:hover { background: var(--hover-bg, rgba(19, 167, 149,0.06)); }
 .txn-row td { padding: 9px 8px; border-bottom: 1px solid var(--border-subtle); }
 .right { text-align: end; }
 .mono { font-family: ui-monospace, monospace; font-size: 12.5px; }

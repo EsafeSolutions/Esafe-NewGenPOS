@@ -387,7 +387,7 @@ async function send() {
   await run(async () => {
     const data = {}
     for (const r of lines.value) data[r.item_code] = r.serials.length ? { q: r.serials.length, s: r.serials } : { q: Number(r.qty) || 0 }
-    const label = (session.posProfile || 'LumenPOS') + (session.userFullname ? ' · ' + session.userFullname : '')
+    const label = (session.posProfile || 'Esafe Solutions') + (session.userFullname ? ' · ' + session.userFullname : '')
     const res = await call('lumenpos.api.stock_app.count_session_push', {
       session: joined.value.name, device_id: deviceId(), device_label: label, data: JSON.stringify(data),
     })
@@ -480,7 +480,7 @@ onBeforeUnmount(() => clearInterval(timer))
 .field > span { font-weight: 600; color: var(--text-muted); font-size: 12.5px }
 .modes { display: flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden }
 .mode { background: transparent; border: 0; padding: 8px 12px; font: inherit; color: var(--text); cursor: pointer }
-.mode.on { background: var(--accent, #1463ff); color: #fff }
+.mode.on { background: var(--accent, #13a795); color: #fff }
 .mode:disabled { opacity: 0.5; cursor: default }
 .shared-pick, .joined { padding: 0 14px 12px; display: flex; flex-direction: column; gap: 8px }
 .joined { flex-direction: row; justify-content: space-between; flex-wrap: wrap; align-items: baseline }
@@ -501,7 +501,7 @@ onBeforeUnmount(() => clearInterval(timer))
 .note { margin: 8px 14px 0; padding: 8px 10px; border-radius: 8px; background: var(--surface-2) }
 .err { padding: 8px 14px 0 }
 .neg { color: var(--danger, #d33) }
-.pos { color: var(--accent, #1463ff) }
+.pos { color: var(--accent, #13a795) }
 .ok { color: var(--success, #1a7f37) }
 .empty { padding: 26px; text-align: center }
 .wrap { overflow-x: auto; border-top: 1px solid var(--border); margin-top: 12px }

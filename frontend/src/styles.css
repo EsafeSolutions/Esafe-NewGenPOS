@@ -1,70 +1,70 @@
 /* Copyright (c) 2026 Lumen Solutions
    SPDX-License-Identifier: AGPL-3.0-only
    "LumenPOS" is a trademark of Lumen Solutions. See TRADEMARKS.md. */
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Vazirmatn:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Vazirmatn:wght@400;500;600;700&display=swap');
 
-/* LumenPOS design tokens, the Lumen brand identity.
-   Primary blue #1463FF (light) / #2F7BFF (dark); type: Plus Jakarta Sans. */
+/* Esafe Solutions design tokens, aligned with esafesolutions.co.
+   Deep navy #10254B and teal #13A795; type: Inter. */
 :root {
-  --nav-bg: #0a0e1c;        /* Lumen "night" sidebar, navy and not charcoal */
-  --nav-active: #16294f;    /* brand-blue-tinted active rail item */
-  --topbar-bg: #0c1226;     /* cohesive Lumen navy chrome */
-  --page-bg: #f4f6fa;
+  --nav-bg: #10254b;
+  --nav-active: #173b68;
+  --topbar-bg: #10254b;
+  --page-bg: #f5f7fa;
   --card-bg: #ffffff;
-  --surface-2: #f0f3f8;     /* subtle hover / inset surfaces */
-  --border: #e4e8f0;
-  --border-subtle: #eef1f6;
+  --surface-2: #edf4f4;
+  --border: #dfe8eb;
+  --border-subtle: #edf2f3;
   --input-bg: #ffffff;
-  --text: #0c1322;          /* ink */
-  --text-muted: #5b6577;    /* muted, dark enough to read at 12px */
-  /* Lumen brand accent, #1463FF. The whole UI uses these --brand tokens. */
-  --brand: #1463ff;
-  --brand-dark: #0f54e0;
-  --brand-soft: #7fa8ff;
+  --text: #25334a;
+  --text-muted: #68778d;
+  /* Esafe teal is the primary interactive accent throughout the POS. */
+  --brand: #13a795;
+  --brand-dark: #087e79;
+  --brand-soft: #75d6c9;
   --red: #e0413f;
   --amber: #c9821b;
-  --promo: #6d4aff;         /* Lumen violet */
+  --promo: #3568d4;
   --radius: 12px;
   --radius-lg: 18px;
   --shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 3px rgba(16, 24, 40, 0.05);
   --shadow-md: 0 8px 24px rgba(16, 24, 40, 0.08), 0 2px 6px rgba(16, 24, 40, 0.04);
-  --shadow-brand: 0 12px 30px rgba(20, 99, 255, 0.28);
+  --shadow-brand: 0 12px 30px rgba(19, 167, 149, 0.28);
   --font-ar: 'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, sans-serif;
-  /* Plus Jakarta Sans has no Thai and no Chinese: Latin text keeps it, the
+  /* Inter has no Thai and no Chinese: Latin text keeps it, the
      rest falls to IBM Plex Sans Thai (the Arabic's family, fetched only when a
      Thai glyph shows) or to the system's own Chinese font. */
-  --font-th: 'Plus Jakarta Sans', 'IBM Plex Sans Thai', 'Leelawadee UI', Thonburi, sans-serif;
-  --font-zh: 'Plus Jakarta Sans', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', 'Hiragino Sans GB', sans-serif;
-  /* Persian: Vazirmatn, drawn for Persian. Russian: Plus Jakarta Sans keeps the
+  --font-th: 'Inter', 'IBM Plex Sans Thai', 'Leelawadee UI', Thonburi, sans-serif;
+  --font-zh: 'Inter', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', 'Hiragino Sans GB', sans-serif;
+  /* Persian: Vazirmatn, drawn for Persian. Russian: Inter keeps the
      Latin, the Cyrillic falls to IBM Plex Sans (fetched only for those glyphs). */
   --font-fa: 'Vazirmatn', 'IBM Plex Sans Arabic', Tahoma, sans-serif;
-  --font-ru: 'Plus Jakarta Sans', 'IBM Plex Sans', 'Segoe UI', Roboto, sans-serif;
-  --font: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-ru: 'Inter', 'IBM Plex Sans', 'Segoe UI', Roboto, sans-serif;
+  --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 }
 
 /* Dark theme, toggled by adding data-theme="dark" on <html>. */
 :root[data-theme='dark'] {
-  --nav-bg: #0e1320;
-  --nav-active: #1b2e55;
-  --topbar-bg: #131722;
-  --page-bg: #0a0d14;
-  --card-bg: #131722;
-  --surface-2: #1a1f2c;
-  --border: #242b3a;
-  --border-subtle: #1e2430;
-  --input-bg: #1a1f2c;
-  --text: #f2f5fa;
-  --text-muted: #98a2b3;
-  --brand: #2f7bff;
-  --brand-dark: #6ba4ff;   /* readable accent text on dark surfaces */
-  --brand-soft: #4a8dff;
+  --nav-bg: #0b1933;
+  --nav-active: #174868;
+  --topbar-bg: #0b1933;
+  --page-bg: #091426;
+  --card-bg: #10213a;
+  --surface-2: #162b47;
+  --border: #27405c;
+  --border-subtle: #1d3551;
+  --input-bg: #162b47;
+  --text: #f3f8fa;
+  --text-muted: #a5b7c7;
+  --brand: #2bc2b1;
+  --brand-dark: #8ce5da;   /* readable Esafe accent text on dark surfaces */
+  --brand-soft: #54d3c7;
   --red: #ff6b66;
   --amber: #e0a53c;
-  --promo: #9b83ff;
+  --promo: #83a8ef;
   --shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
   --shadow-md: 0 12px 32px rgba(0, 0, 0, 0.55);
-  --shadow-brand: 0 14px 34px rgba(20, 99, 255, 0.42);
+  --shadow-brand: 0 14px 34px rgba(19, 167, 149, 0.42);
 }
 :root[data-theme='dark'] img.tile-fallback { opacity: 0.85; }
 /* Dark theme scrollbars in its own colours: the browser's default ones are light
@@ -114,7 +114,7 @@ input, select, textarea {
 
 input:focus, select:focus, textarea:focus {
   border-color: var(--brand);
-  box-shadow: 0 0 0 3px rgba(20, 99, 255, 0.18);
+  box-shadow: 0 0 0 3px rgba(19, 167, 149, 0.18);
 }
 
 /* Shared bits */
@@ -219,7 +219,7 @@ h1, h2, h3, h4 { font-weight: 800; letter-spacing: -0.02em; line-height: 1.14; }
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  background: rgba(123, 47, 242, 0.1);
+  background: rgba(53, 104, 212, 0.1);
   color: var(--promo);
   font-size: 11.5px;
   font-weight: 700;

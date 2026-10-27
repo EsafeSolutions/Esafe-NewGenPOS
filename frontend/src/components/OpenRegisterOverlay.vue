@@ -398,8 +398,8 @@ function startPoll(sessionName) {
   font-size: 12px;
   font-weight: 700;
   color: var(--brand-dark);
-  background: rgba(20, 99, 255, 0.08);
-  border: 1px solid rgba(20, 99, 255, 0.3);
+  background: rgba(19, 167, 149, 0.08);
+  border: 1px solid rgba(19, 167, 149, 0.3);
   border-radius: 999px;
   padding: 3px 10px;
   cursor: pointer;

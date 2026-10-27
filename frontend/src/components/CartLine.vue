@@ -212,7 +212,7 @@ function setDiscount(value) {
   font-size: 11px;
   font-weight: 700;
   color: var(--brand-dark);
-  background: rgba(20, 99, 255, 0.1);
+  background: rgba(19, 167, 149, 0.1);
   border-radius: 999px;
   padding: 2px 9px;
 }
@@ -229,12 +229,12 @@ function setDiscount(value) {
   font-size: 12px;
   font-weight: 700;
   color: var(--promo);
-  background: rgba(123, 47, 242, 0.12);
-  border: 1px solid rgba(123, 47, 242, 0.3);
+  background: rgba(53, 104, 212, 0.12);
+  border: 1px solid rgba(53, 104, 212, 0.3);
   border-radius: 8px;
   padding: 5px 9px;
 }
-.line-suggestion:hover { background: rgba(123, 47, 242, 0.2); }
+.line-suggestion:hover { background: rgba(53, 104, 212, 0.2); }
 /* Dark mode: a lighter purple on a stronger tint stays legible. */
 html[data-theme='dark'] .line-suggestion {
   color: #c9b0ff;

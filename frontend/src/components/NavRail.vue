@@ -4,16 +4,7 @@
 <template>
   <nav class="rail" data-tour="nav-rail">
     <div class="logo">
-      <svg viewBox="0 0 100 100" width="32" height="32" aria-label="LumenPOS">
-        <defs><linearGradient id="lp-logo" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2A7BFF"/><stop offset="1" stop-color="#0B43B8"/></linearGradient></defs>
-        <rect width="100" height="100" rx="22" fill="url(#lp-logo)"/>
-        <g transform="translate(30,30) scale(0.833)">
-          <rect x="6" y="6" width="7.5" height="38" rx="3.75" fill="#fff"/>
-          <rect x="18" y="25" width="4.5" height="19" rx="2.25" fill="rgba(255,255,255,.62)"/>
-          <rect x="27" y="25" width="7.5" height="19" rx="3.75" fill="#fff"/>
-          <rect x="39" y="25" width="4.5" height="19" rx="2.25" fill="#fff"/>
-        </g>
-      </svg>
+      <img :src="esafeMark" alt="Esafe Solutions" />
     </div>
     <!-- The reports alone (0.65.0): Insights, the theme and the way back to ERPNext. -->
     <router-link v-if="!session.reportsOnly" to="/" class="rail-item" exact-active-class="active">
@@ -86,6 +77,7 @@ import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useSessionStore } from '../stores/session'
 import { call } from '../api'
 import { t } from '../i18n'
+import esafeMark from '../assets/esafe-solutions-favicon.png'
 
 // A label longer than the rail is wide (Configuración, Einstellungen) takes a
 // smaller size rather than breaking in the middle of the word.
@@ -158,7 +150,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
 }
-.logo svg { display: block; }
+.logo img { display: block; width: 34px; height: 38px; object-fit: contain; }
 .rail-item {
   display: flex;
   flex-direction: column;

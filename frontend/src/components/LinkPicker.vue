@@ -163,7 +163,7 @@ watch(() => props.doctype, () => clear())
   border-bottom: 1px solid var(--border-subtle);
 }
 .option:last-child { border-bottom: none; }
-.option.hl, .option:hover { background: rgba(20, 99, 255, 0.06); }
+.option.hl, .option:hover { background: rgba(19, 167, 149, 0.06); }
 .option-label { font-weight: 600; font-size: 13px; }
 .option-code { font-size: 11px; color: var(--text-muted); font-family: ui-monospace, monospace; display: flex; gap: 10px; }
 .option-bc { color: var(--brand-dark); }

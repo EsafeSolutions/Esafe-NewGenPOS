@@ -40,9 +40,9 @@
         </div>
 
         <button v-if="help.allNews.length" type="button" class="help-news-link" @click="help.showAllNews()">
-          <Icon name="star" /> {{ t('What is new in LumenPOS') }}
+          <Icon name="star" /> {{ t('What is new in') }} Esafe Solutions
         </button>
-        <p class="muted small help-version">LumenPOS {{ help.version }}</p>
+        <p class="muted small help-version">Esafe Solutions {{ help.version }}</p>
       </div>
     </aside>
   </div>

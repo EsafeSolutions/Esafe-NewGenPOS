@@ -921,7 +921,7 @@ function round2(n) {
   margin: 0;
   padding: 10px 12px;
   border-radius: 10px;
-  background: rgba(20, 99, 255, 0.1);
+  background: rgba(19, 167, 149, 0.1);
   color: var(--brand-dark);
   font-weight: 700;
   font-size: 14px;
@@ -961,7 +961,7 @@ function round2(n) {
   font-size: 10.5px;
   font-weight: 800;
   color: var(--brand-dark);
-  background: rgba(20, 99, 255, 0.1);
+  background: rgba(19, 167, 149, 0.1);
   border-radius: 999px;
   padding: 1px 7px;
 }

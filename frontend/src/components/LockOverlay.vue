@@ -198,15 +198,15 @@ async function applyReset() {
   width: 340px;
   max-width: 90vw;
   text-align: center;
-  box-shadow: var(--shadow-brand, 0 20px 60px rgba(20, 99, 255, 0.35));
+  box-shadow: var(--shadow-brand, 0 20px 60px rgba(19, 167, 149, 0.35));
 }
 .lock-mark {
   width: 64px;
   height: 64px;
   border-radius: 18px;
   margin: 0 auto 16px;
-  background: var(--brand-soft, rgba(20, 99, 255, 0.12));
-  color: var(--brand, #1463ff);
+  background: var(--brand-soft, rgba(19, 167, 149, 0.12));
+  color: var(--brand, #13a795);
   display: flex;
   align-items: center;
   justify-content: center;

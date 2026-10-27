@@ -1004,7 +1004,7 @@ async function close() {
   font-size: 11px;
   font-weight: 800;
   color: var(--brand-dark);
-  background: rgba(20, 99, 255, 0.1);
+  background: rgba(19, 167, 149, 0.1);
   border-radius: 999px;
   padding: 1px 8px;
   margin-inline-start: 6px;

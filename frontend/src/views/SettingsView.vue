@@ -4344,8 +4344,8 @@ const filteredBooks = computed(() => {
   flex-wrap: wrap;
   padding: 10px 12px;
   margin-bottom: 14px;
-  background: rgba(20, 99, 255, 0.06);
-  border: 1px solid rgba(20, 99, 255, 0.18);
+  background: rgba(19, 167, 149, 0.06);
+  border: 1px solid rgba(19, 167, 149, 0.18);
   border-radius: var(--radius);
 }
 .rc-scope-label { font-weight: 700; font-size: 13px; }
@@ -4422,7 +4422,7 @@ const filteredBooks = computed(() => {
 .sc-chip.problem, .sc-level.problem { background: rgba(224, 65, 63, 0.14); color: var(--red); }
 .sc-chip.warn, .sc-level.warn { background: rgba(201, 130, 27, 0.16); color: var(--amber); }
 .sc-chip.info, .sc-level.info { background: var(--surface-2); color: var(--text-muted); }
-.sc-chip.ok, .sc-level.ok { background: rgba(20, 99, 255, 0.12); color: var(--brand-dark); }
+.sc-chip.ok, .sc-level.ok { background: rgba(19, 167, 149, 0.12); color: var(--brand-dark); }
 .sc-area { margin-top: 16px; }
 .sc-area-title { font-weight: 700; font-size: 13px; margin-bottom: 6px; }
 .sc-row { display: flex; gap: 10px; padding: 10px 12px; border: 1px solid var(--border-subtle); border-radius: 10px; margin-bottom: 6px; }
@@ -4475,7 +4475,7 @@ const filteredBooks = computed(() => {
   font-size: 11.5px;
   font-weight: 700;
   color: var(--brand-dark);
-  background: rgba(20, 99, 255, 0.1);
+  background: rgba(19, 167, 149, 0.1);
   border-radius: 999px;
   padding: 2px 9px;
   white-space: nowrap;
@@ -4580,8 +4580,8 @@ const filteredBooks = computed(() => {
   display: flex;
   gap: 10px;
   align-items: flex-start;
-  background: rgba(20, 99, 255, 0.08);
-  border: 1px solid rgba(20, 99, 255, 0.22);
+  background: rgba(19, 167, 149, 0.08);
+  border: 1px solid rgba(19, 167, 149, 0.22);
   border-radius: var(--radius);
   padding: 11px 14px;
   margin: 0 0 12px;
@@ -4642,7 +4642,7 @@ const filteredBooks = computed(() => {
   color: var(--text-muted);
   white-space: nowrap;
 }
-.status-pill.on { background: rgba(20, 99, 255, 0.1); color: var(--brand-dark); }
+.status-pill.on { background: rgba(19, 167, 149, 0.1); color: var(--brand-dark); }
 .status-pill.expired { background: rgba(226, 48, 48, 0.12); color: var(--red); }
 html[data-theme='dark'] .status-pill.expired { background: rgba(255, 120, 120, 0.18); color: #ff9b9b; }
 
@@ -4889,7 +4889,7 @@ button.sec-title.collapsible + * { margin-top: 14px; }
   gap: 4px;
   font-size: 12px;
   font-weight: 500;
-  background: rgba(20, 99, 255, 0.08);
+  background: rgba(19, 167, 149, 0.08);
   color: var(--brand-dark);
   border-radius: 999px;
   padding: 4px 11px;

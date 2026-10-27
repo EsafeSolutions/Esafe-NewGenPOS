@@ -11,6 +11,10 @@
     <div class="main">
       <header class="topbar">
         <div class="topbar-left">
+          <div class="brand-lockup">
+            <img :src="esafeLogo" alt="Esafe Solutions" class="topbar-brand" />
+          </div>
+          <span class="brand-divider" aria-hidden="true"></span>
           <div class="topbar-title">{{ pageTitle }}</div>
           <span class="tb-pill tb-clock"><Icon name="clock" /> {{ clockText }}</span>
           <span v-if="session.registerOpen && shiftText" class="tb-pill tb-shift">
@@ -156,13 +160,13 @@
 
   <div v-else-if="!isDisplay && session.error" class="boot-error">
     <div class="card boot-card">
-      <h2>{{ t('LumenPOS could not start') }}</h2>
+      <h2>{{ t('Esafe Solutions could not start') }}</h2>
       <p>{{ session.error }}</p>
       <button class="btn btn-primary" @click="session.bootstrap()">{{ t('Retry') }}</button>
     </div>
   </div>
 
-  <div v-else class="boot-loading">{{ t('Loading LumenPOS…') }}</div>
+  <div v-else class="boot-loading">{{ t('Loading Esafe Solutions…') }}</div>
 </template>
 
 <script setup>
@@ -187,6 +191,7 @@ import HelpPanel from './components/HelpPanel.vue'
 import HelpCard from './components/HelpCard.vue'
 import TourOverlay from './components/TourOverlay.vue'
 import { useHelpStore } from './stores/help'
+import esafeLogo from './assets/esafe-solutions-logo.png'
 
 const session = useSessionStore()
 const help = useHelpStore()
@@ -400,6 +405,19 @@ function setupAutoLock() {
   min-width: 0;
   overflow: hidden;
 }
+.brand-lockup {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 144px;
+  height: 32px;
+  padding: 5px 9px;
+  background: #fff;
+  border-radius: 8px;
+  flex: 0 0 auto;
+}
+.topbar-brand { display: block; width: 100%; height: 100%; object-fit: contain; }
+.brand-divider { width: 1px; height: 24px; background: rgba(255, 255, 255, 0.24); flex: 0 0 auto; }
 .topbar-title {
   font-size: 17px;
   font-weight: 700;
@@ -418,7 +436,7 @@ function setupAutoLock() {
   border-radius: 999px;
   white-space: nowrap;
 }
-.tb-clock { background: rgba(20, 99, 255, 0.2); color: #c8dcff; }
+.tb-clock { background: rgba(19, 167, 149, 0.2); color: #b8f0e8; }
 .tb-shift { background: rgba(34, 197, 94, 0.18); color: #b3f0cb; }
 .tb-shift b { color: #fff; font-weight: 800; }
 .topbar-right {
@@ -455,6 +473,7 @@ function setupAutoLock() {
    about 500px wide at 390 on every screen). */
 @media (max-width: 700px) {
   .topbar { padding: 0 10px; gap: 8px; }
+  .brand-lockup, .brand-divider { display: none; }
   .topbar-title { font-size: 15px; }
   .tb-clock, .tb-shift { display: none; }
   .help-word { display: none; }
@@ -481,8 +500,8 @@ function setupAutoLock() {
 }
 .register-pill:hover { filter: brightness(1.2); }
 .register-pill.open {
-  background: rgba(20, 99, 255, 0.28);
-  color: #aebfff;
+  background: rgba(19, 167, 149, 0.28);
+  color: #afe9e1;
 }
 .lang-pill {
   font-size: 11.5px;

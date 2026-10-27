@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 # "LumenPOS" is a trademark of Lumen Solutions. See TRADEMARKS.md.
 app_name = "lumenpos"
-app_title = "LumenPOS"
-app_publisher = "Lumen Solutions"
+app_title = "Esafe Solutions"
+app_publisher = "Esafe Solutions"
 app_description = "Professional, multi-business Point of Sale for ERPNext / Frappe"
 app_email = "hello@lumen-solutions.co"
 app_license = "AGPL-3.0-only"

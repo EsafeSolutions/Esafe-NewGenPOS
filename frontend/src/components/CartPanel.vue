@@ -515,7 +515,7 @@ function discard() {
   font-size: 11px;
   font-weight: 800;
   color: var(--brand-dark);
-  background: rgba(20, 99, 255, 0.1);
+  background: rgba(19, 167, 149, 0.1);
   border-radius: 999px;
   padding: 1px 8px;
   margin-inline-end: 4px;
@@ -546,7 +546,7 @@ function discard() {
   padding: 6px 16px;
   font-size: 12px;
   color: var(--brand-dark);
-  background: rgba(20, 99, 255, 0.06);
+  background: rgba(19, 167, 149, 0.06);
   border-bottom: 1px solid var(--border);
 }
 .salesperson-row {
@@ -565,7 +565,7 @@ function discard() {
   font-size: 12.5px;
   font-weight: 700;
   color: var(--brand-dark);
-  background: rgba(20, 99, 255, 0.08);
+  background: rgba(19, 167, 149, 0.08);
   border-radius: 999px;
   padding: 4px 11px;
 }
@@ -605,8 +605,8 @@ function discard() {
 .tool:disabled { opacity: 0.5; cursor: default; }
 .tool.on {
   color: var(--brand-dark);
-  background: rgba(20, 99, 255, 0.08);
-  border-color: rgba(20, 99, 255, 0.35);
+  background: rgba(19, 167, 149, 0.08);
+  border-color: rgba(19, 167, 149, 0.35);
 }
 html[data-theme='dark'] .tool.on { color: #9fc0ff; background: rgba(47, 123, 255, 0.16); }
 .tool-count {
@@ -660,12 +660,12 @@ html[data-theme='dark'] .saved { color: #c9b0ff; }
   font-size: 12.5px;
   font-weight: 700;
   color: var(--promo);
-  background: rgba(123, 47, 242, 0.12);
-  border: 1px solid rgba(123, 47, 242, 0.3);
+  background: rgba(53, 104, 212, 0.12);
+  border: 1px solid rgba(53, 104, 212, 0.3);
   border-radius: var(--radius);
   padding: 8px 10px;
 }
-.suggestion:hover { background: rgba(123, 47, 242, 0.2); }
+.suggestion:hover { background: rgba(53, 104, 212, 0.2); }
 /* Dark mode: a lighter purple on a stronger tint stays legible. */
 html[data-theme='dark'] .suggestion {
   color: #c9b0ff;
@@ -687,7 +687,7 @@ html[data-theme='dark'] .suggestion:hover { background: rgba(150, 100, 255, 0.3)
   font-size: 12px;
   font-weight: 700;
   color: var(--brand-dark);
-  background: rgba(20, 99, 255, 0.1);
+  background: rgba(19, 167, 149, 0.1);
   border-radius: 999px;
   padding: 3px 10px;
 }
@@ -730,7 +730,7 @@ html[data-theme='dark'] .suggestion:hover { background: rgba(150, 100, 255, 0.3)
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  background: rgba(20, 99, 255, 0.1);
+  background: rgba(19, 167, 149, 0.1);
   font-size: 11.5px;
   font-weight: 700;
   border-radius: 999px;

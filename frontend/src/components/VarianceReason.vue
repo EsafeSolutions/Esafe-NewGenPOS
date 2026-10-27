@@ -130,7 +130,7 @@ function typed(value) {
 }
 .vr-chip.on {
   border-color: var(--brand);
-  background: rgba(20, 99, 255, 0.1);
+  background: rgba(19, 167, 149, 0.1);
   color: var(--brand-dark);
 }
 html[data-theme='dark'] .vr-chip.on {

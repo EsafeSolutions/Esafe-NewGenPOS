@@ -66,7 +66,7 @@ onBeforeUnmount(() => stop && stop())
   display: flex;
   flex-direction: column;
   padding: 4vh 4vw;
-  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  font-family: 'Inter', system-ui, sans-serif;
 }
 .cd-head {
   text-align: center;
@@ -75,7 +75,7 @@ onBeforeUnmount(() => stop && stop())
 }
 .cd-logo { max-height: 12vh; max-width: 60%; object-fit: contain; margin-bottom: 2vh; }
 .cd-company { font-size: 4vh; font-weight: 800; letter-spacing: -0.01em; }
-.cd-customer { font-size: 2.2vh; color: var(--brand, #1463ff); font-weight: 700; margin-top: 0.5vh; }
+.cd-customer { font-size: 2.2vh; color: var(--brand, #13a795); font-weight: 700; margin-top: 0.5vh; }
 .cd-cart { flex: 1; display: flex; flex-direction: column; min-height: 0; padding-top: 2vh; }
 .cd-items { flex: 1; overflow-y: auto; min-height: 0; }
 .cd-item {
@@ -89,9 +89,9 @@ onBeforeUnmount(() => stop && stop())
 .cd-item-name { font-size: 3vh; font-weight: 700; }
 .cd-item-qty { font-size: 2.2vh; color: var(--text-muted, #9aa4bf); margin-top: 0.4vh; }
 .cd-item-amt { font-size: 3.2vh; font-weight: 800; white-space: nowrap; }
-.cd-totals { padding-top: 2vh; border-top: 3px solid var(--brand, #1463ff); }
+.cd-totals { padding-top: 2vh; border-top: 3px solid var(--brand, #13a795); }
 .cd-row { display: flex; justify-content: space-between; }
-.cd-save { color: var(--brand, #1463ff); font-size: 2.6vh; font-weight: 700; margin-bottom: 1vh; }
+.cd-save { color: var(--brand, #13a795); font-size: 2.6vh; font-weight: 700; margin-bottom: 1vh; }
 .cd-grand { font-size: 5.5vh; font-weight: 900; }
 .cd-equiv { font-size: 2.6vh; font-weight: 700; color: var(--text-muted, #9aa4bf); }
 .cd-count { text-align: right; font-size: 2vh; color: var(--text-muted, #9aa4bf); margin-top: 1vh; }
@@ -100,14 +100,14 @@ onBeforeUnmount(() => stop && stop())
   width: 16vh;
   height: 16vh;
   border-radius: 4vh;
-  background: linear-gradient(135deg, #1463ff, #2f7bff);
+  background: #13a795;
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 9vh;
   font-weight: 900;
-  box-shadow: 0 1vh 4vh rgba(20, 99, 255, 0.4);
+  box-shadow: 0 1vh 4vh rgba(19, 167, 149, 0.4);
 }
 .cd-welcome-text { font-size: 5vh; font-weight: 800; }
 .cd-welcome-sub { font-size: 2.6vh; color: var(--text-muted, #9aa4bf); }

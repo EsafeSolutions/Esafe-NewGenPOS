@@ -435,7 +435,7 @@ function onDiscountApproved(result) {
   justify-content: space-between;
   gap: 12px;
   padding: 10px 16px;
-  background: var(--brand-soft, rgba(20, 99, 255, 0.1));
+  background: var(--brand-soft, rgba(19, 167, 149, 0.1));
   color: var(--brand);
   font-weight: 600;
   font-size: 13px;
@@ -554,7 +554,7 @@ function onDiscountApproved(result) {
 }
 .bundle-card {
   padding: 14px 16px;
-  border: 1.5px solid rgba(20, 99, 255, 0.35);
+  border: 1.5px solid rgba(19, 167, 149, 0.35);
   display: flex;
   flex-direction: column;
 }

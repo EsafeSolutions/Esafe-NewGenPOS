@@ -1,6 +1,6 @@
 {
-  "name": "LumenPOS",
-  "short_name": "LumenPOS",
+  "name": "Esafe Solutions",
+  "short_name": "Esafe",
   "description": "Point of sale for ERPNext. Sells, returns and exchanges, and keeps selling when the connection drops.",
   "id": "/pos",
   "start_url": "/pos",
@@ -8,7 +8,7 @@
   "display": "standalone",
   "orientation": "any",
   "background_color": "#ffffff",
-  "theme_color": "#1463FF",
+  "theme_color": "#10254B",
   "lang": "en",
   "dir": "auto",
   "categories": ["business", "productivity", "shopping"],

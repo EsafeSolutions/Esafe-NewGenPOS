@@ -324,7 +324,7 @@ async function create() {
   font-weight: 800;
   letter-spacing: 0.05em;
   color: var(--brand-dark);
-  background: rgba(20, 99, 255, 0.1);
+  background: rgba(19, 167, 149, 0.1);
   border-radius: 999px;
   padding: 1px 8px;
   margin-inline-start: 6px;
@@ -345,7 +345,7 @@ async function create() {
 .type-tab.active {
   border-color: var(--brand);
   color: var(--brand);
-  background: rgba(20, 99, 255, 0.06);
+  background: rgba(19, 167, 149, 0.06);
 }
 .section-label {
   font-size: 11.5px;

@@ -1,10 +1,10 @@
-<!-- Copyright (c) 2026 Lumen Solutions
+<!-- Copyright (c) 2026 Esafe (PVT) LTD
      SPDX-License-Identifier: AGPL-3.0-only
-     "LumenPOS" is a trademark of Lumen Solutions. See TRADEMARKS.md. -->
+     "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md. -->
 <template>
   <div class="insights">
     <!-- A tab for each report the person may see: the sales summary and the
-         cashiers (0.62.0), the Lumen Reports dashboard (managers) and the
+         cashiers (0.62.0), the EsafePOS Reports dashboard (managers) and the
          salesperson report. One of them alone shows without a tab bar. -->
     <div v-if="tabs.length > 1" class="ins-tabs">
       <button
@@ -41,12 +41,12 @@
       <button class="btn btn-primary" @click="load">{{ t('Retry') }}</button>
     </div>
 
-    <!-- The dashboard, embedded from Lumen Reports -->
+    <!-- The dashboard, embedded from EsafePOS Reports -->
     <div v-else-if="board" class="board">
       <div class="board-bar">
         <span class="board-title">{{ t('Sales dashboard') }}</span>
         <a class="btn small-btn" :href="board.open" target="_blank" rel="noopener">
-          {{ t('Open in Lumen Reports') }}
+          {{ t('Open in EsafePOS Reports') }}
         </a>
       </div>
       <iframe class="board-frame" :src="board.embed" :title="t('Sales dashboard')"></iframe>
@@ -132,11 +132,11 @@ const ChartMark = () =>
     }),
   ])
 
-// Lumen Reports builds its dashboard in English or Arabic. A till in any other
+// EsafePOS Reports builds its dashboard in English or Arabic. A till in any other
 // language gets the English one.
 const reportsLang = computed(() => (locale.value === 'ar' ? 'ar' : 'en'))
 
-// When Lumen Reports says the current user may view it, show the embedded
+// When EsafePOS Reports says the current user may view it, show the embedded
 // dashboard. Its language and theme follow the till.
 const board = computed(() => {
   const lr = info.value && info.value.lr
@@ -153,7 +153,7 @@ const view = computed(() => {
     return {
       title: t('Sales dashboard'),
       body: t(
-        'Lumen Reports needs Frappe v{version} or newer. This site runs an older version, so the dashboard is not available here.',
+        'EsafePOS Reports needs Frappe v{version} or newer. This site runs an older version, so the dashboard is not available here.',
         { version: i.min_frappe || 14 },
       ),
     }
@@ -162,26 +162,26 @@ const view = computed(() => {
     return {
       title: t('Get the full picture of your sales'),
       body: t(
-        'Install the Lumen Reports app to see a complete sales dashboard here: revenue by day and by outlet, payment mix, top items and more, with filters, all inside LumenPOS.',
+        'Install the EsafePOS Reports app to see a complete sales dashboard here: revenue by day and by outlet, payment mix, top items and more, with filters, all inside EsafePOS.',
       ),
-      hint: t('Lumen Reports is available on the Frappe Cloud Marketplace, or through hello@lumen-solutions.co.'),
+      hint: t('EsafePOS Reports is available on the Frappe Cloud Marketplace, or through hello@esafesolutions.co.'),
     }
   }
   if (!i.integration_ready) {
     return {
       title: t('Sales dashboard'),
       body: t(
-        'Lumen Reports is installed, but this version does not include the LumenPOS dashboard yet. Update Lumen Reports, then come back.',
+        'EsafePOS Reports is installed, but this version does not include the EsafePOS dashboard yet. Update EsafePOS Reports, then come back.',
       ),
       refresh: true,
     }
   }
   const lr = i.lr || {}
-  // Lumen Reports' own status call failed: say so, with its error as the detail.
+  // EsafePOS Reports' own status call failed: say so, with its error as the detail.
   if (i.lr_error) {
     return {
       title: t('Sales dashboard'),
-      body: t('Lumen Reports could not report its status on this site.'),
+      body: t('EsafePOS Reports could not report its status on this site.'),
       hint: i.lr_error,
       refresh: true,
     }
@@ -198,7 +198,7 @@ const view = computed(() => {
     return {
       title: t('One permission away'),
       body: t(
-        'The dashboard is ready. To open it, an administrator grants this user the Lumen Restricted Viewer role in Lumen Reports.',
+        'The dashboard is ready. To open it, an administrator grants this user the Lumen Restricted Viewer role in EsafePOS Reports.',
       ),
       refresh: true,
     }
@@ -207,24 +207,24 @@ const view = computed(() => {
     if (lr.can_create) {
       return {
         title: t('Sales dashboard'),
-        body: t('Lumen Reports is installed. One step left: create the ready-made POS sales dashboard.'),
+        body: t('EsafePOS Reports is installed. One step left: create the ready-made POS sales dashboard.'),
         action: t('Create the sales dashboard'),
       }
     }
     return {
       title: t('Sales dashboard'),
       body: t(
-        'Lumen Reports is installed. An administrator with Lumen Builder or Lumen Manager opens this page once to create the dashboard.',
+        'EsafePOS Reports is installed. An administrator with Lumen Builder or Lumen Manager opens this page once to create the dashboard.',
       ),
       refresh: true,
     }
   }
-  // A reason this page does not know (a newer Lumen Reports may add one), or no
+  // A reason this page does not know (a newer EsafePOS Reports may add one), or no
   // reason and still no access. Never a silent "Loading…": say it plainly and show
-  // Lumen Reports' own message when it sends one.
+  // EsafePOS Reports' own message when it sends one.
   return {
     title: t('Sales dashboard'),
-    body: t('Lumen Reports cannot show the dashboard on this site right now.'),
+    body: t('EsafePOS Reports cannot show the dashboard on this site right now.'),
     hint: lr.message || null,
     refresh: true,
   }

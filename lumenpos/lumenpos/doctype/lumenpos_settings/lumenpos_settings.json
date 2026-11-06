@@ -352,7 +352,7 @@
   },
   {
    "depends_on": "eval:(doc.discount_approval_mode && doc.discount_approval_mode != \"Passcode only\") || doc.restrict_returns_to_window",
-   "description": "Users holding this role (plus LumenPOS/System Managers) can approve discount AND return requests. Requests can only be approved while the cashier's register is still open.",
+   "description": "Users holding this role (plus EsafePOS/System Managers) can approve discount AND return requests. Requests can only be approved while the cashier's register is still open.",
    "fieldname": "approver_role",
    "fieldtype": "Link",
    "label": "Approver Role (for requests)",
@@ -427,7 +427,7 @@
    "label": "Refund approval above"
   },
   {
-   "description": "Restrict till actions to staff holding a role. Leave a role blank to allow everyone. System / LumenPOS Managers always pass.",
+   "description": "Restrict till actions to staff holding a role. Leave a role blank to allow everyone. System / EsafePOS Managers always pass.",
    "fieldname": "permissions_section",
    "fieldtype": "Section Break",
    "label": "Permissions"
@@ -603,7 +603,7 @@
   },
   {
    "default": "1",
-   "description": "Record sensitive actions (over-limit discounts, returns, price edits, register open/close) to the LumenPOS Audit Log.",
+   "description": "Record sensitive actions (over-limit discounts, returns, price edits, register open/close) to the EsafePOS Audit Log.",
    "fieldname": "enable_audit_log",
    "fieldtype": "Check",
    "label": "Audit log"
@@ -647,15 +647,15 @@
   {
    "fieldname": "stock_app_section",
    "fieldtype": "Section Break",
-   "label": "Lumen Stock app",
+   "label": "EsafePOS Stock app",
    "collapsible": 1,
-   "description": "The Lumen Stock phone app counts stock (alone or with several phones at once) and makes stock entries and purchase receipts, saved as the person on the phone, so ERPNext permissions apply. Who may use it: Approvals and access, Permissions, Use the stock app."
+   "description": "The EsafePOS Stock phone app counts stock (alone or with several phones at once) and makes stock entries and purchase receipts, saved as the person on the phone, so ERPNext permissions apply. Who may use it: Approvals and access, Permissions, Use the stock app."
   },
   {
    "default": "1",
    "fieldname": "enable_stock_app",
    "fieldtype": "Check",
-   "label": "Lumen Stock app",
+   "label": "EsafePOS Stock app",
    "description": "Off: the app is refused on this site."
   },
   {
@@ -668,7 +668,7 @@
    "default": "1",
    "fieldname": "stock_count_in_till",
    "fieldtype": "Check",
-   "label": "Count from LumenPOS",
+   "label": "Count from EsafePOS",
    "description": "A Stock count screen in the till: count with a barcode scanner, alone or together with the phones of a shared count. Needs Stock counts on."
   },
   {
@@ -873,7 +873,7 @@
   },
   {
    "default": "1",
-   "description": "ERPNext 16 takes sales only on a shift opened the same day. On (the default): at the first sale after midnight LumenPOS closes the day in ERPNext and opens the next one by itself, and the shift carries on and is counted once, at its own close. Off: a shift from an earlier day has to be closed before it can sell again. Set from the till: Settings, General, Register and shifts.",
+   "description": "ERPNext 16 takes sales only on a shift opened the same day. On (the default): at the first sale after midnight EsafePOS closes the day in ERPNext and opens the next one by itself, and the shift carries on and is counted once, at its own close. Off: a shift from an earlier day has to be closed before it can sell again. Set from the till: Settings, General, Register and shifts.",
    "fieldname": "carry_shift_past_midnight",
    "fieldtype": "Check",
    "label": "Keep a shift open past midnight"
@@ -986,7 +986,7 @@
   },
   {
    "default": "1",
-   "description": "A statistics page for managers. With the Lumen Reports app installed it embeds a ready-made POS sales dashboard, otherwise it suggests installing it.",
+   "description": "A statistics page for managers. With the EsafePOS Reports app installed it embeds a ready-made POS sales dashboard, otherwise it suggests installing it.",
    "fieldname": "enable_insights",
    "fieldtype": "Check",
    "label": "Enable Insights"
@@ -1000,7 +1000,7 @@
   },
   {
    "default": "1",
-   "description": "Whoever holds the LumenPOS Reports role opens LumenPOS on the reports alone, for every outlet of their companies, with no POS Profile, shift or sales.",
+   "description": "Whoever holds the EsafePOS Reports role opens EsafePOS on the reports alone, for every outlet of their companies, with no POS Profile, shift or sales.",
    "fieldname": "reports_without_till",
    "fieldtype": "Check",
    "label": "Reports for management without a till"
@@ -1059,14 +1059,14 @@
    "label": "Minimum deposit (%)"
   },
   {
-   "description": "Liability account for customer deposits. Blank = LumenPOS creates 'Customer Deposits'. A per-company account can be set in Company Accounts.",
+   "description": "Liability account for customer deposits. Blank = EsafePOS creates 'Customer Deposits'. A per-company account can be set in Company Accounts.",
    "fieldname": "deposit_account",
    "fieldtype": "Link",
    "label": "Customer deposits account",
    "options": "Account"
   },
   {
-   "description": "The item a deposit is taken on. Blank = LumenPOS creates LUMENPOS-DEPOSIT.",
+   "description": "The item a deposit is taken on. Blank = EsafePOS creates LUMENPOS-DEPOSIT.",
    "fieldname": "deposit_item",
    "fieldtype": "Link",
    "label": "Deposit item",
@@ -1078,7 +1078,7 @@
    "label": "Languages"
   },
   {
-   "description": "The languages a cashier can pick at the till, one ERPNext language code per line (en, ar ...). Empty = every language LumenPOS ships, including ones a later update adds. English is always offered. Set from the till: Settings, General, Languages.",
+   "description": "The languages a cashier can pick at the till, one ERPNext language code per line (en, ar ...). Empty = every language EsafePOS ships, including ones a later update adds. English is always offered. Set from the till: Settings, General, Languages.",
    "fieldname": "till_languages",
    "fieldtype": "Small Text",
    "label": "Languages at the till"
@@ -1091,7 +1091,7 @@
   },
   {
    "default": "0",
-   "description": "A customer takes the goods now and pays later. The part not paid is paid with the \"Credit Sale\" payment method, and the till books the debt on the customer at once with a Journal Entry, so it shows on their account in ERPNext and can be paid at the till or in ERPNext. LumenPOS makes the payment method and its clearing account itself. Who may sell on account is set in Approvals and access, Permissions.",
+   "description": "A customer takes the goods now and pays later. The part not paid is paid with the \"Credit Sale\" payment method, and the till books the debt on the customer at once with a Journal Entry, so it shows on their account in ERPNext and can be paid at the till or in ERPNext. EsafePOS makes the payment method and its clearing account itself. Who may sell on account is set in Approvals and access, Permissions.",
    "fieldname": "credit_sales_enabled",
    "fieldtype": "Check",
    "label": "Sell on account"

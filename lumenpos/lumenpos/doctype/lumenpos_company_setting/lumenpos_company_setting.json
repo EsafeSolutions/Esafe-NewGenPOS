@@ -52,7 +52,7 @@
    "options": "Account"
   },
   {
-   "description": "Liability account this company holds customer deposits in. Blank = LumenPOS creates 'Customer Deposits'.",
+   "description": "Liability account this company holds customer deposits in. Blank = EsafePOS creates 'Customer Deposits'.",
    "fieldname": "deposit_account",
    "fieldtype": "Link",
    "label": "Customer deposits account",

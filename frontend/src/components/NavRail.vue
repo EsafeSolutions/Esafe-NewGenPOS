@@ -1,10 +1,10 @@
-<!-- Copyright (c) 2026 Lumen Solutions
+<!-- Copyright (c) 2026 Esafe (PVT) LTD
      SPDX-License-Identifier: AGPL-3.0-only
-     "LumenPOS" is a trademark of Lumen Solutions. See TRADEMARKS.md. -->
+     "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md. -->
 <template>
   <nav class="rail" data-tour="nav-rail">
     <div class="logo">
-      <img :src="esafeMark" alt="Esafe Solutions" />
+      <img :src="esafeMark" alt="EsafePOS" />
     </div>
     <!-- The reports alone (0.65.0): Insights, the theme and the way back to ERPNext. -->
     <router-link v-if="!session.reportsOnly" to="/" class="rail-item" exact-active-class="active">

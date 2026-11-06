@@ -1,6 +1,6 @@
-// Copyright (c) 2026 Lumen Solutions
+// Copyright (c) 2026 Esafe (PVT) LTD
 // SPDX-License-Identifier: AGPL-3.0-only
-// "LumenPOS" is a trademark of Lumen Solutions. See TRADEMARKS.md.
+// "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md.
 // Build lumenpos/translations/<code>.csv (Frappe's own format, read on v13 to
 // v16) from <work>/<code>_server_part*.json, after checking every string.
 // Rows for texts Frappe or ERPNext already translate (<work>/erp_keys_<code>.json,

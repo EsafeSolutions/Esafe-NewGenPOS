@@ -1,6 +1,6 @@
-<!-- Copyright (c) 2026 Lumen Solutions
+<!-- Copyright (c) 2026 Esafe (PVT) LTD
      SPDX-License-Identifier: AGPL-3.0-only
-     "LumenPOS" is a trademark of Lumen Solutions. See TRADEMARKS.md. -->
+     "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md. -->
 <template>
   <!-- A customer's account (lumenpos.api.credit, 0.60.0): what they owe sale by
        sale, a payment of it into this till's drawer, and a manager's switch and
@@ -205,7 +205,7 @@ async function saveCredit() {
 }
 
 // Money the till may take a debt in: the outlet's own tenders in the company's
-// currency, never LumenPOS's internal ones.
+// currency, never EsafePOS's internal ones.
 const payModes = computed(() => {
   const internal = [session.storeCreditMode, session.cashbackMode, session.giftCardMode, session.creditMode, 'Exchange']
   return (session.paymentModes || []).filter(

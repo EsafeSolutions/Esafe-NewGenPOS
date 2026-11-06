@@ -1,6 +1,6 @@
-# Copyright (c) 2026 Lumen Solutions
+# Copyright (c) 2026 Esafe (PVT) LTD
 # SPDX-License-Identifier: AGPL-3.0-only
-# "LumenPOS" is a trademark of Lumen Solutions. See TRADEMARKS.md.
+# "ESAFEPOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md.
 """A customer's account at the till (0.60.0, lumenpos.credit_sales): what they
 owe sale by sale, a payment of it taken into the drawer, and the manager's
 switch and limit on the customer's card.

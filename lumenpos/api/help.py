@@ -1,6 +1,6 @@
-# Copyright (c) 2026 Lumen Solutions
+# Copyright (c) 2026 Esafe (PVT) LTD
 # SPDX-License-Identifier: AGPL-3.0-only
-# "LumenPOS" is a trademark of Lumen Solutions. See TRADEMARKS.md.
+# "ESAFEPOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md.
 """Help in the till (0.58.0): what each person has already seen.
 
 The help itself lives in the till: the "?" button with each screen's help, the

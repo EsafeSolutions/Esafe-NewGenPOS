@@ -1,4 +1,4 @@
-# LumenPOS Documentation
+# EsafePOS Documentation
 
 A fast, single-screen point of sale for ERPNext / Frappe (v13 through v16). This guide covers everything from installing the app to running a busy shift, written for shop owners, managers and the ERPNext admin setting it up.
 
@@ -8,7 +8,7 @@ A fast, single-screen point of sale for ERPNext / Frappe (v13 through v16). This
 
 ## Contents
 
-1. [What LumenPOS is](#what-lumenpos-is)
+1. [What EsafePOS is](#what-esafepos-is)
 2. [Requirements](#requirements)
 3. [Installing](#installing)
 4. [First-time setup](#first-time-setup)
@@ -24,7 +24,7 @@ A fast, single-screen point of sale for ERPNext / Frappe (v13 through v16). This
 14. [Working offline](#working-offline)
 15. [Serial numbers](#serial-numbers)
 16. [Barcode and price labels](#barcode-and-price-labels)
-17. [Stock take with the Lumen Stock app](#stock-take-with-the-lumen-stock-app)
+17. [Stock take with the EsafePOS Stock app](#stock-take-with-the-lumen-stock-app)
 18. [Multi-company and invoice modes](#multi-company-and-invoice-modes)
 19. [Permissions and the audit log](#permissions-and-the-audit-log)
 20. [Keeping a big shop fast](#keeping-a-big-shop-fast)
@@ -35,11 +35,11 @@ A fast, single-screen point of sale for ERPNext / Frappe (v13 through v16). This
 
 ---
 
-## What LumenPOS is
+## What EsafePOS is
 
-LumenPOS is a retail till that runs on top of ERPNext. It gives your cashiers a quick, modern selling screen, search or scan, tap to add, take payment, print, while every sale posts as a normal ERPNext invoice with the right stock and accounting behind it. Nothing is kept in a side system: your inventory, customers, and books stay in ERPNext.
+EsafePOS is a retail till that runs on top of ERPNext. It gives your cashiers a quick, modern selling screen, search or scan, tap to add, take payment, print, while every sale posts as a normal ERPNext invoice with the right stock and accounting behind it. Nothing is kept in a side system: your inventory, customers, and books stay in ERPNext.
 
-It's designed for real counters, so it also handles the things a shop needs day to day: its own promotions, cashback, gift cards, store credit, loyalty points, returns, cash-drawer reconciliation, barcode and price labels, stock take with the Lumen Stock phone app, and selling while the internet is down.
+It's designed for real counters, so it also handles the things a shop needs day to day: its own promotions, cashback, gift cards, store credit, loyalty points, returns, cash-drawer reconciliation, barcode and price labels, stock take with the EsafePOS Stock phone app, and selling while the internet is down.
 
 ---
 
@@ -57,13 +57,13 @@ That's it. The front end is pre-built and shipped with the app, so you don't nee
 
 ### On Frappe Cloud (marketplace)
 
-Install LumenPOS onto your site from the Frappe Marketplace, then let the site finish updating. When it's done, open `https://your-site/pos`.
+Install EsafePOS onto your site from the Frappe Marketplace, then let the site finish updating. When it's done, open `https://your-site/pos`.
 
 ### On a self-hosted bench
 
 ```bash
 cd frappe-bench
-bench get-app https://github.com/ma7mod7osam/LumenPOS
+bench get-app https://github.com/ma7mod7osam/EsafePOS
 bench --site your-site install-app lumenpos
 bench --site your-site clear-cache
 ```
@@ -89,7 +89,7 @@ Then open `https://your-site/pos`.
 
 **2. Set a default customer** on the POS Profile (for example, "Walk-in Customer"). This is what a sale is billed to when no specific customer is chosen, and in Sales-Invoice mode a customer is required, so don't skip it.
 
-**3. Open the POS.** Go to `https://your-site/pos`. The first time you open it online, LumenPOS quietly caches your catalogue so search is instant and offline selling works later.
+**3. Open the POS.** Go to `https://your-site/pos`. The first time you open it online, EsafePOS quietly caches your catalogue so search is instant and offline selling works later.
 
 **4. Adjust settings (optional).** Open **Settings** inside the POS to configure promotions, price books, receipt design, gift cards, permissions and more. Store-level things like price list, warehouse, taxes and payment methods stay on the POS Profile in ERPNext, that remains the single source of truth.
 
@@ -124,15 +124,15 @@ Prices and promotions are always worked out on the server when the sale is submi
 - Create either an **individual** or a **company** customer; company records can carry a tax ID and address for the receipt.
 - Picking a customer can activate a **customer-group price book**, so their pricing updates automatically.
 
-If you create a customer while offline, LumenPOS saves them locally and reconciles on reconnect, matching an existing record by mobile number if one already exists, so you don't end up with duplicates.
+If you create a customer while offline, EsafePOS saves them locally and reconciles on reconnect, matching an existing record by mobile number if one already exists, so you don't end up with duplicates.
 
 ---
 
 ## Discounts and promotions
 
-LumenPOS has its own promotions engine, so you don't have to wrangle ERPNext Pricing Rules at the till. Create promotions in the desk under **POS Promotion → New**.
+EsafePOS has its own promotions engine, so you don't have to wrangle ERPNext Pricing Rules at the till. Create promotions in the desk under **POS Promotion → New**.
 
-> **LumenPOS pricing vs ERPNext Pricing Rules.** LumenPOS owns pricing at the point of sale. Its **price books, promotions and bundles** are always the source of truth, and it **automatically ignores ERPNext Pricing Rules on every POS sale**, so the price the till shows always matches the posted invoice, and there's nothing to enable or disable. (You may see an *Ignore Pricing Rule* option in ERPNext; LumenPOS already applies it for you at the POS.) Your existing Pricing Rules keep working on non-POS documents such as Sales Orders and regular Sales Invoices.
+> **EsafePOS pricing vs ERPNext Pricing Rules.** EsafePOS owns pricing at the point of sale. Its **price books, promotions and bundles** are always the source of truth, and it **automatically ignores ERPNext Pricing Rules on every POS sale**, so the price the till shows always matches the posted invoice, and there's nothing to enable or disable. (You may see an *Ignore Pricing Rule* option in ERPNext; EsafePOS already applies it for you at the POS.) Your existing Pricing Rules keep working on non-POS documents such as Sales Orders and regular Sales Invoices.
 
 | Type | What it does | Key fields |
 |---|---|---|
@@ -173,12 +173,12 @@ Press **Complete Sale** to post the invoice. If the sale can't post for any reas
 
 ## The register
 
-LumenPOS treats each shift as a register session so the cash drawer always balances.
+EsafePOS treats each shift as a register session so the cash drawer always balances.
 
 - **Open the register** at the start of a shift and enter the **opening float** (the cash you start with).
 - **Cash in / cash out** records money added to or taken from the drawer during the shift.
 - **X-report**, a mid-shift read of sales and expected takings, available any time from the top bar. It does **not** close the drawer or post anything. Any cashier on the till can pull one.
-- **Close the register** at the end of the shift: count the drawer (a blind count, so the expected figure doesn't bias it), and LumenPOS compares counted vs expected per payment method and produces a **Z-report**.
+- **Close the register** at the end of the shift: count the drawer (a blind count, so the expected figure doesn't bias it), and EsafePOS compares counted vs expected per payment method and produces a **Z-report**.
 
 ### Several outlets, one login
 
@@ -194,14 +194,14 @@ Under **Settings → A shift belongs to** you choose:
 ### Safeguards at closing
 
 - **Queued offline sales block the close.** They belong to *this* shift's drawer, so the close screen shows how many are waiting with an **Upload now** button.
-- **A stale closing screen is refused.** If a sale lands from another till or tab after you opened the closing screen, the figures you counted against are out of date. LumenPOS asks you to refresh and re-check rather than posting a wrong variance.
+- **A stale closing screen is refused.** If a sale lands from another till or tab after you opened the closing screen, the figures you counted against are out of date. EsafePOS asks you to refresh and re-check rather than posting a wrong variance.
 - **A slow or failed end-of-day close never blocks the next shift.** The moment you close, the register is free; consolidation finishes in the background and self-heals.
 - **Typed amounts are read exactly as typed**, `1,500`, spaces and Arabic-Indic digits all work, and an unreadable box stops the action instead of silently becoming zero.
 
 ### Alerts (optional)
 
 - **Cash variance**, email a chosen role when a counted amount differs from expected by more than a threshold. It records and notifies; it never blocks the close.
-- **Forgotten shift**, build a **shift schedule** (a reusable timetable, including shifts that cross midnight) and attach it to an outlet. LumenPOS emails a role when a register is still open past its shift end, with a grace period. A till is **never** closed automatically, a close without a real cash count is worthless.
+- **Forgotten shift**, build a **shift schedule** (a reusable timetable, including shifts that cross midnight) and attach it to an outlet. EsafePOS emails a role when a register is still open past its shift end, with a grace period. A till is **never** closed automatically, a close without a real cash count is worthless.
 
 ### Locking the till
 
@@ -231,9 +231,9 @@ Who may process a return, and who may approve one past the return window, is con
 
 **Store credit.** Each customer can hold a store-credit balance, backed by a liability account. It appears as a "Store Credit" payment method and can be topped up by refunds.
 
-**Loyalty.** LumenPOS uses ERPNext's native Loyalty Program. Assign a program to your customers (directly or via customer group); points are earned automatically on sales, and the customer can redeem them at the payment screen.
+**Loyalty.** EsafePOS uses ERPNext's native Loyalty Program. Assign a program to your customers (directly or via customer group); points are earned automatically on sales, and the customer can redeem them at the payment screen.
 
-> **Setup tip:** to switch loyalty on, create a Loyalty Program in ERPNext, set it to **auto opt-in** and assign it to customers. On ERPNext v15 and v16, also tick **Allow Partial Payment** on the POS Profile, otherwise ERPNext refuses any sale paid partly with points: it counts only the cash and card against the total, even though the points settle the rest. LumenPOS checks every sale adds up before it posts, so nothing is lost by ticking it. To use store credit, just take it as payment, the account and payment method are created on first use.
+> **Setup tip:** to switch loyalty on, create a Loyalty Program in ERPNext, set it to **auto opt-in** and assign it to customers. On ERPNext v15 and v16, also tick **Allow Partial Payment** on the POS Profile, otherwise ERPNext refuses any sale paid partly with points: it counts only the cash and card against the total, even though the points settle the rest. EsafePOS checks every sale adds up before it posts, so nothing is lost by ticking it. To use store credit, just take it as payment, the account and payment method are created on first use.
 
 ---
 
@@ -248,7 +248,7 @@ Reward customers with cashback they spend on a later visit. Each customer has th
 
 At the till, the payment screen shows the cashback the sale will earn, and the customer's available balance can be spent with **Use cashback**. Paying with cashback never earns new cashback on the part it paid for. A refund takes back the cashback that sale earned and the customer has not spent yet, and cashback that reaches its expiry date is removed automatically.
 
-**Accounting.** Cashback is booked properly in ERPNext. Each company chooses a cashback liability account and a cashback expense account under **Settings → General → Company accounts**, and both are created automatically if you leave them empty. Earned cashback is booked as an expense against the liability, spent cashback leaves the liability through the sale's own payment, and expired or refunded cashback is reversed. LumenPOS books all of this as one summary Journal Entry per company, day and outlet, not one per sale: every night, or straight away with **Book to accounts now** in the Cashback tab. Once everything is booked and the shifts are closed, the liability account equals what your customers hold.
+**Accounting.** Cashback is booked properly in ERPNext. Each company chooses a cashback liability account and a cashback expense account under **Settings → General → Company accounts**, and both are created automatically if you leave them empty. Earned cashback is booked as an expense against the liability, spent cashback leaves the liability through the sale's own payment, and expired or refunded cashback is reversed. EsafePOS books all of this as one summary Journal Entry per company, day and outlet, not one per sale: every night, or straight away with **Book to accounts now** in the Cashback tab. Once everything is booked and the shifts are closed, the liability account equals what your customers hold.
 
 Cashback is on by default but earns nothing until you create a rule, and it can be switched off in **Settings**.
 
@@ -256,9 +256,9 @@ Cashback is on by default but earns nothing until you create a rule, and it can 
 
 ## Receipts and printing
 
-You have three ways to print, and LumenPOS picks the best available automatically:
+You have three ways to print, and EsafePOS picks the best available automatically:
 
-1. **Thermal printer (ESC/POS).** Configure a printer IP and port on the POS Profile. The Frappe server prints to it directly and can kick the cash drawer. (On cloud-hosted sites the printer needs to be reachable from the server; otherwise LumenPOS falls back to browser printing.)
+1. **Thermal printer (ESC/POS).** Configure a printer IP and port on the POS Profile. The Frappe server prints to it directly and can kick the cash drawer. (On cloud-hosted sites the printer needs to be reachable from the server; otherwise EsafePOS falls back to browser printing.)
 2. **Your own ERPNext Print Format.** Set a Print Format on the POS Profile and it takes over, full control over layout, bilingual receipts, QR blocks, anything a Print Format can do.
 3. **The built-in receipt designer.** In **Settings → Receipt**, choose a template (Compact, Standard, Detailed), pick what to show (item code, barcode, serial number, unit price, payment methods, note, tax ID, address, terms), and add a logo, header and footer. A live preview shows your changes as you make them.
 
@@ -284,7 +284,7 @@ So a **ZATCA QR** stored as an image field on the invoice prints as the actual Q
 
 ## Working offline
 
-LumenPOS is built to keep selling through a network outage.
+EsafePOS is built to keep selling through a network outage.
 
 - **Products, prices and promotions** are cached on the device the first time you open the POS online, and refreshed in the background.
 - If the connection drops, the till keeps working. **Sales are queued locally** and upload automatically when you're back online. Queued writes carry a safety key so a lost confirmation can never post a sale twice.
@@ -301,7 +301,7 @@ LumenPOS is built to keep selling through a network outage.
 
 ## Serial numbers
 
-For serialised products, LumenPOS enforces scanning so the right unit is sold:
+For serialised products, EsafePOS enforces scanning so the right unit is sold:
 
 - A serialised item **won't enter the cart** until you scan or type a serial number.
 - The serial must **exist**, be **Active**, and belong to **this register's warehouse**.
@@ -322,23 +322,23 @@ The **Labels** screen prints shelf and product labels on a label printer roll or
 
 ---
 
-## Stock take with the Lumen Stock app
+## Stock take with the EsafePOS Stock app
 
-LumenPOS works with **Lumen Stock**, a phone app for warehouse and shop-floor stock work. Staff count stock, receive and transfer goods, and record purchase receipts from an Android phone or a handheld scanner, and every document lands in ERPNext as a normal Stock Reconciliation, Stock Entry or Purchase Receipt, saved as the person who made it, so their ERPNext permissions apply.
+EsafePOS works with **EsafePOS Stock**, a phone app for warehouse and shop-floor stock work. Staff count stock, receive and transfer goods, and record purchase receipts from an Android phone or a handheld scanner, and every document lands in ERPNext as a normal Stock Reconciliation, Stock Entry or Purchase Receipt, saved as the person who made it, so their ERPNext permissions apply.
 
 - **Count with several phones at once.** Open a shared count for a warehouse, each phone sends what it counts, and a supervisor merges everything into one stock count. The same item counted on two phones is added up, serial numbers are combined, and only the differences go into the count. A full count sets anything nobody counted to zero.
-- **Counts that match the shelf.** A sale at the till moves stock only when its shift is closed. LumenPOS compares a count with what is really on the shelf, and a count is not saved, merged or submitted from the app while sales of an open shift still hold its items, so no difference is lost and closing the shift afterwards never takes the same goods off twice. Phones keep counting meanwhile.
+- **Counts that match the shelf.** A sale at the till moves stock only when its shift is closed. EsafePOS compares a count with what is really on the shelf, and a count is not saved, merged or submitted from the app while sales of an open shift still hold its items, so no difference is lost and closing the shift afterwards never takes the same goods off twice. Phones keep counting meanwhile.
 - **Moved after counting.** Before a count is submitted, the items that were sold, moved or received after they were counted are listed with the documents that moved them.
 - **In the desk** each shared count shows every phone, every item, the total, what is on the shelf and the difference, with an Excel export.
 - **Settings** switch the app off or any part of it (counts, stock entries, purchase receipts, approving from the app, shared counts, blind counting, linking a new barcode to an item, the Excel export), and the **Use the stock app** permission limits who may use it.
 
-Lumen Stock also works on ERPNext sites without LumenPOS.
+EsafePOS Stock also works on ERPNext sites without EsafePOS.
 
 ---
 
 ## Multi-company and invoice modes
 
-**Multi-company.** If your site runs several companies, LumenPOS scopes accounts per company, so a sale never posts to another company's ledger. Set per-company accounts under **Settings → Company Accounts**.
+**Multi-company.** If your site runs several companies, EsafePOS scopes accounts per company, so a sale never posts to another company's ledger. Set per-company accounts under **Settings → Company Accounts**.
 
 **Invoice mode.** Choose per POS Profile how sales post:
 
@@ -359,7 +359,7 @@ Under **Settings → Permissions**, decide which roles can:
 
 When a cashier needs an over-limit discount or a late return, they send an **approval request**. The approver sees **what** is being approved, the cart lines being discounted, or the items being returned, instead of a bare percentage. Anything still unconfirmed is voided when the shift closes, so an approval can never be spent on the next shift's drawer.
 
-Sensitive actions, over-limit discounts, returns, register open/close, settings changes, receipt emails, till unlocks, are written to a **LumenPOS Audit Log** you can review in the desk.
+Sensitive actions, over-limit discounts, returns, register open/close, settings changes, receipt emails, till unlocks, are written to a **EsafePOS Audit Log** you can review in the desk.
 
 There's also an optional **till lock**: a lock screen that engages manually or after a period of inactivity. Each cashier sets their **own PIN**, so an unlock is always attributable to a person. See [The register](#the-register).
 
@@ -367,15 +367,15 @@ There's also an optional **till lock**: a lock screen that engages manually or a
 
 ## Insights
 
-The **Insights** page gives managers a full sales dashboard without leaving the till. At the top sit net sales, the number of invoices, the average basket and returns. Below them are sales by day, sales by outlet, the payment mix, top items, sales by cashier and the busiest hours of the week. Filter everything by date range, outlet, customer, payment method or item, and open the same dashboard full screen in Lumen Reports with one click.
+The **Insights** page gives managers a full sales dashboard without leaving the till. At the top sit net sales, the number of invoices, the average basket and returns. Below them are sales by day, sales by outlet, the payment mix, top items, sales by cashier and the busiest hours of the week. Filter everything by date range, outlet, customer, payment method or item, and open the same dashboard full screen in EsafePOS Reports with one click.
 
-LumenPOS does not draw the charts itself. The dashboard comes from the separate **Lumen Reports** app and is embedded inside the POS, in the till's own language and theme. If Lumen Reports is not installed, the page explains how to get it. Once it is installed, one tap builds the dashboard. The page is for managers only and can be switched off in **Settings**.
+EsafePOS does not draw the charts itself. The dashboard comes from the separate **EsafePOS Reports** app and is embedded inside the POS, in the till's own language and theme. If EsafePOS Reports is not installed, the page explains how to get it. Once it is installed, one tap builds the dashboard. The page is for managers only and can be switched off in **Settings**.
 
-Requirements: **Frappe v14, v15 or v16** with **Lumen Reports** installed (**1.2.2 or newer** on v14, **1.1.0 or newer** on v15 and v16). On v13 the page says the dashboard needs a newer Frappe instead of showing a broken screen. A manager who has no Lumen Reports role yet is told which role an administrator grants. The two apps are independent, so each still works on its own.
+Requirements: **Frappe v14, v15 or v16** with **EsafePOS Reports** installed (**1.2.2 or newer** on v14, **1.1.0 or newer** on v15 and v16). On v13 the page says the dashboard needs a newer Frappe instead of showing a broken screen. A manager who has no EsafePOS Reports role yet is told which role an administrator grants. The two apps are independent, so each still works on its own.
 
 ## Keeping a big shop fast
 
-On a large site (hundreds of thousands of sales) LumenPOS relies on database indexes to keep selling, searching and shift reports quick. **Settings → Status → Performance indexes** lists each one as **Built**, **Missing** or **Not on this site**, with a **Rebuild missing indexes** button that runs in the background.
+On a large site (hundreds of thousands of sales) EsafePOS relies on database indexes to keep selling, searching and shift reports quick. **Settings → Status → Performance indexes** lists each one as **Built**, **Missing** or **Not on this site**, with a **Rebuild missing indexes** button that runs in the background.
 
 This is visible on purpose: building an index on a huge, busy table can be refused by the database, and previously that failed silently. If a site ever feels slow, check here first.
 
@@ -385,7 +385,7 @@ The same page shows the offline catalogue and customer cache sizes, the connecti
 
 ## Language
 
-LumenPOS speaks **thirteen languages**: English, Arabic, Spanish, German, Chinese (Simplified), French, Thai, Indonesian, Vietnamese, Portuguese (Brazil), Persian, Russian and Turkish, with full right-to-left layout for Arabic and Persian. Switch language from the top bar, and the server's own messages answer in the same language. Settings chooses which languages the till offers. New installs follow your ERPNext desk theme (light/dark) until you override it.
+EsafePOS speaks **thirteen languages**: English, Arabic, Spanish, German, Chinese (Simplified), French, Thai, Indonesian, Vietnamese, Portuguese (Brazil), Persian, Russian and Turkish, with full right-to-left layout for Arabic and Persian. Switch language from the top bar, and the server's own messages answer in the same language. Settings chooses which languages the till offers. New installs follow your ERPNext desk theme (light/dark) until you override it.
 
 ---
 
@@ -401,13 +401,13 @@ Submitted invoices can't be edited (that's an accounting rule). Refund/return th
 Set your Print Format on the **POS Profile**. When one is set, it takes over printing and the built-in designer only styles the on-screen receipt. (A configured thermal printer uses its own fixed layout.)
 
 **Selling a gift card or paying with one fails on a multi-company site.**
-Make sure the company has its own warehouse and gift-card/liability accounts. LumenPOS auto-creates sensible defaults, but a valid warehouse for the company must exist. Keep the app up to date, multi-company handling improves with releases.
+Make sure the company has its own warehouse and gift-card/liability accounts. EsafePOS auto-creates sensible defaults, but a valid warehouse for the company must exist. Keep the app up to date, multi-company handling improves with releases.
 
 **Nothing loads / search is empty.**
 Open the POS online at least once so the catalogue can cache. Then use **Settings → Status → Refresh offline catalog** to rebuild the cache.
 
 **Do I need to turn off ERPNext Pricing Rules to use promotions, bundles or price books?**
-No. LumenPOS ignores ERPNext Pricing Rules automatically on every POS sale, so its price books, promotions and bundles always take precedence at the till, there's nothing to switch on or off. Your Pricing Rules keep working on non-POS documents.
+No. EsafePOS ignores ERPNext Pricing Rules automatically on every POS sale, so its price books, promotions and bundles always take precedence at the till, there's nothing to switch on or off. Your Pricing Rules keep working on non-POS documents.
 
 **Where do I change the price list, taxes or payment methods?**
 On the **POS Profile** in ERPNext, that's the source of truth. The in-POS Settings page covers promotions, price books, receipts, permissions and the like.
@@ -416,11 +416,11 @@ On the **POS Profile** in ERPNext, that's the source of truth. The in-POS Settin
 
 ## Support
 
-- **Email:** hello@lumen-solutions.co
-- **Website:** https://lumen-solutions.co
+- **Email:** hello@esafesolutions.co
+- **Website:** https://esafesolutions.co
 
 Please include your ERPNext version and, if you hit an error, the message shown at the till, it makes fixing things much faster.
 
 ---
 
-*LumenPOS is built by Lumen Solutions and improves regularly. This document reflects the current release.*
+*EsafePOS is built by Esafe (PVT) LTD and improves regularly. This document reflects the current release.*

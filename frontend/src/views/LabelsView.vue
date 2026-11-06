@@ -1,6 +1,6 @@
-<!-- Copyright (c) 2026 Lumen Solutions
+<!-- Copyright (c) 2026 Esafe (PVT) LTD
      SPDX-License-Identifier: AGPL-3.0-only
-     "LumenPOS" is a trademark of Lumen Solutions. See TRADEMARKS.md. -->
+     "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md. -->
 <!-- Barcode and price labels (0.67.0, lumenpos.api.labels): items from a search
      or a scan, from a document that brought goods in, or from the prices changed
      since a date; the size, what prints, a preview, and the print itself. -->

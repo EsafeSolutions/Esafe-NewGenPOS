@@ -1,6 +1,6 @@
-<!-- Copyright (c) 2026 Lumen Solutions
+<!-- Copyright (c) 2026 Esafe (PVT) LTD
      SPDX-License-Identifier: AGPL-3.0-only
-     "LumenPOS" is a trademark of Lumen Solutions. See TRADEMARKS.md. -->
+     "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md. -->
 <!-- One table of products added up (lumenpos.api.reports._grouped): sold,
      returned, net quantity and net sales, and the cost, gross profit and margin
      when the server sent them. -->

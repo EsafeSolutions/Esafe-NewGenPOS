@@ -2,7 +2,7 @@
  "actions": [],
  "autoname": "format:CNT-{YYYY}-{#####}",
  "creation": "2026-10-26 12:00:00.000000",
- "description": "A stock count done by several phones at once with the Lumen Stock app. Each phone's lines are kept in POS Count Device until a supervisor merges them into one Stock Reconciliation.",
+ "description": "A stock count done by several phones at once with the EsafePOS Stock app. Each phone's lines are kept in POS Count Device until a supervisor merges them into one Stock Reconciliation.",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [

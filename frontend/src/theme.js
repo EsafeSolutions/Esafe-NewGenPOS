@@ -1,6 +1,6 @@
-// Copyright (c) 2026 Lumen Solutions
+// Copyright (c) 2026 Esafe (PVT) LTD
 // SPDX-License-Identifier: AGPL-3.0-only
-// "LumenPOS" is a trademark of Lumen Solutions. See TRADEMARKS.md.
+// "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md.
 // Light/dark theme: persisted in localStorage, applied as data-theme on
 // <html>. Defaults to the OS preference on first run.
 import { ref } from 'vue'
@@ -21,12 +21,12 @@ export function applyTheme() {
 
 export function toggleTheme() {
   theme.value = theme.value === 'dark' ? 'light' : 'dark'
-  localStorage.setItem(KEY, theme.value) // explicit LumenPOS choice, wins over ERPNext
+  localStorage.setItem(KEY, theme.value) // explicit EsafePOS choice, wins over ERPNext
   applyTheme()
 }
 
 // Follow the user's ERPNext desk theme (Light / Dark / Automatic) unless they
-// have explicitly toggled the theme inside LumenPOS on this device.
+// have explicitly toggled the theme inside EsafePOS on this device.
 export function syncFromErp(deskTheme) {
   if (localStorage.getItem(KEY)) return
   if (deskTheme === 'Dark') theme.value = 'dark'

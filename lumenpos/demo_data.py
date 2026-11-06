@@ -1,6 +1,6 @@
-# Copyright (c) 2026 Lumen Solutions
+# Copyright (c) 2026 Esafe (PVT) LTD
 # SPDX-License-Identifier: AGPL-3.0-only
-# "LumenPOS" is a trademark of Lumen Solutions. See TRADEMARKS.md.
+# "ESAFEPOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md.
 """Build a realistic LumenPOS demo site: masters, settings, and a month of trade.
 
 Trigger it from a browser, signed in as Administrator (on Frappe Cloud, use

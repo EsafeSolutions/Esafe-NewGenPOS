@@ -1,6 +1,6 @@
-# Copyright (c) 2026 Lumen Solutions
+# Copyright (c) 2026 Esafe (PVT) LTD
 # SPDX-License-Identifier: AGPL-3.0-only
-# "LumenPOS" is a trademark of Lumen Solutions. See TRADEMARKS.md.
+# "ESAFEPOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md.
 """The languages the till speaks, and which of them a shop offers.
 
 A language is shipped when LumenPOS carries its server translations

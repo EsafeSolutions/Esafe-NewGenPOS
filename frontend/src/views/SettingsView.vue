@@ -1,6 +1,6 @@
-<!-- Copyright (c) 2026 Lumen Solutions
+<!-- Copyright (c) 2026 Esafe (PVT) LTD
      SPDX-License-Identifier: AGPL-3.0-only
-     "LumenPOS" is a trademark of Lumen Solutions. See TRADEMARKS.md. -->
+     "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md. -->
 <template>
   <div class="settings">
     <!-- Segmented pill tab bar -->
@@ -1111,7 +1111,7 @@
             <p class="muted small" style="margin: 0">{{ t("Who may sell on account, take customer payments and set a customer's credit is set in Approvals and access, Permissions. Until someone is named there, only managers can.") }}</p>
           </div>
           <div class="credit-setup">
-            <div class="sub-label">{{ t('Set up by LumenPOS') }}</div>
+            <div class="sub-label">{{ t('Set up by EsafePOS') }}</div>
             <div v-for="row in settingsInfo.credit_setup || []" :key="row.company" class="credit-setup-row">
               <bdi class="credit-company">{{ row.company }}</bdi>
               <span v-if="row.ready" class="muted small">{{ t('Payment method {mode}, account {account}', { mode: row.mode, account: row.account }) }}</span>
@@ -1419,7 +1419,7 @@
             <input type="checkbox" class="setting-toggle" v-model="generalForm.carry_shift_past_midnight" :true-value="1" :false-value="0" />
             <span class="setting-text">
               <span class="setting-title">{{ t('Keep a shift open past midnight') }}</span>
-              <span class="setting-desc">{{ t('ERPNext 16 takes sales only on a shift opened the same day. On (the default): at the first sale after midnight LumenPOS closes the day in ERPNext and opens the next one by itself, and the shift carries on and is counted once, at its own close. Off: a shift from an earlier day has to be closed before it can sell again.') }}</span>
+              <span class="setting-desc">{{ t('ERPNext 16 takes sales only on a shift opened the same day. On (the default): at the first sale after midnight EsafePOS closes the day in ERPNext and opens the next one by itself, and the shift carries on and is counted once, at its own close. Off: a shift from an earlier day has to be closed before it can sell again.') }}</span>
             </span>
           </label>
           <!-- lumenpos.accounting_periods (0.58.1) -->
@@ -1447,7 +1447,7 @@
           <div v-if="generalForm.overdue_alert_enabled" class="field-grid" style="margin: 6px 0 12px">
             <label class="field">
               <span>{{ t('Notify role') }}</span>
-              <LinkPicker doctype="Role" v-model="generalForm.overdue_alert_role" :placeholder="t('e.g. LumenPOS Manager')" />
+              <LinkPicker doctype="Role" v-model="generalForm.overdue_alert_role" :placeholder="t('e.g. EsafePOS Manager')" />
             </label>
             <label class="field">
               <span>{{ t('Grace period (minutes)') }}</span>
@@ -1465,7 +1465,7 @@
             </label>
             <label class="field">
               <span>{{ t('Notify role') }}</span>
-              <LinkPicker doctype="Role" v-model="generalForm.variance_alert_role" :placeholder="t('e.g. LumenPOS Manager')" />
+              <LinkPicker doctype="Role" v-model="generalForm.variance_alert_role" :placeholder="t('e.g. EsafePOS Manager')" />
             </label>
           </div>
           <!-- A reason for a short or over at the close (lumenpos.variance, 0.59.0). -->
@@ -1582,7 +1582,7 @@
             <input type="checkbox" class="setting-toggle" v-model="generalForm.enable_insights" :true-value="1" :false-value="0" />
             <span class="setting-text">
               <span class="setting-title">{{ t('Insights page') }}</span>
-              <span class="setting-desc">{{ t('A statistics page for managers. With Lumen Reports installed it shows a full sales dashboard with filters.') }}</span>
+              <span class="setting-desc">{{ t('A statistics page for managers. With EsafePOS Reports installed it shows a full sales dashboard with filters.') }}</span>
             </span>
           </label>
           <label class="setting-row">
@@ -1596,7 +1596,7 @@
             <input type="checkbox" class="setting-toggle" v-model="generalForm.reports_without_till" :true-value="1" :false-value="0" />
             <span class="setting-text">
               <span class="setting-title">{{ t('Reports for management without a till') }}</span>
-              <span class="setting-desc">{{ t('Give a user the LumenPOS Reports role in ERPNext and LumenPOS opens on these reports alone, for every outlet of their companies, with no POS Profile, shift or sales. Add the LumenPOS Cashier role as well to let them sell too.') }}</span>
+              <span class="setting-desc">{{ t('Give a user the EsafePOS Reports role in ERPNext and EsafePOS opens on these reports alone, for every outlet of their companies, with no POS Profile, shift or sales. Add the EsafePOS Cashier role as well to let them sell too.') }}</span>
             </span>
           </label>
           <label class="setting-row">
@@ -1690,15 +1690,15 @@
         </template>
       </div>
 
-      <!-- The Lumen Stock phone app (0.68.0, lumenpos.api.stock_app) -->
+      <!-- The EsafePOS Stock phone app (0.68.0, lumenpos.api.stock_app) -->
       <div class="sec-card" v-show="generalSection === 'features'" data-tour="settings-stock-app">
-        <div class="sec-title"><Icon name="barcode" /> {{ t('Lumen Stock app') }}</div>
-        <p class="sec-note">{{ t('The Lumen Stock phone app counts stock, alone or with several phones at once, and makes stock entries and purchase receipts. It saves them as the person on the phone, so their ERPNext permissions apply. Who may use it is set under Permissions, Use the stock app.') }}</p>
+        <div class="sec-title"><Icon name="barcode" /> {{ t('EsafePOS Stock app') }}</div>
+        <p class="sec-note">{{ t('The EsafePOS Stock phone app counts stock, alone or with several phones at once, and makes stock entries and purchase receipts. It saves them as the person on the phone, so their ERPNext permissions apply. Who may use it is set under Permissions, Use the stock app.') }}</p>
         <div class="setting-list">
           <label class="setting-row">
             <input type="checkbox" class="setting-toggle" v-model="generalForm.enable_stock_app" :true-value="1" :false-value="0" />
             <span class="setting-text">
-              <span class="setting-title">{{ t('Lumen Stock app') }}</span>
+              <span class="setting-title">{{ t('EsafePOS Stock app') }}</span>
               <span class="setting-desc">{{ t('Off: the app is refused on this site.') }}</span>
             </span>
           </label>
@@ -1706,8 +1706,8 @@
             <span class="setting-title">{{ t('Get the app') }}</span>
             <span class="setting-desc">{{ t('Android phones and handheld scanners. Sign in with the ERPNext account of the person counting.') }}</span>
             <div class="stock-dl-row">
-              <a class="btn btn-outline" href="https://lumen-solutions.co/downloads/LumenStock.apk" target="_blank" rel="noopener"><Icon name="download" /> {{ t('Download for phones') }}</a>
-              <a class="btn btn-outline" href="https://lumen-solutions.co/downloads/LumenStock-handheld.apk" target="_blank" rel="noopener"><Icon name="download" /> {{ t('Download for handheld scanners') }}</a>
+              <a class="btn btn-outline" href="https://esafesolutions.co/downloads/LumenStock.apk" target="_blank" rel="noopener"><Icon name="download" /> {{ t('Download for phones') }}</a>
+              <a class="btn btn-outline" href="https://esafesolutions.co/downloads/LumenStock-handheld.apk" target="_blank" rel="noopener"><Icon name="download" /> {{ t('Download for handheld scanners') }}</a>
             </div>
           </div>
           <template v-if="generalForm.enable_stock_app">
@@ -2255,11 +2255,11 @@
           <div class="field-grid">
             <label class="field">
               <span>{{ t('Role that can approve requests (discount, return and cash out)') }}</span>
-              <LinkPicker doctype="Role" v-model="generalForm.approver_role" :placeholder="t('e.g. LumenPOS Manager')" />
+              <LinkPicker doctype="Role" v-model="generalForm.approver_role" :placeholder="t('e.g. EsafePOS Manager')" />
             </label>
           </div>
           <p class="muted hint-row">
-            {{ t('Holders of this role (plus LumenPOS / System Managers) get an Approvals tray in the POS and can approve requests while the cashier\'s register is still open.') }}
+            {{ t('Holders of this role (plus EsafePOS / System Managers) get an Approvals tray in the POS and can approve requests while the cashier\'s register is still open.') }}
           </p>
         </template>
       </div>
@@ -2324,7 +2324,7 @@
         <div class="sec-title"><Icon name="shield" /> {{ t('Permissions') }}</div>
         <p class="sec-note">{{ t('Which roles may change a price, take a return, and approve one.') }}</p>
         <p class="muted hint-row" style="padding: 0 0 6px">
-          {{ t('Say who may do each action at the till. A rule names a role or one person, and any matching rule lets them through. System / LumenPOS Managers always pass.') }}
+          {{ t('Say who may do each action at the till. A rule names a role or one person, and any matching rule lets them through. System / EsafePOS Managers always pass.') }}
         </p>
         <!-- One row per rule: a role, or a single person by name. Several rows
              for the same action mean any of them passes. -->
@@ -2358,7 +2358,7 @@
           {{ saving ? t('Saving…') : t('Save Settings') }}
         </button>
       </div>
-      <p v-if="!canManage" class="muted hint-row">{{ t('You need write access to LumenPOS Settings to change these. Ask an administrator to grant the LumenPOS Manager role.') }}</p>
+      <p v-if="!canManage" class="muted hint-row">{{ t('You need write access to EsafePOS Settings to change these. Ask an administrator to grant the EsafePOS Manager role.') }}</p>
     </section>
 
     <!-- ============ AUDIT LOG ============ -->
@@ -2414,10 +2414,10 @@
     <section v-if="activeTab === 'System check'" class="tab-body">
       <div class="sec-card">
         <div class="sec-title"><Icon name="shield" /> {{ t('System check') }}</div>
-        <p class="sec-note">{{ t('What may stop LumenPOS working on this site, and what to do about it. Send a screenshot of this page, or Copy for support, with any problem you report.') }}</p>
+        <p class="sec-note">{{ t('What may stop EsafePOS working on this site, and what to do about it. Send a screenshot of this page, or Copy for support, with any problem you report.') }}</p>
         <div class="sc-bar">
           <span v-if="check" class="sc-versions">
-            <bdi>LumenPOS {{ check.versions.lumenpos }}</bdi> · <bdi>ERPNext {{ check.versions.erpnext }}</bdi> · <bdi>Frappe {{ check.versions.frappe }}</bdi>
+            <bdi>EsafePOS {{ check.versions.lumenpos }}</bdi> · <bdi>ERPNext {{ check.versions.erpnext }}</bdi> · <bdi>Frappe {{ check.versions.frappe }}</bdi>
           </span>
           <span style="flex: 1" />
           <button class="btn btn-outline" :disabled="checking || session.offline" @click="runCheck">
@@ -2460,7 +2460,7 @@
 
     <section v-if="activeTab === 'Status'" class="tab-body">
       <div class="status-grid">
-        <div class="stat sec-card"><div class="stat-label">{{ t('LumenPOS version') }}</div><div class="stat-value">{{ settingsInfo.version || '-' }}</div></div>
+        <div class="stat sec-card"><div class="stat-label">{{ t('EsafePOS version') }}</div><div class="stat-value">{{ settingsInfo.version || '-' }}</div></div>
         <div class="stat sec-card"><div class="stat-label">{{ t('Outlet (POS Profile)') }}</div><div class="stat-value">{{ session.posProfile }}</div></div>
         <div class="stat sec-card"><div class="stat-label">{{ t('Default price list') }}</div><div class="stat-value">{{ session.priceList }}</div></div>
         <div class="stat sec-card"><div class="stat-label">{{ t('Connection') }}</div><div class="stat-value">{{ session.offline ? t('⚠ Offline') : t('✓ Online') }}</div></div>
@@ -2647,10 +2647,10 @@ const capabilityOptions = [
   'Use the stock app',
 ]
 
-// The parts of the Lumen Stock app a shop can switch off (0.68.0).
+// The parts of the EsafePOS Stock app a shop can switch off (0.68.0).
 const stockAppRows = computed(() => [
   { field: 'stock_allow_count', title: t('Stock counts'), desc: t('Count a warehouse and save the count as a Stock Reconciliation draft.') },
-  { field: 'stock_count_in_till', title: t('Count from LumenPOS'), desc: t('A Stock count screen in the till: count with a barcode scanner, alone or together with the phones of a shared count.') },
+  { field: 'stock_count_in_till', title: t('Count from EsafePOS'), desc: t('A Stock count screen in the till: count with a barcode scanner, alone or together with the phones of a shared count.') },
   { field: 'stock_allow_stock_entry', title: t('Stock entries'), desc: t('Receive, issue and transfer goods with a Stock Entry.') },
   { field: 'stock_allow_purchase_receipt', title: t('Purchase receipts'), desc: t('Receive a supplier delivery with a Purchase Receipt.') },
   { field: 'stock_allow_submit', title: t('Approve from the app'), desc: t('Off: what the app saves stays a draft for the desk to submit.') },
@@ -3299,7 +3299,7 @@ async function copyCheck() {
   const v = c.versions
   const lines = [
     t('System check') + ', ' + c.site + ', ' + c.checked_at,
-    'LumenPOS ' + v.lumenpos + ', ERPNext ' + v.erpnext + ', Frappe ' + v.frappe + ', Python ' + v.python,
+    'EsafePOS ' + v.lumenpos + ', ERPNext ' + v.erpnext + ', Frappe ' + v.frappe + ', Python ' + v.python,
   ]
   for (const area of CHECK_AREAS) {
     const rows = checkRows(area.key)
@@ -4807,7 +4807,7 @@ button.sec-title.collapsible + * { margin-top: 14px; }
 .add-row { margin-top: 2px; }
 /* The reasons for a short or over, under their mode (0.59.0). */
 .vr-settings { margin: 0 0 14px; padding-inline-start: 2px; }
-/* Sales on account (0.60.0): how it works, and what LumenPOS set up. */
+/* Sales on account (0.60.0): how it works, and what EsafePOS set up. */
 .how-box {
   margin-top: 16px;
   padding: 12px 14px;

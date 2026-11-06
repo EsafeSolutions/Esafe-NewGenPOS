@@ -1,6 +1,6 @@
-// Copyright (c) 2026 Lumen Solutions
+// Copyright (c) 2026 Esafe (PVT) LTD
 // SPDX-License-Identifier: AGPL-3.0-only
-// "LumenPOS" is a trademark of Lumen Solutions. See TRADEMARKS.md.
+// "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md.
 //
 // Help for staff (0.58.0): each screen's help, the tours and what is new.
 //
@@ -283,7 +283,7 @@ export const TOPICS = [
     steps: [
       'Pick the warehouse, then scan each item: every scan adds one. A serialised item is counted by scanning each serial number.',
       ['{alone} saves your count as an ERPNext stock count draft with only the items that differ from the shelf, ready to submit.', { alone: 'Count alone' }],
-      ['{shared} joins a count that phones with the Lumen Stock app are doing in the same warehouse. Send your lines, then merge everything into one stock count.', { shared: 'Shared count' }],
+      ['{shared} joins a count that phones with the EsafePOS Stock app are doing in the same warehouse. Send your lines, then merge everything into one stock count.', { shared: 'Shared count' }],
       'Close the open shifts before you save or merge a count: their sales leave the stock only when the shift is closed.',
     ],
   },
@@ -530,10 +530,10 @@ export const TOURS = {
 // What is new, newest first. Shown once per person after an update, only the
 // entries newer than what they last saw and that apply to them.
 export const WHATS_NEW = [
-  { version: '0.69.0', title: 'Count stock from the till', text: 'A Stock count screen counts a warehouse with the barcode scanner, alone or together with the phones of the Lumen Stock app, and saves an ERPNext stock count with only the differences.', route: '/count', when: (s) => Boolean(s.permissions.stock_count) },
+  { version: '0.69.0', title: 'Count stock from the till', text: 'A Stock count screen counts a warehouse with the barcode scanner, alone or together with the phones of the EsafePOS Stock app, and saves an ERPNext stock count with only the differences.', route: '/count', when: (s) => Boolean(s.permissions.stock_count) },
   { version: '0.67.0', title: 'Barcode and price labels', text: 'A Labels screen prints barcode and price labels on a label printer or an A4 sheet, with the price tax included: from a scan, a search, a Purchase Receipt or a Stock Entry, or the prices changed since a date.', route: '/labels', when: (s) => Boolean(s.settings.enable_labels && s.permissions.print_labels) },
   { version: '0.66.0', title: 'Payments in their own currency', text: 'In Insights, the sales summary shows under each payment method what it took in other currencies, in their own money, with a total per currency. An amount typed in another currency at the till is kept with the payment for it.', route: '/insights', when: (s) => Boolean(s.multiCurrency?.enabled) && Boolean(s.permissions.sales_reports) },
-  { version: '0.65.0', title: 'Reports for management', text: 'Give a user the LumenPOS Reports role in ERPNext and LumenPOS opens on the Insights reports alone, for every outlet of their companies, with no POS Profile or shift. Switch it off in Settings, General, Insights.', route: '/settings', when: manager },
+  { version: '0.65.0', title: 'Reports for management', text: 'Give a user the EsafePOS Reports role in ERPNext and EsafePOS opens on the Insights reports alone, for every outlet of their companies, with no POS Profile or shift. Switch it off in Settings, General, Insights.', route: '/settings', when: manager },
   { version: '0.64.0', title: 'Outlets and their registers', text: 'Registers that sell from the same warehouse are now one outlet: in the reports, where you can pick one register or the whole outlet, and on the till, which reads Outlet · Register.', route: '/insights', when: (s) => (s.outlets || []).some((o) => o.size > 1) },
   { version: '0.63.0', title: 'A supervisor approves refunds', text: 'Your shop can ask a supervisor to approve every refund, or those above an amount, with their passcode at the till or a request from the Approvals tray. Set it in Settings, General, Approvals and access, Refund approval.', route: '/settings', when: (s) => Boolean(s.permissions.settings) },
   { version: '0.63.0', title: 'Refunds need a supervisor', text: 'A refund now waits for a supervisor\'s passcode or approved request before the money goes back.', route: '/history', when: (s) => (s.settings.refund_approval || 'Off') !== 'Off' && !s.permissions.is_manager },

@@ -1,9 +1,9 @@
-<!-- Copyright (c) 2026 Lumen Solutions
+<!-- Copyright (c) 2026 Esafe (PVT) LTD
      SPDX-License-Identifier: AGPL-3.0-only
-     "LumenPOS" is a trademark of Lumen Solutions. See TRADEMARKS.md. -->
+     "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md. -->
 <!-- Stock count from the till (0.69.0, lumenpos.api.stock_app): scan or search, count, and
      either save the count as an ERPNext Stock Reconciliation draft (and submit it), or take
-     part in a shared count with the phones of the Lumen Stock app and merge it. -->
+     part in a shared count with the phones of the EsafePOS Stock app and merge it. -->
 <template>
   <div class="count">
     <section class="card main">
@@ -134,8 +134,8 @@
 
     <aside class="card side">
       <div class="side-body">
-        <div class="src-title">{{ t('Lumen Stock app') }}</div>
-        <p class="muted small">{{ t('Count with phones too: install the Lumen Stock app on Android phones or handheld scanners and sign in with your ERPNext account.') }}</p>
+        <div class="src-title">{{ t('EsafePOS Stock app') }}</div>
+        <p class="muted small">{{ t('Count with phones too: install the EsafePOS Stock app on Android phones or handheld scanners and sign in with your ERPNext account.') }}</p>
         <a class="btn btn-outline dl" :href="setup.downloads.phone" target="_blank" rel="noopener"><Icon name="download" /> {{ t('Download for phones') }}</a>
         <a class="btn btn-outline dl" :href="setup.downloads.handheld" target="_blank" rel="noopener"><Icon name="download" /> {{ t('Download for handheld scanners') }}</a>
         <p class="muted small">{{ t('A count is checked against what is on the shelf: sales of an open shift leave the stock only when the shift is closed, so close the shifts before you save or merge a count.') }}</p>
@@ -155,8 +155,8 @@ const session = useSessionStore()
 const STORE_KEY = 'lumenpos-count'
 const DEVICE_KEY = 'lumenpos-count-device'
 const DOWNLOADS = {
-  phone: 'https://lumen-solutions.co/downloads/LumenStock.apk',
-  handheld: 'https://lumen-solutions.co/downloads/LumenStock-handheld.apk',
+  phone: 'https://esafesolutions.co/downloads/LumenStock.apk',
+  handheld: 'https://esafesolutions.co/downloads/LumenStock-handheld.apk',
 }
 
 const setup = ref({ warehouses: [], blind: 0, shared: 0, submit: 0, downloads: DOWNLOADS })
@@ -387,7 +387,7 @@ async function send() {
   await run(async () => {
     const data = {}
     for (const r of lines.value) data[r.item_code] = r.serials.length ? { q: r.serials.length, s: r.serials } : { q: Number(r.qty) || 0 }
-    const label = (session.posProfile || 'Esafe Solutions') + (session.userFullname ? ' · ' + session.userFullname : '')
+    const label = (session.posProfile || 'EsafePOS') + (session.userFullname ? ' · ' + session.userFullname : '')
     const res = await call('lumenpos.api.stock_app.count_session_push', {
       session: joined.value.name, device_id: deviceId(), device_label: label, data: JSON.stringify(data),
     })

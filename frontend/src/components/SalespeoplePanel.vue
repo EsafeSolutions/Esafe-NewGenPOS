@@ -1,6 +1,6 @@
-<!-- Copyright (c) 2026 Lumen Solutions
+<!-- Copyright (c) 2026 Esafe (PVT) LTD
      SPDX-License-Identifier: AGPL-3.0-only
-     "LumenPOS" is a trademark of Lumen Solutions. See TRADEMARKS.md. -->
+     "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md. -->
 <!-- The Salespeople tab of Insights (0.57.0): sales by salesperson over a
      period, one outlet or every outlet of its company, with the commission
      ERPNext works out. The server decides who may see it

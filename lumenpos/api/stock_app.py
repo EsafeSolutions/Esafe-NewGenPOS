@@ -1,6 +1,6 @@
-# Copyright (c) 2026 Lumen Solutions
+# Copyright (c) 2026 Esafe (PVT) LTD
 # SPDX-License-Identifier: AGPL-3.0-only
-# "LumenPOS" is a trademark of Lumen Solutions. See TRADEMARKS.md.
+# "ESAFEPOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md.
 """The Lumen Stock app on a LumenPOS site (0.68.0).
 
 Lumen Stock is a phone app for stock work: counting a warehouse (alone or with
@@ -69,8 +69,8 @@ TILL_SWITCH = "stock_count_in_till"
 FIELDS = (SWITCH, TILL_SWITCH) + tuple(field for field, _default in STOCK_FLAG_FIELDS.values())
 # The Lumen Stock app's two Android builds on the Lumen website (same names for every version).
 DOWNLOADS = {
-    "phone": "https://lumen-solutions.co/downloads/LumenStock.apk",
-    "handheld": "https://lumen-solutions.co/downloads/LumenStock-handheld.apk",
+    "phone": "https://esafesolutions.co/downloads/LumenStock.apk",
+    "handheld": "https://esafesolutions.co/downloads/LumenStock-handheld.apk",
 }
 
 

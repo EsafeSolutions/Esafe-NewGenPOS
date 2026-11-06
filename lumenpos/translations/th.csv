@@ -412,7 +412,7 @@
 "LumenPOS background jobs failed in the last 7 days","งานเบื้องหลังของ LumenPOS ล้มเหลวในช่วง 7 วันที่ผ่านมา"
 "LumenPOS background jobs have not run since {0}","งานเบื้องหลังของ LumenPOS ไม่ได้ทำงานตั้งแต่ {0}"
 "LumenPOS cashback for {0} ({1}): {2} earned on {3} sales, {4} expired or returned on {5} entries.","แคชแบ็ก LumenPOS ของวันที่ {0} ({1}): ได้รับ {2} จากการขาย {3} รายการ หมดอายุหรือคืนกลับ {4} ใน {5} รายการ"
-"LumenPOS could not use ERPNext's {0} on this version of ERPNext ({1}). This usually means the site is running an ERPNext release LumenPOS has not been updated for yet, please report it to hello@lumen-solutions.co with this message.","LumenPOS ใช้ {0} ของ ERPNext บน ERPNext เวอร์ชันนี้ ({1}) ไม่ได้ โดยปกติหมายความว่าไซต์ใช้ ERPNext รุ่นที่ LumenPOS ยังไม่ได้อัปเดตให้รองรับ โปรดแจ้งไปที่ hello@lumen-solutions.co พร้อมข้อความนี้"
+"LumenPOS could not use ERPNext's {0} on this version of ERPNext ({1}). This usually means the site is running an ERPNext release LumenPOS has not been updated for yet, please report it to hello@esafesolutions.co with this message.","LumenPOS ใช้ {0} ของ ERPNext บน ERPNext เวอร์ชันนี้ ({1}) ไม่ได้ โดยปกติหมายความว่าไซต์ใช้ ERPNext รุ่นที่ LumenPOS ยังไม่ได้อัปเดตให้รองรับ โปรดแจ้งไปที่ hello@esafesolutions.co พร้อมข้อความนี้"
 "LumenPOS errors in the last 7 days: {0}","ข้อผิดพลาดของ LumenPOS ใน 7 วันที่ผ่านมา: {0}"
 "LumenPOS is tested on ERPNext 13 to 16.","LumenPOS ผ่านการทดสอบบน ERPNext 13 ถึง 16"
 "Make returns","คืนสินค้า"

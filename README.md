@@ -1,4 +1,4 @@
-# LumenPOS: a professional Point of Sale for ERPNext / Frappe
+# EsafePOS: a professional Point of Sale for ERPNext / Frappe
 
 > 📘 **[Full user guide & documentation → docs/user-guide.md](docs/user-guide.md)**
 > (setup, every feature in detail, settings reference, troubleshooting, changelog,
@@ -17,7 +17,7 @@ flag, an **in-POS Settings page** (promotions, price books, channels,
 discount approval, Vend Setup style), **manager-passcode discount approval**,
 Individual/Company customer creation (tax ID + national address for
 companies), salesperson search by name or number, a **local-first catalog**
-(IndexedDB-served search, near-instant), and a **LumenPOS workspace** in the
+(IndexedDB-served search, near-instant), and a **EsafePOS workspace** in the
 ERPNext desk. Brand accent color: `#2E5BFF`.
 
 - Sell screen at **`/pos`**: product grid + search/barcode, cart with live
@@ -172,9 +172,9 @@ npm run dev    # Vite dev server on :8080, proxies /api to a bench on :8000
 
 ## Licence
 
-Copyright (c) 2026 Lumen Solutions.
+Copyright (c) 2026 Esafe (PVT) LTD.
 
-LumenPOS is licensed under the **GNU Affero General Public License v3.0**
+EsafePOS is licensed under the **GNU Affero General Public License v3.0**
 (`AGPL-3.0-only`). See [license.txt](license.txt).
 
 You may use, study and modify it. If you distribute it, or run a modified version
@@ -182,12 +182,12 @@ as a network service, you must offer your complete source code to the people who
 receive or use it, under the same licence, and keep every copyright notice. It
 may not be relicensed or resold as closed-source software.
 
-ERPNext is GPLv3 and LumenPOS calls its code directly. The GPLv3 and the AGPLv3
+ERPNext is GPLv3 and EsafePOS calls its code directly. The GPLv3 and the AGPLv3
 each permit combining with the other (section 13 of both), so the two remain
 compatible. AGPL-3.0 is accepted on the Frappe Cloud Marketplace.
 
 For a commercial licence without the AGPL obligations, contact
-hello@lumen-solutions.co.
+hello@esafesolutions.co.
 
 > **Earlier releases:** versions up to and including **0.38.0** were published
 > under MIT, and versions **0.39.0 to 0.42.1** under GPL-3.0-or-later. Those
@@ -196,6 +196,6 @@ hello@lumen-solutions.co.
 
 ## Trademarks
 
-"LumenPOS" and the LumenPOS logo are trademarks of Lumen Solutions. The code
+"EsafePOS" and the EsafePOS logo are trademarks of Esafe (PVT) LTD. The code
 licence does not grant permission to use them. Forks and modified versions must
 use a different name and logo. See [TRADEMARKS.md](TRADEMARKS.md).

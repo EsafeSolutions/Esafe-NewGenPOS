@@ -1,6 +1,6 @@
-// Copyright (c) 2026 Lumen Solutions
+// Copyright (c) 2026 Esafe (PVT) LTD
 // SPDX-License-Identifier: AGPL-3.0-only
-// "LumenPOS" is a trademark of Lumen Solutions. See TRADEMARKS.md.
+// "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md.
 // Customer-facing display sync. The till (main window) publishes a fully
 // pre-formatted cart snapshot over a BroadcastChannel; the display window
 // (route #/display, opened on a second monitor) listens and renders it.

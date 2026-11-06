@@ -1,6 +1,6 @@
-# Copyright (c) 2026 Lumen Solutions
+# Copyright (c) 2026 Esafe (PVT) LTD
 # SPDX-License-Identifier: AGPL-3.0-only
-# "LumenPOS" is a trademark of Lumen Solutions. See TRADEMARKS.md.
+# "ESAFEPOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md.
 """Thin shims over the Frappe/ERPNext internals LumenPOS calls directly.
 
 LumenPOS supports Frappe/ERPNext **v13 through v16** from one branch. Almost all
@@ -29,7 +29,7 @@ def _fail(what, exc):
             "LumenPOS could not use ERPNext's {0} on this version of ERPNext ({1}). "
             "This usually means the site is running an ERPNext release LumenPOS "
             "has not been updated for yet, please report it to "
-            "hello@lumen-solutions.co with this message."
+            "hello@esafesolutions.co with this message."
         ).format(what, _erpnext_version())
     )
 

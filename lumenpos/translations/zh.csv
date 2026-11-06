@@ -412,7 +412,7 @@
 "LumenPOS background jobs failed in the last 7 days","最近 7 天有 LumenPOS 后台任务失败"
 "LumenPOS background jobs have not run since {0}","LumenPOS 后台任务自 {0} 起未运行"
 "LumenPOS cashback for {0} ({1}): {2} earned on {3} sales, {4} expired or returned on {5} entries.","LumenPOS 返现 {0}（{1}）：{3} 笔销售获得 {2}，{5} 条记录过期或退回 {4}。"
-"LumenPOS could not use ERPNext's {0} on this version of ERPNext ({1}). This usually means the site is running an ERPNext release LumenPOS has not been updated for yet, please report it to hello@lumen-solutions.co with this message.","LumenPOS 无法在此版本的 ERPNext（{1}）上使用 ERPNext 的 {0}。这通常表示站点运行的 ERPNext 版本 LumenPOS 尚未适配，请将此消息发送至 hello@lumen-solutions.co 报告。"
+"LumenPOS could not use ERPNext's {0} on this version of ERPNext ({1}). This usually means the site is running an ERPNext release LumenPOS has not been updated for yet, please report it to hello@esafesolutions.co with this message.","LumenPOS 无法在此版本的 ERPNext（{1}）上使用 ERPNext 的 {0}。这通常表示站点运行的 ERPNext 版本 LumenPOS 尚未适配，请将此消息发送至 hello@esafesolutions.co 报告。"
 "LumenPOS errors in the last 7 days: {0}","最近 7 天的 LumenPOS 错误：{0}"
 "LumenPOS is tested on ERPNext 13 to 16.","LumenPOS 已在 ERPNext 13 至 16 上测试。"
 "Make returns","办理退货"

@@ -1,5 +1,5 @@
-LumenPOS
-Copyright (c) 2026 Lumen Solutions
+EsafePOS
+Copyright (c) 2026 Esafe (PVT) LTD
 
 This program is free software: you can redistribute it and/or modify it under
 the terms of the GNU Affero General Public License as published by the Free
@@ -12,7 +12,7 @@ PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License along
 with this program. If not, see <https://www.gnu.org/licenses/>.
 
-"LumenPOS" and the LumenPOS logo are trademarks of Lumen Solutions. They are not
+"EsafePOS" and the EsafePOS logo are trademarks of Esafe (PVT) LTD. They are not
 covered by the licence above. See TRADEMARKS.md.
 
 
@@ -27,8 +27,8 @@ and it cannot be. A copy obtained under MIT stays under MIT for its recipient,
 and a copy obtained under GPL-3.0-or-later stays under GPL-3.0-or-later,
 permanently.
 
-LumenPOS moved to the AGPL because it is software people use over a network.
-Under the GPL, a modified LumenPOS could be offered to shops as a hosted service
+EsafePOS moved to the AGPL because it is software people use over a network.
+Under the GPL, a modified EsafePOS could be offered to shops as a hosted service
 without its changes ever being shared, because running a service is not
 distribution. Under the AGPL, anyone who runs a modified version for users over
 a network must offer those users its complete source code.
@@ -36,7 +36,7 @@ a network must offer those users its complete source code.
 
 COMPATIBILITY WITH ERPNEXT AND FRAPPE
 -------------------------------------
-LumenPOS calls ERPNext's own code directly (loyalty points, POS invoice
+EsafePOS calls ERPNext's own code directly (loyalty points, POS invoice
 consolidation and the credit note builder, see lumenpos/erpnext_compat.py).
 ERPNext is licensed under version 3 of the GNU General Public License.
 

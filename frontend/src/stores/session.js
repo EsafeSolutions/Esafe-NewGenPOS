@@ -1,6 +1,6 @@
-// Copyright (c) 2026 Lumen Solutions
+// Copyright (c) 2026 Esafe (PVT) LTD
 // SPDX-License-Identifier: AGPL-3.0-only
-// "LumenPOS" is a trademark of Lumen Solutions. See TRADEMARKS.md.
+// "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md.
 import { defineStore } from 'pinia'
 import { call, OfflineError } from '../api'
 import { setCurrency, skewFrom, siteNowFrom } from '../format'
@@ -44,7 +44,7 @@ export const useSessionStore = defineStore('session', {
     // [{outlet, name, company, registers, size}], registers = the ones this
     // person may use, size = how many the outlet has in all.
     outlets: [],
-    // The reports alone, no till (LumenPOS Reports role, 0.65.0): no register,
+    // The reports alone, no till (EsafePOS Reports role, 0.65.0): no register,
     // shift or products, the Insights reports of every outlet of these companies.
     reportsOnly: false,
     companyList: [],
@@ -68,11 +68,11 @@ export const useSessionStore = defineStore('session', {
     storeCreditMode: 'Store Credit',
     cashbackMode: 'Cashback',
     giftCardMode: 'Gift Card',
-    // LumenPOS's tender for a sale on account (lumenpos.credit_sales, 0.60.0).
+    // EsafePOS's tender for a sale on account (lumenpos.credit_sales, 0.60.0).
     creditMode: 'Credit Sale',
     salesPersons: [],
     allowNegativeStock: false,
-    // Other currencies (LumenPOS Settings, General): which ones this till sells
+    // Other currencies (EsafePOS Settings, General): which ones this till sells
     // in, each with its walk-in customer, cash drawer and the rate the shift
     // sells at. {enabled, company_currency, outlet_currency, outlet_rate,
     // currencies: [{currency, symbol, walk_in_customer, walk_in_name,
@@ -192,7 +192,7 @@ export const useSessionStore = defineStore('session', {
       if (scope === 'outlet' && outlet && outlet.size > 1) return { pos_profile: null, company: s.company, outlet: outlet.outlet }
       return { pos_profile: s.posProfile, company: null, outlet: null }
     },
-    // A payment method as the till names it: the tender LumenPOS made for
+    // A payment method as the till names it: the tender EsafePOS made for
     // sales on account reads "On account" in every language, as on the
     // payment screen. Takes one name or a comma-joined list of them.
     // The site's own now on the scale of format.siteMs: the device's time
@@ -373,7 +373,7 @@ export const useSessionStore = defineStore('session', {
       this.pendingClosing = data.pending_closing || null
       this.periodLock = data.period_lock || null
       this.pinSet = data.pin_set !== false
-      syncFromErp(data.desk_theme) // follow ERPNext theme unless overridden in LumenPOS
+      syncFromErp(data.desk_theme) // follow ERPNext theme unless overridden in EsafePOS
       setCurrency(data.currency)
     },
 

@@ -1,9 +1,9 @@
-<!-- Copyright (c) 2026 Lumen Solutions
+<!-- Copyright (c) 2026 Esafe (PVT) LTD
      SPDX-License-Identifier: AGPL-3.0-only
-     "LumenPOS" is a trademark of Lumen Solutions. See TRADEMARKS.md. -->
+     "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md. -->
 <template>
   <div class="modal-backdrop" @click.self="$emit('close')">
-    <div class="modal" style="width: 520px">
+    <div class="modal refund-modal">
       <div class="modal-header">
         {{ isExchange ? t('Exchange {invoice}', { invoice }) : t('Refund {invoice}', { invoice: saleLabel }) }}
         <button class="btn-ghost" @click="$emit('close')"><Icon name="close" /></button>
@@ -77,6 +77,21 @@
           <div v-if="!returnable.length" class="muted empty">
             {{ t('Everything on this sale has already been returned.') }}
           </div>
+          <div v-else class="return-toolbar">
+            <div class="selection-status">
+              <Icon name="return" size="15" />
+              <span v-if="selectedQuantity">{{ t('{n} items selected', { n: selectedQuantity }) }}</span>
+              <span v-else>{{ t('Choose the items coming back') }}</span>
+            </div>
+            <div class="selection-actions">
+              <button class="btn btn-ghost btn-sm" :disabled="!selectedQuantity" @click="clearSelection">
+                {{ t('Clear') }}
+              </button>
+              <button class="btn btn-outline btn-sm" :disabled="!simpleReturnable.length" @click="selectStandardItems">
+                {{ t('Select standard items') }}
+              </button>
+            </div>
+          </div>
           <div v-for="row in returnable" :key="row.item_code" class="return-row" :class="{ serialized: row.has_serial_no }">
             <div class="return-info">
               <div class="return-name">
@@ -127,6 +142,10 @@
           </div>
 
           <div v-if="refundTotal > 0" class="refund-summary">
+            <div class="refund-selection">
+              <span><Icon name="return" size="15" /> {{ t('{n} items selected', { n: selectedQuantity }) }}</span>
+              <strong>{{ m(refundTotal) }}</strong>
+            </div>
             <div class="refund-amount">
               {{ isExchange ? t('Coming back ≈') : offline ? t('Refund') : t('Refund ≈') }} <strong>{{ m(refundTotal) }}</strong>
               <span v-if="foreign" class="muted small">= {{ money(refundTotal * sold.rate, sold.company_currency) }}</span>
@@ -228,7 +247,7 @@
           :disabled="refundTotal <= 0 || !reasonValue || busy || needsApproval || !splitCovered || noOfflineMode || offlineNeedsApproval"
           @click="submit"
         >
-          {{ busy ? t('Refunding…') : t('Refund') }}
+          {{ busy ? t('Refunding…') : t('Confirm refund') }}
         </button>
       </div>
     </div>
@@ -401,6 +420,27 @@ const refundTotal = computed(() => {
     0
   )
 })
+
+const selectedQuantity = computed(() =>
+  returnable.value.reduce((sum, row) => sum + (Number(quantities.value[row.item_code]) || 0), 0)
+)
+// Selecting every line would be unsafe for serialised products and return
+// groups: they have their own scan/together rules. This only accelerates the
+// ordinary lines that can safely be picked in one action.
+const simpleReturnable = computed(() =>
+  returnable.value.filter(
+    (row) => !row.has_serial_no && !row.return_group && !offlineBlocked.value[row.item_code] && !restrictions.value[row.item_code]
+  )
+)
+
+function selectStandardItems() {
+  for (const row of simpleReturnable.value) quantities.value[row.item_code] = row.returnable_qty
+}
+
+function clearSelection() {
+  for (const row of returnable.value) quantities.value[row.item_code] = 0
+  selectedSerials.value = {}
+}
 
 // A sale on account (lumenpos.credit_sales, 0.60.0): what is still owed on it
 // (get_returnable). A return comes off that first; only the rest is money
@@ -885,12 +925,32 @@ async function submit() {
 </script>
 
 <style scoped>
+.refund-modal { width: min(660px, calc(100vw - 32px)); }
 .refund-split { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
 .rs-mode { flex: 1; min-width: 120px; }
 .rs-amt { width: 110px; }
 .rs-ref { flex: 1; min-width: 110px; }
 .rs-foot { display: flex; align-items: center; gap: 10px; margin-top: 4px; }
 .rs-foot .neg { color: var(--red, #e23030); font-weight: 700; }
+.return-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 0 11px;
+  border-bottom: 1px solid var(--border);
+}
+.selection-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+.selection-status .icon { color: var(--brand); }
+.selection-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
 .return-row {
   display: flex;
   align-items: center;
@@ -955,7 +1015,21 @@ async function submit() {
 }
 .stepper input { width: 64px; text-align: center; padding: 7px 6px; }
 .stepper .btn { padding: 7px 12px; }
-.refund-summary { margin-top: 16px; }
+.refund-summary { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+.refund-selection {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 11px;
+  margin-bottom: 10px;
+  border: 1px solid rgba(19, 167, 149, 0.24);
+  border-radius: 9px;
+  background: rgba(19, 167, 149, 0.07);
+  color: var(--brand-dark);
+  font-size: 13px;
+}
+.refund-selection span { display: inline-flex; align-items: center; gap: 6px; }
 .owed-box {
   margin: 0 0 12px;
   padding: 10px 12px;
@@ -1008,5 +1082,14 @@ html[data-theme='dark'] .approval-box.offline-box { background: rgba(19, 167, 14
 }
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+@media (max-width: 560px) {
+  .refund-modal { width: calc(100vw - 16px); }
+  .return-toolbar { align-items: flex-start; flex-direction: column; }
+  .selection-actions { width: 100%; justify-content: flex-start; }
+  .refund-split { flex-wrap: wrap; }
+  .rs-mode { min-width: calc(100% - 116px); }
+  .rs-ref { width: 100%; }
+  .serial-in { width: 100%; }
 }
 </style>

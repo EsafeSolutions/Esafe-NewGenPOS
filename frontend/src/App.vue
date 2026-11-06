@@ -1,6 +1,6 @@
-<!-- Copyright (c) 2026 Lumen Solutions
+<!-- Copyright (c) 2026 Esafe (PVT) LTD
      SPDX-License-Identifier: AGPL-3.0-only
-     "LumenPOS" is a trademark of Lumen Solutions. See TRADEMARKS.md. -->
+     "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md. -->
 <template>
   <!-- Customer-facing display: a chrome-free second screen, no app shell and
        no bootstrap, it only listens for cart snapshots over BroadcastChannel. -->
@@ -12,7 +12,7 @@
       <header class="topbar">
         <div class="topbar-left">
           <div class="brand-lockup">
-            <img :src="esafeLogo" alt="Esafe Solutions" class="topbar-brand" />
+            <img :src="esafeLogo" alt="EsafePOS" class="topbar-brand" />
           </div>
           <span class="brand-divider" aria-hidden="true"></span>
           <div class="topbar-title">{{ pageTitle }}</div>
@@ -160,13 +160,13 @@
 
   <div v-else-if="!isDisplay && session.error" class="boot-error">
     <div class="card boot-card">
-      <h2>{{ t('Esafe Solutions could not start') }}</h2>
+      <h2>{{ t('EsafePOS could not start') }}</h2>
       <p>{{ session.error }}</p>
       <button class="btn btn-primary" @click="session.bootstrap()">{{ t('Retry') }}</button>
     </div>
   </div>
 
-  <div v-else class="boot-loading">{{ t('Loading Esafe Solutions…') }}</div>
+  <div v-else class="boot-loading">{{ t('Loading EsafePOS…') }}</div>
 </template>
 
 <script setup>

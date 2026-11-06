@@ -1,6 +1,6 @@
-// Copyright (c) 2026 Lumen Solutions
+// Copyright (c) 2026 Esafe (PVT) LTD
 // SPDX-License-Identifier: AGPL-3.0-only
-// "LumenPOS" is a trademark of Lumen Solutions. See TRADEMARKS.md.
+// "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md.
 // Prepare a translation job in <work>: the till's texts (every key of the
 // Arabic dictionary, the till's complete list, with its English, its Arabic as
 // a hint for short labels, and the screen it is on) and the server's texts

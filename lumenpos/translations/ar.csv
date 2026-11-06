@@ -412,7 +412,7 @@
 "LumenPOS background jobs failed in the last 7 days","تعطلت مهام LumenPOS الخلفية خلال آخر 7 أيام"
 "LumenPOS background jobs have not run since {0}","لم تعمل مهام LumenPOS الخلفية منذ {0}"
 "LumenPOS cashback for {0} ({1}): {2} earned on {3} sales, {4} expired or returned on {5} entries.","كاش باك LumenPOS ليوم {0} ({1}): اكتساب {2} من {3} عملية بيع، وانتهاء صلاحية {4} أو إلغاؤه بالاسترجاع في {5} قيد."
-"LumenPOS could not use ERPNext's {0} on this version of ERPNext ({1}). This usually means the site is running an ERPNext release LumenPOS has not been updated for yet, please report it to hello@lumen-solutions.co with this message.","تعذر على LumenPOS استخدام {0} من ERPNext في هذا الإصدار من ERPNext ({1}). يعني هذا عادة أن الموقع يعمل بإصدار من ERPNext لم يحدث LumenPOS لدعمه بعد، يرجى الإبلاغ عن ذلك إلى hello@lumen-solutions.co مع هذه الرسالة."
+"LumenPOS could not use ERPNext's {0} on this version of ERPNext ({1}). This usually means the site is running an ERPNext release LumenPOS has not been updated for yet, please report it to hello@esafesolutions.co with this message.","تعذر على LumenPOS استخدام {0} من ERPNext في هذا الإصدار من ERPNext ({1}). يعني هذا عادة أن الموقع يعمل بإصدار من ERPNext لم يحدث LumenPOS لدعمه بعد، يرجى الإبلاغ عن ذلك إلى hello@esafesolutions.co مع هذه الرسالة."
 "LumenPOS errors in the last 7 days: {0}","أخطاء LumenPOS خلال آخر 7 أيام: {0}"
 "LumenPOS is tested on ERPNext 13 to 16.","يختبر LumenPOS على ERPNext من النسخة 13 إلى 16."
 "Make returns","تنفيذ الاسترجاع"

@@ -2,7 +2,7 @@
  "actions": [],
  "autoname": "hash",
  "creation": "2026-10-26 12:00:00.000000",
- "description": "One phone's lines in a shared count, replaced on every sync from the Lumen Stock app.",
+ "description": "One phone's lines in a shared count, replaced on every sync from the EsafePOS Stock app.",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [

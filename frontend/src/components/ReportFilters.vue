@@ -1,6 +1,6 @@
-<!-- Copyright (c) 2026 Lumen Solutions
+<!-- Copyright (c) 2026 Esafe (PVT) LTD
      SPDX-License-Identifier: AGPL-3.0-only
-     "LumenPOS" is a trademark of Lumen Solutions. See TRADEMARKS.md. -->
+     "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md. -->
 <!-- The period and the outlets of a report in Insights (0.62.0). "Today" is the
      site's today, not the device's: a till in another time zone would otherwise
      ask for the wrong day (the 0.61.1 lesson of the shift clock). Emits

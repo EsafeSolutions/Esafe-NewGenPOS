@@ -1,6 +1,6 @@
-<!-- Copyright (c) 2026 Lumen Solutions
+<!-- Copyright (c) 2026 Esafe (PVT) LTD
      SPDX-License-Identifier: AGPL-3.0-only
-     "LumenPOS" is a trademark of Lumen Solutions. See TRADEMARKS.md. -->
+     "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md. -->
 <template>
   <div class="register">
     <!-- A shift that was closed but whose consolidation is still finishing or
@@ -179,7 +179,7 @@
                midnight and sells on (register.roll_day). -->
           <div v-if="summary.erpnext_days?.length" class="days-block">
             <div class="days-title">{{ t('ERPNext days closed during this shift') }}</div>
-            <p class="muted small">{{ t('ERPNext 16 takes sales only on a shift opened the same day, so at the first sale after midnight LumenPOS closed the day in ERPNext and opened the next one. Count the drawer once, when you close the shift.') }}</p>
+            <p class="muted small">{{ t('ERPNext 16 takes sales only on a shift opened the same day, so at the first sale after midnight EsafePOS closed the day in ERPNext and opened the next one. Count the drawer once, when you close the shift.') }}</p>
             <div v-for="d in summary.erpnext_days" :key="d.pos_closing_entry" class="day-row">
               <span>{{ t('Until {time}', { time: shortTime(d.ended_at) }) }} · {{ t('Sales') }}: {{ d.sales_count }}</span>
               <a :href="`/app/pos-closing-entry/${d.pos_closing_entry}`" target="_blank" class="entry-link">{{ d.pos_closing_entry }}</a>

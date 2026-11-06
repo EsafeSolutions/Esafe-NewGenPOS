@@ -60,7 +60,7 @@
    "default": "Fixed",
    "label": "Rate",
    "in_list_view": 1,
-   "description": "Fixed: the rate the shop sets. Automatic: updated once a day, when automatic rates are switched on in LumenPOS Settings."
+   "description": "Fixed: the rate the shop sets. Automatic: updated once a day, when automatic rates are switched on in EsafePOS Settings."
   },
   {
    "fieldname": "rate_margin",

@@ -1,6 +1,6 @@
-/* Copyright (c) 2026 Lumen Solutions
+/* Copyright (c) 2026 Esafe (PVT) LTD
    SPDX-License-Identifier: AGPL-3.0-only
-   "LumenPOS" is a trademark of Lumen Solutions. See TRADEMARKS.md.
+   "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md.
 
    The till's service worker: it keeps the SHELL of the POS (the page, its
    script, its stylesheet, its fonts) on the device, so the app opens with no

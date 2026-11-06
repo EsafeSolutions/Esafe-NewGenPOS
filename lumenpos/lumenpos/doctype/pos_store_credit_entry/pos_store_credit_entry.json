@@ -54,7 +54,7 @@
   },
   {
    "default": "POS Invoice",
-   "description": "The sale doctype this entry came from. LumenPOS posts POS Invoices by default, but a profile can be set to post Sales Invoices instead.",
+   "description": "The sale doctype this entry came from. EsafePOS posts POS Invoices by default, but a profile can be set to post Sales Invoices instead.",
    "fieldname": "reference_doctype",
    "fieldtype": "Link",
    "label": "Reference Type",

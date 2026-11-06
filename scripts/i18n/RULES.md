@@ -1,6 +1,6 @@
-# Translating LumenPOS
+# Translating EsafePOS
 
-LumenPOS is a point of sale app for ERPNext, used by shop owners, managers and
+EsafePOS is a point of sale app for ERPNext, used by shop owners, managers and
 cashiers. Two kinds of text are translated:
 
 - **ui_partN.json**: the till's screens (Vue app). Each row is
@@ -36,7 +36,7 @@ present. Valid UTF-8 JSON, nothing else in the file.
    `%`, `→`, quotes around a name.
 4. No em dash (U+2014), no en dash (U+2013) and no semicolon (`;`, nor the Arabic or full-width one) anywhere. Use a comma, a
    colon or a full stop instead.
-5. Keep in Latin letters and untranslated: LumenPOS, ERPNext, Frappe, Lumen Reports,
+5. Keep in Latin letters and untranslated: EsafePOS, ERPNext, Frappe, EsafePOS Reports,
    Insights, ExchangeRate-API, ZATCA, currency codes (USD, EUR, SAR, ZWG), field
    and code names (snake_case like mobile_no, anything in backticks), file names,
    URLs, keyboard keys (Enter, Esc, F2).

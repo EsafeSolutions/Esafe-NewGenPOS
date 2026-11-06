@@ -1,6 +1,6 @@
-<!-- Copyright (c) 2026 Lumen Solutions
+<!-- Copyright (c) 2026 Esafe (PVT) LTD
      SPDX-License-Identifier: AGPL-3.0-only
-     "LumenPOS" is a trademark of Lumen Solutions. See TRADEMARKS.md. -->
+     "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md. -->
 <template>
   <div :id="printable ? 'receipt-print' : null" class="receipt" :class="`tpl-${tpl}`">
     <div class="receipt-head">
@@ -195,7 +195,7 @@ function asImg(value) {
   return /^(data:|https?:|\/)/i.test(v) ? v : `data:image/png;base64,${v}`
 }
 
-// LumenPOS's own tender for a sale on account reads in the till's language.
+// EsafePOS's own tender for a sale on account reads in the till's language.
 function modeLabel(mode) {
   return mode && mode === session.creditMode ? t('On account') : mode
 }

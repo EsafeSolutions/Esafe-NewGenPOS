@@ -1,14 +1,14 @@
-# Copyright (c) 2026 Lumen Solutions
+# Copyright (c) 2026 Esafe (PVT) LTD
 # SPDX-License-Identifier: AGPL-3.0-only
-# "LumenPOS" is a trademark of Lumen Solutions. See TRADEMARKS.md.
+# "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md.
 """The English texts Frappe and ERPNext already translate, per language, across
 the benches given (v13/v14 ship CSV files, v15 CSV and PO, v16 PO). Frappe
 merges every app's translations into one table where the app installed last
-wins, so a LumenPOS row for one of these would rename that text across the
+wins, so a EsafePOS row for one of these would rename that text across the
 whole desk; write_csv.mjs leaves them out.
 
 Usage: python3 erp_keys.py <work> <lang>... (BENCHES: space separated bench
-folders, default the four LumenPOS test benches)."""
+folders, default the four EsafePOS test benches)."""
 
 import csv
 import io

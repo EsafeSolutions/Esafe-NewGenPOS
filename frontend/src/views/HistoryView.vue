@@ -1,6 +1,6 @@
-<!-- Copyright (c) 2026 Lumen Solutions
+<!-- Copyright (c) 2026 Esafe (PVT) LTD
      SPDX-License-Identifier: AGPL-3.0-only
-     "LumenPOS" is a trademark of Lumen Solutions. See TRADEMARKS.md. -->
+     "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md. -->
 <template>
   <div class="history">
     <div class="card list">
@@ -11,6 +11,7 @@
             v-model="filters.search"
             :placeholder="t('Invoice no, customer, mobile or order ID…')"
             @input="debouncedLoad"
+            @keydown.enter.prevent="load"
           />
         </div>
         <button class="btn btn-outline" :class="{ 'filters-on': activeFilterCount }" @click="showFilters = !showFilters">
@@ -155,34 +156,41 @@
       <!-- The history loaded before the connection went stays out of sight:
            offline, only this device's own sales can be acted on. -->
       <template v-if="!session.offline">
-      <button
+      <div
         v-for="sale in sales"
         :key="sale.name"
         class="sale-row"
-        :data-tour="!sale.is_return && sale.docstatus === 1 ? 'history-row' : undefined"
         :class="{ active: receipt?.name === sale.name }"
-        @click="show(sale.name)"
       >
-        <div class="sale-info">
-          <div class="sale-customer">
-            {{ sale.customer_name }}
-            <span v-if="sale.is_return" class="tag red">{{ t('REFUND') }}</span>
-            <span v-if="sale.is_exchange" class="tag purple"><Icon name="exchange" /> {{ t('EXCHANGE') }}</span>
-            <span v-if="sale.docstatus === 2" class="tag red">{{ t('CANCELLED') }}</span>
-            <span v-else-if="sale.docstatus === 0" class="tag amber">{{ t('DRAFT') }}</span>
-            <span v-if="sale.app_type" class="tag blue"><Icon name="bike" /> {{ sale.app_type }}</span>
-            <span v-if="sale.online_order && !sale.app_type" class="tag blue">{{ t('ONLINE') }}</span>
+        <button
+          class="sale-open"
+          :data-tour="!sale.is_return && sale.docstatus === 1 ? 'history-row' : undefined"
+          @click="show(sale.name)"
+        >
+          <div class="sale-info">
+            <div class="sale-customer">
+              {{ sale.customer_name }}
+              <span v-if="sale.is_return" class="tag red">{{ t('REFUND') }}</span>
+              <span v-if="sale.is_exchange" class="tag purple"><Icon name="exchange" /> {{ t('EXCHANGE') }}</span>
+              <span v-if="sale.docstatus === 2" class="tag red">{{ t('CANCELLED') }}</span>
+              <span v-else-if="sale.docstatus === 0" class="tag amber">{{ t('DRAFT') }}</span>
+              <span v-if="sale.app_type" class="tag blue"><Icon name="bike" /> {{ sale.app_type }}</span>
+              <span v-if="sale.online_order && !sale.app_type" class="tag blue">{{ t('ONLINE') }}</span>
+            </div>
+            <div class="muted small">
+              {{ sale.name }} · {{ shortTime(sale.posting_date + ' ' + sale.posting_time) }}<span v-if="sale.owner_name"> · <Icon name="person" /> {{ sale.owner_name }}</span><span v-if="sale.mobile_no"> · {{ sale.mobile_no }}</span><span v-if="sale.order_id"> · {{ t('Order') }} {{ sale.order_id }}</span><span v-if="profileFilter || companyFilter"> · {{ sale.pos_profile }}</span><span v-if="session.multiCompany && (profileFilter === '__all__' || companyFilter)"> · {{ sale.company }}</span>
+            </div>
           </div>
-          <div class="muted small">
-            {{ sale.name }} · {{ shortTime(sale.posting_date + ' ' + sale.posting_time) }}<span v-if="sale.owner_name"> · <Icon name="person" /> {{ sale.owner_name }}</span><span v-if="sale.mobile_no"> · {{ sale.mobile_no }}</span><span v-if="sale.order_id"> · {{ t('Order') }} {{ sale.order_id }}</span><span v-if="profileFilter || companyFilter"> · {{ sale.pos_profile }}</span><span v-if="session.multiCompany && (profileFilter === '__all__' || companyFilter)"> · {{ sale.company }}</span>
-          </div>
-        </div>
+        </button>
         <div class="sale-right">
           <div class="sale-amount" :class="{ neg: sale.grand_total < 0 }">{{ money(sale.grand_total, sale.currency) }}</div>
           <div class="muted small status-line">{{ t('status:' + sale.status) }}</div>
           <div v-if="sale.payment_modes" class="muted small pay-line"><Icon name="card" /> {{ session.modeLabel(sale.payment_modes) }}</div>
+          <button v-if="canQuickRefund(sale)" class="quick-refund" @click="startRefund(sale.name)">
+            <Icon name="return" /> {{ t('Refund') }}
+          </button>
         </div>
-      </button>
+      </div>
       </template>
     </div>
 
@@ -299,7 +307,7 @@ onMounted(async () => {
     profileFilter.value = '__all__' // the sale may belong to another outlet
     await load()
     const hit = sales.value.find((r) => r.name === invoice) || sales.value[0]
-    if (hit) openReceipt(hit)
+    if (hit) await show(hit.name)
     return
   }
   load()
@@ -361,6 +369,14 @@ function startRefund(invoice) {
   receipt.value = null
   refundMode.value = 'refund'
   refundInvoice.value = invoice
+}
+
+// This shortcut removes one modal from the common return journey. The server
+// still validates every invoice and item before a return can be posted.
+function canQuickRefund(sale) {
+  if (session.permissions.can_return === false) return false
+  if (sale.is_return || sale.docstatus !== 1) return false
+  return !sale.company || !session.company || sale.company === session.company
 }
 
 // The same screen picks what comes back, then the till moves to Sell for what
@@ -448,7 +464,7 @@ watch(
   padding: 16px;
   overflow-y: auto;
 }
-.list { max-width: 860px; margin: 0 auto; }
+.list { max-width: 960px; margin: 0 auto; }
 .list-head {
   display: flex;
   gap: 10px;
@@ -498,11 +514,22 @@ watch(
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 13px 18px;
   border-bottom: 1px solid var(--border);
   text-align: left;
 }
 .sale-row:hover, .sale-row.active { background: var(--surface-2); }
+.sale-open {
+  flex: 1;
+  min-width: 0;
+  padding: 13px 18px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.sale-open:focus-visible { outline: 2px solid var(--brand); outline-offset: -3px; }
 .sale-customer { font-weight: 600; }
 .tag {
   font-size: 10px;
@@ -521,7 +548,7 @@ html[data-theme='dark'] .tag.red { color: #ff9b9b; background: rgba(226, 48, 48,
 html[data-theme='dark'] .tag.amber { color: #ffce85; background: rgba(245, 166, 35, 0.26); }
 html[data-theme='dark'] .tag.blue { color: #b5ebe4; background: rgba(19, 167, 149, 0.30); }
 html[data-theme='dark'] .tag.purple { color: #aac5f0; background: rgba(53, 104, 212, 0.34); }
-.sale-right { text-align: right; }
+.sale-right { flex: none; padding: 10px 18px 10px 0; text-align: right; }
 .sale-amount { font-weight: 700; }
 .sale-amount.neg { color: var(--red); }
 .status-line { margin-top: 1px; }
@@ -530,6 +557,7 @@ html[data-theme='dark'] .tag.purple { color: #aac5f0; background: rgba(53, 104, 
 .empty { padding: 40px; text-align: center; }
 .offline-head { padding: 14px 18px 10px; border-bottom: 1px solid var(--border); }
 .offline-title { display: flex; align-items: center; gap: 8px; font-weight: 700; margin-bottom: 4px; }
+.local-row { padding: 13px 18px; }
 .local-row.blocked { opacity: 0.8; }
 .local-row .why { margin-top: 2px; color: #9a6a0a; }
 html[data-theme='dark'] .local-row .why { color: #ffce85; }
@@ -542,5 +570,30 @@ html[data-theme='dark'] .local-row .why { color: #ffce85; }
   font-size: 12px;
   font-weight: 700;
   color: var(--brand);
+}
+.quick-refund {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 7px;
+  padding: 5px 9px;
+  border: 1px solid rgba(19, 167, 149, 0.38);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--brand-dark);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.quick-refund:hover { background: rgba(19, 167, 149, 0.10); border-color: var(--brand); }
+.quick-refund:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+@media (max-width: 600px) {
+  .history { padding: 8px; }
+  .list-head { padding: 10px; gap: 6px; }
+  .sale-open { padding: 12px; }
+  .local-row { padding: 12px; }
+  .sale-right { padding: 8px 12px 8px 0; }
+  .pay-line { max-width: 130px; }
 }
 </style>

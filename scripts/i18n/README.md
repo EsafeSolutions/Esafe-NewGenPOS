@@ -1,6 +1,6 @@
-# Translating LumenPOS
+# Translating EsafePOS
 
-LumenPOS speaks a language in two places:
+EsafePOS speaks a language in two places:
 
 - **The till's screens**: `frontend/src/messages.js` holds English and Arabic
   (both in the main bundle), every other language is `frontend/src/locales/<code>.js`,
@@ -27,7 +27,7 @@ it is committed).
    `ui_strings.json`, `server_strings.json` and the parts to translate.
 3. **What ERPNext already translates:** `python3 scripts/i18n/erp_keys.py <work> <code>`
    on a bench. Frappe merges every app's translations and the app installed
-   last wins, so LumenPOS must never ship a row for a text Frappe or ERPNext
+   last wins, so EsafePOS must never ship a row for a text Frappe or ERPNext
    already translate: that would rename it across the whole desk.
    `write_csv.mjs` leaves those rows out.
 4. **Translate** each part following `RULES.md` with `glossary_<code>.json`

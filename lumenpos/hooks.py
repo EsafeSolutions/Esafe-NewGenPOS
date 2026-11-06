@@ -1,11 +1,11 @@
-# Copyright (c) 2026 Lumen Solutions
+# Copyright (c) 2026 Esafe (PVT) LTD
 # SPDX-License-Identifier: AGPL-3.0-only
-# "LumenPOS" is a trademark of Lumen Solutions. See TRADEMARKS.md.
+# "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md.
 app_name = "lumenpos"
-app_title = "Esafe Solutions"
-app_publisher = "Esafe Solutions"
+app_title = "EsafePOS"
+app_publisher = "Esafe (PVT) LTD"
 app_description = "Professional, multi-business Point of Sale for ERPNext / Frappe"
-app_email = "hello@lumen-solutions.co"
+app_email = "hello@esafesolutions.co"
 app_license = "AGPL-3.0-only"
 
 required_apps = ["erpnext"]
@@ -26,10 +26,10 @@ add_to_apps_screen = [
 
 after_install = "lumenpos.install.after_install"
 
-# The Lumen Stock app (0.68.0): before a stock count is submitted in the desk,
+# The EsafePOS Stock app (0.68.0): before a stock count is submitted in the desk,
 # what moved after it was counted and what open shifts still hold.
 doctype_js = {"Stock Reconciliation": "public/js/stock_reconciliation.js"}
-# Runs on every app update (Frappe Cloud deploy), keeps the LumenPOS roles and
+# Runs on every app update (Frappe Cloud deploy), keeps the EsafePOS roles and
 # custom fields in place on existing sites without shell access.
 after_migrate = "lumenpos.install.ensure_setup"
 

@@ -412,7 +412,7 @@
 "LumenPOS background jobs failed in the last 7 days","Des tâches en arrière-plan de LumenPOS ont échoué ces 7 derniers jours"
 "LumenPOS background jobs have not run since {0}","Les tâches en arrière-plan de LumenPOS ne se sont pas exécutées depuis {0}"
 "LumenPOS cashback for {0} ({1}): {2} earned on {3} sales, {4} expired or returned on {5} entries.","Cashback LumenPOS du {0} ({1}) : {2} gagné sur {3} ventes, {4} expiré ou annulé par un retour sur {5} mouvements."
-"LumenPOS could not use ERPNext's {0} on this version of ERPNext ({1}). This usually means the site is running an ERPNext release LumenPOS has not been updated for yet, please report it to hello@lumen-solutions.co with this message.","LumenPOS n'a pas pu utiliser {0} d'ERPNext sur cette version d'ERPNext ({1}). Cela signifie en général que le site utilise une version d'ERPNext pour laquelle LumenPOS n'a pas encore été mis à jour. Signalez-le à hello@lumen-solutions.co avec ce message."
+"LumenPOS could not use ERPNext's {0} on this version of ERPNext ({1}). This usually means the site is running an ERPNext release LumenPOS has not been updated for yet, please report it to hello@esafesolutions.co with this message.","LumenPOS n'a pas pu utiliser {0} d'ERPNext sur cette version d'ERPNext ({1}). Cela signifie en général que le site utilise une version d'ERPNext pour laquelle LumenPOS n'a pas encore été mis à jour. Signalez-le à hello@esafesolutions.co avec ce message."
 "LumenPOS errors in the last 7 days: {0}","Erreurs LumenPOS ces 7 derniers jours : {0}"
 "LumenPOS is tested on ERPNext 13 to 16.","LumenPOS est testé sur ERPNext 13 à 16."
 "Make returns","Faire des retours"

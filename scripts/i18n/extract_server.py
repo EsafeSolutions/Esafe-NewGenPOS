@@ -1,7 +1,7 @@
-# Copyright (c) 2026 Lumen Solutions
+# Copyright (c) 2026 Esafe (PVT) LTD
 # SPDX-License-Identifier: AGPL-3.0-only
-# "LumenPOS" is a trademark of Lumen Solutions. See TRADEMARKS.md.
-"""Every string Frappe itself considers translatable in LumenPOS (DocType
+# "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md.
+"""Every string Frappe itself considers translatable in EsafePOS (DocType
 labels, options and descriptions, Python _() calls), the way Frappe's own
 get-untranslated lists them. Run with a site connected (frappe.init and
 frappe.connect done, e.g. through the test benches' run-py16.sh); writes

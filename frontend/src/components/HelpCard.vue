@@ -1,6 +1,6 @@
-<!-- Copyright (c) 2026 Lumen Solutions
+<!-- Copyright (c) 2026 Esafe (PVT) LTD
      SPDX-License-Identifier: AGPL-3.0-only
-     "LumenPOS" is a trademark of Lumen Solutions. See TRADEMARKS.md. -->
+     "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md. -->
 <!-- The card that greets (0.58.0): someone who has not seen the help yet is
      offered the tour, with what was added lately, and after an update each
      person sees once what is new for them. Both are switched in Settings,
@@ -30,8 +30,8 @@
       </template>
       <template v-else>
         <div class="hc-badge"><Icon name="star" :size="26" /></div>
-        <h2 id="hc-title" class="hc-title">{{ t('What is new in LumenPOS') }}</h2>
-        <p class="hc-lead muted">LumenPOS {{ help.version }}</p>
+        <h2 id="hc-title" class="hc-title">{{ t('What is new in EsafePOS') }}</h2>
+        <p class="hc-lead muted">EsafePOS {{ help.version }}</p>
         <ul class="hc-list">
           <li v-for="item in items" :key="item.version + item.title" class="hc-item">
             <div class="hc-item-body">

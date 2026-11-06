@@ -1,6 +1,6 @@
-# Copyright (c) 2026 Lumen Solutions
+# Copyright (c) 2026 Esafe (PVT) LTD
 # SPDX-License-Identifier: AGPL-3.0-only
-# "LumenPOS" is a trademark of Lumen Solutions. See TRADEMARKS.md.
+# "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md.
 """Outlets and their registers (0.64.0).
 
 A POS Profile is a REGISTER: one till, with its own shift and drawer. ERPNext 16

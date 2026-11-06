@@ -1,6 +1,6 @@
-// Copyright (c) 2026 Lumen Solutions
+// Copyright (c) 2026 Esafe (PVT) LTD
 // SPDX-License-Identifier: AGPL-3.0-only
-// "LumenPOS" is a trademark of Lumen Solutions. See TRADEMARKS.md.
+// "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md.
 import { locale } from './i18n'
 import { plainText } from './format'
 
@@ -63,7 +63,7 @@ export async function call(method, args = {}, options = {}) {
       },
       // _lang is Frappe's own request language: the server's messages (and
       // ERPNext's) come back in the language on the screen, whatever the
-      // user's language in the desk. No LumenPOS method takes **kwargs, so
+      // user's language in the desk. No EsafePOS method takes **kwargs, so
       // it never reaches one as an argument. A queued sale is sent in the
       // language it was made in (options.lang).
       body: JSON.stringify({ ...args, _lang: options.lang || locale.value }),

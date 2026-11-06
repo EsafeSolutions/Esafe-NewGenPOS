@@ -1,6 +1,6 @@
-<!-- Copyright (c) 2026 Lumen Solutions
+<!-- Copyright (c) 2026 Esafe (PVT) LTD
      SPDX-License-Identifier: AGPL-3.0-only
-     "LumenPOS" is a trademark of Lumen Solutions. See TRADEMARKS.md. -->
+     "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md. -->
 <template>
   <div v-if="show" class="storage-warn" role="status">
     <Icon name="shield" :size="18" />
@@ -25,7 +25,7 @@
 // sales in it. The till asks at start (App.vue), and this says so when the
 // browser did not agree, and asks again on a tap: Firefox shows its own
 // question then, Chrome and Edge agree once the till is installed as an app
-// or bookmarked. LumenPOS Settings.warn_unprotected_storage switches it off.
+// or bookmarked. EsafePOS Settings.warn_unprotected_storage switches it off.
 import { onMounted, ref, watch } from 'vue'
 import Icon from './Icon.vue'
 import { t } from '../i18n'

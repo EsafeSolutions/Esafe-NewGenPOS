@@ -1,6 +1,6 @@
-// Copyright (c) 2026 Lumen Solutions
+// Copyright (c) 2026 Esafe (PVT) LTD
 // SPDX-License-Identifier: AGPL-3.0-only
-// "LumenPOS" is a trademark of Lumen Solutions. See TRADEMARKS.md.
+// "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md.
 // Arabic translations for the POS chrome, keyed by the English source string.
 // A missing key falls back to English (see i18n.js). Keep keys EXACTLY equal to
 // the English text passed to t(). Master data is never translated here.
@@ -70,9 +70,9 @@ const common = {
   'Syncing…': 'جار المزامنة…',
   Syncing: 'جار المزامنة',
   'Sales History': 'سجل المبيعات',
-  'LumenPOS could not start': 'تعذر تشغيل نقطة البيع',
+  'EsafePOS could not start': 'تعذر تشغيل نقطة البيع',
   Retry: 'إعادة المحاولة',
-  'Loading LumenPOS…': 'جار تحميل نقطة البيع…',
+  'Loading EsafePOS…': 'جار تحميل نقطة البيع…',
 
   All: 'الكل',
   Bundles: 'الباقات',
@@ -143,7 +143,7 @@ const common = {
   'Return reason': 'سبب الاسترجاع',
   'Select a reason…': 'اختر سببا…',
   'Other (write a reason)…': 'أخرى (اكتب سببا)…',
-  // The return reasons LumenPOS ships. A reason an admin types is shown as typed.
+  // The return reasons EsafePOS ships. A reason an admin types is shown as typed.
   'Damaged product': 'منتج تالف',
   'Manufacturing defect': 'منتج به عيب صناعة',
   'Wrong size': 'مقاس غير مناسب',
@@ -155,6 +155,10 @@ const common = {
   'Refund to': 'استرجاع إلى',
   'Refunding…': 'جار الاسترجاع…',
   'Refund completed': 'تم الاسترجاع',
+  'Confirm refund': 'تأكيد الاسترجاع',
+  '{n} items selected': '{n} أصناف محددة',
+  'Choose the items coming back': 'اختر الأصناف المرتجعة',
+  'Select standard items': 'تحديد الأصناف العادية',
 
   'New customer': 'عميل جديد',
   'Customer name': 'اسم العميل',
@@ -307,7 +311,7 @@ const settings = {
   "Accounting": "المحاسبة",
   "Book to accounts now": "سجل في الحسابات الآن",
   "Booking…": "جار التسجيل…",
-  "Cashback is booked to the accounts once a day, as one summary entry per company and outlet. Earned cashback goes to the expense and liability accounts, and expired or returned cashback is taken back out of them. Cashback a customer spends is booked by the sale itself. Choose the accounts in General, Company accounts.": "يسجل LumenPOS الكاش باك في الحسابات مرة يوميا، بقيد ملخص واحد لكل شركة ومنفذ بيع، فيقيد الكاش باك المكتسب على حسابي المصروف والالتزام، ويعكس المنتهي أو المرتجع منهما. أما الكاش باك الذي يستخدمه العميل فتسجله عملية البيع نفسها. اختر الحسابات من عام ثم حسابات الشركة.",
+  "Cashback is booked to the accounts once a day, as one summary entry per company and outlet. Earned cashback goes to the expense and liability accounts, and expired or returned cashback is taken back out of them. Cashback a customer spends is booked by the sale itself. Choose the accounts in General, Company accounts.": "يسجل EsafePOS الكاش باك في الحسابات مرة يوميا، بقيد ملخص واحد لكل شركة ومنفذ بيع، فيقيد الكاش باك المكتسب على حسابي المصروف والالتزام، ويعكس المنتهي أو المرتجع منهما. أما الكاش باك الذي يستخدمه العميل فتسجله عملية البيع نفسها. اختر الحسابات من عام ثم حسابات الشركة.",
   "No cashback activity yet.": "لا توجد حركات كاش باك بعد.",
   "Liability account": "حساب الالتزام",
   "Expense account": "حساب المصروف",
@@ -455,8 +459,8 @@ const settings = {
   "PIN set, blank keeps it": "رمز PIN مضبوط، اتركه فارغا للإبقاء عليه",
   "PIN": "رمز PIN",
   "+ Add approver": "+ إضافة معتمد",
-  "You need write access to LumenPOS Settings to change these. Ask an administrator to grant the LumenPOS Manager role.": "تحتاج إلى صلاحية الكتابة على إعدادات LumenPOS لتغيير هذه. اطلب من المسؤول منحك دور مدير LumenPOS.",
-  "LumenPOS version": "إصدار LumenPOS",
+  "You need write access to EsafePOS Settings to change these. Ask an administrator to grant the EsafePOS Manager role.": "تحتاج إلى صلاحية الكتابة على إعدادات EsafePOS لتغيير هذه. اطلب من المسؤول منحك دور مدير EsafePOS.",
+  "EsafePOS version": "إصدار EsafePOS",
   "Outlet (POS Profile)": "الفرع (ملف نقطة البيع)",
   "Default price list": "قائمة الأسعار الافتراضية",
   "Connection": "الاتصال",
@@ -710,7 +714,7 @@ const features = {
   "Show an Email receipt button so a copy can be sent to the customer's email.": "أظهر زر إرسال الإيصال بالبريد لإرسال نسخة إلى بريد العميل.",
   "Audit log": "سجل التدقيق",
   "Audit Log": "سجل التدقيق",
-  "Record sensitive actions (over-limit discounts, returns, price edits, register open/close) to the LumenPOS Audit Log.": "سجل الإجراءات الحساسة (الخصومات التي تتجاوز الحد، الإرجاعات، تعديلات الأسعار، فتح/إغلاق الصندوق) في سجل تدقيق LumenPOS.",
+  "Record sensitive actions (over-limit discounts, returns, price edits, register open/close) to the EsafePOS Audit Log.": "سجل الإجراءات الحساسة (الخصومات التي تتجاوز الحد، الإرجاعات، تعديلات الأسعار، فتح/إغلاق الصندوق) في سجل تدقيق EsafePOS.",
   "Sensitive till actions, over-limit discounts, returns, register open/close, emailed receipts and settings changes. Turn it on/off in": "إجراءات الصندوق الحساسة، الخصومات التي تتجاوز الحد، الإرجاعات، فتح/إغلاق الصندوق، الإيصالات المرسلة بالبريد، وتغييرات الإعدادات. فعلها أو عطلها من",
   "General → Features": "عام ← الميزات",
   "All actions": "كل الإجراءات",
@@ -1193,9 +1197,9 @@ const approvals = {
   "Passcode or request": "بالرمز أو الطلب",
   "Approver role for requests": "دور المعتمد للطلبات",
   "Role that can approve discount requests": "الدور الذي يمكنه اعتماد طلبات الخصم",
-  "e.g. LumenPOS Manager": "مثال: LumenPOS Manager",
-  "Holders of this role (plus LumenPOS / System Managers) get an Approvals tray in the POS and can approve requests while the cashier's register is still open.":
-    "يحصل أصحاب هذا الدور (بالإضافة إلى مديري LumenPOS / النظام) على لوحة اعتمادات داخل نقطة البيع، ويمكنهم اعتماد الطلبات طالما أن صندوق الكاشير ما زال مفتوحا.",
+  "e.g. EsafePOS Manager": "مثال: EsafePOS Manager",
+  "Holders of this role (plus EsafePOS / System Managers) get an Approvals tray in the POS and can approve requests while the cashier's register is still open.":
+    "يحصل أصحاب هذا الدور (بالإضافة إلى مديري EsafePOS / النظام) على لوحة اعتمادات داخل نقطة البيع، ويمكنهم اعتماد الطلبات طالما أن صندوق الكاشير ما زال مفتوحا.",
   "The cashier sends a request, a role-holder approves it while the register is open. No till passcode.":
     "يرسل الكاشير طلبا يعتمده صاحب الدور طالما الصندوق مفتوح، بدون رمز على الجهاز.",
   "The cashier can either enter the manager passcode at the till or send a request for remote approval.":
@@ -1291,8 +1295,8 @@ const serialsAndGroups = {
 const permissions = {
   "Permissions": "الصلاحيات",
   "You are not allowed to edit prices": "غير مسموح لك بتعديل الأسعار",
-  "Say who may do each action at the till. A rule names a role or one person, and any matching rule lets them through. System / LumenPOS Managers always pass.":
-    "حدد من يقوم بكل إجراء في الصندوق. القاعدة تسمي صلاحية أو شخصا بعينه، وأي قاعدة مطابقة تكفي. مديرو النظام و LumenPOS يمرون دائما.",
+  "Say who may do each action at the till. A rule names a role or one person, and any matching rule lets them through. System / EsafePOS Managers always pass.":
+    "حدد من يقوم بكل إجراء في الصندوق. القاعدة تسمي صلاحية أو شخصا بعينه، وأي قاعدة مطابقة تكفي. مديرو النظام و EsafePOS يمرون دائما.",
   "Edit price / discount role": "دور تعديل السعر / الخصم",
   "Make returns role": "دور تنفيذ المرتجعات",
   "Exceed return window role": "دور تجاوز فترة الإرجاع",
@@ -1304,38 +1308,38 @@ const permissions = {
     "مضى على هذه الفاتورة {age} يوما (بعد فترة {n} يوما)، أنت مخول بإرجاعها.",
 }
 
-// The Insights page (statistics through Lumen Reports).
+// The Insights page (statistics through EsafePOS Reports).
 const insights = {
   Insights: 'الإحصائيات',
   'Insights page': 'صفحة الإحصائيات',
-  'A statistics page for managers. With Lumen Reports installed it shows a full sales dashboard with filters.':
-    'صفحة إحصائيات للمدراء. عند تركيب Lumen Reports تعرض لوحة مبيعات كاملة مع فلاتر.',
+  'A statistics page for managers. With EsafePOS Reports installed it shows a full sales dashboard with filters.':
+    'صفحة إحصائيات للمدراء. عند تركيب EsafePOS Reports تعرض لوحة مبيعات كاملة مع فلاتر.',
   'Sales dashboard': 'لوحة المبيعات',
   'Get the full picture of your sales': 'شاهد الصورة الكاملة لمبيعاتك',
-  'Install the Lumen Reports app to see a complete sales dashboard here: revenue by day and by outlet, payment mix, top items and more, with filters, all inside LumenPOS.':
-    'ركب تطبيق Lumen Reports لتشاهد هنا لوحة مبيعات كاملة: الإيراد باليوم وبالفرع، وتوزيع طرق الدفع، والأصناف الأعلى مبيعا وغيرها، مع فلاتر، كل ذلك داخل LumenPOS.',
-  'Lumen Reports is available on the Frappe Cloud Marketplace, or through hello@lumen-solutions.co.':
-    'تطبيق Lumen Reports متوفر في متجر Frappe Cloud، أو عبر hello@lumen-solutions.co.',
-  'Lumen Reports could not report its status on this site.':
-    'تعذر على Lumen Reports الإفادة بحالته على هذا الموقع.',
-  'Lumen Reports cannot show the dashboard on this site right now.':
-    'لا يستطيع Lumen Reports عرض اللوحة على هذا الموقع حاليا.',
-  'Lumen Reports needs Frappe v{version} or newer. This site runs an older version, so the dashboard is not available here.':
-    'يحتاج Lumen Reports إلى Frappe الإصدار {version} أو أحدث. هذا الموقع يعمل بإصدار أقدم، لذلك اللوحة غير متاحة هنا.',
-  'Lumen Reports is installed, but this version does not include the LumenPOS dashboard yet. Update Lumen Reports, then come back.':
-    'تطبيق Lumen Reports مركب، لكن هذه النسخة لا تتضمن لوحة LumenPOS بعد. حدث Lumen Reports ثم عد إلى هنا.',
-  'Lumen Reports is installed. One step left: create the ready-made POS sales dashboard.':
-    'تطبيق Lumen Reports مركب. بقيت خطوة واحدة: إنشاء لوحة المبيعات الجاهزة.',
+  'Install the EsafePOS Reports app to see a complete sales dashboard here: revenue by day and by outlet, payment mix, top items and more, with filters, all inside EsafePOS.':
+    'ركب تطبيق EsafePOS Reports لتشاهد هنا لوحة مبيعات كاملة: الإيراد باليوم وبالفرع، وتوزيع طرق الدفع، والأصناف الأعلى مبيعا وغيرها، مع فلاتر، كل ذلك داخل EsafePOS.',
+  'EsafePOS Reports is available on the Frappe Cloud Marketplace, or through hello@esafesolutions.co.':
+    'تطبيق EsafePOS Reports متوفر في متجر Frappe Cloud، أو عبر hello@esafesolutions.co.',
+  'EsafePOS Reports could not report its status on this site.':
+    'تعذر على EsafePOS Reports الإفادة بحالته على هذا الموقع.',
+  'EsafePOS Reports cannot show the dashboard on this site right now.':
+    'لا يستطيع EsafePOS Reports عرض اللوحة على هذا الموقع حاليا.',
+  'EsafePOS Reports needs Frappe v{version} or newer. This site runs an older version, so the dashboard is not available here.':
+    'يحتاج EsafePOS Reports إلى Frappe الإصدار {version} أو أحدث. هذا الموقع يعمل بإصدار أقدم، لذلك اللوحة غير متاحة هنا.',
+  'EsafePOS Reports is installed, but this version does not include the EsafePOS dashboard yet. Update EsafePOS Reports, then come back.':
+    'تطبيق EsafePOS Reports مركب، لكن هذه النسخة لا تتضمن لوحة EsafePOS بعد. حدث EsafePOS Reports ثم عد إلى هنا.',
+  'EsafePOS Reports is installed. One step left: create the ready-made POS sales dashboard.':
+    'تطبيق EsafePOS Reports مركب. بقيت خطوة واحدة: إنشاء لوحة المبيعات الجاهزة.',
   'One permission away': 'تبقى صلاحية واحدة',
-  'The dashboard is ready. To open it, an administrator grants this user the Lumen Restricted Viewer role in Lumen Reports.':
-    'اللوحة جاهزة. لفتحها، يمنح المسؤول هذا المستخدم دور Lumen Restricted Viewer في Lumen Reports.',
-  'Lumen Reports is installed. An administrator with Lumen Builder or Lumen Manager opens this page once to create the dashboard.':
-    'تطبيق Lumen Reports مركب. يفتح مسؤول لديه دور Lumen Builder أو Lumen Manager هذه الصفحة مرة واحدة لإنشاء اللوحة.',
+  'The dashboard is ready. To open it, an administrator grants this user the Lumen Restricted Viewer role in EsafePOS Reports.':
+    'اللوحة جاهزة. لفتحها، يمنح المسؤول هذا المستخدم دور Lumen Restricted Viewer في EsafePOS Reports.',
+  'EsafePOS Reports is installed. An administrator with Lumen Builder or Lumen Manager opens this page once to create the dashboard.':
+    'تطبيق EsafePOS Reports مركب. يفتح مسؤول لديه دور Lumen Builder أو Lumen Manager هذه الصفحة مرة واحدة لإنشاء اللوحة.',
   'The sales dashboard reads POS Invoice, which comes with ERPNext. Install ERPNext first.':
     'لوحة المبيعات تقرأ فاتورة نقطة البيع التي تأتي مع ERPNext. ركب ERPNext أولا.',
   'Create the sales dashboard': 'إنشاء لوحة المبيعات',
   'Creating…': 'جار الإنشاء…',
-  'Open in Lumen Reports': 'فتح في Lumen Reports',
+  'Open in EsafePOS Reports': 'فتح في EsafePOS Reports',
   'Could not load the dashboard': 'تعذر تحميل اللوحة',
 }
 
@@ -1559,7 +1563,7 @@ const salespeopleAndCheck = {
   "Off, the till does not ask": "متوقف، لا تطلب نقطة البيع البائع",
   "Salespeople are ERPNext's Sales Persons. The salesperson is saved on the invoice with ERPNext's commission rate, and the Salespeople page shows sales, returns and commission per person. Required is checked on the server too.": "البائعون هم مندوبو المبيعات (Sales Person) في ERPNext. يحفظ البائع في الفاتورة مع نسبة العمولة المسجلة له في ERPNext، وتعرض صفحة البائعين المبيعات والاسترجاع والعمولة لكل بائع. ويتحقق الخادم أيضا من الخيار الإلزامي.",
   "System check": "فحص النظام",
-  "What may stop LumenPOS working on this site, and what to do about it. Send a screenshot of this page, or Copy for support, with any problem you report.": "ما قد يمنع LumenPOS من العمل على هذا الموقع، وما يجب فعله لمعالجته. أرسل صورة لهذه الصفحة، أو استخدم زر النسخ للدعم الفني، مع أي مشكلة تبلغ عنها.",
+  "What may stop EsafePOS working on this site, and what to do about it. Send a screenshot of this page, or Copy for support, with any problem you report.": "ما قد يمنع EsafePOS من العمل على هذا الموقع، وما يجب فعله لمعالجته. أرسل صورة لهذه الصفحة، أو استخدم زر النسخ للدعم الفني، مع أي مشكلة تبلغ عنها.",
   "Check again": "إعادة الفحص",
   "Copy for support": "نسخ للدعم الفني",
   "The system check needs a connection.": "يحتاج فحص النظام إلى اتصال بالإنترنت.",
@@ -1766,7 +1770,7 @@ const helpForStaff = {
   "This screen has no help of its own yet. The tours below show the basics.": "لا يوجد شرح خاص بهذه الشاشة بعد، والجولات أدناه توضح الأساسيات.",
   "Show me": "اعرض لي",
   "Short tours": "جولات قصيرة",
-  "What is new in LumenPOS": "الجديد في LumenPOS",
+  "What is new in EsafePOS": "الجديد في EsafePOS",
   "Tap ? at the top of any screen for its help. A one-minute tour shows you around the till.": "اضغط على زر المساعدة أعلى أي شاشة لترى شرحها، وجولة مدتها دقيقة واحدة تعرفك على نقطة البيع.",
   "Recently added": "أضيف مؤخرا",
   "Take the tour": "ابدأ الجولة",
@@ -1933,7 +1937,7 @@ const creditSales = {
   "A return of a sale still owing comes off the debt first, and only the rest goes back as money.": "مرتجع البيع الذي ما زال عليه مستحق يخصم من الدين أولا، ولا يعاد للعميل إلا الباقي.",
   "At the close, what was sold on account is shown but not counted, and the payments taken are in the drawer.": "عند الإغلاق، تظهر المبيعات الآجلة ولا تعد، والدفعات المستلمة تكون في الدرج.",
   "Who may sell on account, take customer payments and set a customer's credit is set in Approvals and access, Permissions. Until someone is named there, only managers can.": "تحديد من يبيع بالآجل ويستلم دفعات العملاء ويضبط ائتمان العميل يكون في الاعتمادات والصلاحيات، الصلاحيات. وإلى أن يحدد أحد هناك، لا يقوم بها إلا المدراء.",
-  "Set up by LumenPOS": "ما جهزه LumenPOS",
+  "Set up by EsafePOS": "ما جهزه EsafePOS",
   "Payment method {mode}, account {account}": "طريقة الدفع {mode}، الحساب {account}",
   "A payment method named {mode} already exists, on account {account}. Rename it in ERPNext, then save again.": "توجد طريقة دفع باسم {mode} على الحساب {account}. أعد تسميتها في ERPNext، ثم احفظ مرة أخرى.",
   "Choose the customer first: a sale on account needs a named customer, never the walk-in.": "اختر العميل أولا: البيع بالآجل يحتاج عميلا باسمه، وليس العميل النقدي أبدا.",
@@ -2009,7 +2013,7 @@ const prefixedAr = {
   "To show them anyway: Settings, General, Register and shifts, Show out-of-stock items in the grid.": "لإظهارها: الإعدادات، عام، الصندوق والورديات، إظهار الأصناف غير المتوفرة في الشبكة.",
   // A shift past midnight, refused offline sales (0.55.0).
   "ERPNext days closed during this shift": "أيام ERPNext المغلقة خلال هذه الوردية",
-  "ERPNext 16 takes sales only on a shift opened the same day, so at the first sale after midnight LumenPOS closed the day in ERPNext and opened the next one. Count the drawer once, when you close the shift.": "لا يقبل ERPNext 16 المبيعات إلا على وردية فتحت في اليوم نفسه، لذلك أغلق LumenPOS اليوم في ERPNext عند أول بيع بعد منتصف الليل وفتح اليوم التالي. احسب النقد في الدرج مرة واحدة عند إغلاق الوردية.",
+  "ERPNext 16 takes sales only on a shift opened the same day, so at the first sale after midnight EsafePOS closed the day in ERPNext and opened the next one. Count the drawer once, when you close the shift.": "لا يقبل ERPNext 16 المبيعات إلا على وردية فتحت في اليوم نفسه، لذلك أغلق EsafePOS اليوم في ERPNext عند أول بيع بعد منتصف الليل وفتح اليوم التالي. احسب النقد في الدرج مرة واحدة عند إغلاق الوردية.",
   "Until {time}": "حتى {time}",
   "Posted": "تم الترحيل",
   "Not posted yet": "لم يرحل بعد",
@@ -2018,7 +2022,7 @@ const prefixedAr = {
   "You can still close. Take their cash out of the drawer before you count, and put it back once the next shift is open: they are sent again then.": "يمكنك الإغلاق رغم ذلك. أخرج نقدها من الدرج قبل العد، وأعده بعد فتح الوردية التالية: ترسل مرة أخرى حينها.",
   "{n} offline sales were refused and are not in this count. Take their cash out of the drawer before you count. Close the register?": "رفض الخادم {n} من المبيعات دون اتصال وهي غير داخلة في هذا العد. أخرج نقدها من الدرج قبل العد. هل تغلق الصندوق؟",
   "Keep a shift open past midnight": "إبقاء الوردية مفتوحة بعد منتصف الليل",
-  "ERPNext 16 takes sales only on a shift opened the same day. On (the default): at the first sale after midnight LumenPOS closes the day in ERPNext and opens the next one by itself, and the shift carries on and is counted once, at its own close. Off: a shift from an earlier day has to be closed before it can sell again.": "لا يقبل ERPNext 16 المبيعات إلا على وردية فتحت في اليوم نفسه. مفعل (الافتراضي): عند أول بيع بعد منتصف الليل يغلق LumenPOS اليوم في ERPNext ويفتح اليوم التالي تلقائيا، وتستمر الوردية ويحسب درجها مرة واحدة عند إغلاقها. غير مفعل: يجب إغلاق الوردية التي فتحت في يوم سابق قبل أن تبيع مجددا.",
+  "ERPNext 16 takes sales only on a shift opened the same day. On (the default): at the first sale after midnight EsafePOS closes the day in ERPNext and opens the next one by itself, and the shift carries on and is counted once, at its own close. Off: a shift from an earlier day has to be closed before it can sell again.": "لا يقبل ERPNext 16 المبيعات إلا على وردية فتحت في اليوم نفسه. مفعل (الافتراضي): عند أول بيع بعد منتصف الليل يغلق EsafePOS اليوم في ERPNext ويفتح اليوم التالي تلقائيا، وتستمر الوردية ويحسب درجها مرة واحدة عند إغلاقها. غير مفعل: يجب إغلاق الوردية التي فتحت في يوم سابق قبل أن تبيع مجددا.",
   "ERPNext day closed": "إغلاق يوم في ERPNext",
   // Another currency offline, a price typed at the till (0.55.0).
   "Price": "السعر",
@@ -2288,9 +2292,9 @@ const outletsRegisters = {
 const reportsAccess = {
   "Reports only": "التقارير فقط",
   "Reports for management without a till": "تقارير للإدارة بدون نقطة بيع",
-  "Give a user the LumenPOS Reports role in ERPNext and LumenPOS opens on these reports alone, for every outlet of their companies, with no POS Profile, shift or sales. Add the LumenPOS Cashier role as well to let them sell too.": "امنح المستخدم دور LumenPOS Reports في ERPNext فيفتح له LumenPOS على هذه التقارير وحدها، لكل فروع شركاته، بدون ملف نقطة بيع ولا وردية ولا مبيعات. وأضف له دور LumenPOS Cashier أيضا إذا أردت أن يبيع.",
+  "Give a user the EsafePOS Reports role in ERPNext and EsafePOS opens on these reports alone, for every outlet of their companies, with no POS Profile, shift or sales. Add the EsafePOS Cashier role as well to let them sell too.": "امنح المستخدم دور EsafePOS Reports في ERPNext فيفتح له EsafePOS على هذه التقارير وحدها، لكل فروع شركاته، بدون ملف نقطة بيع ولا وردية ولا مبيعات. وأضف له دور EsafePOS Cashier أيضا إذا أردت أن يبيع.",
   "Reports for management": "تقارير للإدارة",
-  "Give a user the LumenPOS Reports role in ERPNext and LumenPOS opens on the Insights reports alone, for every outlet of their companies, with no POS Profile or shift. Switch it off in Settings, General, Insights.": "امنح المستخدم دور LumenPOS Reports في ERPNext فيفتح له LumenPOS على تقارير الإحصائيات وحدها، لكل فروع شركاته، بدون ملف نقطة بيع ولا وردية. ويمكن إيقافه من الإعدادات، عام، الإحصائيات.",
+  "Give a user the EsafePOS Reports role in ERPNext and EsafePOS opens on the Insights reports alone, for every outlet of their companies, with no POS Profile or shift. Switch it off in Settings, General, Insights.": "امنح المستخدم دور EsafePOS Reports في ERPNext فيفتح له EsafePOS على تقارير الإحصائيات وحدها، لكل فروع شركاته، بدون ملف نقطة بيع ولا وردية. ويمكن إيقافه من الإعدادات، عام، الإحصائيات.",
 }
 
 const paidIn = {
@@ -2348,8 +2352,8 @@ const labelsPrint = {
 }
 
 const stockApp = {
-  "Lumen Stock app": "تطبيق Lumen Stock",
-  "The Lumen Stock phone app counts stock, alone or with several phones at once, and makes stock entries and purchase receipts. It saves them as the person on the phone, so their ERPNext permissions apply. Who may use it is set under Permissions, Use the stock app.": "تطبيق Lumen Stock على الجوال يجرد المخزون، بجوال واحد أو بعدة جوالات معا، وينشئ قيود المخزون وإستلام المشتريات. ويحفظها باسم الشخص الذي يستخدم الجوال، فتطبق عليه صلاحياته في ERPNext. ومن يحق له استخدامه يحدد في الصلاحيات، استخدام تطبيق المخزون.",
+  "EsafePOS Stock app": "تطبيق EsafePOS Stock",
+  "The EsafePOS Stock phone app counts stock, alone or with several phones at once, and makes stock entries and purchase receipts. It saves them as the person on the phone, so their ERPNext permissions apply. Who may use it is set under Permissions, Use the stock app.": "تطبيق EsafePOS Stock على الجوال يجرد المخزون، بجوال واحد أو بعدة جوالات معا، وينشئ قيود المخزون وإستلام المشتريات. ويحفظها باسم الشخص الذي يستخدم الجوال، فتطبق عليه صلاحياته في ERPNext. ومن يحق له استخدامه يحدد في الصلاحيات، استخدام تطبيق المخزون.",
   "Off: the app is refused on this site.": "عند الإيقاف: يرفض الموقع التطبيق.",
   "Stock counts": "جرد المخزون",
   "Count a warehouse and save the count as a Stock Reconciliation draft.": "جرد مستودع وحفظ الجرد مسودة جرد مخزون.",
@@ -2399,7 +2403,7 @@ const stockCount = {
   "Saved as a draft stock count: {name}": "حفظ كمسودة جرد مخزون: {name}",
   "Submit": "اعتماد",
   "Someone allowed to submit it can do so in ERPNext.": "يمكن لمن لديه صلاحية الاعتماد اعتماده في ERPNext.",
-  "Count with phones too: install the Lumen Stock app on Android phones or handheld scanners and sign in with your ERPNext account.": "يمكنك الجرد بالجوالات أيضا: ثبت تطبيق Lumen Stock على جوالات Android أو أجهزة المسح المحمولة وسجل الدخول بحسابك في ERPNext.",
+  "Count with phones too: install the EsafePOS Stock app on Android phones or handheld scanners and sign in with your ERPNext account.": "يمكنك الجرد بالجوالات أيضا: ثبت تطبيق EsafePOS Stock على جوالات Android أو أجهزة المسح المحمولة وسجل الدخول بحسابك في ERPNext.",
   "Download for phones": "تنزيل للجوالات",
   "Download for handheld scanners": "تنزيل لأجهزة المسح المحمولة",
   "A count is checked against what is on the shelf: sales of an open shift leave the stock only when the shift is closed, so close the shifts before you save or merge a count.": "يقارن الجرد بما على الرف: مبيعات الوردية المفتوحة لا تخصم من المخزون إلا عند إغلاق الوردية، لذا أغلق الورديات قبل حفظ الجرد أو دمجه.",
@@ -2411,15 +2415,15 @@ const stockCount = {
   "Close {name} without making a stock count?": "إغلاق {name} دون إنشاء جرد مخزون؟",
   "Get the app": "احصل على التطبيق",
   "Android phones and handheld scanners. Sign in with the ERPNext account of the person counting.": "لجوالات Android وأجهزة المسح المحمولة. يسجل الدخول بحساب ERPNext للشخص الذي يجرد.",
-  "Count from LumenPOS": "الجرد من LumenPOS",
+  "Count from EsafePOS": "الجرد من EsafePOS",
   "A Stock count screen in the till: count with a barcode scanner, alone or together with the phones of a shared count.": "شاشة جرد المخزون في نقطة البيع: الجرد بقارئ الباركود، منفردا أو مع جوالات جرد مشترك.",
   "Stock count": "جرد المخزون",
   "Count stock from the till": "جرد المخزون من نقطة البيع",
   "Pick the warehouse, then scan each item: every scan adds one. A serialised item is counted by scanning each serial number.": "اختر المستودع ثم امسح كل صنف: كل مسح يضيف واحدا. والصنف ذو الأرقام التسلسلية يجرد بمسح كل رقم تسلسلي.",
   "{alone} saves your count as an ERPNext stock count draft with only the items that differ from the shelf, ready to submit.": "{alone} يحفظ جردك مسودة جرد مخزون في ERPNext بالأصناف المختلفة عن الرف فقط، جاهزة للاعتماد.",
-  "{shared} joins a count that phones with the Lumen Stock app are doing in the same warehouse. Send your lines, then merge everything into one stock count.": "{shared} يضمك إلى جرد تجريه جوالات تطبيق Lumen Stock في المستودع نفسه. أرسل أسطرك ثم ادمج الكل في جرد مخزون واحد.",
+  "{shared} joins a count that phones with the EsafePOS Stock app are doing in the same warehouse. Send your lines, then merge everything into one stock count.": "{shared} يضمك إلى جرد تجريه جوالات تطبيق EsafePOS Stock في المستودع نفسه. أرسل أسطرك ثم ادمج الكل في جرد مخزون واحد.",
   "Close the open shifts before you save or merge a count: their sales leave the stock only when the shift is closed.": "أغلق الورديات المفتوحة قبل حفظ الجرد أو دمجه: مبيعاتها لا تخصم من المخزون إلا عند إغلاق الوردية.",
-  "A Stock count screen counts a warehouse with the barcode scanner, alone or together with the phones of the Lumen Stock app, and saves an ERPNext stock count with only the differences.": "شاشة جرد المخزون تجرد المستودع بقارئ الباركود، منفردا أو مع جوالات تطبيق Lumen Stock، وتحفظ جرد مخزون في ERPNext بالفروقات فقط.",
+  "A Stock count screen counts a warehouse with the barcode scanner, alone or together with the phones of the EsafePOS Stock app, and saves an ERPNext stock count with only the differences.": "شاشة جرد المخزون تجرد المستودع بقارئ الباركود، منفردا أو مع جوالات تطبيق EsafePOS Stock، وتحفظ جرد مخزون في ERPNext بالفروقات فقط.",
 }
 
 export const messages = {

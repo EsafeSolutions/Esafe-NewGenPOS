@@ -320,7 +320,7 @@
    "show_arrow": 0,
    "type": "Link",
    "link_type": "DocType",
-   "label": "LumenPOS Audit Log",
+   "label": "EsafePOS Audit Log",
    "link_to": "LumenPOS Audit Log"
   },
   {
@@ -336,7 +336,7 @@
    "show_arrow": 0,
    "type": "Link",
    "link_type": "DocType",
-   "label": "LumenPOS Settings",
+   "label": "EsafePOS Settings",
    "link_to": "LumenPOS Settings"
   }
  ],
@@ -346,5 +346,5 @@
  "name": "LumenPOS",
  "owner": "Administrator",
  "standard": 1,
- "title": "LumenPOS"
+ "title": "EsafePOS"
 }

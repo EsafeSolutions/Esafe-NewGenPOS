@@ -1,9 +1,9 @@
-/* Copyright (c) 2026 Lumen Solutions
+/* Copyright (c) 2026 Esafe (PVT) LTD
    SPDX-License-Identifier: AGPL-3.0-only
-   "LumenPOS" is a trademark of Lumen Solutions. See TRADEMARKS.md. */
+   "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md. */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Vazirmatn:wght@400;500;600;700&display=swap');
 
-/* Esafe Solutions design tokens, aligned with esafesolutions.co.
+/* EsafePOS design tokens, aligned with esafesolutions.co.
    Deep navy #10254B and teal #13A795; type: Inter. */
 :root {
   --nav-bg: #10254b;

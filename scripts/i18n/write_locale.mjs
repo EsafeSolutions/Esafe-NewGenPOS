@@ -1,6 +1,6 @@
-// Copyright (c) 2026 Lumen Solutions
+// Copyright (c) 2026 Esafe (PVT) LTD
 // SPDX-License-Identifier: AGPL-3.0-only
-// "LumenPOS" is a trademark of Lumen Solutions. See TRADEMARKS.md.
+// "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md.
 // Build frontend/src/locales/<code>.js from <work>/<code>_ui_part*.json, after
 // checking every text keeps its {placeholders} and marks and carries no dash
 // or semicolon. Usage: node write_locale.mjs <work> <code> "<English name>" [--dry]
@@ -45,9 +45,9 @@ if (problems.length || dry) process.exit(problems.length ? 1 : 0)
 const body = Object.entries(dict)
   .map(([k, v]) => `  ${JSON.stringify(k)}: ${JSON.stringify(v)},`)
   .join('\n')
-const file = `// Copyright (c) 2026 Lumen Solutions
+const file = `// Copyright (c) 2026 Esafe (PVT) LTD
 // SPDX-License-Identifier: AGPL-3.0-only
-// "LumenPOS" is a trademark of Lumen Solutions. See TRADEMARKS.md.
+// "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md.
 // ${englishName} for the till, keyed by the English source string like the
 // Arabic in messages.js. Loaded only when a cashier picks ${englishName}
 // (i18n.js). A missing key falls back to English. Built by

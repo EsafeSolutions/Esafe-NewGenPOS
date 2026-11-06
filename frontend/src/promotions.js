@@ -1,6 +1,6 @@
-// Copyright (c) 2026 Lumen Solutions
+// Copyright (c) 2026 Esafe (PVT) LTD
 // SPDX-License-Identifier: AGPL-3.0-only
-// "LumenPOS" is a trademark of Lumen Solutions. See TRADEMARKS.md.
+// "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md.
 // Mirror of lumenpos/promotions/engine.py. Keep both in sync.
 // Runs client-side so the cart updates instantly; the server re-evaluates
 // authoritatively on submit.
@@ -22,7 +22,7 @@ function isActive(promo, now, cart) {
     const start = normTime(promo.start_time)
     const end = normTime(promo.end_time)
     // A window under a minute is not a window. Frappe fills an empty Time field
-    // with the moment of the save, so a record saved anywhere but LumenPOS's
+    // with the moment of the save, so a record saved anywhere but EsafePOS's
     // own screen comes back with a start and an end milliseconds apart, which
     // would switch the promotion off for the rest of the day. The till picks
     // whole minutes, so no real window is lost. Equal times are the same case.

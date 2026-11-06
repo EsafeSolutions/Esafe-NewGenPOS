@@ -1,6 +1,6 @@
-<!-- Copyright (c) 2026 Lumen Solutions
+<!-- Copyright (c) 2026 Esafe (PVT) LTD
      SPDX-License-Identifier: AGPL-3.0-only
-     "LumenPOS" is a trademark of Lumen Solutions. See TRADEMARKS.md. -->
+     "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md. -->
 <template>
   <span class="icon" :style="{ width: px, height: px }" v-html="svg" aria-hidden="true" />
 </template>
@@ -20,7 +20,7 @@ const STROKE = new Set([
   'close', 'shield', 'bulb', 'ticket', 'store', 'person', 'company', 'bank',
   'card', 'cash', 'hourglass', 'exchange', 'refresh', 'download', 'upload',
   'ban', 'barcode', 'gift', 'bike', 'plus', 'check', 'warning',
-  'search', 'tag', 'report', 'image', 'clock', 'globe', 'help',
+  'search', 'tag', 'report', 'image', 'clock', 'globe', 'help', 'return',
 ])
 
 const PATHS = {
@@ -65,6 +65,7 @@ const PATHS = {
     '<path d="M6 3h12M6 21h12"/>' +
     '<path d="M8 3c0 4 4 5 4 6 0-1 4-2 4-6M8 21c0-4 4-5 4-6 0 1 4 2 4 6"/>',
   exchange: '<path d="M3 9h14l-3.5-3.5M21 15H7l3.5 3.5"/>',
+  return: '<path d="m9 5-7 7 7 7"/><path d="M3 12h10a6 6 0 0 1 6 6v1"/>',
   refresh: '<path d="M21 12a9 9 0 1 1-2.6-6.3M21 4.5V9h-4.5"/>',
   download: '<path d="M12 3v12M8 11l4 4 4-4M5 21h14"/>',
   upload: '<path d="M12 21V9M8 13l4-4 4 4M5 3h14"/>',

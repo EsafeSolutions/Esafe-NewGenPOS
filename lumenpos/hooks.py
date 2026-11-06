@@ -2,9 +2,9 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 # "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md.
 app_name = "lumenpos"
-app_title = "EsafePOS"
+app_title = "ESafe New Gen POS"
 app_publisher = "Esafe (PVT) LTD"
-app_description = "Professional, multi-business Point of Sale for ERPNext / Frappe"
+app_description = "ESafe New Gen POS: professional, multi-business Point of Sale for ERPNext / Frappe"
 app_email = "hello@esafe.lk"
 app_license = "AGPL-3.0-only"
 

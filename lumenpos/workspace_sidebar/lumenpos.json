@@ -239,7 +239,7 @@
    "show_arrow": 0,
    "type": "Link",
    "link_type": "DocType",
-   "label": "EsafePOS Audit Log",
+   "label": "ESafe New Gen POS Audit Log",
    "link_to": "LumenPOS Audit Log",
    "icon": ""
   },
@@ -251,7 +251,7 @@
    "show_arrow": 0,
    "type": "Link",
    "link_type": "DocType",
-   "label": "EsafePOS Settings",
+   "label": "ESafe New Gen POS Settings",
    "link_to": "LumenPOS Settings",
    "icon": "settings"
   }
@@ -262,5 +262,5 @@
  "name": "LumenPOS",
  "owner": "Administrator",
  "standard": 1,
- "title": "EsafePOS"
+ "title": "ESafe New Gen POS"
 }

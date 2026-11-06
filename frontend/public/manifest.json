@@ -1,6 +1,6 @@
 {
-  "name": "EsafePOS",
-  "short_name": "EsafePOS",
+  "name": "ESafe New Gen POS",
+  "short_name": "ESafe POS",
   "description": "Point of sale for ERPNext. Sells, returns and exchanges, and keeps selling when the connection drops.",
   "id": "/pos",
   "start_url": "/pos",

@@ -123,6 +123,10 @@ def get_bootstrap(pos_profile: str | None = None):
         # (or a wrong time) never shows a shift as hours old (0.61.1).
         "server_now": str(frappe.utils.now_datetime()),
         "other_open_registers": _other_open_registers(profile_name),
+        # Native ERPNext openings that pre-date or bypassed ESafe New Gen POS.
+        # The Register page can safely end an unused one or attach a current
+        # opening to its operator; an ERPNext 16 outlet otherwise cannot sell.
+        "external_openings": _external_openings(profile_name),
         "pending_closing": _pending_closing(profile_name),
         "period_lock": _period_lock(profile),
         "permissions": {
@@ -772,6 +776,19 @@ def _other_open_registers(current_profile):
         }
         for r in rows
     ]
+
+
+def _external_openings(pos_profile):
+    """A small, permission-filtered view of native openings needing recovery."""
+    try:
+        from lumenpos.api import register
+
+        return register._external_opening_rows(pos_profile)
+    except Exception:
+        # A recovery aid must never stop the till from loading. The Register
+        # page can still refresh it explicitly once the site is fully migrated.
+        frappe.log_error(title="ESafe New Gen POS: external opening lookup", message=frappe.get_traceback())
+        return []
 
 
 def _outlets_for_till():

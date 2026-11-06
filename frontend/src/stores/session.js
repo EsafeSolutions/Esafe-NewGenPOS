@@ -49,6 +49,9 @@ export const useSessionStore = defineStore('session', {
     reportsOnly: false,
     companyList: [],
     otherOpenRegisters: [],
+    // Native ERPNext openings that have no ESafe New Gen POS register session
+    // yet. The Register screen offers a guarded recovery flow for them.
+    externalOpenings: [],
     company: null,
     currency: 'USD',
     priceList: null,
@@ -357,6 +360,7 @@ export const useSessionStore = defineStore('session', {
       this.promotions = data.promotions || []
       this.registerSession = data.register_session
       this.otherOpenRegisters = data.other_open_registers || []
+      this.externalOpenings = data.external_openings || []
       this.printerConfigured = data.printer_configured || false
       this.printFormat = data.print_format || null
       this.storeCreditMode = data.store_credit_mode || 'Store Credit'

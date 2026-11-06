@@ -386,7 +386,7 @@ def _assert_outlet_free(profile, closing_session=None):
             lines.append(_("{0} has shift {1} open since {2}: close it first.").format(who, ours.name, since))
         else:
             lines.append(
-                _("POS Opening Entry {0} (by {1}, since {2}) is open outside LumenPOS: close or cancel it in ERPNext.").format(
+                _("POS Opening Entry {0} (by {1}, since {2}) is not yet tracked by ESafe New Gen POS. Open the Register page to manage it.").format(
                     entry.name, who, since
                 )
             )
@@ -398,6 +398,195 @@ def _assert_outlet_free(profile, closing_session=None):
         + _("Several cashiers on one outlet each need their own POS Profile on ERPNext 16."),
         title=_("Outlet already open"),
     )
+
+
+def _external_opening_untracked_invoices(opening):
+    """Submitted native-POS invoices that make an orphan opening unsafe to adopt.
+
+    A POS Opening Entry made in ERPNext rather than by this app has no
+    ``lumenpos_session`` on its invoices. Guessing their payment totals during
+    a handover could close the drawer short or put invoices into the wrong
+    closing entry, so actions are deliberately allowed only when this check
+    can prove there are none. It is conservative on older, partially-migrated
+    sites: unknown means manual ERPNext recovery, never a risky takeover.
+    """
+    from lumenpos.api.sales import _table_doctype
+
+    sale_doctype = _table_doctype(opening.pos_profile)
+    if sale_doctype != "POS Invoice" or not frappe.get_meta(sale_doctype).has_field("lumenpos_session"):
+        return None
+    filters = {
+        "pos_profile": opening.pos_profile,
+        "owner": opening.user,
+        "docstatus": 1,
+        "creation": [">=", opening.period_start_date],
+        "lumenpos_session": ["is", "not set"],
+    }
+    return frappe.db.count(sale_doctype, filters)
+
+
+def _external_opening_rows(pos_profile):
+    """Orphan native opening entries at one outlet, with safe recovery state.
+
+    A cashier sees only their own entry. A manager may see every entry at a
+    supervised outlet, which is necessary to resolve an opening left by a
+    cashier who has gone home.
+    """
+    from lumenpos.api import permissions
+
+    if not permissions.can_use_outlet(pos_profile):
+        return []
+    rows = frappe.get_all(
+        "POS Opening Entry",
+        filters={"pos_profile": pos_profile, "status": "Open", "docstatus": 1},
+        fields=["name", "user", "period_start_date"],
+        order_by="period_start_date asc",
+    )
+    if not rows:
+        return []
+    tracked = set(
+        frappe.get_all(
+            "POS Register Session",
+            filters={"pos_opening_entry": ["in", [row.name for row in rows]]},
+            pluck="pos_opening_entry",
+        )
+    )
+    manager = permissions.is_manager()
+    result = []
+    for row in rows:
+        if row.name in tracked or (not manager and row.user != frappe.session.user):
+            continue
+        opening = frappe.get_doc("POS Opening Entry", row.name)
+        untracked = _external_opening_untracked_invoices(opening)
+        safe = untracked == 0
+        result.append(
+            {
+                "opening_entry": opening.name,
+                "opened_by": opening.user,
+                "opened_by_name": frappe.utils.get_fullname(opening.user) if opening.user else "",
+                "opened_at": str(opening.period_start_date) if opening.period_start_date else None,
+                "opened_today": not from_earlier_day(opening.period_start_date),
+                "untracked_invoice_count": untracked,
+                # Ending an empty entry is safe at any age; ERPNext 16 permits
+                # taking it over for selling only when it began today.
+                "can_end": safe,
+                "can_take_over": safe and not from_earlier_day(opening.period_start_date),
+            }
+        )
+    return result
+
+
+@frappe.whitelist()
+def list_external_openings(pos_profile: str):
+    """Recovery list for native ERPNext openings outside ESafe New Gen POS."""
+    return _external_opening_rows(pos_profile)
+
+
+def _get_recoverable_external_opening(opening_entry):
+    from lumenpos.api import permissions
+
+    opening = frappe.get_doc("POS Opening Entry", opening_entry)
+    if opening.docstatus != 1 or opening.status != "Open":
+        frappe.throw(_("This POS Opening Entry is no longer open."))
+    permissions.assert_outlet(opening.pos_profile)
+    if opening.user != frappe.session.user and not permissions.is_manager():
+        frappe.throw(_("Only the opening cashier or a manager can manage this entry."), frappe.PermissionError)
+    if frappe.db.exists("POS Register Session", {"pos_opening_entry": opening.name}):
+        frappe.throw(_("This POS Opening Entry is already tracked by an ESafe New Gen POS shift."))
+    untracked = _external_opening_untracked_invoices(opening)
+    if untracked is None:
+        frappe.throw(
+            _("This site cannot safely check sales on this ERPNext opening. Close it from ERPNext instead."),
+            title=_("Manual recovery required"),
+        )
+    if untracked:
+        frappe.throw(
+            _("This ERPNext opening has {0} untracked POS invoice(s). Close it from ERPNext so its existing sales and payments are reconciled correctly.").format(
+                untracked
+            ),
+            title=_("Manual recovery required"),
+        )
+    return opening
+
+
+def _opening_floats(profile, opening):
+    """The untouched native opening's float, split by its configured drawers."""
+    balances = {row.mode_of_payment: flt(row.opening_amount) for row in (opening.balance_details or [])}
+    drawer = _drawer_mode(profile.name)
+    foreign = _foreign_drawers(profile.name)
+    return flt(balances.get(drawer)), {mode: flt(balances.get(mode)) for mode in foreign if flt(balances.get(mode))}
+
+
+@frappe.whitelist()
+def take_over_external_opening(opening_entry: str):
+    """Attach an empty, current-day native opening to the current operator.
+
+    This is a real handover, not an impersonation: when a manager takes over,
+    the empty ERPNext opening is reassigned to that manager and both documents
+    retain an audit comment naming the original opener. A cashier cannot take
+    a colleague's drawer.
+    """
+    from lumenpos.api import permissions
+
+    opening = _get_recoverable_external_opening(opening_entry)
+    if from_earlier_day(opening.period_start_date):
+        frappe.throw(
+            _("ERPNext 16 accepts sales only on an opening made today. End this old unused opening, then open a new register."),
+            title=_("Opening from an earlier day"),
+        )
+    if not frappe.has_permission("POS Register Session", "create") or not permissions.can_open_register():
+        frappe.throw(_("You are not permitted to open a register"), frappe.PermissionError)
+
+    profile = frappe.get_cached_doc("POS Profile", opening.pos_profile)
+    _assert_no_other_open_shift(profile.name)
+    if get_open_session(profile.name):
+        frappe.throw(_("You already have an open register at {0}.").format(profile.name))
+
+    original_user = opening.user
+    if original_user != frappe.session.user:
+        # This is permitted only to a manager and only while the entry has no
+        # invoices. Keeping ERPNext's opening user aligned with the operator
+        # avoids a later POS Closing Entry failing its cashier consistency check.
+        opening.db_set("user", frappe.session.user, update_modified=False)
+    opening_float, foreign_floats = _opening_floats(profile, opening)
+    session_doc = frappe.get_doc(
+        {
+            "doctype": "POS Register Session",
+            "pos_profile": profile.name,
+            "opened_by": frappe.session.user,
+            "opened_at": now_datetime(),
+            "status": "Open",
+            "opening_float": opening_float,
+            "foreign_floats": _float_rows(profile.name, foreign_floats),
+            "pos_opening_entry": opening.name,
+        }
+    )
+    session_doc.insert()
+    _pin_rates(session_doc.name, profile)
+    note = _("Tracked ERPNext opening {0}; originally opened by {1}.").format(
+        opening.name, frappe.utils.get_fullname(original_user) if original_user else original_user or _("Unknown")
+    )
+    session_doc.add_comment("Info", note)
+    opening.add_comment("Info", _("Taken over and tracked by {0} in ESafe New Gen POS.").format(frappe.session.user))
+    _audit_register("open", session_doc.name, profile.name, opening_float, detail=note)
+    return get_open_session(profile.name)
+
+
+@frappe.whitelist()
+def end_external_opening(opening_entry: str):
+    """Cancel an empty native ERPNext opening that blocks an ERPNext 16 outlet."""
+    opening = _get_recoverable_external_opening(opening_entry)
+    opening.cancel()
+    from lumenpos.api import audit
+
+    audit.log(
+        audit.REGISTER_CLOSE,
+        detail=_("Cancelled unused ERPNext opening entry."),
+        reference_doctype="POS Opening Entry",
+        reference_name=opening.name,
+        pos_profile=opening.pos_profile,
+    )
+    return {"opening_entry": opening.name, "status": "Cancelled"}
 
 
 def _create_fresh_session(profile, opening_float, bypass_live_guard=False, floats=None):

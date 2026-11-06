@@ -132,6 +132,61 @@
       </div>
     </div>
 
+    <!-- An opening created in ERPNext itself has no ESafe session, yet ERPNext
+         16 still treats it as this outlet's one live shift. Do not silently
+         reuse it: show its owner and offer recovery only when the server has
+         proved it contains no untracked POS invoices. -->
+    <div v-if="externalOpenings.length && !session.registerOpen && !closedResult && !pending" class="card panel external-openings">
+      <div class="panel-head">
+        {{ t('ERPNext opening needs attention') }}
+        <button class="btn btn-outline" :disabled="externalBusy" @click="loadExternalOpenings"><Icon name="refresh" /></button>
+      </div>
+      <div class="panel-body">
+        <p class="muted small" style="margin: 0 0 10px">
+          {{ t('ERPNext 16 permits one open shift per outlet. These openings were not created by ESafe New Gen POS, so they must be handled before a new register can sell.') }}
+        </p>
+        <div v-for="opening in externalOpenings" :key="opening.opening_entry" class="external-row">
+          <div class="external-info">
+            <b>{{ opening.opened_by_name || opening.opened_by || t('Unknown') }}</b>
+            <span class="muted small">{{ opening.opening_entry }} · {{ shortTime(opening.opened_at) }}</span>
+            <a :href="`/app/pos-opening-entry/${encodeURIComponent(opening.opening_entry)}`" target="_blank" class="entry-link">
+              {{ t('View in ERPNext') }}
+            </a>
+          </div>
+          <p v-if="opening.untracked_invoice_count == null" class="muted small external-note">
+            {{ t('This site cannot safely confirm whether this opening has sales. Close it from ERPNext.') }}
+          </p>
+          <p v-else-if="opening.untracked_invoice_count" class="muted small external-note">
+            {{ t('{n} untracked POS invoice(s) are attached to this opening. Close it from ERPNext so the existing payments are reconciled correctly.', { n: opening.untracked_invoice_count }) }}
+          </p>
+          <p v-else-if="!opening.opened_today" class="muted small external-note">
+            {{ t('This empty opening is from an earlier day. End it, then open a new register for today.') }}
+          </p>
+          <div v-else class="muted small external-note">
+            {{ t('No untracked sales were found. You can take over this empty opening and continue selling.') }}
+          </div>
+          <div class="external-actions">
+            <button
+              v-if="opening.can_take_over"
+              class="btn btn-primary"
+              :disabled="externalBusy"
+              @click="takeOverExternal(opening)"
+            >
+              {{ externalBusy === opening.opening_entry ? t('Working…') : t('Take over and continue') }}
+            </button>
+            <button
+              v-if="opening.can_end"
+              class="btn btn-danger"
+              :disabled="externalBusy"
+              @click="endExternal(opening)"
+            >
+              {{ externalBusy === opening.opening_entry ? t('Working…') : t('End unused opening') }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <template v-if="session.registerOpen">
       <div class="card panel" data-tour="register-summary">
         <div class="panel-head">{{ t('Session') }} {{ session.registerSession.name }}</div>
@@ -525,6 +580,48 @@ let closingPoll = null
 
 const canOpen = computed(() => session.permissions.open_register !== false)
 const canClose = computed(() => session.permissions.close_register !== false)
+const externalOpenings = computed(() => session.externalOpenings || [])
+const externalBusy = ref(null)
+
+async function loadExternalOpenings() {
+  if (session.offline || !session.posProfile) return
+  session.externalOpenings = await call('lumenpos.api.register.list_external_openings', {
+    pos_profile: session.posProfile,
+  }).catch(() => [])
+}
+
+async function takeOverExternal(opening) {
+  const name = opening.opened_by_name || opening.opened_by || t('the original cashier')
+  if (!confirm(t('Take over the empty opening of {name}? You become responsible for the register and its cash drawer.', { name }))) return
+  externalBusy.value = opening.opening_entry
+  try {
+    await call('lumenpos.api.register.take_over_external_opening', { opening_entry: opening.opening_entry })
+    await session.bootstrap(session.posProfile)
+    pending.value = session.pendingClosing
+    session.notify(t('Opening taken over. You can continue selling.'))
+    load()
+  } catch (e) {
+    session.notify(e.message, true)
+  } finally {
+    externalBusy.value = null
+  }
+}
+
+async function endExternal(opening) {
+  const name = opening.opened_by_name || opening.opened_by || t('the original cashier')
+  if (!confirm(t('End the unused opening of {name}? This cancels its empty ERPNext POS Opening Entry.', { name }))) return
+  externalBusy.value = opening.opening_entry
+  try {
+    await call('lumenpos.api.register.end_external_opening', { opening_entry: opening.opening_entry })
+    await session.bootstrap(session.posProfile)
+    pending.value = session.pendingClosing
+    session.notify(t('Unused ERPNext opening ended. You can open a new register now.'))
+  } catch (e) {
+    session.notify(e.message, true)
+  } finally {
+    externalBusy.value = null
+  }
+}
 
 // --- open register from this page (closed state) ---
 const openFloat = ref(0)
@@ -1174,6 +1271,16 @@ async function close() {
 .other-close { margin-top: 14px; padding-top: 12px; border-top: 2px solid var(--border); }
 .other-close-head { font-weight: 700; margin-bottom: 10px; }
 .other-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.external-openings { border-color: rgba(214, 140, 16, 0.32); }
+.external-row {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.external-row:last-child { border-bottom: none; }
+.external-info { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; }
+.external-info .entry-link { font-size: 12px; }
+.external-note { margin: 7px 0 0; }
+.external-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .or-sep {
   display: flex;
   align-items: center;

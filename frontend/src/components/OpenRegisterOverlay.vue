@@ -86,6 +86,21 @@
             when="today"
             :invoice-mode="session.invoiceMode"
           />
+          <!-- A native ERPNext opening made outside the POS blocks this outlet
+               on ERPNext 16. Its guarded recovery controls live on Register. -->
+          <div v-if="externalOpenings.length" class="shift-banner warn oe-warn">
+            <div><Icon name="warning" /> {{ t('ERPNext opening needs attention') }}</div>
+            <div v-for="entry in externalOpenings" :key="entry.opening_entry" class="oe-item">
+              {{ entry.opened_by_name || entry.opened_by || t('Unknown') }}
+              <span class="oe-sess">({{ entry.opening_entry }})</span>
+            </div>
+            <div class="choice-hint">
+              {{ t('This opening was not created by ESafe New Gen POS. Open Register to safely end an unused entry or take over an empty opening from today.') }}
+            </div>
+            <button type="button" class="oe-go" :disabled="busy" @click="router.push('/register')">
+              {{ t('Open the Register page') }}
+            </button>
+          </div>
           <!-- Shifts this person still holds at other outlets. A reminder, or,
                when the shop allows one open shift per person, the reason this
                one cannot open yet, with a way to get to the open one. -->
@@ -234,6 +249,7 @@ const canOpen = computed(() => session.permissions.open_register !== false)
 // (the server refuses it too, lumenpos.api.register).
 const router = useRouter()
 const others = computed(() => session.otherOpenRegisters || [])
+const externalOpenings = computed(() => session.externalOpenings || [])
 // Only a shift this person can still reach blocks; one at an outlet they
 // cannot reach any more is for a manager, and never locks them out.
 const anyReachable = computed(() => others.value.some((r) => r.reachable !== false))

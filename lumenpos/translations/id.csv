@@ -412,7 +412,7 @@
 "LumenPOS background jobs failed in the last 7 days","Tugas latar belakang LumenPOS gagal dalam 7 hari terakhir"
 "LumenPOS background jobs have not run since {0}","Tugas latar belakang LumenPOS belum berjalan sejak {0}"
 "LumenPOS cashback for {0} ({1}): {2} earned on {3} sales, {4} expired or returned on {5} entries.","Cashback LumenPOS untuk {0} ({1}): {2} didapat dari {3} penjualan, {4} kedaluwarsa atau dikembalikan pada {5} entri."
-"LumenPOS could not use ERPNext's {0} on this version of ERPNext ({1}). This usually means the site is running an ERPNext release LumenPOS has not been updated for yet, please report it to hello@esafesolutions.co with this message.","LumenPOS tidak bisa memakai {0} milik ERPNext pada versi ERPNext ini ({1}). Ini biasanya berarti situs menjalankan rilis ERPNext yang belum didukung oleh pembaruan LumenPOS, silakan laporkan ke hello@esafesolutions.co beserta pesan ini."
+"LumenPOS could not use ERPNext's {0} on this version of ERPNext ({1}). This usually means the site is running an ERPNext release LumenPOS has not been updated for yet, please report it to hello@esafe.lk with this message.","LumenPOS tidak bisa memakai {0} milik ERPNext pada versi ERPNext ini ({1}). Ini biasanya berarti situs menjalankan rilis ERPNext yang belum didukung oleh pembaruan LumenPOS, silakan laporkan ke hello@esafe.lk beserta pesan ini."
 "LumenPOS errors in the last 7 days: {0}","Kesalahan LumenPOS dalam 7 hari terakhir: {0}"
 "LumenPOS is tested on ERPNext 13 to 16.","LumenPOS diuji di ERPNext 13 hingga 16."
 "Make returns","Melakukan retur"

@@ -1164,7 +1164,7 @@ export default {
   "Sales dashboard": "Bảng điều khiển bán hàng",
   "Get the full picture of your sales": "Nắm toàn cảnh doanh số bán hàng",
   "Install the EsafePOS Reports app to see a complete sales dashboard here: revenue by day and by outlet, payment mix, top items and more, with filters, all inside EsafePOS.": "Cài ứng dụng EsafePOS Reports để xem bảng điều khiển bán hàng đầy đủ ngay tại đây: doanh thu theo ngày và theo cửa hàng, cơ cấu phương thức thanh toán, mặt hàng bán chạy và nhiều hơn nữa, kèm bộ lọc, tất cả trong EsafePOS.",
-  "EsafePOS Reports is available on the Frappe Cloud Marketplace, or through hello@esafesolutions.co.": "EsafePOS Reports có trên Frappe Cloud Marketplace, hoặc qua hello@esafesolutions.co.",
+  "EsafePOS Reports is available on the Frappe Cloud Marketplace, or through hello@esafe.lk.": "EsafePOS Reports có trên Frappe Cloud Marketplace, hoặc qua hello@esafe.lk.",
   "EsafePOS Reports could not report its status on this site.": "EsafePOS Reports không thể báo trạng thái trên trang web này.",
   "EsafePOS Reports cannot show the dashboard on this site right now.": "EsafePOS Reports hiện không thể hiển thị bảng điều khiển trên trang web này.",
   "EsafePOS Reports needs Frappe v{version} or newer. This site runs an older version, so the dashboard is not available here.": "EsafePOS Reports cần Frappe v{version} trở lên. Trang web này chạy phiên bản cũ hơn nên không có bảng điều khiển ở đây.",

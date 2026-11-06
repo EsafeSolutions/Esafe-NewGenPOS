@@ -1164,7 +1164,7 @@ export default {
   "Sales dashboard": "แดชบอร์ดการขาย",
   "Get the full picture of your sales": "ดูภาพรวมการขายทั้งหมดของคุณ",
   "Install the EsafePOS Reports app to see a complete sales dashboard here: revenue by day and by outlet, payment mix, top items and more, with filters, all inside EsafePOS.": "ติดตั้งแอป EsafePOS Reports เพื่อดูแดชบอร์ดการขายแบบสมบูรณ์ที่นี่: รายได้รายวันและรายสาขา สัดส่วนวิธีการชำระเงิน สินค้าขายดี และอื่นๆ พร้อมตัวกรอง ทั้งหมดอยู่ใน EsafePOS",
-  "EsafePOS Reports is available on the Frappe Cloud Marketplace, or through hello@esafesolutions.co.": "EsafePOS Reports หาได้ที่ Frappe Cloud Marketplace หรือผ่าน hello@esafesolutions.co",
+  "EsafePOS Reports is available on the Frappe Cloud Marketplace, or through hello@esafe.lk.": "EsafePOS Reports หาได้ที่ Frappe Cloud Marketplace หรือผ่าน hello@esafe.lk",
   "EsafePOS Reports could not report its status on this site.": "EsafePOS Reports รายงานสถานะบนไซต์นี้ไม่ได้",
   "EsafePOS Reports cannot show the dashboard on this site right now.": "ขณะนี้ EsafePOS Reports แสดงแดชบอร์ดบนไซต์นี้ไม่ได้",
   "EsafePOS Reports needs Frappe v{version} or newer. This site runs an older version, so the dashboard is not available here.": "EsafePOS Reports ต้องใช้ Frappe v{version} ขึ้นไป ไซต์นี้ใช้เวอร์ชันที่เก่ากว่า จึงใช้แดชบอร์ดที่นี่ไม่ได้",

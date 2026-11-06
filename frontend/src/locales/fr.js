@@ -1164,7 +1164,7 @@ export default {
   "Sales dashboard": "Tableau de bord des ventes",
   "Get the full picture of your sales": "Obtenez une vue complète de vos ventes",
   "Install the EsafePOS Reports app to see a complete sales dashboard here: revenue by day and by outlet, payment mix, top items and more, with filters, all inside EsafePOS.": "Installez l'application EsafePOS Reports pour voir ici un tableau de bord des ventes complet : chiffre d'affaires par jour et par magasin, répartition des paiements, meilleurs articles et plus encore, avec filtres, le tout dans EsafePOS.",
-  "EsafePOS Reports is available on the Frappe Cloud Marketplace, or through hello@esafesolutions.co.": "EsafePOS Reports est disponible sur la Frappe Cloud Marketplace, ou via hello@esafesolutions.co.",
+  "EsafePOS Reports is available on the Frappe Cloud Marketplace, or through hello@esafe.lk.": "EsafePOS Reports est disponible sur la Frappe Cloud Marketplace, ou via hello@esafe.lk.",
   "EsafePOS Reports could not report its status on this site.": "EsafePOS Reports n'a pas pu indiquer son état sur ce site.",
   "EsafePOS Reports cannot show the dashboard on this site right now.": "EsafePOS Reports ne peut pas afficher le tableau de bord sur ce site pour le moment.",
   "EsafePOS Reports needs Frappe v{version} or newer. This site runs an older version, so the dashboard is not available here.": "EsafePOS Reports nécessite Frappe v{version} ou plus récent. Ce site utilise une version plus ancienne, le tableau de bord n'est donc pas disponible ici.",

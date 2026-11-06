@@ -1164,7 +1164,7 @@ export default {
   "Sales dashboard": "Панель продаж",
   "Get the full picture of your sales": "Полная картина ваших продаж",
   "Install the EsafePOS Reports app to see a complete sales dashboard here: revenue by day and by outlet, payment mix, top items and more, with filters, all inside EsafePOS.": "Установите приложение EsafePOS Reports, чтобы видеть здесь полную панель продаж: выручку по дням и магазинам, структуру оплат, лидеров продаж и многое другое, с фильтрами, прямо в EsafePOS.",
-  "EsafePOS Reports is available on the Frappe Cloud Marketplace, or through hello@esafesolutions.co.": "EsafePOS Reports доступен в Frappe Cloud Marketplace или через hello@esafesolutions.co.",
+  "EsafePOS Reports is available on the Frappe Cloud Marketplace, or through hello@esafe.lk.": "EsafePOS Reports доступен в Frappe Cloud Marketplace или через hello@esafe.lk.",
   "EsafePOS Reports could not report its status on this site.": "EsafePOS Reports не смог сообщить свой статус на этом сайте.",
   "EsafePOS Reports cannot show the dashboard on this site right now.": "EsafePOS Reports сейчас не может показать панель на этом сайте.",
   "EsafePOS Reports needs Frappe v{version} or newer. This site runs an older version, so the dashboard is not available here.": "Для EsafePOS Reports нужен Frappe v{version} или новее. На этом сайте более старая версия, поэтому панель здесь недоступна.",

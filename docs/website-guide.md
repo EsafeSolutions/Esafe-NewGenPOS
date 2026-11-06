@@ -416,8 +416,8 @@ On the **POS Profile** in ERPNext, that's the source of truth. The in-POS Settin
 
 ## Support
 
-- **Email:** hello@esafesolutions.co
-- **Website:** https://esafesolutions.co
+- **Email:** hello@esafe.lk
+- **Website:** https://esafe.lk
 
 Please include your ERPNext version and, if you hit an error, the message shown at the till, it makes fixing things much faster.
 

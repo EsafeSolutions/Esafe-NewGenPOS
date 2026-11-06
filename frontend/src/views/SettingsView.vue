@@ -1706,8 +1706,8 @@
             <span class="setting-title">{{ t('Get the app') }}</span>
             <span class="setting-desc">{{ t('Android phones and handheld scanners. Sign in with the ERPNext account of the person counting.') }}</span>
             <div class="stock-dl-row">
-              <a class="btn btn-outline" href="https://esafesolutions.co/downloads/LumenStock.apk" target="_blank" rel="noopener"><Icon name="download" /> {{ t('Download for phones') }}</a>
-              <a class="btn btn-outline" href="https://esafesolutions.co/downloads/LumenStock-handheld.apk" target="_blank" rel="noopener"><Icon name="download" /> {{ t('Download for handheld scanners') }}</a>
+              <a class="btn btn-outline" href="https://esafe.lk/downloads/LumenStock.apk" target="_blank" rel="noopener"><Icon name="download" /> {{ t('Download for phones') }}</a>
+              <a class="btn btn-outline" href="https://esafe.lk/downloads/LumenStock-handheld.apk" target="_blank" rel="noopener"><Icon name="download" /> {{ t('Download for handheld scanners') }}</a>
             </div>
           </div>
           <template v-if="generalForm.enable_stock_app">
@@ -1830,6 +1830,15 @@
                 </button>
               </div>
             </div>
+
+            <label class="field" style="margin-top: 14px; max-width: 220px">
+              <span>{{ t('Thermal paper width') }}</span>
+              <select v-model="receiptForm.receipt_paper_width">
+                <option value="80mm">80 mm</option>
+                <option value="58mm">58 mm</option>
+              </select>
+              <span class="setting-desc">{{ t('Applies to browser and network-printer receipts.') }}</span>
+            </label>
 
             <div class="field-grid" style="margin-top: 14px">
               <label class="field span-2">
@@ -2750,7 +2759,8 @@ const generalForm = ref({
   auto_lock_minutes: 0,
   enable_quick_keys: 0,
   quick_keys: [],
-  receipt_template: 'Standard',
+  receipt_template: 'Retail',
+  receipt_paper_width: '80mm',
   receipt_logo: '',
   receipt_header: '',
   receipt_footer: '',
@@ -3066,34 +3076,45 @@ const companyRow = computed(
 )
 
 // ---- receipt designer ----
-const RECEIPT_TEMPLATES = ['Compact', 'Standard', 'Detailed']
+const RECEIPT_TEMPLATES = ['Retail', 'Compact', 'Standard', 'Detailed']
 const sampleReceipt = {
   name: 'INV-2026-00042',
   company: session.company || 'Your Store',
+  currency: 'LKR',
   customer_name: 'Walk-in Customer',
+  customer_phone: '077 123 4567',
+  cashier: 'Cashier',
+  terminal: 'Till 02',
   sales_person: 'Cashier',
   posting_date: '2026-06-30',
   posting_time: '14:32:00',
   note: 'Gift wrap requested',
   is_return: false,
   items: [
-    { item_code: 'BACKPACK', item_name: 'Backpack', barcode: '6291041500213', serial_no: null, qty: 1, rate: 500, amount: 500 },
-    { item_code: 'CAMERA-DSLR', item_name: 'DSLR Camera', barcode: '6291041500220', serial_no: 'SN-00123', qty: 1, rate: 900, amount: 900 },
+    { item_code: 'BACKPACK', item_name: 'Backpack', barcode: '6291041500213', serial_no: null, qty: 1, price_list_rate: 500, rate: 450, amount: 450, gross_amount: 500, line_discount_amount: 50 },
+    { item_code: 'CAMERA-DSLR', item_name: 'DSLR Camera', barcode: '6291041500220', serial_no: 'SN-00123', qty: 1, price_list_rate: 900, rate: 810, amount: 810, gross_amount: 900, line_discount_amount: 90 },
   ],
   discount_amount: 0,
-  taxes: [{ description: 'VAT 15%', tax_amount: 182.61 }],
-  grand_total: 1400,
-  rounded_total: 1400,
-  payments: [{ mode_of_payment: 'Mada', amount: 1400 }],
+  gross_total: 1400,
+  item_discount_total: 140,
+  total_savings: 140,
+  rounding_adjustment: 0,
+  item_count: 2,
+  total_qty: 2,
+  taxes: [],
+  grand_total: 1260,
+  rounded_total: 1260,
+  payments: [{ mode_of_payment: 'Cash', amount: 1260 }],
   loyalty_amount: 0,
   change_amount: 0,
   applied_promotions: [],
   loyalty_points_earned: 14,
+  loyalty: { program: 'Rewards', balance: 184, conversion_factor: 0.1 },
 }
 
 // ---- per-outlet receipt overrides ----
 const RECEIPT_KEYS = [
-  'receipt_template', 'receipt_logo', 'receipt_header', 'receipt_footer',
+  'receipt_template', 'receipt_paper_width', 'receipt_logo', 'receipt_header', 'receipt_footer',
   'receipt_show_item_code', 'receipt_show_barcode', 'receipt_show_serial',
   'receipt_show_unit_price', 'receipt_show_payments', 'receipt_show_note',
   'receipt_show_tax_id', 'receipt_tax_id', 'receipt_show_address',
@@ -3455,7 +3476,8 @@ async function load() {
     auto_lock_minutes: info.auto_lock_minutes || 0,
     enable_quick_keys: info.enable_quick_keys || 0,
     quick_keys: (info.quick_keys || []).map((r) => ({ item_code: r.item_code, label: r.label || '' })),
-    receipt_template: info.receipt_template || 'Standard',
+    receipt_template: info.receipt_template || 'Retail',
+    receipt_paper_width: info.receipt_paper_width || '80mm',
     receipt_logo: info.receipt_logo || '',
     receipt_header: info.receipt_header || '',
     receipt_footer: info.receipt_footer || '',

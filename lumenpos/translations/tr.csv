@@ -412,7 +412,7 @@
 "LumenPOS background jobs failed in the last 7 days","LumenPOS arka plan işleri son 7 günde başarısız oldu"
 "LumenPOS background jobs have not run since {0}","LumenPOS arka plan işleri {0} tarihinden beri çalışmadı"
 "LumenPOS cashback for {0} ({1}): {2} earned on {3} sales, {4} expired or returned on {5} entries.","{0} için LumenPOS cashback ({1}): {3} satışta {2} kazanıldı, {5} kayıtta {4} süresi doldu veya iade edildi."
-"LumenPOS could not use ERPNext's {0} on this version of ERPNext ({1}). This usually means the site is running an ERPNext release LumenPOS has not been updated for yet, please report it to hello@esafesolutions.co with this message.","LumenPOS, ERPNext'in bu sürümünde ({1}) ERPNext'in {0} işlevini kullanamadı. Bu genellikle sitenin, LumenPOS'un henüz uyarlanmadığı bir ERPNext sürümünü çalıştırdığı anlamına gelir. Lütfen bu mesajla birlikte hello@esafesolutions.co adresine bildirin."
+"LumenPOS could not use ERPNext's {0} on this version of ERPNext ({1}). This usually means the site is running an ERPNext release LumenPOS has not been updated for yet, please report it to hello@esafe.lk with this message.","LumenPOS, ERPNext'in bu sürümünde ({1}) ERPNext'in {0} işlevini kullanamadı. Bu genellikle sitenin, LumenPOS'un henüz uyarlanmadığı bir ERPNext sürümünü çalıştırdığı anlamına gelir. Lütfen bu mesajla birlikte hello@esafe.lk adresine bildirin."
 "LumenPOS errors in the last 7 days: {0}","Son 7 gündeki LumenPOS hataları: {0}"
 "LumenPOS is tested on ERPNext 13 to 16.","LumenPOS, ERPNext 13 ile 16 arasında test edilir."
 "Make returns","İade yap"

@@ -187,7 +187,7 @@ each permit combining with the other (section 13 of both), so the two remain
 compatible. AGPL-3.0 is accepted on the Frappe Cloud Marketplace.
 
 For a commercial licence without the AGPL obligations, contact
-hello@esafesolutions.co.
+hello@esafe.lk.
 
 > **Earlier releases:** versions up to and including **0.38.0** were published
 > under MIT, and versions **0.39.0 to 0.42.1** under GPL-3.0-or-later. Those

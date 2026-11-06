@@ -155,8 +155,8 @@ const session = useSessionStore()
 const STORE_KEY = 'lumenpos-count'
 const DEVICE_KEY = 'lumenpos-count-device'
 const DOWNLOADS = {
-  phone: 'https://esafesolutions.co/downloads/LumenStock.apk',
-  handheld: 'https://esafesolutions.co/downloads/LumenStock-handheld.apk',
+  phone: 'https://esafe.lk/downloads/LumenStock.apk',
+  handheld: 'https://esafe.lk/downloads/LumenStock-handheld.apk',
 }
 
 const setup = ref({ warehouses: [], blind: 0, shared: 0, submit: 0, downloads: DOWNLOADS })

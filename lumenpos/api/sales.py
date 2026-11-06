@@ -1921,6 +1921,31 @@ def get_receipt(invoice: str):
         {"invoice": doc.name, "loyalty_points": [">", 0]},
         "loyalty_points",
     )
+    # ERPNext remains the source of truth for customer loyalty.  Fetching the
+    # balance after the invoice is submitted means the receipt shows the same
+    # balance that the next sale may redeem; LumenPOS never keeps a second
+    # points ledger of its own.
+    loyalty = {}
+    if doc.customer:
+        try:
+            from lumenpos.erpnext_compat import loyalty_details
+
+            details = loyalty_details(doc.customer, doc.company)
+            if details and details.get("loyalty_program"):
+                program_company = frappe.db.get_value(
+                    "Loyalty Program", details.loyalty_program, "company"
+                )
+                if program_company in (None, "", doc.company):
+                    loyalty = {
+                        "program": details.loyalty_program,
+                        "balance": cint(details.get("loyalty_points") or 0),
+                        "conversion_factor": flt(details.get("conversion_factor")),
+                    }
+        except Exception:
+            # A receipt must still print if an ERPNext version has no loyalty
+            # module, or an old program has incomplete setup.
+            loyalty = {}
+
     # Barcodes for the receipt (optional column, gated client-side).
     barcode_map = {}
     codes = [row.item_code for row in doc.items]
@@ -1964,6 +1989,54 @@ def get_receipt(invoice: str):
     if not receipt_settings.get("receipt_tax_id"):
         receipt_settings["receipt_tax_id"] = frappe.get_cached_value("Company", doc.company, "tax_id") or ""
 
+    # Retail-breakdown fields are prepared on the server so browser and raw
+    # thermal receipts agree on every amount.  `price_list_rate` is the
+    # original unit price/MRP; the difference to the posted line amount is the
+    # line's saving, including promotions and manual discounts.
+    receipt_items = []
+    gross_total = 0.0
+    item_discount_total = 0.0
+    total_qty = 0.0
+    for row in doc.items:
+        qty = flt(row.qty)
+        list_rate = flt(row.price_list_rate)
+        amount = flt(row.amount)
+        gross_amount = flt(list_rate * qty)
+        line_discount_amount = flt(gross_amount - amount)
+        gross_total += gross_amount
+        item_discount_total += line_discount_amount
+        total_qty += abs(qty)
+        receipt_items.append(
+            {
+                "item_code": row.item_code,
+                "item_name": row.item_name,
+                "qty": row.qty,
+                "price_list_rate": row.price_list_rate,
+                "rate": row.rate,
+                "amount": row.amount,
+                "gross_amount": gross_amount,
+                "line_discount_amount": line_discount_amount,
+                "discount_amount": row.discount_amount,
+                "barcode": barcode_map.get(row.item_code),
+                "serial_no": (row.get("serial_no") or "").strip() or None,
+                # Taking it back without a connection (refund.js): a set comes
+                # back whole, and a line's own tax rates override the row's.
+                "return_group": row.get("lumenpos_return_group") or None,
+                "item_tax_rate": _tax_map(row.get("item_tax_rate")),
+            }
+        )
+
+    payable_total = doc.rounded_total or doc.grand_total
+    customer_phone = (
+        _get_custom(doc, ("contact_mobile", "contact_phone", "mobile_no")) or ""
+    )
+    if not customer_phone and doc.customer:
+        try:
+            customer_phone = frappe.db.get_value("Customer", doc.customer, "mobile_no") or ""
+        except Exception:
+            customer_phone = ""
+    cashier = frappe.db.get_value("User", doc.owner, "full_name") or doc.owner
+
     return {
         "name": doc.name,
         "doctype": doc.doctype,  # so the client prints the right doc via a Print Format
@@ -1984,6 +2057,9 @@ def get_receipt(invoice: str):
         "posting_time": str(doc.posting_time),
         "customer": doc.customer,
         "customer_name": doc.customer_name,
+        "customer_phone": customer_phone,
+        "cashier": cashier,
+        "terminal": doc.get("pos_profile") or "",
         "company": doc.company,
         "currency": doc.currency,
         "company_currency": company_currency,
@@ -1991,27 +2067,16 @@ def get_receipt(invoice: str):
         "base_grand_total": doc.base_rounded_total or doc.base_grand_total if foreign else None,
         "base_change_amount": doc.get("base_change_amount") if foreign else None,
         "change_currency": change_currency,
-        "items": [
-            {
-                "item_code": row.item_code,
-                "item_name": row.item_name,
-                "qty": row.qty,
-                "price_list_rate": row.price_list_rate,
-                "rate": row.rate,
-                "amount": row.amount,
-                "discount_amount": row.discount_amount,
-                "barcode": barcode_map.get(row.item_code),
-                "serial_no": (row.get("serial_no") or "").strip() or None,
-                # Taking it back without a connection (refund.js): a set comes
-                # back whole, and a line's own tax rates override the row's.
-                "return_group": row.get("lumenpos_return_group") or None,
-                "item_tax_rate": _tax_map(row.get("item_tax_rate")),
-            }
-            for row in doc.items
-        ],
+        "items": receipt_items,
         "total": doc.total,
         "net_total": doc.net_total,
         "discount_amount": doc.discount_amount,
+        "gross_total": gross_total,
+        "item_discount_total": item_discount_total,
+        "total_savings": flt(item_discount_total + flt(doc.discount_amount)),
+        "rounding_adjustment": flt(payable_total - doc.grand_total),
+        "item_count": len(receipt_items),
+        "total_qty": total_qty,
         "total_taxes_and_charges": doc.total_taxes_and_charges,
         "taxes": [
             {
@@ -2032,6 +2097,7 @@ def get_receipt(invoice: str):
         "payments": [tender(p) for p in (doc.payments or []) if p.amount],
         # The part on account and what is still owed (lumenpos.credit_sales).
         "on_account": credit_sales.receipt_facts(doc),
+        "loyalty": loyalty,
         "applied_promotions": json.loads(
             _get_custom(doc, ("lumenpos_promotions",)) or "[]"
         ),

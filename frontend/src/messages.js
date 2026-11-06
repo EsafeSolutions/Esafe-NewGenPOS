@@ -753,9 +753,12 @@ const features = {
   "Receipt": "الإيصال",
   "Design the receipt shown on screen and printed from the browser. (A POS Profile Print Format, if set, takes over instead.)": "صمم الإيصال الظاهر على الشاشة والمطبوع من المتصفح. (إن وجد تنسيق طباعة في ملف نقطة البيع فإنه يحل محله.)",
   "Template": "القالب",
+  "Retail": "تجزئة",
   "Compact": "مدمج",
   "Standard": "قياسي",
   "Detailed": "مفصل",
+  "Thermal paper width": "عرض ورق الطابعة الحرارية",
+  "Applies to browser and network-printer receipts.": "ينطبق على إيصالات المتصفح والطابعة الشبكية.",
   "Show on the receipt": "إظهار في الإيصال",
   "Item code": "رمز الصنف",
   "Barcode": "الباركود",
@@ -773,6 +776,16 @@ const features = {
   "e.g. Thank you for shopping with us": "مثال: شكرا لتسوقك معنا",
   "e.g. 3001234567": "مثال: 3001234567",
   "Tax ID": "الرقم الضريبي",
+  "Invoice #": "رقم الفاتورة",
+  "Terminal": "جهاز البيع",
+  "MRP": "سعر التجزئة",
+  "Gross total": "الإجمالي قبل الخصم",
+  "Net total": "الإجمالي الصافي",
+  "Total items": "إجمالي الأصناف",
+  "Total qty": "إجمالي الكمية",
+  "You saved": "وفرت",
+  "Points redeemed": "النقاط المستبدلة",
+  "Points balance": "رصيد النقاط",
   "SN": "تسلسلي",
   "Note": "ملاحظة",
   "Qty": "الكمية",
@@ -1318,8 +1331,8 @@ const insights = {
   'Get the full picture of your sales': 'شاهد الصورة الكاملة لمبيعاتك',
   'Install the EsafePOS Reports app to see a complete sales dashboard here: revenue by day and by outlet, payment mix, top items and more, with filters, all inside EsafePOS.':
     'ركب تطبيق EsafePOS Reports لتشاهد هنا لوحة مبيعات كاملة: الإيراد باليوم وبالفرع، وتوزيع طرق الدفع، والأصناف الأعلى مبيعا وغيرها، مع فلاتر، كل ذلك داخل EsafePOS.',
-  'EsafePOS Reports is available on the Frappe Cloud Marketplace, or through hello@esafesolutions.co.':
-    'تطبيق EsafePOS Reports متوفر في متجر Frappe Cloud، أو عبر hello@esafesolutions.co.',
+  'EsafePOS Reports is available on the Frappe Cloud Marketplace, or through hello@esafe.lk.':
+    'تطبيق EsafePOS Reports متوفر في متجر Frappe Cloud، أو عبر hello@esafe.lk.',
   'EsafePOS Reports could not report its status on this site.':
     'تعذر على EsafePOS Reports الإفادة بحالته على هذا الموقع.',
   'EsafePOS Reports cannot show the dashboard on this site right now.':

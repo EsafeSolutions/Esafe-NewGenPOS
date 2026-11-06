@@ -154,7 +154,8 @@ def get_settings():
         # [] = every language LumenPOS ships (lumenpos.languages).
         "till_languages": languages.offered(doc),
         "shipped_languages": languages.shipped(),
-        "receipt_template": doc.get("receipt_template") or "Standard",
+        "receipt_template": doc.get("receipt_template") or "Retail",
+        "receipt_paper_width": doc.get("receipt_paper_width") or "80mm",
         "receipt_logo": doc.get("receipt_logo") or "",
         "receipt_header": doc.get("receipt_header") or "",
         "receipt_footer": doc.get("receipt_footer") or "",
@@ -403,7 +404,12 @@ def save_settings(payload: dict | str):
                 "quick_keys",
                 {"item_code": code, "label": (row.get("label") or "").strip() or None},
             )
-    doc.receipt_template = payload.get("receipt_template") or "Standard"
+    doc.receipt_template = payload.get("receipt_template") or "Retail"
+    doc.receipt_paper_width = (
+        payload.get("receipt_paper_width")
+        if payload.get("receipt_paper_width") in ("58mm", "80mm")
+        else "80mm"
+    )
     doc.receipt_logo = payload.get("receipt_logo") or None
     doc.receipt_header = payload.get("receipt_header") or None
     doc.receipt_footer = payload.get("receipt_footer") or None
@@ -776,7 +782,7 @@ def company_setting(company, field):
 # ---------------------------------------------------------------------------
 
 RECEIPT_FIELDS = [
-    "receipt_template", "receipt_logo", "receipt_header", "receipt_footer",
+    "receipt_template", "receipt_paper_width", "receipt_logo", "receipt_header", "receipt_footer",
     "receipt_show_item_code", "receipt_show_barcode", "receipt_show_serial",
     "receipt_show_unit_price", "receipt_show_payments", "receipt_show_note",
     "receipt_show_tax_id", "receipt_tax_id", "receipt_show_address",
@@ -793,7 +799,7 @@ _RECEIPT_BOOL = {
 def receipt_config(source):
     """A clean, correctly-typed receipt dict from any source (the settings doc
     or a plain dict of receipt fields): booleans as 0/1, template defaults to
-    'Standard', everything else to ''."""
+    'Retail', everything else to ''."""
     get = source.get
     out = {}
     for f in RECEIPT_FIELDS:
@@ -801,7 +807,9 @@ def receipt_config(source):
         if f in _RECEIPT_BOOL:
             out[f] = 1 if v else 0
         elif f == "receipt_template":
-            out[f] = v or "Standard"
+            out[f] = v or "Retail"
+        elif f == "receipt_paper_width":
+            out[f] = v if v in ("58mm", "80mm") else "80mm"
         else:
             out[f] = v or ""
     return out

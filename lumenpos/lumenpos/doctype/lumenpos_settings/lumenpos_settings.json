@@ -112,6 +112,7 @@
   "quick_keys",
   "receipt_section",
   "receipt_template",
+  "receipt_paper_width",
   "receipt_logo",
   "receipt_header",
   "receipt_footer",
@@ -747,12 +748,20 @@
    "label": "Receipt"
   },
   {
-   "default": "Standard",
-   "description": "Receipt layout/density. Compact = tight; Standard = balanced; Detailed = spacious with a full store header + terms block.",
+   "default": "Retail",
+   "description": "Retail is the full supermarket-style breakdown with MRP, line savings, totals and loyalty balance. Compact = tight; Standard = balanced; Detailed = spacious.",
    "fieldname": "receipt_template",
    "fieldtype": "Select",
    "label": "Receipt template",
-   "options": "Compact\nStandard\nDetailed"
+   "options": "Retail\nCompact\nStandard\nDetailed"
+  },
+  {
+   "default": "80mm",
+   "description": "The thermal-paper width used by browser and network-printer receipts.",
+   "fieldname": "receipt_paper_width",
+   "fieldtype": "Select",
+   "label": "Thermal paper width",
+   "options": "58mm\n80mm"
   },
   {
    "description": "Logo shown at the top of the printed/on-screen receipt.",

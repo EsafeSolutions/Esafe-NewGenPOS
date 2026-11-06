@@ -164,7 +164,7 @@ const view = computed(() => {
       body: t(
         'Install the EsafePOS Reports app to see a complete sales dashboard here: revenue by day and by outlet, payment mix, top items and more, with filters, all inside EsafePOS.',
       ),
-      hint: t('EsafePOS Reports is available on the Frappe Cloud Marketplace, or through hello@esafesolutions.co.'),
+      hint: t('EsafePOS Reports is available on the Frappe Cloud Marketplace, or through hello@esafe.lk.'),
     }
   }
   if (!i.integration_ready) {

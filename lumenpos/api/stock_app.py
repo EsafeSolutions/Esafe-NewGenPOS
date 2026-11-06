@@ -69,8 +69,8 @@ TILL_SWITCH = "stock_count_in_till"
 FIELDS = (SWITCH, TILL_SWITCH) + tuple(field for field, _default in STOCK_FLAG_FIELDS.values())
 # The Lumen Stock app's two Android builds on the Lumen website (same names for every version).
 DOWNLOADS = {
-    "phone": "https://esafesolutions.co/downloads/LumenStock.apk",
-    "handheld": "https://esafesolutions.co/downloads/LumenStock-handheld.apk",
+    "phone": "https://esafe.lk/downloads/LumenStock.apk",
+    "handheld": "https://esafe.lk/downloads/LumenStock-handheld.apk",
 }
 
 

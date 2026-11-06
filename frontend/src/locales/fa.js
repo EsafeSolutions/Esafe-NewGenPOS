@@ -1164,7 +1164,7 @@ export default {
   "Sales dashboard": "داشبورد فروش",
   "Get the full picture of your sales": "تصویر کامل فروش خود را ببینید",
   "Install the EsafePOS Reports app to see a complete sales dashboard here: revenue by day and by outlet, payment mix, top items and more, with filters, all inside EsafePOS.": "اپلیکیشن EsafePOS Reports را نصب کنید تا داشبورد کامل فروش را اینجا ببینید: درآمد بر اساس روز و شعبه، ترکیب روش‌های پرداخت، پرفروش‌ترین کالاها و موارد بیشتر، با فیلترها، همه داخل EsafePOS.",
-  "EsafePOS Reports is available on the Frappe Cloud Marketplace, or through hello@esafesolutions.co.": "EsafePOS Reports در Frappe Cloud Marketplace یا از طریق hello@esafesolutions.co در دسترس است.",
+  "EsafePOS Reports is available on the Frappe Cloud Marketplace, or through hello@esafe.lk.": "EsafePOS Reports در Frappe Cloud Marketplace یا از طریق hello@esafe.lk در دسترس است.",
   "EsafePOS Reports could not report its status on this site.": "EsafePOS Reports نتوانست وضعیت خود را در این سایت گزارش دهد.",
   "EsafePOS Reports cannot show the dashboard on this site right now.": "EsafePOS Reports در حال حاضر نمی‌تواند داشبورد را در این سایت نشان دهد.",
   "EsafePOS Reports needs Frappe v{version} or newer. This site runs an older version, so the dashboard is not available here.": "EsafePOS Reports به Frappe نسخه v{version} یا جدیدتر نیاز دارد. این سایت نسخه قدیمی‌تری دارد، پس داشبورد اینجا در دسترس نیست.",

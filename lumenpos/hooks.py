@@ -5,7 +5,7 @@ app_name = "lumenpos"
 app_title = "EsafePOS"
 app_publisher = "Esafe (PVT) LTD"
 app_description = "Professional, multi-business Point of Sale for ERPNext / Frappe"
-app_email = "hello@esafesolutions.co"
+app_email = "hello@esafe.lk"
 app_license = "AGPL-3.0-only"
 
 required_apps = ["erpnext"]

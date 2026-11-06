@@ -500,7 +500,8 @@ def _client_settings(profile_name=None):
         "enable_quick_keys": 1 if doc.get("enable_quick_keys") else 0,
         # The languages the cashier may pick, [] = all (lumenpos.languages).
         "till_languages": languages.offered(doc),
-        "receipt_template": doc.get("receipt_template") or "Standard",
+        "receipt_template": doc.get("receipt_template") or "Retail",
+        "receipt_paper_width": doc.get("receipt_paper_width") or "80mm",
         "receipt_logo": doc.get("receipt_logo") or "",
         "receipt_header": doc.get("receipt_header") or "",
         "receipt_footer": doc.get("receipt_footer") or "",

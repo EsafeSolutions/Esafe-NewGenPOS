@@ -1164,7 +1164,7 @@ export default {
   "Sales dashboard": "Satış panosu",
   "Get the full picture of your sales": "Satışlarınızın tam resmini görün",
   "Install the EsafePOS Reports app to see a complete sales dashboard here: revenue by day and by outlet, payment mix, top items and more, with filters, all inside EsafePOS.": "Burada eksiksiz bir satış panosu görmek için EsafePOS Reports uygulamasını kurun: güne ve şubeye göre ciro, ödeme dağılımı, en çok satan ürünler ve daha fazlası, filtrelerle birlikte, hepsi EsafePOS içinde.",
-  "EsafePOS Reports is available on the Frappe Cloud Marketplace, or through hello@esafesolutions.co.": "EsafePOS Reports, Frappe Cloud Marketplace'te veya hello@esafesolutions.co üzerinden edinilebilir.",
+  "EsafePOS Reports is available on the Frappe Cloud Marketplace, or through hello@esafe.lk.": "EsafePOS Reports, Frappe Cloud Marketplace'te veya hello@esafe.lk üzerinden edinilebilir.",
   "EsafePOS Reports could not report its status on this site.": "EsafePOS Reports bu sitedeki durumunu bildiremedi.",
   "EsafePOS Reports cannot show the dashboard on this site right now.": "EsafePOS Reports şu anda bu sitede panoyu gösteremiyor.",
   "EsafePOS Reports needs Frappe v{version} or newer. This site runs an older version, so the dashboard is not available here.": "EsafePOS Reports için Frappe v{version} veya daha yenisi gerekir. Bu site daha eski bir sürüm çalıştırıyor, bu yüzden pano burada kullanılamaz.",

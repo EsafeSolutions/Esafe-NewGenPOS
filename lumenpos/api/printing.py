@@ -112,6 +112,13 @@ def build_receipt_bytes(receipt, open_drawer=0):
     if open_drawer:
         out += KICK_DRAWER
 
+    settings = receipt.get("receipt_settings") or {}
+    width = 32 if settings.get("receipt_paper_width") == "58mm" else WIDTH
+    if (settings.get("receipt_template") or "").lower() == "retail":
+        out += _retail_receipt_body(receipt, width)
+        out += FEED_CUT
+        return bytes(out)
+
     out += ALIGN_CENTER + BOLD_ON + DOUBLE_SIZE
     out += _text(receipt["company"]) + b"\n"
     out += NORMAL_SIZE + BOLD_OFF
@@ -190,19 +197,146 @@ def build_receipt_bytes(receipt, open_drawer=0):
     return bytes(out)
 
 
+def _retail_receipt_body(receipt, width):
+    """The same supermarket-style breakdown as the browser receipt.
+
+    ESC/POS cannot reliably print an arbitrary uploaded logo, so the raw
+    printer keeps the identity in text while browser printing can use the
+    configured image.  All monetary facts come from ``get_receipt`` so neither
+    path recomputes a discount, tax, or loyalty balance independently.
+    """
+    settings = receipt.get("receipt_settings") or {}
+    out = bytearray()
+    out += ALIGN_CENTER + BOLD_ON + DOUBLE_SIZE
+    out += _text(receipt.get("company") or "") + b"\n"
+    out += NORMAL_SIZE + BOLD_OFF
+    for line in (
+        settings.get("receipt_header") if settings.get("receipt_header") else None,
+        settings.get("receipt_address")
+        if settings.get("receipt_show_address") and settings.get("receipt_address")
+        else None,
+        "VAT " + settings.get("receipt_tax_id")
+        if settings.get("receipt_show_tax_id") and settings.get("receipt_tax_id")
+        else None,
+    ):
+        if line:
+            for part in str(line).splitlines() or [line]:
+                out += _text(part[:width]) + b"\n"
+
+    if receipt.get("is_return"):
+        out += BOLD_ON + _text("REFUND") + BOLD_OFF + b"\n"
+    out += ALIGN_LEFT
+    out += _text(_pad("INVOICE #", receipt.get("name") or "", width)) + b"\n"
+    when = "{} {}".format(
+        receipt.get("posting_date") or "", str(receipt.get("posting_time") or "").split(".")[0]
+    ).strip()
+    if when:
+        out += _text(_pad("TIME", when, width)) + b"\n"
+    if receipt.get("customer_name"):
+        customer = receipt["customer_name"]
+        if receipt.get("customer_phone"):
+            customer += " / " + receipt["customer_phone"]
+        out += _text(_pad("CUSTOMER", customer, width)) + b"\n"
+    if receipt.get("cashier"):
+        out += _text(_pad("CASHIER", receipt["cashier"], width)) + b"\n"
+    if receipt.get("terminal"):
+        out += _text(_pad("TERMINAL", receipt["terminal"], width)) + b"\n"
+    if receipt.get("return_against"):
+        out += _text(_pad("AGAINST", receipt["return_against"], width)) + b"\n"
+
+    out += _line(width) + b"\n"
+    out += _text(_retail_columns("QTY", "MRP", "DISC", "AMOUNT", width)) + b"\n"
+    out += _line(width) + b"\n"
+    for index, item in enumerate(receipt.get("items") or []):
+        name = "{}) {}".format(index + 1, item.get("item_name") or item.get("item_code") or "")
+        out += _text(name[:width]) + b"\n"
+        out += _text(
+            _retail_columns(
+                _num(item.get("qty")),
+                _num(item.get("price_list_rate")),
+                _num(item.get("line_discount_amount")),
+                _num(item.get("amount")),
+                width,
+            )
+        ) + b"\n"
+
+    out += _line(width) + b"\n"
+    out += _text(_pad("GROSS TOTAL", _num(receipt.get("gross_total")), width)) + b"\n"
+    savings = flt(receipt.get("total_savings"))
+    if savings > 0 and not receipt.get("is_return"):
+        out += BOLD_ON + _text(_pad("DISCOUNT", "-" + _num(savings), width)) + BOLD_OFF + b"\n"
+    for tax in receipt.get("taxes") or []:
+        out += _text(_pad((tax.get("description") or "TAX")[: width - 12], _num(tax.get("tax_amount")), width)) + b"\n"
+    rounding = flt(receipt.get("rounding_adjustment"))
+    if rounding:
+        out += _text(_pad("ROUNDING", _num(rounding), width)) + b"\n"
+    out += BOLD_ON
+    total = receipt.get("rounded_total") or receipt.get("grand_total")
+    out += _text(_pad("NET TOTAL", "{} {}".format(receipt.get("currency") or "", _num(total)).strip(), width)) + b"\n"
+    out += BOLD_OFF
+
+    for payment in receipt.get("payments") or []:
+        out += _text(_pad(payment.get("mode_of_payment") or "PAID", _num(payment.get("amount")), width)) + b"\n"
+    if receipt.get("loyalty_amount"):
+        out += _text(_pad("LOYALTY REDEEMED", _num(receipt.get("loyalty_amount")), width)) + b"\n"
+    if receipt.get("change_amount"):
+        out += _text(_pad("CHANGE", _num(receipt.get("change_amount")), width)) + b"\n"
+    out += _text(_pad("ITEMS", receipt.get("item_count") or len(receipt.get("items") or []), width)) + b"\n"
+    out += _text(_pad("TOTAL QTY", _num(receipt.get("total_qty")), width)) + b"\n"
+
+    loyalty = receipt.get("loyalty") or {}
+    if loyalty:
+        out += _line(width) + b"\n"
+        out += ALIGN_CENTER + BOLD_ON + _text("LOYALTY POINTS") + BOLD_OFF + b"\n" + ALIGN_LEFT
+        if receipt.get("loyalty_points_earned"):
+            out += _text(_pad("POINTS EARNED", receipt.get("loyalty_points_earned"), width)) + b"\n"
+        if receipt.get("loyalty_points_redeemed"):
+            out += _text(_pad("POINTS REDEEMED", receipt.get("loyalty_points_redeemed"), width)) + b"\n"
+        out += BOLD_ON + _text(_pad("POINTS BALANCE", loyalty.get("balance", 0), width)) + BOLD_OFF + b"\n"
+
+    if savings > 0 and not receipt.get("is_return"):
+        out += _line(width) + b"\n"
+        out += ALIGN_CENTER + BOLD_ON + _text("YOU SAVED " + _num(savings)) + BOLD_OFF + b"\n" + ALIGN_LEFT
+    if settings.get("receipt_terms") and settings.get("receipt_show_terms"):
+        out += _line(width) + b"\n"
+        for part in str(settings["receipt_terms"]).splitlines() or [settings["receipt_terms"]]:
+            out += _text(part[:width]) + b"\n"
+    out += ALIGN_CENTER + b"\n"
+    if settings.get("receipt_footer"):
+        out += _text(settings["receipt_footer"][:width]) + b"\n"
+    out += _text("Thank you!") + b"\n"
+    return out
+
+
+def _retail_columns(qty, mrp, discount, amount, width):
+    """Right-align the four retail columns within a 58 mm or 80 mm line."""
+    amount_width = 10 if width >= 42 else 8
+    price_width = 9 if width >= 42 else 7
+    discount_width = 9 if width >= 42 else 7
+    qty_width = width - amount_width - price_width - discount_width - 3
+    values = (qty, mrp, discount, amount)
+    widths = (qty_width, price_width, discount_width, amount_width)
+    return " ".join(_right(value, size) for value, size in zip(values, widths))
+
+
+def _right(value, width):
+    value = str(value)
+    return value[-width:].rjust(width)
+
+
 def _text(value):
     # Thermal printers default to single-byte codepages; replace anything
     # exotic rather than printing garbage.
     return str(value).encode("ascii", errors="replace")
 
 
-def _line():
-    return b"-" * WIDTH
+def _line(width=WIDTH):
+    return b"-" * width
 
 
-def _pad(left, right):
+def _pad(left, right, width=WIDTH):
     right = str(right)
-    space = max(1, WIDTH - len(left) - len(right))
+    space = max(1, width - len(left) - len(right))
     return f"{left}{' ' * space}{right}"
 
 

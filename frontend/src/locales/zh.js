@@ -1164,7 +1164,7 @@ export default {
   "Sales dashboard": "销售看板",
   "Get the full picture of your sales": "全面了解您的销售情况",
   "Install the EsafePOS Reports app to see a complete sales dashboard here: revenue by day and by outlet, payment mix, top items and more, with filters, all inside EsafePOS.": "安装 EsafePOS Reports 应用，即可在此查看完整的销售看板：按日和按门店的营收、支付方式构成、畅销商品等，支持筛选，全部在 EsafePOS 内完成。",
-  "EsafePOS Reports is available on the Frappe Cloud Marketplace, or through hello@esafesolutions.co.": "EsafePOS Reports 可在 Frappe Cloud Marketplace 获取，也可通过 hello@esafesolutions.co 获取。",
+  "EsafePOS Reports is available on the Frappe Cloud Marketplace, or through hello@esafe.lk.": "EsafePOS Reports 可在 Frappe Cloud Marketplace 获取，也可通过 hello@esafe.lk 获取。",
   "EsafePOS Reports could not report its status on this site.": "EsafePOS Reports 无法报告其在本站点上的状态。",
   "EsafePOS Reports cannot show the dashboard on this site right now.": "EsafePOS Reports 目前无法在本站点显示看板。",
   "EsafePOS Reports needs Frappe v{version} or newer. This site runs an older version, so the dashboard is not available here.": "EsafePOS Reports 需要 Frappe v{version} 或更高版本。本站点运行的是较旧版本，因此这里无法使用看板。",

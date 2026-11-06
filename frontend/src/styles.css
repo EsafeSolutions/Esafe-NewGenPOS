@@ -3,7 +3,7 @@
    "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md. */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Vazirmatn:wght@400;500;600;700&display=swap');
 
-/* EsafePOS design tokens, aligned with esafesolutions.co.
+/* EsafePOS design tokens, aligned with esafe.lk.
    Deep navy #10254B and teal #13A795; type: Inter. */
 :root {
   --nav-bg: #10254b;

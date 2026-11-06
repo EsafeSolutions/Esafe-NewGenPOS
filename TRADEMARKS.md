@@ -25,4 +25,4 @@ give anyone permission to use the ESAFEPOS name or logo.
 ## Commercial licensing
 
 To use ESAFEPOS under terms other than the AGPL, for example inside a
-closed-source product, contact hello@esafesolutions.co.
+closed-source product, contact hello@esafe.lk.

@@ -618,6 +618,19 @@ The receipt modal shows totals, taxes, payments, change, applied promotions
 2. the profile's **Print Format** via ERPNext print view,
 3. the built-in receipt via the browser dialog.
 
+The built-in browser receipt uses the **58mm / 80mm paper width** saved in
+Settings → Receipt (including the sale outlet's override). It prints a separate,
+black-on-white receipt with a page length fitted to its contents. The **Retail**
+template includes item quantities, original prices, discounts and amounts, with
+the currency shown in the header.
+
+For a USB thermal printer such as the XP-80C, choose the matching roll width in
+the printer driver, use **100% scale**, **no margins**, and turn off browser
+**Headers and footers**. Some drivers enforce their configured paper length;
+if a blank tail remains, select the driver's receipt/continuous-roll paper mode
+and enable its end-of-document cut setting. A POS Profile Print Format uses
+its own page layout instead of the built-in receipt settings.
+
 ---
 
 ## 4. Promotions (replaces ERPNext Pricing Rules at the POS)

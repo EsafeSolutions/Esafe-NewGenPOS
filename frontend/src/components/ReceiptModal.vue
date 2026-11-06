@@ -92,11 +92,12 @@
 <script setup>
 import Icon from './Icon.vue'
 import ReceiptView from './ReceiptView.vue'
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import { call } from '../api'
 import { useSessionStore } from '../stores/session'
 import { money } from '../format'
 import { t } from '../i18n'
+import { printReceipt } from '../receiptPrint'
 
 const props = defineProps({
   showOpenInHistory: { type: Boolean, default: false },
@@ -209,7 +210,15 @@ async function print() {
     window.open(url, '_blank')
     return
   }
-  window.print()
+  printing.value = true
+  try {
+    await nextTick()
+    await printReceipt(document.getElementById('receipt-print'))
+  } catch (e) {
+    session.notify(e.message, true)
+  } finally {
+    printing.value = false
+  }
 }
 </script>
 

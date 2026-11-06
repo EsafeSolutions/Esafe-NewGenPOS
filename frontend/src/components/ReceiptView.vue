@@ -11,6 +11,7 @@
       <div class="retail-head">
         <img v-if="s.receipt_logo" :src="s.receipt_logo" class="receipt-logo" alt="" />
         <div class="receipt-company">{{ receipt.company }}</div>
+        <div class="small">{{ receipt.currency || outletCurrency() }}</div>
         <div v-if="s.receipt_header" class="muted small receipt-extra">{{ s.receipt_header }}</div>
         <div v-if="s.receipt_show_address && s.receipt_address" class="muted small receipt-extra">
           {{ s.receipt_address }}
@@ -55,24 +56,23 @@
       <table class="retail-items">
         <thead>
           <tr>
-            <th class="retail-no">#</th><th class="retail-item-heading"></th><th>{{ t('Qty') }}</th><th>{{ t('MRP') }}</th><th>{{ t('Discount') }}</th><th>{{ t('Amount') }}</th>
+            <th class="retail-no">#</th><th>{{ t('Qty') }}</th><th>{{ t('MRP') }}</th><th>{{ t('Discount') }}</th><th>{{ t('Amount') }}</th>
           </tr>
         </thead>
-        <tbody>
-          <template v-for="(item, i) in receipt.items" :key="i">
-            <tr class="retail-item-name">
-              <td class="retail-no">{{ i + 1 }}</td><td colspan="5">{{ item.item_name }}</td>
-            </tr>
-            <tr class="retail-item-values">
-              <td></td>
-              <td class="retail-item-meta">
-                <span v-if="s.receipt_show_item_code && item.item_code">{{ item.item_code }}</span>
-                <span v-if="s.receipt_show_barcode && item.barcode"><template v-if="s.receipt_show_item_code && item.item_code"> · </template>{{ item.barcode }}</span>
-                <span v-if="s.receipt_show_serial && item.serial_no"><template v-if="(s.receipt_show_item_code && item.item_code) || (s.receipt_show_barcode && item.barcode)"> · </template>{{ t('SN') }} {{ String(item.serial_no).split('\n').join(', ') }}</span>
-              </td>
-              <td>{{ qty(item.qty) }}</td><td>{{ m(originalRate(item)) }}</td><td>{{ m(lineSaving(item)) }}</td><td>{{ m(item.amount) }}</td>
-            </tr>
-          </template>
+        <tbody v-for="(item, i) in receipt.items" :key="i">
+          <tr class="retail-item-name">
+            <td class="retail-no">{{ i + 1 }}</td><td colspan="4">{{ item.item_name }}</td>
+          </tr>
+          <tr v-if="(s.receipt_show_item_code && item.item_code) || (s.receipt_show_barcode && item.barcode) || (s.receipt_show_serial && item.serial_no)">
+            <td></td><td colspan="4" class="retail-item-meta">
+              <span v-if="s.receipt_show_item_code && item.item_code">{{ item.item_code }}</span>
+              <span v-if="s.receipt_show_barcode && item.barcode"><template v-if="s.receipt_show_item_code && item.item_code"> · </template>{{ item.barcode }}</span>
+              <span v-if="s.receipt_show_serial && item.serial_no"><template v-if="(s.receipt_show_item_code && item.item_code) || (s.receipt_show_barcode && item.barcode)"> · </template>{{ t('SN') }} {{ String(item.serial_no).split('\n').join(', ') }}</span>
+            </td>
+          </tr>
+          <tr class="retail-item-values">
+            <td></td><td>{{ qty(item.qty) }}</td><td>{{ itemMoney(originalRate(item)) }}</td><td>{{ itemMoney(lineSaving(item)) }}</td><td>{{ itemMoney(item.amount) }}</td>
+          </tr>
         </tbody>
       </table>
 
@@ -280,7 +280,7 @@
 <script setup>
 import { computed } from 'vue'
 import { t } from '../i18n'
-import { money, rateLine } from '../format'
+import { isolate, money, outletCurrency, rateLine } from '../format'
 import { useSessionStore } from '../stores/session'
 
 const props = defineProps({
@@ -305,6 +305,19 @@ const s = computed(
 // another currency also shows its local value, the rate, each tender in its own
 // money and the change in local money (it always comes out of the main drawer).
 const m = (amount) => money(amount, props.receipt.currency)
+// The currency is printed once in the retail header; repeating it in every
+// narrow price column forces amounts onto multiple lines on thermal rolls.
+const itemNumberFormat = computed(() => {
+  let digits = { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+  try {
+    const options = new Intl.NumberFormat(undefined, {
+      style: 'currency', currency: props.receipt.currency || outletCurrency(),
+    }).resolvedOptions()
+    digits = { minimumFractionDigits: options.minimumFractionDigits, maximumFractionDigits: options.maximumFractionDigits }
+  } catch { /* Fall back to two decimals for an unrecognised currency. */ }
+  return new Intl.NumberFormat(undefined, digits)
+})
+const itemMoney = (amount) => isolate(itemNumberFormat.value.format(Number(amount) || 0))
 const foreign = computed(
   () =>
     Boolean(props.receipt.company_currency) &&
@@ -315,10 +328,7 @@ const tpl = computed(() => (s.value.receipt_template || 'Retail').toLowerCase())
 const retail = computed(() => tpl.value === 'retail')
 const paperWidth = computed(() => (s.value.receipt_paper_width === '58mm' ? '58' : '80'))
 const number = (value) => Number(value) || 0
-const qty = (value) => {
-  const amount = number(value)
-  return Number.isInteger(amount) ? String(amount) : String(amount)
-}
+const qty = (value) => String(Number(number(value).toFixed(6)))
 const originalRate = (item) =>
   item.price_list_rate != null ? number(item.price_list_rate) : number(item.rate)
 const lineSaving = (item) =>
@@ -484,18 +494,18 @@ const paymentRows = computed(() =>
   padding: 0 1px 4px;
   text-align: right;
 }
-.retail-items th:nth-child(1), .retail-items th:nth-child(2) { text-align: left; }
+.retail-items th:nth-child(1) { text-align: left; }
 .retail-items th:nth-child(1) { width: 6%; }
-.retail-items th:nth-child(2) { width: 31%; }
-.retail-items th:nth-child(3) { width: 10%; }
-.retail-items th:nth-child(4) { width: 17%; }
-.retail-items th:nth-child(5) { width: 18%; }
-.retail-items th:nth-child(6) { width: 18%; }
+.retail-items th:nth-child(2) { width: 12%; }
+.retail-items th:nth-child(3) { width: 24%; }
+.retail-items th:nth-child(4) { width: 27%; }
+.retail-items th:nth-child(5) { width: 31%; }
+.retail-items tbody { break-inside: avoid; }
 .retail-items td { padding: 1px; overflow-wrap: anywhere; }
 .retail-item-name td { padding-top: 6px; font-weight: 700; line-height: 1.2; }
 .retail-item-values td { border-bottom: 1px solid var(--border-subtle); color: var(--text-muted); font-size: 10.5px; text-align: right; padding-bottom: 5px; }
-.retail-item-values .retail-item-meta { color: var(--text-muted); font-family: var(--mono); font-size: 9.5px; text-align: left; }
-.retail-no { color: var(--text-muted); }
+.retail-item-meta { color: var(--text-muted); font-family: var(--mono); font-size: 9.5px; text-align: start; }
+.retail-no { color: var(--text-muted); white-space: nowrap; vertical-align: top; }
 .retail-totals { border-top: 1px solid var(--text); padding-top: 5px; margin-top: 8px; }
 .retail-totals .row { padding: 3px 0; }
 .retail-totals .discount { font-weight: 700; }
@@ -526,21 +536,21 @@ const paymentRows = computed(() =>
 .tpl-detailed .receipt-table td { padding: 7px 0; }
 .tpl-detailed .row { padding: 4px 0; }
 
-@media print {
-  #receipt-print.tpl-retail {
-    border: 0;
-    border-radius: 0;
-    box-sizing: border-box;
-    padding: 3mm 2.5mm;
-    font-size: 10px;
-  }
-  #receipt-print.paper-58 { width: 58mm !important; padding: 2.5mm 2mm; font-size: 8.5px; }
-  #receipt-print.paper-58 .retail-head .receipt-company { font-size: 13px; }
-  #receipt-print.paper-58 .retail-meta-row { font-size: 8px; gap: 4px; }
-  #receipt-print.paper-58 .retail-items th { font-size: 7px; }
-  #receipt-print.paper-58 .retail-item-values td { font-size: 7.5px; }
-  #receipt-print.paper-58 .retail-item-values .retail-item-meta { font-size: 7px; }
-  #receipt-print.paper-58 .retail-totals .total { font-size: 13px; }
-  #receipt-print.paper-58 .retail-savings strong { font-size: 15px; }
+.receipt.receipt-paper {
+  border: 0;
+  border-radius: 0;
+  box-sizing: border-box;
+  font-size: 12px;
 }
+.receipt-paper .retail-meta-row { font-size: 11px; gap: 6px; }
+.receipt-paper .retail-items th { font-size: 10px; letter-spacing: 0; }
+.receipt-paper .retail-item-values td { font-size: 12px; }
+.receipt-paper.paper-58 { font-size: 11px; }
+.receipt-paper.paper-58 .receipt-company { font-size: 14px; }
+.receipt-paper.paper-58 .retail-meta-row { font-size: 10px; gap: 4px; }
+.receipt-paper.paper-58 .retail-items th { font-size: 9px; }
+.receipt-paper.paper-58 .retail-item-values td { font-size: 10px; }
+.receipt-paper.paper-58 .retail-counts { font-size: 9px; }
+.receipt-paper.paper-58 .retail-totals .total { font-size: 14px; }
+.receipt-paper.paper-58 .retail-savings strong { font-size: 16px; }
 </style>

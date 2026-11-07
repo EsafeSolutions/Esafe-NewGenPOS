@@ -871,6 +871,26 @@ export const useCartStore = defineStore('cart', {
       return res && typeof res.payable === 'number' ? res.payable : null
     },
 
+    async createQuotation() {
+      const session = useSessionStore()
+      if (session.offline) throw new Error('Creating a quotation needs a connection')
+      if (!this.lines.length) throw new Error('Add at least one item before creating a quotation')
+      this.submitting = true
+      try {
+        const result = await call('lumenpos.api.sales.create_pos_quotation', {
+          payload: {
+            ...this._basePayload(),
+            discount_passcode: this.discountPasscode,
+            discount_request: this.discountRequest,
+          },
+        })
+        this.clear()
+        return result
+      } finally {
+        this.submitting = false
+      }
+    },
+
     async submit(payments, redeemLoyaltyPoints = 0, giftCards = []) {
       const payload = {
         ...this._basePayload(),

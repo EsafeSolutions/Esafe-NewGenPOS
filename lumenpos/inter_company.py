@@ -116,7 +116,7 @@ def wallet_account(wallet, company):
     if wallet == "Store Credit":
         from lumenpos import store_credit
 
-        return store_credit.ensure_mode_of_payment(company)
+        return store_credit.liability_account(company)
     from lumenpos import cashback
 
     return cashback.liability_account(company)

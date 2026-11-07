@@ -16,6 +16,7 @@ from frappe.utils import flt, now_datetime
 
 MODE_OF_PAYMENT = "Store Credit"
 ACCOUNT_NAME = "Store Credit"
+CLEARING_ACCOUNT_NAME = "Store Credit Clearing"
 
 
 def get_balance(customer, company=None):
@@ -86,6 +87,8 @@ def redeem(customer, amount, reference_invoice=None, company=None, reference_doc
             break
     if left > 0.005:
         frappe.throw(_("Store credit balance is too low to redeem {0}").format(amount))
+    if reference_invoice and company:
+        _book_movement(reference_doctype, reference_invoice, company, amount, issue=False)
     return amount
 
 
@@ -125,11 +128,12 @@ def add_entry(
 
 
 def ensure_mode_of_payment(company):
-    """Make sure the Store Credit mode of payment exists and has a liability
-    account for this company, creating both on first use."""
+    """Map invoice payments to a Bank-type clearing ledger. A separate
+    liability ledger holds what the store owes customers."""
     from lumenpos.internal_accounts import fill_required_custom_fields
 
-    account = _get_or_create_account(company)
+    liability_account(company)
+    account = _get_or_create_clearing_account(company)
     if not frappe.db.exists("Mode of Payment", MODE_OF_PAYMENT):
         mop = frappe.get_doc(
             {
@@ -156,6 +160,80 @@ def ensure_mode_of_payment(company):
         fill_required_custom_fields(mop, MODE_OF_PAYMENT)
         mop.save(ignore_permissions=True)
     return account
+
+
+def liability_account(company):
+    return _get_or_create_account(company)
+
+
+def _get_or_create_clearing_account(company):
+    from lumenpos.credit_sales import _bank_parent, _valid_payment_account
+
+    abbr = frappe.get_cached_value("Company", company, "abbr")
+    name = f"{CLEARING_ACCOUNT_NAME} - {abbr}"
+    if frappe.db.exists("Account", name):
+        if not _valid_payment_account(name, company):
+            frappe.throw(_("{0} must be an enabled Bank or Cash ledger for {1}.").format(name, company))
+        return name
+    parent = _bank_parent(company)
+    if not parent:
+        frappe.throw(_("No asset account group found for {0}").format(company))
+    account = frappe.get_doc({
+        "doctype": "Account",
+        "account_name": CLEARING_ACCOUNT_NAME,
+        "parent_account": parent,
+        "company": company,
+        "root_type": "Asset",
+        "account_type": "Bank",
+        "account_currency": frappe.get_cached_value("Company", company, "default_currency"),
+    }).insert(ignore_permissions=True)
+    return account.name
+
+
+def _book_movement(reference_doctype, reference_invoice, company, amount, issue):
+    """Clear the invoice's payment leg against the customer-credit liability.
+    Both documents are saved in the sale/refund transaction, so a failure rolls
+    the invoice and the wallet entry back together."""
+    from lumenpos import credit_sales
+
+    doctype = reference_doctype or (
+        "Sales Invoice" if frappe.db.exists("Sales Invoice", reference_invoice) else "POS Invoice"
+    )
+    invoice = frappe.get_doc(doctype, reference_invoice)
+    clearing = ensure_mode_of_payment(company)
+    liability = liability_account(company)
+    amount = flt(amount, 2)
+    if amount <= 0:
+        return None
+    dims = credit_sales._dimensions(invoice)
+    cost_center = credit_sales._cost_center(invoice)
+
+    def line(account, debit=0, credit=0):
+        return {
+            "account": account,
+            "debit_in_account_currency": debit,
+            "credit_in_account_currency": credit,
+            "cost_center": cost_center,
+            **dims,
+        }
+
+    accounts = (
+        [line(clearing, debit=amount), line(liability, credit=amount)]
+        if issue else [line(liability, debit=amount), line(clearing, credit=amount)]
+    )
+    entry = frappe.get_doc({
+        "doctype": "Journal Entry",
+        "voucher_type": "Journal Entry",
+        "company": company,
+        "posting_date": invoice.posting_date,
+        "user_remark": _("Store credit {0} for {1}").format("issued" if issue else "redeemed", reference_invoice),
+        "accounts": accounts,
+    })
+    return credit_sales.post(entry)
+
+
+def book_issue(reference_doctype, reference_invoice, company, amount):
+    return _book_movement(reference_doctype, reference_invoice, company, amount, issue=True)
 
 
 def _get_or_create_account(company):

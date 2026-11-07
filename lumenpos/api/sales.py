@@ -594,6 +594,97 @@ def quote_sale(payload: dict | str):
 
 
 @frappe.whitelist()
+def create_pos_quotation(payload: dict | str):
+    """Create an ERPNext Quotation from the POS's server-priced cart.
+
+    A quotation is a commercial document, not a sale: it creates no payment,
+    register tender, stock movement or POS invoice. The same price, discount
+    and tax calculation used by the till is copied onto the Quotation.
+    """
+    if isinstance(payload, str):
+        payload = json.loads(payload)
+    _require_sell()
+    profile = frappe.get_cached_doc("POS Profile", payload["pos_profile"])
+    profile.check_permission("read")
+    if not payload.get("items"):
+        frappe.throw(_("Add at least one item before creating a quotation."))
+    invoice, customer = _build_sale_invoice(
+        profile, payload, validate_serials=False, check_passcode=True,
+        session_name=_quote_session(profile.name),
+    )
+    quotation = frappe.new_doc("Quotation")
+    quotation_values = {
+        "quotation_to": "Customer",
+        "party_name": customer,
+        "customer_name": invoice.customer_name,
+        "company": profile.company,
+        "selling_price_list": invoice.selling_price_list,
+        "currency": invoice.currency,
+        "conversion_rate": invoice.conversion_rate,
+        "price_list_currency": invoice.get("price_list_currency"),
+        "plc_conversion_rate": invoice.get("plc_conversion_rate"),
+        "taxes_and_charges": invoice.taxes_and_charges,
+        "ignore_pricing_rule": 1,
+        "set_warehouse": profile.warehouse,
+        "remarks": _build_remarks(payload.get("note"), None),
+    }
+    if quotation.meta.has_field("pos_profile"):
+        quotation_values["pos_profile"] = profile.name
+    quotation.update(quotation_values)
+    for source in invoice.items:
+        row = {
+            "item_code": source.item_code,
+            "item_name": source.item_name,
+            "description": source.description,
+            "qty": source.qty,
+            "uom": source.uom,
+            "conversion_factor": source.conversion_factor,
+            "warehouse": source.warehouse,
+            "price_list_rate": source.price_list_rate,
+            "rate": source.rate,
+            "discount_percentage": source.discount_percentage,
+            "discount_amount": source.discount_amount,
+            "item_tax_template": source.get("item_tax_template"),
+            "item_tax_rate": source.get("item_tax_rate"),
+        }
+        quotation.append("items", row)
+    if payload.get("sales_person") and quotation.meta.has_field("sales_team"):
+        quotation.append("sales_team", {"sales_person": payload["sales_person"], "allocated_percentage": 100})
+    quotation.set_missing_values()
+    # Replace template rows with the POS's server-calculated rows, exactly once.
+    quotation.set("taxes", [])
+    for source in invoice.taxes:
+        quotation.append("taxes", {
+            "charge_type": source.charge_type,
+            "account_head": source.account_head,
+            "description": source.description,
+            "rate": source.rate,
+            "included_in_print_rate": source.included_in_print_rate,
+            "tax_amount": source.tax_amount,
+            "cost_center": source.get("cost_center") or profile.get("cost_center"),
+        })
+    quotation.run_method("calculate_taxes_and_totals")
+    quotation.flags.ignore_permissions = True
+    quotation.insert(ignore_permissions=True)
+    quotation.submit()
+    from lumenpos.api import audit
+
+    audit.log(
+        "Create POS quotation",
+        detail="{0} for {1}".format(quotation.name, customer),
+        reference_doctype="Quotation",
+        reference_name=quotation.name,
+        pos_profile=profile.name,
+    )
+    return {
+        "name": quotation.name,
+        "customer": customer,
+        "grand_total": flt(quotation.grand_total),
+        "currency": quotation.currency,
+    }
+
+
+@frappe.whitelist()
 def submit_sale(payload: dict | str):
     """Create and submit a POS Invoice (consolidated into Sales Invoices by
     ERPNext when the register closes).
@@ -731,11 +822,9 @@ def submit_sale(payload: dict | str):
     from lumenpos import paid_in
 
     paid_in.record(invoice, payload.get("payments"), session["name"])
-    # Pin liability-backed tenders (gift card, store credit) to THEIR liability
-    # account so ERPNext can't resolve them to the company Receivable (debtors):
-    # a payment leg on a Receivable account posts WITHOUT a party and fails
-    # "Customer is required against Receivable account …". Redeeming reduces the
-    # liability we owe the holder, not debtors.
+    # Pin wallet tenders to their payment accounts so ERPNext cannot resolve
+    # them to Receivable without a party. Store Credit uses a clearing ledger;
+    # its matching Journal Entry moves the amount to or from the liability.
     pin_accounts = {}
     if gc_account:
         pin_accounts[gift_cards.mode_of_payment()] = gc_account
@@ -3224,12 +3313,17 @@ def create_return(
         currency.check_tenders(sale_ctx, original.company, splits)
         if any(r["mode_of_payment"] == store_credit.MODE_OF_PAYMENT for r in splits):
             currency.assert_local(sale_ctx, _("Store credit refunds"))
+    store_credit_account = None
     if any(r["mode_of_payment"] == store_credit.MODE_OF_PAYMENT for r in splits):
-        store_credit.ensure_mode_of_payment(original.company)
+        store_credit_account = store_credit.ensure_mode_of_payment(original.company)
     for row in return_doc.payments:
         row.amount = 0
     for r in splits:
         _set_payment(return_doc, r["mode_of_payment"], r["amount"])
+    if store_credit_account:
+        for row in return_doc.payments:
+            if row.mode_of_payment == store_credit.MODE_OF_PAYMENT:
+                row.account = store_credit_account
     _apply_payment_references(
         return_doc,
         [{"mode_of_payment": r["mode_of_payment"], "reference_no": r["reference_no"]} for r in splits],
@@ -3287,6 +3381,7 @@ def create_return(
             original.company,
             return_doc.doctype,
         )
+        store_credit.book_issue(return_doc.doctype, return_doc.name, original.company, credit_amount)
     # A return gives back the unspent cashback the original sale earned. The
     # part the customer already spent is not clawed back.
     cashback.reverse_for_sale(original.doctype, original.name)

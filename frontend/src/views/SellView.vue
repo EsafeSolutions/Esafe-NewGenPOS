@@ -124,7 +124,7 @@
       <ProductGrid v-else data-tour="sell-products" @select="addToCart" />
     </section>
 
-    <CartPanel @pay="onPay" @park="parkOpen = true" @hold="holdOpen = true" @receipt="receipt = $event" />
+    <CartPanel @pay="onPay" @park="parkOpen = true" @hold="holdOpen = true" @quotation="createQuotation" @receipt="receipt = $event" />
 
     <PaymentOverlay v-if="paymentOpen" @close="paymentOpen = false" @done="onSaleDone" />
     <HoldModal v-if="holdOpen" @close="holdOpen = false" @done="onHeld" />
@@ -387,6 +387,22 @@ async function parkSale() {
 function onSaleDone(saleReceipt) {
   paymentOpen.value = false
   receipt.value = saleReceipt
+}
+
+async function createQuotation() {
+  const tab = window.open('about:blank', '_blank')
+  if (!tab) {
+    session.notify(t('Allow pop-ups to open the quotation.'), true)
+    return
+  }
+  try {
+    const quote = await cart.createQuotation()
+    tab.location.replace(`/printview?doctype=Quotation&name=${encodeURIComponent(quote.name)}&no_letterhead=0`)
+    session.notify(t('Quotation {name} created', { name: quote.name }))
+  } catch (e) {
+    tab.close()
+    session.notify(e.message, true)
+  }
 }
 
 const passcodeOpen = ref(false)

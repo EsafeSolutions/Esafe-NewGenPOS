@@ -301,6 +301,13 @@
     >
       {{ t('Pay') }}&nbsp;&nbsp;{{ cart.show(cart.total) }}
     </button>
+    <button
+      class="btn btn-outline quotation"
+      :disabled="!cart.lines.length || session.offline || cart.submitting || session.permissions.sell === false || !!session.sellBlockedBy"
+      @click="$emit('quotation')"
+    >
+      {{ t('Create QT') }}
+    </button>
 
     <CustomerModal v-if="customerOpen" @close="customerOpen = false" />
     <SellGiftCardModal
@@ -323,7 +330,7 @@ import CartLine from './CartLine.vue'
 import CustomerModal from './CustomerModal.vue'
 import SellGiftCardModal from './SellGiftCardModal.vue'
 
-const emit = defineEmits(['pay', 'park', 'hold', 'receipt'])
+const emit = defineEmits(['pay', 'park', 'hold', 'receipt', 'quotation'])
 
 const cart = useCartStore()
 const session = useSessionStore()

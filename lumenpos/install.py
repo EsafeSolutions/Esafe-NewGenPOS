@@ -50,6 +50,7 @@ SALE_GRANTS = {
 }
 CORE_GRANTS = {
     "LumenPOS Cashier": {
+        "Quotation": ["read", "write", "create", "submit", "print"],
         "POS Invoice": ["read", "write", "create", "submit", "print"],
         "POS Opening Entry": ["read", "write", "create", "submit"],
         "POS Closing Entry": ["read", "write", "create", "submit"],
@@ -59,6 +60,7 @@ CORE_GRANTS = {
         **SALE_GRANTS,
     },
     "LumenPOS Manager": {
+        "Quotation": ["read", "write", "create", "submit", "print", "cancel", "amend", "delete"],
         "POS Invoice": ["read", "write", "create", "submit", "cancel", "amend", "print", "delete"],
         "POS Opening Entry": ["read", "write", "create", "submit", "cancel"],
         "POS Closing Entry": ["read", "write", "create", "submit", "cancel"],
@@ -139,6 +141,7 @@ def ensure_setup():
     recost_open_holds()
     ensure_currencies()
     ensure_credit_sales()
+    ensure_store_credit()
     ensure_hot_indexes()
 
 
@@ -178,6 +181,30 @@ def ensure_credit_sales():
             frappe.db.rollback(save_point="lumenpos_credit_setup")
             frappe.log_error(
                 title="LumenPOS: setting up sales on account failed",
+                message="{0}: {1}".format(company, frappe.get_traceback()),
+            )
+
+
+def ensure_store_credit():
+    """Move existing Store Credit payment mappings to a valid clearing ledger
+    on deploy. The original liability account and its GL history stay put."""
+    from lumenpos import store_credit
+
+    if not frappe.db.exists("Mode of Payment", store_credit.MODE_OF_PAYMENT):
+        return
+    companies = set(frappe.get_all(
+        "Mode of Payment Account",
+        filters={"parent": store_credit.MODE_OF_PAYMENT},
+        pluck="company",
+    )) - {None, ""}
+    for company in sorted(companies):
+        try:
+            frappe.db.savepoint("lumenpos_store_credit_setup")
+            store_credit.ensure_mode_of_payment(company)
+        except Exception:
+            frappe.db.rollback(save_point="lumenpos_store_credit_setup")
+            frappe.log_error(
+                title="LumenPOS: setting up store credit failed",
                 message="{0}: {1}".format(company, frappe.get_traceback()),
             )
 

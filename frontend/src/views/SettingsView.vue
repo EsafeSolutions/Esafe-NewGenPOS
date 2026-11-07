@@ -1837,7 +1837,7 @@
                 <option value="80mm">80 mm</option>
                 <option value="58mm">58 mm</option>
               </select>
-              <span class="setting-desc">{{ t('Applies to browser and network-printer receipts.') }}</span>
+              <span class="setting-desc">{{ t('Applies to browser and network-printer receipts. For browser printing, set the Windows printer paper type to Receipt or Continuous and margins to None; a fixed-length driver sheet cannot auto-cut to the receipt.') }}</span>
             </label>
 
             <div class="field-grid" style="margin-top: 14px">

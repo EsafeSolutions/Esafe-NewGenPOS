@@ -39,6 +39,33 @@
         <div v-if="otherCompany && !receipt.is_return" class="company-note">
           {{ t('Sold by {company}. It can be returned or exchanged at one of its outlets.', { company: receipt.company }) }}
         </div>
+        <div v-if="shareOpen" class="share-card">
+          <div class="share-heading">
+            <div>
+              <strong>{{ t('Send e-invoice') }}</strong>
+              <div class="muted small">{{ t('Share a secure invoice link with the customer.') }}</div>
+            </div>
+            <button class="btn-ghost" :aria-label="t('Close')" @click="shareOpen = false"><Icon name="close" /></button>
+          </div>
+          <label class="share-mobile">
+            <span>{{ t('Customer mobile') }}</span>
+            <input v-model.trim="shareMobile" type="tel" inputmode="tel" autocomplete="tel" :placeholder="t('e.g. +94770000000')" />
+          </label>
+          <div class="share-actions">
+            <button class="btn btn-outline" :disabled="sharing || smsing" @click="openWhatsApp">
+              {{ sharing ? t('Preparing…') : t('WhatsApp') }}
+            </button>
+            <button class="btn btn-outline" :disabled="sharing || smsing" @click="sendSms">
+              {{ smsing ? t('Sending…') : t('Send SMS') }}
+            </button>
+            <button class="btn btn-outline" :disabled="sharing || smsing" @click="copyInvoiceLink">
+              {{ copied ? t('Link copied') : t('Copy link') }}
+            </button>
+          </div>
+          <div class="muted small share-note">
+            {{ t('WhatsApp opens a ready message for confirmation. SMS uses ERPNext SMS Settings.') }}
+          </div>
+        </div>
         <ReceiptView :receipt="receipt" printable />
       </div>
       <div class="modal-footer">
@@ -77,6 +104,9 @@
         >
           {{ emailing ? t('Sending…') : t('Email receipt') }}
         </button>
+        <button v-if="!receipt.offline" class="btn btn-outline" @click="toggleShare">
+          <Icon name="globe" /> {{ t('Send e-invoice') }}
+        </button>
         <button v-if="!isReprint || mayReprint" class="btn btn-outline" data-tour="receipt-print" :disabled="printing" @click="print">
           {{ printing ? t('Printing…') : t('Print receipt') }}
         </button>
@@ -112,6 +142,12 @@ defineEmits(['close', 'refund', 'exchange', 'open-in-history'])
 const session = useSessionStore()
 const printing = ref(false)
 const emailing = ref(false)
+const shareOpen = ref(false)
+const shareMobile = ref('')
+const sharing = ref(false)
+const smsing = ref(false)
+const copied = ref(false)
+const shareDetails = ref(null)
 
 // A sale of another company (a manager covering outlets of two companies).
 const otherCompany = computed(
@@ -126,6 +162,107 @@ const soldInOtherCurrency = computed(
     Boolean(props.receipt?.currency) &&
     props.receipt.currency !== props.receipt.company_currency
 )
+
+function toggleShare() {
+  shareOpen.value = !shareOpen.value
+  if (shareOpen.value && !shareMobile.value) shareMobile.value = props.receipt.customer_phone || ''
+}
+
+async function getShareDetails() {
+  if (shareDetails.value) return shareDetails.value
+  shareDetails.value = await call('lumenpos.api.sales.receipt_share_link', {
+    invoice: props.receipt.name,
+  })
+  if (!shareMobile.value && shareDetails.value.mobile) shareMobile.value = shareDetails.value.mobile
+  return shareDetails.value
+}
+
+function whatsAppNumber() {
+  let value = String(shareMobile.value || '').trim().replace(/[\s()-]/g, '')
+  if (value.startsWith('00')) value = `+${value.slice(2)}`
+  if (value.startsWith('0')) {
+    throw new Error(t('Add the country code before sending to WhatsApp (for example +94…).'))
+  }
+  const digits = value.replace(/^\+/, '')
+  if (!/^\d{6,15}$/.test(digits)) {
+    throw new Error(t('Enter a valid mobile number, including the country code.'))
+  }
+  return digits
+}
+
+async function openWhatsApp() {
+  let digits
+  try {
+    digits = whatsAppNumber()
+  } catch (e) {
+    session.notify(e.message, true)
+    return
+  }
+  // Open synchronously so browsers do not treat the tab as an unsolicited
+  // popup while the signed link is being requested.
+  const tab = window.open('about:blank', '_blank')
+  if (!tab) {
+    session.notify(t('Allow pop-ups to open WhatsApp.'), true)
+    return
+  }
+  sharing.value = true
+  try {
+    const details = await getShareDetails()
+    const url = `https://wa.me/${digits}?text=${encodeURIComponent(details.message)}`
+    tab.location.replace(url)
+  } catch (e) {
+    tab.close()
+    session.notify(e.message, true)
+  } finally {
+    sharing.value = false
+  }
+}
+
+async function sendSms() {
+  const mobile = String(shareMobile.value || '').trim()
+  if (!mobile) {
+    session.notify(t('Enter the customer mobile number.'), true)
+    return
+  }
+  smsing.value = true
+  try {
+    const res = await call('lumenpos.api.sales.sms_receipt', {
+      invoice: props.receipt.name,
+      mobile,
+    })
+    session.notify(t('E-invoice sent by SMS to {mobile}', { mobile: res.mobile }))
+  } catch (e) {
+    session.notify(e.message, true)
+  } finally {
+    smsing.value = false
+  }
+}
+
+async function copyInvoiceLink() {
+  sharing.value = true
+  try {
+    const details = await getShareDetails()
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(details.url)
+    } else {
+      const area = document.createElement('textarea')
+      area.value = details.url
+      area.style.position = 'fixed'
+      area.style.opacity = '0'
+      document.body.appendChild(area)
+      area.select()
+      document.execCommand('copy')
+      area.remove()
+    }
+    copied.value = true
+    session.notify(t('E-invoice link copied'))
+    window.setTimeout(() => { copied.value = false }, 1800)
+  } catch (e) {
+    session.notify(e.message, true)
+  } finally {
+    sharing.value = false
+  }
+}
 
 async function emailReceipt() {
   emailing.value = true
@@ -261,5 +398,28 @@ async function print() {
   font-weight: 600;
   color: var(--text-muted);
   margin-bottom: 14px;
+}
+.share-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-2);
+  padding: 14px;
+  margin-bottom: 14px;
+}
+.modal-footer { flex-wrap: wrap; }
+.share-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.share-mobile { display: grid; gap: 6px; font-size: 12px; font-weight: 700; }
+.share-mobile input { width: 100%; background: var(--card-bg); }
+.share-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+.share-actions .btn { padding: 9px 8px; font-size: 12px; }
+.share-note { margin-top: 9px; line-height: 1.4; }
+@media (max-width: 460px) {
+  .share-actions { grid-template-columns: 1fr; }
 }
 </style>

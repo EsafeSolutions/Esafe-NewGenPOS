@@ -1913,6 +1913,54 @@ def email_receipt(invoice: str, email: str | None = None):
 
 
 @frappe.whitelist()
+def receipt_share_link(invoice: str):
+    """Make a signed customer e-invoice link for WhatsApp, SMS or copying."""
+    doctype = _doctype_of(invoice)
+    if not frappe.db.exists(doctype, invoice):
+        frappe.throw(_("Sale {0} not found").format(invoice))
+    doc = frappe.get_doc(doctype, invoice)
+    doc.check_permission("read")
+    if cint(doc.docstatus) != 1:
+        frappe.throw(_("Only a submitted invoice can be shared."))
+    from lumenpos.digital_receipts import share_details
+
+    return share_details(doc)
+
+
+@frappe.whitelist()
+def sms_receipt(invoice: str, mobile: str | None = None):
+    """Send the signed e-invoice link through Frappe's configured SMS gateway."""
+    details = receipt_share_link(invoice)
+    recipient = (mobile or details.get("mobile") or "").strip()
+    if not recipient:
+        frappe.throw(_("No mobile number. Add one to the customer or type it in."))
+    # SMS providers differ on whether punctuation is accepted, but none should
+    # receive arbitrary text in the receiver parameter.
+    compact = recipient.replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
+    digits = compact[1:] if compact.startswith("+") else compact
+    if not digits.isdigit() or not 6 <= len(digits) <= 15:
+        frappe.throw(_("Enter a valid mobile number, including the country code when required."))
+    if not frappe.db.get_single_value("SMS Settings", "sms_gateway_url"):
+        frappe.throw(_("SMS gateway is not configured. Set it in ERPNext SMS Settings first."))
+
+    from frappe.core.doctype.sms_settings.sms_settings import send_sms
+
+    send_sms(receiver_list=[compact], msg=details["message"], success_msg=False)
+    doctype = _doctype_of(invoice)
+    doc = frappe.get_doc(doctype, invoice)
+    from lumenpos.api import audit
+
+    audit.log(
+        "SMS receipt",
+        detail="E-invoice link sent by SMS to {0}".format(compact),
+        reference_doctype=doctype,
+        reference_name=invoice,
+        pos_profile=doc.get("pos_profile"),
+    )
+    return {"sent": True, "mobile": compact}
+
+
+@frappe.whitelist()
 def get_receipt(invoice: str):
     doc = frappe.get_doc(_doctype_of(invoice), invoice)
     doc.check_permission("read")

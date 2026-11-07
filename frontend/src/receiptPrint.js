@@ -38,7 +38,9 @@ export async function createReceiptPrintFrame(source) {
       :root { --border: #000; --border-subtle: #000; --text: #000; --text-muted: #000; --mono: monospace; }
       html, body { width: ${width}mm !important; height: auto !important; min-height: 0 !important;
         margin: 0 !important; padding: 0 !important; overflow: visible !important; background: #fff !important; }
-      #receipt-print { position: static !important; width: ${width}mm !important; max-width: none !important;
+      body { position: relative !important; }
+      #receipt-print { position: absolute !important; inset: 0 auto auto 0 !important;
+        width: ${width}mm !important; max-width: none !important;
         margin: 0 !important; box-sizing: border-box; border: 0; border-radius: 0;
         padding: 3mm; font-family: Arial, Tahoma, sans-serif; line-height: 1.3;
         background: #fff !important; color: #000 !important; }
@@ -72,10 +74,27 @@ export async function createReceiptPrintFrame(source) {
       }, 5000)
       img.onload = img.onerror = done
     })))
-    // CSS pixels are 96/inch. Round up with 1mm feed allowance so fractional
-    // layout cannot spill a short receipt onto a second sheet.
-    const height = Math.ceil(receipt.getBoundingClientRect().height * 25.4 / 96) + 1
-    paper.textContent += `\n@page { size: ${width}mm ${height}mm; margin: 0; }`
+    // Calibrate CSS pixels against a real CSS millimetre in this frame instead
+    // of assuming 96dpi: browser zoom and Windows display scaling otherwise
+    // make some thermal drivers receive a page almost twice as long.
+    const ruler = doc.createElement('div')
+    ruler.style.cssText = 'position:absolute;left:-10000px;top:0;width:100mm;height:1px'
+    doc.body.appendChild(ruler)
+    const pxPerMm = ruler.getBoundingClientRect().width / 100 || (96 / 25.4)
+    ruler.remove()
+    // Round up with a 1mm feed allowance so fractional layout cannot spill a
+    // short receipt onto a second sheet. Give the iframe and document the same
+    // explicit height: Chromium otherwise lets a fixed-length Windows driver
+    // centre an auto-height body inside its much longer page.
+    const contentPx = Math.max(receipt.scrollHeight, receipt.getBoundingClientRect().height)
+    const height = Math.ceil(contentPx / pxPerMm) + 1
+    frame.style.height = `${height}mm`
+    paper.textContent += `
+      html, body { height: ${height}mm !important; max-height: ${height}mm !important; }
+      @page { size: ${width}mm ${height}mm; margin: 0 !important; }
+    `
+    // Force layout after the page box changes before opening print preview.
+    void receipt.offsetHeight
     return frame
   } catch (error) {
     frame.remove()

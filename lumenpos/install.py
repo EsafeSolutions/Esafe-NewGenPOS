@@ -138,6 +138,7 @@ def ensure_setup():
     default_stock_app_switches_on()
     recost_open_holds()
     ensure_currencies()
+    ensure_credit_sales()
     ensure_hot_indexes()
 
 
@@ -153,6 +154,32 @@ def ensure_currencies():
     except Exception:
         frappe.db.rollback()
         frappe.log_error(title="LumenPOS: setting up other currencies failed", message=frappe.get_traceback())
+
+
+def ensure_credit_sales():
+    """Repair/provision the internal due-sale tender on deploy when enabled.
+
+    Settings also provisions it immediately when the feature is switched on;
+    this migrate hook fixes sites that already saved the old liability-backed
+    clearing account before upgrading ERPNext.
+    """
+    from lumenpos import credit_sales
+
+    if not credit_sales.enabled():
+        return
+    companies = sorted(
+        set(frappe.get_all("POS Profile", filters={"disabled": 0}, pluck="company")) - {None, ""}
+    )
+    for company in companies:
+        try:
+            frappe.db.savepoint("lumenpos_credit_setup")
+            credit_sales.ensure_setup(company)
+        except Exception:
+            frappe.db.rollback(save_point="lumenpos_credit_setup")
+            frappe.log_error(
+                title="LumenPOS: setting up sales on account failed",
+                message="{0}: {1}".format(company, frappe.get_traceback()),
+            )
 
 
 def recost_open_holds():

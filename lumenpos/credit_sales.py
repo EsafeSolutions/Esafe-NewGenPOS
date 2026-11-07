@@ -47,6 +47,7 @@ from frappe.utils import cint, flt, nowdate
 
 MODE_OF_PAYMENT = "Credit Sale"
 ACCOUNT_NAME = "POS Credit Sale Clearing"
+FALLBACK_ACCOUNT_NAME = "POS Credit Sale Clearing Bank"
 ALLOWED_ONLY = "Customers allowed on their card"
 ANY_NAMED = "Any named customer"
 WHO = (ALLOWED_ONLY, ANY_NAMED)
@@ -94,41 +95,103 @@ def client_facts():
 # ---------------------------------------------------------------------------
 
 
-def _get_or_create_account(company):
+def _account_name(company, label=ACCOUNT_NAME):
     abbr = frappe.get_cached_value("Company", company, "abbr")
-    account_name = f"{ACCOUNT_NAME} - {abbr}"
-    if frappe.db.exists("Account", account_name):
-        return account_name
-    parent = frappe.db.get_value(
+    return f"{label} - {abbr}"
+
+
+def _bank_parent(company):
+    """An asset group for the internal payment clearing ledger.
+
+    ERPNext validates every Mode of Payment mapping as Bank, Cash or
+    Receivable. Receivable is not suitable here because its GL row has no
+    party, and Cash would make an internal tender look like drawer cash.
+    """
+    return frappe.db.get_value(
         "Account",
         {
             "company": company,
-            "root_type": "Liability",
+            "root_type": "Asset",
             "is_group": 1,
-            "account_name": ["in", ["Current Liabilities", "Current Liability"]],
+            "account_name": ["in", ["Bank Accounts", "Bank Account", "Current Assets", "Current Asset"]],
         },
         "name",
-    ) or frappe.db.get_value("Account", {"company": company, "root_type": "Liability", "is_group": 1}, "name")
+    ) or frappe.db.get_value("Account", {"company": company, "root_type": "Asset", "is_group": 1}, "name")
+
+
+def _valid_payment_account(account, company):
+    row = frappe.db.get_value(
+        "Account", account, ["company", "is_group", "account_type", "disabled"], as_dict=True
+    )
+    return bool(
+        row
+        and row.company == company
+        and not cint(row.is_group)
+        and row.account_type in ("Bank", "Cash")
+        and not cint(row.disabled)
+    )
+
+
+def _create_payment_account(company, label):
+    parent = _bank_parent(company)
     if not parent:
         frappe.throw(
-            _("No liability account group found for {0}, create a '{1}' liability account manually").format(
-                company, ACCOUNT_NAME
+            _("No asset account group found for {0}, create a '{1}' Bank account manually").format(
+                company, label
             )
         )
     return (
         frappe.get_doc(
             {
                 "doctype": "Account",
-                "account_name": ACCOUNT_NAME,
+                "account_name": label,
                 "parent_account": parent,
                 "company": company,
-                "root_type": "Liability",
+                "root_type": "Asset",
+                "account_type": "Bank",
                 "account_currency": frappe.get_cached_value("Company", company, "default_currency"),
             }
         )
         .insert(ignore_permissions=True)
         .name
     )
+
+
+def _get_or_create_account(company):
+    account_name = _account_name(company)
+    if frappe.db.exists("Account", account_name):
+        if _valid_payment_account(account_name, company):
+            return account_name
+
+        # 0.60.0 created this as an untyped liability ledger. On ERPNext 16 a
+        # Mode of Payment refuses that account. Repair it in place while it is
+        # unused, retaining the familiar name and any existing link to it.
+        if not frappe.db.exists("GL Entry", {"account": account_name}):
+            account = frappe.get_doc("Account", account_name)
+            account.parent_account = _bank_parent(company)
+            if not account.parent_account:
+                frappe.throw(_("No asset account group found for {0}").format(company))
+            account.root_type = "Asset"
+            account.report_type = "Balance Sheet"
+            account.account_type = "Bank"
+            account.disabled = 0
+            account.save(ignore_permissions=True)
+            return account.name
+
+        # Never move an account that already has ledger history across the
+        # balance sheet. Use a fresh internal account for future sales.
+        replacement = _account_name(company, FALLBACK_ACCOUNT_NAME)
+        if frappe.db.exists("Account", replacement):
+            if not _valid_payment_account(replacement, company):
+                frappe.throw(
+                    _("{0} exists but is not an enabled Bank or Cash ledger for {1}.").format(
+                        replacement, company
+                    )
+                )
+            return replacement
+        return _create_payment_account(company, FALLBACK_ACCOUNT_NAME)
+
+    return _create_payment_account(company, ACCOUNT_NAME)
 
 
 def ensure_setup(company):
@@ -160,13 +223,18 @@ def ensure_setup(company):
     elif not row.default_account:
         row.default_account = account
     elif row.default_account != account:
-        frappe.throw(
-            _(
-                "The payment method {0} already exists, and its account for {1} is {2}. LumenPOS needs its own "
-                "for sales on account: rename yours in ERPNext (Mode of Payment, Rename) and save again."
-            ).format(MODE_OF_PAYMENT, company, row.default_account),
-            title=_("Sales on account"),
-        )
+        # Remap only LumenPOS's legacy account. A different shop-created
+        # mapping is still a clash and must never be silently taken over.
+        if row.default_account == _account_name(company):
+            row.default_account = account
+        else:
+            frappe.throw(
+                _(
+                    "The payment method {0} already exists, and its account for {1} is {2}. LumenPOS needs its own "
+                    "for sales on account: rename yours in ERPNext (Mode of Payment, Rename) and save again."
+                ).format(MODE_OF_PAYMENT, company, row.default_account),
+                title=_("Sales on account"),
+            )
     else:
         if not cint(mop.enabled):
             mop.enabled = 1

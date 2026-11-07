@@ -455,10 +455,12 @@ function onDiscountApproved(result) {
 }
 .search-row {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
 }
 .search-box {
-  flex: 1;
+  flex: 1 1 260px;
+  min-width: 0;
   position: relative;
   display: flex;
   align-items: center;
@@ -490,6 +492,7 @@ function onDiscountApproved(result) {
 }
 .group-scroll {
   display: flex;
+  min-width: 0;
   gap: 8px;
   overflow-x: auto;
   flex: 1;
@@ -519,6 +522,19 @@ function onDiscountApproved(result) {
 .chip-bundle { font-weight: 700; }
 .chip-fav { font-weight: 700; }
 .chip-fav.active { background: var(--brand); border-color: var(--brand); color: #fff; }
+@media (max-width: 1200px) {
+  .search-box { flex-basis: 100%; }
+  .search-row > .btn { flex: 1 1 auto; }
+}
+@media (max-width: 900px) {
+  .sell { flex-direction: column; overflow-y: auto; }
+  .catalog { flex: 0 0 auto; min-height: 320px; max-height: 65vh; max-height: 65dvh; }
+}
+@media (max-width: 700px) {
+  .catalog { padding: 12px; }
+  .group-bar { flex-wrap: wrap; }
+  .group-scroll { flex-basis: 100%; }
+}
 .fav-grid {
   flex: 1;
   overflow-y: auto;

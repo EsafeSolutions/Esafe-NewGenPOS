@@ -475,6 +475,13 @@ function discard() {
   flex-shrink: 0;
   overflow: hidden;
 }
+@media (max-width: 900px) {
+  .cart { width: auto; min-height: 460px; margin: 0 16px 16px; }
+  .cart .cart-foot { flex-shrink: 0; }
+}
+@media (max-width: 700px) {
+  .cart { margin: 0 12px 12px; }
+}
 .customer-row {
   display: flex;
   align-items: center;
@@ -743,10 +750,11 @@ html[data-theme='dark'] .suggestion:hover { background: rgba(150, 100, 255, 0.3)
 }
 .actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   padding: 8px 16px;
 }
-.actions .btn { flex: 1; }
+.actions .btn { flex: 1 1 auto; }
 .pay {
   margin: 4px 16px 16px;
   border-radius: 10px;

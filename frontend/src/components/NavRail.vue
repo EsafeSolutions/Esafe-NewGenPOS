@@ -4,7 +4,7 @@
 <template>
   <nav class="rail" data-tour="nav-rail">
     <div class="logo">
-      <img :src="esafeMark" alt="EsafePOS" />
+      <img :src="esafeMark" alt="Esafe New Gen POS" />
     </div>
     <!-- The reports alone (0.65.0): Insights, the theme and the way back to ERPNext. -->
     <router-link v-if="!session.reportsOnly" to="/" class="rail-item" exact-active-class="active">
@@ -143,15 +143,20 @@ onUnmounted(() => {
   align-items: stretch;
   padding-bottom: 10px;
   flex-shrink: 0;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
 }
 .logo {
-  height: 56px;
+  height: 52px;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 .logo img { display: block; width: 34px; height: 38px; object-fit: contain; }
 .rail-item {
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   align-items: center;

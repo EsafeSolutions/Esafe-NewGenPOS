@@ -11,8 +11,9 @@
     <div class="main">
       <header class="topbar">
         <div class="topbar-left">
-          <div class="brand-lockup">
-            <img :src="esafeLogo" alt="EsafePOS" class="topbar-brand" />
+          <div class="brand-lockup" aria-label="Esafe New Gen POS">
+            <span class="brand-name">Esafe</span>
+            <span class="brand-product">New Gen POS</span>
           </div>
           <span class="brand-divider" aria-hidden="true"></span>
           <div class="topbar-title">{{ pageTitle }}</div>
@@ -191,7 +192,6 @@ import HelpPanel from './components/HelpPanel.vue'
 import HelpCard from './components/HelpCard.vue'
 import TourOverlay from './components/TourOverlay.vue'
 import { useHelpStore } from './stores/help'
-import esafeLogo from './assets/esafe-solutions-logo.png'
 
 const session = useSessionStore()
 const help = useHelpStore()
@@ -381,6 +381,7 @@ function setupAutoLock() {
 .shell {
   display: flex;
   height: 100vh;
+  height: 100dvh;
 }
 .main {
   flex: 1;
@@ -389,13 +390,15 @@ function setupAutoLock() {
   min-width: 0;
 }
 .topbar {
-  height: 52px;
+  min-height: 52px;
   background: var(--topbar-bg);
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 20px;
+  padding: 8px 16px;
+  gap: 12px 20px;
+  flex-wrap: wrap;
   flex-shrink: 0;
 }
 .topbar-left {
@@ -403,29 +406,25 @@ function setupAutoLock() {
   align-items: center;
   gap: 12px;
   min-width: 0;
-  overflow: hidden;
+  flex-wrap: wrap;
 }
 .brand-lockup {
-  display: inline-flex;
-  align-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   justify-content: center;
-  width: 144px;
-  height: 32px;
-  padding: 5px 9px;
-  background: #fff;
-  border-radius: 8px;
+  gap: 2px;
+  white-space: nowrap;
   flex: 0 0 auto;
 }
-.topbar-brand { display: block; width: 100%; height: 100%; object-fit: contain; }
+.brand-name { font-size: 18px; font-weight: 800; line-height: 1; }
+.brand-product { font-size: 10px; font-weight: 600; line-height: 1.2; letter-spacing: 0.08em; color: var(--brand-soft); }
 .brand-divider { width: 1px; height: 24px; background: rgba(255, 255, 255, 0.24); flex: 0 0 auto; }
 .topbar-title {
   font-size: 17px;
   font-weight: 700;
   white-space: nowrap;
 }
-/* In a long language (Vietnamese, German) the shift timer is the one to give
-   way: it is cut short rather than pushing the bar onto two lines. */
-.tb-shift { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .tb-pill {
   display: inline-flex;
   align-items: center;
@@ -443,11 +442,15 @@ function setupAutoLock() {
   display: flex;
   align-items: center;
   gap: 14px;
-  flex-shrink: 0;
+  flex-wrap: wrap;
+  min-width: 0;
 }
 .topbar-user {
   font-size: 12.5px;
-  opacity: 0.75;
+  color: #c5d0df;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 .lang-pill,
@@ -467,28 +470,6 @@ function setupAutoLock() {
   max-width: 260px;
 }
 .outlet-switch option { color: var(--text); background: var(--card-bg); }
-/* A phone: the bar keeps to the screen. The clock and the shift timer go (the
-   register pill still says open or closed), and the buttons on the right
-   scroll inside the bar instead of pushing the whole page sideways (it was
-   about 500px wide at 390 on every screen). */
-@media (max-width: 700px) {
-  .topbar { padding: 0 10px; gap: 8px; }
-  .brand-lockup, .brand-divider { display: none; }
-  .topbar-title { font-size: 15px; }
-  .tb-clock, .tb-shift { display: none; }
-  .help-word { display: none; }
-  .topbar-right {
-    flex: 1 1 auto;
-    flex-shrink: 1;
-    min-width: 0;
-    gap: 8px;
-    justify-content: flex-start;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-  .topbar-right::-webkit-scrollbar { display: none; }
-  .outlet-switch { max-width: 150px; }
-}
 .register-pill {
   font-size: 11.5px;
   font-weight: 700;
@@ -565,6 +546,22 @@ function setupAutoLock() {
 .offline-pill.syncing {
   background: rgba(0, 176, 185, 0.22);
   color: #8fe3e8;
+}
+/* Give actions their own row before they crowd the title and timers.
+   Wrapping also keeps the language popover outside a clipping scroll area. */
+@media (max-width: 1200px) {
+  .topbar-right { flex-basis: 100%; gap: 8px; }
+  .lang-list { inset-inline-start: 0; inset-inline-end: auto; }
+}
+@media (max-width: 700px) {
+  .topbar { padding: 8px 10px; gap: 8px; }
+  .topbar-title { font-size: 15px; }
+  .tb-clock, .tb-shift { display: none; }
+  .help-word { display: none; }
+  .topbar-right { position: relative; }
+  .lang-menu { position: static; }
+  .lang-list { max-width: 100%; }
+  .outlet-switch { max-width: 150px; }
 }
 .content {
   flex: 1;

@@ -10,8 +10,16 @@
 // (sent when a display opens so it gets the current cart immediately, without
 // waiting for the next change).
 
+import { newId } from './offline'
+
 const NAME = 'lumenpos-customer-display'
 let channel = null
+// Each till tab owns its display; customer input must never reach another till.
+export const displayTerminalId = newId()
+
+export function customerDisplayUrl() {
+  return window.location.href.replace(/#.*$/, '') + '#/display?terminal=' + displayTerminalId
+}
 
 function chan() {
   if (channel === null && typeof BroadcastChannel !== 'undefined') {
@@ -22,11 +30,32 @@ function chan() {
 
 export function publishCart(snapshot) {
   try {
-    chan()?.postMessage({ kind: 'cart', snapshot })
+    chan()?.postMessage({ kind: 'cart', snapshot: { ...snapshot, terminalId: displayTerminalId } })
   } catch {
     /* channel unavailable, ignore */
   }
 }
+
+export function sendDisplayCustomer(message) {
+  chan()?.postMessage({ kind: 'customer', ...message })
+}
+
+export function replyDisplayCustomer(message) {
+  chan()?.postMessage({ kind: 'customer-result', terminalId: displayTerminalId, ...message })
+}
+
+function listen(kind, handler) {
+  const c = chan()
+  if (!c) return () => {}
+  const fn = (event) => {
+    if (event.data?.kind === kind) handler(event.data)
+  }
+  c.addEventListener('message', fn)
+  return () => c.removeEventListener('message', fn)
+}
+
+export const onDisplayCustomer = (handler) => listen('customer', handler)
+export const onDisplayCustomerResult = (handler) => listen('customer-result', handler)
 
 // Main window: answer a display's request for the current state.
 export function onDisplayRequest(handler) {

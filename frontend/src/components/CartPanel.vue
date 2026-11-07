@@ -732,7 +732,7 @@ html[data-theme='dark'] .suggestion:hover { background: rgba(150, 100, 255, 0.3)
 .promo-row { color: var(--promo); font-weight: 600; }
 .bundle-row { color: var(--brand-dark); font-weight: 600; }
 .tax-included { font-size: 12px; }
-.order-discount-row { align-items: center; flex-wrap: wrap; gap: 8px; }
+.order-discount-row { align-items: center; flex-wrap: wrap; gap: 8px; padding: 0 16px 8px; }
 .od-control { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; }
 .od-control select { width: 82px; padding: 3px 6px; font-size: 13px; }
 .od-input {

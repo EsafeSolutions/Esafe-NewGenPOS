@@ -3,7 +3,7 @@
      "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md. -->
 <template>
   <!-- Customer-facing display: a chrome-free second screen, no app shell and
-       no bootstrap, it only listens for cart snapshots over BroadcastChannel. -->
+       no bootstrap, it exchanges cart/customer details over BroadcastChannel. -->
   <router-view v-if="isDisplay" />
 
   <div class="shell" v-else-if="session.loaded && !session.error">
@@ -179,6 +179,7 @@ import { useCatalogStore } from './stores/catalog'
 import { useCartStore } from './stores/cart'
 import { money, shiftClock, isolate } from './format'
 import { publishCart, onDisplayRequest } from './customerDisplay'
+import { connectDisplayCustomerEntry } from './displayCustomerEntry'
 import { ensurePersistentStorage } from './offline'
 import { t, locale, setLocale, offeredLanguages, LANGUAGES } from './i18n'
 import Icon from './components/Icon.vue'
@@ -291,7 +292,10 @@ async function openXReport() {
 
 // Push a fully-formatted cart snapshot to any open customer display.
 function publishDisplaySnapshot() {
-  if (!session.settings?.enable_customer_display) return
+  if (!session.settings?.enable_customer_display || session.locked) {
+    publishCart({ items: [], customer: '', saleId: cart.displaySaleId, displayEnabled: false, customerEntryEnabled: false })
+    return
+  }
   const saved =
     cart.promoSavings + cart.bundleSavings + cart.manualDiscountTotal + cart.orderDiscountTotal
   // A sale in another currency is shown in it, with its local value under it.
@@ -302,9 +306,13 @@ function publishDisplaySnapshot() {
       ? money(Math.round(cart.total * mc.outlet_rate * 100) / 100, mc.company_currency)
       : ''
   publishCart({
+    saleId: cart.displaySaleId,
+    displayEnabled: true,
+    customerEntryEnabled: Boolean(cart.lines.length && !cart.submitting),
     company: session.company,
     logo: session.settings?.receipt_logo || '',
     customer: cart.customer?.customer_name || '',
+    customerKey: cart.customer?.name || '',
     items: cart.lines.map((l) => ({
       name: l.item_name,
       qty: l.qty,
@@ -335,7 +343,7 @@ const pageTitle = computed(
 )
 
 onMounted(async () => {
-  // The display window is a passive mirror, no bootstrap, no catalog, no shell.
+  // The display talks to its till window, with no bootstrap, catalog or shell.
   if (isDisplay.value) return
 
   clockTimer = setInterval(() => (now.value = Date.now()), 1000)
@@ -352,14 +360,19 @@ onMounted(async () => {
     if (session.queuedCount && !session.offline) session.flushQueue()
     // Mirror the cart to any open customer display, and answer a display that
     // opens later and asks for the current state.
-    cart.$subscribe(() => publishDisplaySnapshot())
-    onDisplayRequest(publishDisplaySnapshot)
-    watch(() => session.settings?.enable_customer_display, publishDisplaySnapshot)
+    displayCleanup.push(cart.$subscribe(() => publishDisplaySnapshot()))
+    displayCleanup.push(onDisplayRequest(publishDisplaySnapshot))
+    displayCleanup.push(connectDisplayCustomerEntry(cart, session, publishDisplaySnapshot))
+    displayCleanup.push(watch(() => [session.settings?.enable_customer_display, session.locked], publishDisplaySnapshot))
+    publishDisplaySnapshot()
     setupAutoLock()
     // Who sees the welcome, or what is new since their last visit.
     help.init()
   }
 })
+
+const displayCleanup = []
+onBeforeUnmount(() => displayCleanup.forEach((stop) => stop()))
 
 // Auto-lock the till after a configured idle period (0 = manual lock only).
 let idleTimer = null

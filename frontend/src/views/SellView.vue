@@ -164,6 +164,7 @@ import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { t } from '../i18n'
 import { call } from '../api'
+import { customerDisplayUrl } from '../customerDisplay'
 import { money } from '../format'
 import { useSessionStore } from '../stores/session'
 import { useCatalogStore } from '../stores/catalog'
@@ -300,7 +301,7 @@ async function toggleFavourites() {
 
 function openCustomerDisplay() {
   // Same SPA, hash route, opens (or focuses) a dedicated second-screen window.
-  const url = window.location.href.replace(/#.*$/, '') + '#/display'
+  const url = customerDisplayUrl()
   window.open(url, 'lumenpos-customer-display', 'width=1024,height=720')
 }
 

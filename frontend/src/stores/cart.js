@@ -27,6 +27,7 @@ function round2(n) {
 
 export const useCartStore = defineStore('cart', {
   state: () => ({
+    displaySaleId: newId(),
     lines: [], // {item_code, item_name, item_group, brand, qty, price, manual_discount_percent}
     customer: null, // {name, customer_name, customer_group}
     wallet: null, // {loyalty_points, conversion_factor, store_credit}
@@ -477,6 +478,7 @@ export const useCartStore = defineStore('cart', {
 
     removeBundle(key) {
       this.lines = this.lines.filter((line) => line.bundle_key !== key)
+      if (!this.lines.length) this.displaySaleId = newId()
     },
 
     // "Sell in dollars": the sale goes to that currency's walk-in customer,
@@ -597,18 +599,19 @@ export const useCartStore = defineStore('cart', {
       const line = this.lines[index]
       line.serial_nos = (line.serial_nos || []).filter((s) => s !== serial)
       line.qty = line.serial_nos.length
-      if (!line.qty) this.lines.splice(index, 1)
+      if (!line.qty) this.removeLine(index)
     },
 
     setQty(index, qty) {
       if (this.lines[index]?.has_serial_no) return // qty is locked to serial count
       qty = Number(qty)
-      if (!qty || qty <= 0) this.lines.splice(index, 1)
+      if (!qty || qty <= 0) this.removeLine(index)
       else this.lines[index].qty = qty
     },
 
     removeLine(index) {
       this.lines.splice(index, 1)
+      if (!this.lines.length) this.displaySaleId = newId()
     },
 
     async setCustomer(customer) {
@@ -641,6 +644,7 @@ export const useCartStore = defineStore('cart', {
     },
 
     clear() {
+      this.displaySaleId = newId()
       this.lines = []
       this.customer = null
       this.wallet = null

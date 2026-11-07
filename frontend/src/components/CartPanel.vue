@@ -143,13 +143,13 @@
           v-if="session.settings.enable_order_discount"
           type="button"
           class="tool"
-          :class="{ on: tool === 'discount' || cart.orderDiscountPercent > 0 }"
+          :class="{ on: tool === 'discount' || cart.orderDiscountTotal > 0 }"
           :disabled="!cart.lines.length"
           :aria-expanded="tool === 'discount' ? 'true' : 'false'"
           @click="toggleTool('discount')"
         >
           <Icon name="tag" />
-          {{ cart.orderDiscountPercent > 0 ? t('Discount {pct}%', { pct: cart.orderDiscountPercent }) : t('Discount') }}
+          {{ cart.orderDiscountTotal > 0 ? (cart.orderDiscountMethod === 'amount' ? t('Discount') + ' ' + cart.show(cart.orderDiscountTotal) : t('Discount {pct}%', { pct: cart.orderDiscountPercent })) : t('Discount') }}
         </button>
         <button
           type="button"
@@ -177,21 +177,26 @@
       <div v-if="tool === 'discount' && session.settings.enable_order_discount" class="tool-panel row order-discount-row">
         <span class="muted">{{ t('Order discount') }}</span>
         <span class="od-control">
+          <select :aria-label="t('Order discount method')" :value="cart.orderDiscountMethod" :disabled="session.permissions.can_edit_price === false" @change="cart.setOrderDiscount(0, $event.target.value)">
+            <option value="percent">%</option>
+            <option value="amount">{{ t('Direct') }}</option>
+          </select>
           <input
             ref="toolInput"
             type="number"
             min="0"
-            max="100"
-            step="1"
+            :max="cart.orderDiscountMethod === 'percent' ? 100 : undefined"
+            step="0.01"
+            :aria-label="t('Order discount value')"
             inputmode="decimal"
             class="od-input"
-            :value="cart.orderDiscountPercent || ''"
+            :value="(cart.orderDiscountMethod === 'amount' ? cart.orderDiscountAmount : cart.orderDiscountPercent) || ''"
             placeholder="0"
             :disabled="session.permissions.can_edit_price === false"
             @input="cart.setOrderDiscount($event.target.value)"
             @keydown.enter="tool = ''"
           />
-          <span class="od-pct">%</span>
+          <span class="od-pct">{{ cart.orderDiscountMethod === 'amount' ? cart.saleCurrency.currency : '%' }}</span>
           <span v-if="cart.orderDiscountTotal > 0" class="od-amt"
             >-{{ cart.show(cart.orderDiscountTotal) }}</span
           >
@@ -234,7 +239,7 @@
             <span>-{{ cart.show(cart.manualDiscountTotal) }}</span>
           </div>
           <div v-if="cart.orderDiscountTotal > 0" class="row promo-row">
-            <span class="muted">{{ t('Order discount') }} ({{ cart.orderDiscountPercent }}%)</span>
+            <span class="muted">{{ t('Order discount') }}<template v-if="cart.orderDiscountMethod !== 'amount'"> ({{ cart.orderDiscountPercent }}%)</template></span>
             <span>-{{ cart.show(cart.orderDiscountTotal) }}</span>
           </div>
           <div v-for="tax in cart.taxBreakdown.exclusive" :key="'x' + tax.description" class="row">
@@ -727,10 +732,11 @@ html[data-theme='dark'] .suggestion:hover { background: rgba(150, 100, 255, 0.3)
 .promo-row { color: var(--promo); font-weight: 600; }
 .bundle-row { color: var(--brand-dark); font-weight: 600; }
 .tax-included { font-size: 12px; }
-.order-discount-row { align-items: center; }
-.od-control { display: inline-flex; align-items: center; gap: 4px; }
+.order-discount-row { align-items: center; flex-wrap: wrap; gap: 8px; }
+.od-control { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.od-control select { width: 82px; padding: 3px 6px; font-size: 13px; }
 .od-input {
-  width: 56px;
+  width: 80px;
   padding: 3px 6px;
   font-size: 13px;
   text-align: right;

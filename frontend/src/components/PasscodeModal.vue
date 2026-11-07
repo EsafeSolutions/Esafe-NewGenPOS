@@ -146,7 +146,7 @@ async function sendRequest() {
         .map(
           (l) =>
             l.qty + ' x ' + l.item_name +
-            (l.manual_discount_percent ? ' (-' + l.manual_discount_percent + '%)' : '')
+            (l.manual_discount_method === 'amount' ? ' (-' + l.manual_discount_amount + ' ' + cart.saleCurrency.currency + ' / unit)' : (l.manual_discount_percent ? ' (-' + l.manual_discount_percent + '%)' : ''))
         )
         .join(String.fromCharCode(10)),
     })

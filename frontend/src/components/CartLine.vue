@@ -22,7 +22,10 @@
         <div v-if="promoTitles.length" class="line-promos">
           <span v-for="title in promoTitles" :key="title" class="promo-badge"><Icon name="star" /> {{ title }}</span>
         </div>
-        <div v-if="line.manual_discount_percent" class="muted small">
+        <div v-if="line.manual_discount_method === 'amount' && line.manual_discount_amount" class="muted small">
+          {{ t('{amount} discount per unit', { amount: money(line.manual_discount_amount, cart.saleCurrency.currency) }) }}
+        </div>
+        <div v-else-if="line.manual_discount_percent" class="muted small">
           {{ t('{percent}% manual discount', { percent: line.manual_discount_percent }) }}
         </div>
         <div v-if="line.price_override != null" class="muted small">
@@ -78,32 +81,49 @@
       </div>
       <!-- A price typed for this line: the outlet allows it (POS Profile, Allow
            User to Edit Rate) and the person may edit prices. -->
-      <div v-if="canChangePrice" class="edit-field">
-        <label>{{ t('Price') }}</label>
-        <input
-          type="text"
-          inputmode="decimal"
-          class="price-in"
-          :value="priceText"
-          :placeholder="String(listPrice)"
-          @change="cart.setLinePrice(index, $event.target.value)"
-          @keydown.enter="$event.target.blur()"
-        />
-      </div>
       <div class="edit-field">
-        <label>{{ t('Discount %') }}</label>
+        <label :for="`line-price-${index}`">{{ t('Unit price') }} ({{ cart.saleCurrency.currency }})</label>
         <input
+          :id="`line-price-${index}`"
           type="number"
           min="0"
-          max="100"
-          :value="line.manual_discount_percent"
+          step="0.01"
+          inputmode="decimal"
+          class="price-in"
+          :disabled="!canChangePrice"
+          :title="canChangePrice ? '' : priceHint"
+          :value="priceText"
+          :placeholder="String(listPrice)"
+          @change="setPrice($event)"
+          @keydown.enter="$event.target.blur()"
+        />
+        <button v-if="canChangePrice && line.price_override != null" class="reset-price" @click="cart.setLinePrice(index, '')">{{ t('Reset price') }}</button>
+      </div>
+      <div class="edit-field discount-field">
+        <label :for="`line-discount-${index}`">{{ discountMethod === 'amount' ? t('Discount per unit') : t('Discount') }}</label>
+        <div class="discount-control">
+        <select :aria-label="t('Item discount method')" :value="discountMethod" :disabled="!canEditPrice" @change="cart.setLineDiscount(index, 0, $event.target.value)">
+          <option value="percent">%</option>
+          <option value="amount">{{ t('Direct') }}</option>
+        </select>
+        <input
+          :id="`line-discount-${index}`"
+          type="number"
+          min="0"
+          :max="discountMethod === 'percent' ? 100 : undefined"
+          step="0.01"
+          inputmode="decimal"
+          :value="discountMethod === 'amount' ? (line.manual_discount_amount || 0) : (line.manual_discount_percent || 0)"
           :disabled="!canEditPrice"
           :title="canEditPrice ? '' : t('You are not allowed to edit prices')"
           @input="setDiscount($event.target.value)"
           @change="setDiscount($event.target.value)"
         />
+        <span v-if="discountMethod === 'amount'" class="muted small">{{ cart.saleCurrency.currency }}</span>
+        </div>
       </div>
       <button class="btn btn-ghost remove" @click="cart.removeLine(index)">{{ t('Remove') }}</button>
+      <div v-if="!canChangePrice" class="price-hint muted small">{{ priceHint }}</div>
     </div>
 
     <SerialModal
@@ -121,7 +141,7 @@ import { ref } from 'vue'
 import { t } from '../i18n'
 import { useCartStore } from '../stores/cart'
 import { useSessionStore } from '../stores/session'
-import { warrantyLabel } from '../format'
+import { money, warrantyLabel } from '../format'
 import SerialModal from './SerialModal.vue'
 
 import { computed } from 'vue'
@@ -129,6 +149,9 @@ import { computed } from 'vue'
 const session = useSessionStore()
 const canEditPrice = computed(() => session.permissions?.can_edit_price !== false)
 const canChangePrice = computed(() => Boolean(session.permissions?.can_change_price))
+const priceHint = computed(() => !canEditPrice.value
+  ? t('You are not allowed to edit prices')
+  : t('Enable Allow User to Edit Rate in the POS Profile to change prices.'))
 
 const props = defineProps({
   line: Object,
@@ -145,7 +168,8 @@ const cart = useCartStore()
 const expanded = ref(false)
 const serialOpen = ref(false)
 
-const totalDiscount = computed(() => (props.promoDiscount || 0) + (props.bundleDiscount || 0))
+const discountMethod = computed(() => props.line.manual_discount_method || 'percent')
+const totalDiscount = computed(() => (props.promoDiscount || 0) + (props.bundleDiscount || 0) + (cart.discountBreakdown.manual[props.index] || 0))
 
 // The unit price in the sale's currency: the typed one, or the list's.
 const listPrice = computed(() => cart.inSale(props.line.price_before_override ?? props.line.price))
@@ -159,8 +183,12 @@ function onSerialAdded(serial) {
 }
 
 function setDiscount(value) {
-  const pct = Math.max(0, Math.min(100, Number(value) || 0))
-  cart.lines[props.index].manual_discount_percent = pct
+  cart.setLineDiscount(props.index, value)
+}
+
+function setPrice(event) {
+  cart.setLinePrice(props.index, event.target.value)
+  event.target.value = priceText.value
 }
 </script>
 
@@ -254,6 +282,7 @@ html[data-theme='dark'] .line-suggestion:hover { background: rgba(150, 100, 255,
 .small { font-size: 12px; }
 .line-edit {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-end;
   gap: 12px;
   padding: 4px 16px 14px;
@@ -272,6 +301,11 @@ html[data-theme='dark'] .line-suggestion:hover { background: rgba(150, 100, 255,
   padding: 7px 8px;
 }
 .edit-field input.price-in { width: 96px; }
+.discount-control { display: flex; align-items: center; gap: 4px; }
+.discount-control select { width: 82px; padding: 7px 8px; }
+.discount-control input { width: 80px; }
+.price-hint { flex-basis: 100%; }
+.reset-price { display: block; color: var(--brand-dark); font-size: 11px; margin-top: 4px; }
 .stepper { display: flex; gap: 4px; }
 .stepper .btn { padding: 7px 12px; }
 .remove { margin-left: auto; color: var(--red); }

@@ -104,8 +104,11 @@ const modes = computed(() =>
 // disagrees with the hold is how a customer ends up "paid in full" and still
 // owing the VAT at hand-over.
 const quote = ref(null)
+const manualRate = (line) => line.manual_discount_method === 'amount'
+  ? Math.max(0, line.price - (line.manual_discount_amount || 0) / (cart.saleCurrency.factor || 1))
+  : line.price * (1 - (line.manual_discount_percent || 0) / 100)
 const held = (line) =>
-  Math.round(line.qty * line.price * (1 - (line.manual_discount_percent || 0) / 100) * 100) / 100
+  Math.round(line.qty * manualRate(line) * 100) / 100
 const heldNet = computed(() => cart.lines.reduce((sum, l) => sum + held(l), 0))
 const total = computed(() => (quote.value ? quote.value.total : heldNet.value))
 
@@ -153,7 +156,7 @@ function lines() {
     item_code: line.item_code,
     item_name: line.item_name,
     qty: line.qty,
-    rate: Math.round(line.price * (1 - (line.manual_discount_percent || 0) / 100) * 100) / 100,
+    rate: Math.round(manualRate(line) * 100) / 100,
   }))
 }
 

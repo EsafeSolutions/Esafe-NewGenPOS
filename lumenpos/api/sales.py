@@ -6,6 +6,7 @@ from __future__ import annotations
 from collections.abc import Callable
 
 import json
+import math
 
 import frappe
 from frappe import _
@@ -17,6 +18,7 @@ from lumenpos.promotions.engine import evaluate
 from lumenpos.promotions.loader import get_active_promotions
 from lumenpos import erpnext_compat
 from lumenpos.api import salespeople
+from lumenpos.api.discounts import discount_breakdown
 
 INVOICE_DOCTYPE = "POS Invoice"
 
@@ -262,9 +264,6 @@ def _build_sale_invoice(
         profile, customer_group, app.get("price_list") if app else None
     )
     ctx = currency.sale_context(profile, customer, price_list, session_name, pin)
-    if check_passcode:
-        _check_price_edit_permission(payload)
-    discount_approver = _check_discount_passcode(payload) if check_passcode else None
 
     lines = _build_lines(
         payload["items"],
@@ -314,6 +313,17 @@ def _build_sale_invoice(
         "basket_discount": promo_raw["basket_discount"],
         "applied": promo_raw["applied"] + bundle_applied,
     }
+
+    # Calculate direct discounts from authoritative prices, including offers and
+    # exchange rates, before enforcing the same percentage approval limits.
+    breakdown = _discount_breakdown(payload, lines, promo_result, bundle_discounts, ctx.factor)
+    approval_payload = dict(payload)
+    approval_payload["order_discount_percent"] = round(breakdown["order_percent"], 8)
+    approval_payload["items"] = [dict(row, manual_discount_percent=round(breakdown["manual_percent"][i], 8))
+                                 for i, row in enumerate(payload["items"])]
+    if check_passcode:
+        _check_price_edit_permission(approval_payload)
+    discount_approver = _check_discount_passcode(approval_payload) if check_passcode else None
 
     # LumenPOS owns POS pricing (price books + its own promotion engine), and the
     # till/cart NEVER applies ERPNext Pricing Rules, so POS sales always ignore
@@ -374,7 +384,7 @@ def _build_sale_invoice(
     # share of any basket discount + manual %. Folding the basket discount
     # into the lines (instead of invoice-level apply_discount_on) keeps the
     # math correct under VAT-inclusive pricing.
-    per_unit_discounts = _line_discounts(payload, lines, promo_result, bundle_discounts)
+    per_unit_discounts = breakdown["per_unit"]
 
     return_groups = _compute_return_groups(
         payload["items"], lines, non_bundle_idx, active_promos, promo_result["applied"]
@@ -484,8 +494,8 @@ def _price_overrides(payload, lines, ctx, profile):
     out = []
     for i, row in typed:
         value = flt(row.get("price_override"))
-        if value < 0:
-            frappe.throw(_("A price cannot be below zero."))
+        if not math.isfinite(value) or value < 0:
+            frappe.throw(_("A price must be a finite number at or above zero."))
         was = flt(flt(lines[i]["price"]) * factor, 2)
         lines[i]["price"] = value / factor
         lines[i]["standard_price"] = value / factor
@@ -1532,59 +1542,24 @@ def _validate_line_serials(line, serial_nos, profile, seen_serials):
     return serials
 
 
+def _discount_breakdown(payload, lines, promo_result, bundle_discounts, factor=1):
+    settings = frappe.get_cached_doc("LumenPOS Settings")
+    rows = [dict(line,
+                 bundle_key=payload["items"][i].get("bundle_key"),
+                 manual_discount_method=payload["items"][i].get("manual_discount_method"),
+                 manual_discount_amount=payload["items"][i].get("manual_discount_amount"),
+                 manual_discount_percent=payload["items"][i].get("manual_discount_percent"))
+            for i, line in enumerate(lines)]
+    return discount_breakdown(rows, promo_result, bundle_discounts, {
+        "enabled": bool(settings.get("enable_order_discount")),
+        "method": payload.get("order_discount_method"),
+        "amount": payload.get("order_discount_amount"),
+        "percent": payload.get("order_discount_percent"),
+    }, factor=flt(factor) or 1.0, rounding=flt)
+
+
 def _line_discounts(payload, lines, promo_result, bundle_discounts):
-    """Per-unit discount for each line: promotion + bundle + a proportional
-    share of any basket discount, with the manual % applied on top of the
-    discounted unit price. Returned as a per-unit amount (ERPNext multiplies
-    by qty)."""
-    n = len(lines)
-    whole = [0.0] * n  # whole-line (qty-total) discount before manual %
-
-    for i in range(n):
-        whole[i] = flt(promo_result["line_discounts"][i]) + flt(bundle_discounts[i])
-
-    # Spread the basket discount across non-bundle lines by their net amount
-    basket = flt(promo_result.get("basket_discount"))
-    if basket > 0:
-        eligible = [
-            i for i in range(n) if not payload["items"][i].get("bundle_key")
-        ]
-        net = {
-            i: lines[i]["price"] * lines[i]["qty"] - whole[i] for i in eligible
-        }
-        total_net = sum(v for v in net.values() if v > 0)
-        if total_net > 0:
-            spread = 0.0
-            for i in eligible:
-                if net[i] <= 0:
-                    continue
-                share = flt(basket * net[i] / total_net, 2)
-                whole[i] += share
-                spread += share
-            # park any rounding remainder on the largest eligible line
-            remainder = flt(basket - spread, 2)
-            if remainder and eligible:
-                biggest = max(eligible, key=lambda i: net[i])
-                whole[biggest] += remainder
-
-    # Whole-cart discount stacks on top of every line-level discount. Bundles
-    # are priced as a fixed package and never participate.
-    order_pct = flt(payload.get("order_discount_percent"))
-    per_unit = [0.0] * n
-    for i in range(n):
-        qty = lines[i]["qty"] or 1
-        promo_per_unit = whole[i] / qty
-        is_bundle = bool(payload["items"][i].get("bundle_key"))
-        manual_pct = (
-            0 if is_bundle else flt(payload["items"][i].get("manual_discount_percent"))
-        )
-        manual_per_unit = (lines[i]["price"] - promo_per_unit) * manual_pct / 100.0
-        unit_discount = promo_per_unit + manual_per_unit
-        if order_pct and not is_bundle:
-            net_after_line = lines[i]["price"] - unit_discount
-            unit_discount += net_after_line * order_pct / 100.0
-        per_unit[i] = max(0.0, unit_discount)
-    return per_unit
+    return _discount_breakdown(payload, lines, promo_result, bundle_discounts)["per_unit"]
 
 
 def _reconcile_payment(invoice, profile):

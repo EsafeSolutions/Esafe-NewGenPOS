@@ -16,6 +16,7 @@ import {
 import { evaluatePromotions, suggestOffers, matchingIndexes } from '../promotions'
 import { frappeRound, fromReceipt, returnGroups } from '../refund'
 import { money } from '../format'
+import { discountBreakdown } from '../discounts'
 import { locale } from '../i18n'
 import { useCatalogStore } from './catalog'
 import { useSessionStore } from './session'
@@ -33,6 +34,8 @@ export const useCartStore = defineStore('cart', {
     salesPerson: null, // persists across sales (shift-based)
     appType: null, // delivery-app channel (null = walk-in)
     orderId: '',
+    orderDiscountMethod: 'percent',
+    orderDiscountAmount: 0,
     orderDiscountPercent: 0, // whole-cart discount (Settings → Features)
     discountPasscode: null, // manager passcode for over-limit discounts
     discountRequest: null, // approved POS Discount Request name (role approval)
@@ -175,31 +178,28 @@ export const useCartStore = defineStore('cart', {
     subtotal: (state) =>
       state.lines.reduce((sum, l) => sum + l.price * l.qty, 0),
 
-    manualDiscountTotal(state) {
-      const promoDiscounts = this.evaluation.line_discounts
-      return state.lines.reduce((sum, l, i) => {
-        const afterPromo = l.price * l.qty - (promoDiscounts[i] || 0)
-        return sum + (afterPromo * (l.manual_discount_percent || 0)) / 100
-      }, 0)
+    discountBreakdown() {
+      const session = useSessionStore()
+      const rule = session.settings?.rounding?.[session.currency] || {}
+      return discountBreakdown(this.lines, this.evaluation, this.bundleBreakdown.discounts, {
+        enabled: session.settings?.enable_order_discount,
+        method: this.orderDiscountMethod,
+        amount: this.orderDiscountAmount,
+        percent: this.orderDiscountPercent,
+      }, this.saleCurrency.factor || 1, (n) => frappeRound(n, 2, rule.method, rule.commercial))
+    },
+
+    manualDiscountTotal() {
+      return this.discountBreakdown.manual.reduce((sum, amount) => sum + amount, 0)
     },
 
     promoSavings() {
       return this.evaluation.total_savings
     },
 
-    // Whole-cart discount, applied AFTER line-level discounts (promo + manual
-    // + bundle). Gated by the Settings → Features toggle; disabling it makes
-    // any lingering percent inert. Mirrored on the server in _line_discounts.
-    orderDiscountTotal(state) {
-      const session = useSessionStore()
-      if (!session.settings?.enable_order_discount) return 0
-      const pct = state.orderDiscountPercent || 0
-      if (pct <= 0) return 0
-      const base = Math.max(
-        0,
-        this.subtotal - this.promoSavings - this.manualDiscountTotal - this.bundleSavings
-      )
-      return round2((base * pct) / 100)
+    // Fixed-price bundles are excluded from both order discount methods.
+    orderDiscountTotal() {
+      return this.discountBreakdown.orderTotal
     },
 
     // Net of all discounts, before exclusive taxes
@@ -272,41 +272,8 @@ export const useCartStore = defineStore('cart', {
     // discount, then the line's manual % and the whole-cart %. A sale queued
     // offline keeps each line's rate from it, so it can be taken back without
     // a connection at the rate ERPNext will post (refund.js).
-    unitDiscounts(state) {
-      const session = useSessionStore()
-      const rule = session.settings?.rounding?.[session.currency] || {}
-      const r2 = (x) => frappeRound(x, 2, rule.method, rule.commercial)
-      const whole = state.lines.map(
-        (l, i) => (this.evaluation.line_discounts[i] || 0) + (this.bundleBreakdown.discounts[i] || 0)
-      )
-      const basket = this.evaluation.basket_discount || 0
-      if (basket > 0) {
-        const eligible = state.lines.map((l, i) => i).filter((i) => !state.lines[i].bundle_key)
-        const net = {}
-        for (const i of eligible) net[i] = state.lines[i].price * state.lines[i].qty - whole[i]
-        const totalNet = eligible.reduce((sum, i) => sum + (net[i] > 0 ? net[i] : 0), 0)
-        if (totalNet > 0) {
-          let spread = 0
-          for (const i of eligible) {
-            if (net[i] <= 0) continue
-            const share = r2((basket * net[i]) / totalNet)
-            whole[i] += share
-            spread += share
-          }
-          const rest = r2(basket - spread)
-          if (rest && eligible.length) {
-            whole[eligible.reduce((a, b) => (net[a] >= net[b] ? a : b))] += rest
-          }
-        }
-      }
-      const orderPct = state.orderDiscountPercent || 0
-      return state.lines.map((l, i) => {
-        const promoPerUnit = whole[i] / (l.qty || 1)
-        const bundle = Boolean(l.bundle_key)
-        let unit = promoPerUnit + ((l.price - promoPerUnit) * (bundle ? 0 : l.manual_discount_percent || 0)) / 100
-        if (orderPct && !bundle) unit += ((l.price - unit) * orderPct) / 100
-        return Math.max(0, unit)
-      })
+    unitDiscounts() {
+      return this.discountBreakdown.perUnit
     },
 
     itemCount: (state) => state.lines.reduce((sum, l) => sum + l.qty, 0),
@@ -314,11 +281,9 @@ export const useCartStore = defineStore('cart', {
     // The largest single discount on the sale, the per-line max OR the
     // whole-cart percent, whichever is bigger. Drives the approval gate so an
     // order-level discount is policed by the same limit as a line discount.
-    maxManualDiscount: (state) =>
-      Math.max(
-        state.lines.reduce((max, l) => Math.max(max, l.manual_discount_percent || 0), 0),
-        state.orderDiscountPercent || 0
-      ),
+    maxManualDiscount() {
+      return Number(Math.max(0, ...this.discountBreakdown.manualPercent, this.discountBreakdown.orderPercent).toFixed(8))
+    },
 
     needsDiscountApproval(state) {
       const session = useSessionStore()
@@ -595,13 +560,16 @@ export const useCartStore = defineStore('cart', {
     // Empty goes back to the list's price.
     setLinePrice(index, value) {
       const line = this.lines[index]
-      if (!line || line.bundle_key) return
+      if (!line || line.bundle_key || !useSessionStore().permissions?.can_change_price) return
       const text = String(value ?? '').trim().replace(',', '.')
       if (text === '') {
         this._clearPrice(line)
         return
       }
-      const typed = Math.max(0, Math.round((Number(text) || 0) * 100) / 100)
+      if (!Number.isFinite(Number(text)) || Number(text) < 0) return
+      const typed = round2(Number(text))
+      this.discountPasscode = null
+      this.discountRequest = null
       if (line.price_override == null) {
         line.price_before_override = line.price
         line.standard_before_override = line.standard_price
@@ -614,6 +582,8 @@ export const useCartStore = defineStore('cart', {
 
     _clearPrice(line) {
       if (line.price_override == null) return
+      this.discountPasscode = null
+      this.discountRequest = null
       line.price = line.price_before_override ?? line.price
       line.standard_price = line.standard_before_override ?? line.price
       line.price_override = null
@@ -647,7 +617,13 @@ export const useCartStore = defineStore('cart', {
       const before = this.saleCurrency.currency
       this.customer = customer
       if (this.saleCurrency.currency !== before) {
-        for (const line of this.lines) this._clearPrice(line)
+        for (const line of this.lines) {
+          this._clearPrice(line)
+          line.manual_discount_amount = 0
+        }
+        this.orderDiscountAmount = 0
+        this.discountPasscode = null
+        this.discountRequest = null
       }
       this.wallet = null
       this.reprice() // customer group may activate a price book
@@ -672,6 +648,8 @@ export const useCartStore = defineStore('cart', {
       this.appType = null
       this.orderId = ''
       this.orderDiscountPercent = 0
+      this.orderDiscountMethod = 'percent'
+      this.orderDiscountAmount = 0
       this.discountPasscode = null
       this.discountRequest = null
       this.activePriceList = null
@@ -733,16 +711,30 @@ export const useCartStore = defineStore('cart', {
       this.couponCodes = this.couponCodes.filter((c) => c !== code)
     },
 
-    // Whole-cart discount. Clamped to 0 to 100; changing it invalidates any
-    // previously granted over-limit approval so a higher value must be
-    // re-approved (mirrors the per-line discount flow).
-    setOrderDiscount(percent) {
-      const pct = Math.max(0, Math.min(100, Number(percent) || 0))
-      if (pct !== this.orderDiscountPercent) {
-        this.discountPasscode = null
-        this.discountRequest = null
-      }
-      this.orderDiscountPercent = pct
+    setLineDiscount(index, value, method = null) {
+      const line = this.lines[index]
+      if (!line || line.bundle_key || useSessionStore().permissions?.can_edit_price === false) return
+      const nextMethod = method || line.manual_discount_method || 'percent'
+      const number = Number(value)
+      const amount = Number.isFinite(number) ? Math.max(0, number) : 0
+      line.manual_discount_method = nextMethod === 'amount' ? 'amount' : 'percent'
+      line.manual_discount_amount = nextMethod === 'amount' ? round2(amount) : 0
+      line.manual_discount_percent = nextMethod === 'amount' ? 0 : Math.min(100, amount)
+      this.discountPasscode = null
+      this.discountRequest = null
+    },
+
+    setOrderDiscount(value, method = null) {
+      const session = useSessionStore()
+      if (!session.settings?.enable_order_discount || session.permissions?.can_edit_price === false) return
+      const nextMethod = method || this.orderDiscountMethod
+      const number = Number(value)
+      const amount = Number.isFinite(number) ? Math.max(0, number) : 0
+      this.orderDiscountMethod = nextMethod === 'amount' ? 'amount' : 'percent'
+      this.orderDiscountAmount = nextMethod === 'amount' ? round2(amount) : 0
+      this.orderDiscountPercent = nextMethod === 'amount' ? 0 : Math.min(100, amount)
+      this.discountPasscode = null
+      this.discountRequest = null
     },
 
     // Cart fields the server needs to price the sale, WITHOUT payment/auth
@@ -757,6 +749,8 @@ export const useCartStore = defineStore('cart', {
           item_code: l.item_code,
           qty: l.qty,
           manual_discount_percent: l.manual_discount_percent || 0,
+          manual_discount_method: l.manual_discount_method || 'percent',
+          manual_discount_amount: l.manual_discount_amount || 0,
           // A price typed at the till, in the sale's currency (setLinePrice).
           price_override: l.price_override ?? null,
           serial_nos: l.serial_nos || [],
@@ -767,6 +761,8 @@ export const useCartStore = defineStore('cart', {
         app_type: this.appType,
         order_id: this.orderId || null,
         order_discount_percent: this.orderDiscountPercent || 0,
+        order_discount_method: this.orderDiscountMethod,
+        order_discount_amount: this.orderDiscountAmount,
         note: this.note || null,
       }
     },
@@ -996,10 +992,7 @@ export const useCartStore = defineStore('cart', {
         posting_time: new Date().toTimeString().slice(0, 8),
         currency: sale.foreign ? sale.currency : session.currency,
         items: this.lines.map((l, i) => {
-          const promoDiscount = this.evaluation.line_discounts[i] || 0
-          const lineTotal = inSale(
-            (l.price * l.qty - promoDiscount) * (1 - (l.manual_discount_percent || 0) / 100)
-          )
+          const lineTotal = inSale((l.price - this.unitDiscounts[i]) * l.qty)
           return {
             item_code: l.item_code,
             item_name: l.item_name,
@@ -1008,7 +1001,7 @@ export const useCartStore = defineStore('cart', {
             amount: lineTotal,
           }
         }),
-        discount_amount: inSale(this.evaluation.basket_discount),
+        discount_amount: 0, // All discounts are already allocated to the lines.
         taxes: [],
         grand_total: saleTotal,
         rounded_total: saleTotal,
@@ -1102,21 +1095,30 @@ export const useCartStore = defineStore('cart', {
         customer: this.customer?.name || null,
         customer_name: this.customer?.customer_name || null,
         note: note || null,
-        cart: { lines: this.lines, note: this.note },
+        cart: { lines: this.lines, note: this.note,
+          orderDiscountMethod: this.orderDiscountMethod,
+          orderDiscountAmount: this.orderDiscountAmount,
+          orderDiscountPercent: this.orderDiscountPercent },
       })
       this.clear()
     },
 
     async retrieve(name) {
       const data = await call('lumenpos.api.sales.retrieve_parked', { name })
-      this.lines = data.cart.lines || []
-      this.note = data.cart.note || ''
+      this.clear()
       if (data.customer) {
         const matches = await call('lumenpos.api.catalog.search_customers', {
           search: data.customer,
         })
         await this.setCustomer(matches.find((c) => c.name === data.customer) || null)
       }
+      this.lines = data.cart.lines || []
+      this.note = data.cart.note || ''
+      this.orderDiscountMethod = data.cart.orderDiscountMethod || 'percent'
+      this.orderDiscountAmount = data.cart.orderDiscountAmount || 0
+      this.orderDiscountPercent = data.cart.orderDiscountPercent || 0
+      this.discountPasscode = null
+      this.discountRequest = null
     },
   },
 })

@@ -72,14 +72,8 @@
         >
           <Icon name="gift" /> {{ t('Bundles') }}
         </button>
-        <select aria-label="Brand" class="catalog-filter" :value="catalog.brand" @change="catalog.setBrand($event.target.value)">
-          <option value="">{{ t('All brands') }}</option>
-          <option v-for="brand in catalog.brands" :key="brand" :value="brand">{{ brand }}</option>
-        </select>
-        <select aria-label="Item group" class="catalog-filter" :value="catalog.itemGroup" @change="catalog.setGroup($event.target.value)">
-          <option value="">{{ t('All item groups') }}</option>
-          <option v-for="group in session.itemGroups" :key="group" :value="group">{{ group }}</option>
-        </select>
+        <SearchSelect :label="t('Brand')" :model-value="catalog.brand" :options="brandOptions" @change="catalog.setBrand" />
+        <SearchSelect :label="t('Item group')" :model-value="catalog.itemGroup" :options="groupOptions" @change="catalog.setGroup" />
       </div>
 
       <div v-if="showBundles" class="bundle-grid">
@@ -150,7 +144,8 @@
 
 <script setup>
 import Icon from '../components/Icon.vue'
-import { ref, onMounted, watch } from 'vue'
+import SearchSelect from '../components/SearchSelect.vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { t } from '../i18n'
 import { call } from '../api'
@@ -192,6 +187,8 @@ function onSearchInput(value) {
 }
 const catalog = useCatalogStore()
 const cart = useCartStore()
+const brandOptions = computed(() => [{ value:'', label:t('All brands') }, ...catalog.brands.map((brand) => ({ value:brand, label:brand }))])
+const groupOptions = computed(() => [{ value:'', label:t('All item groups') }, ...session.itemGroups.map((group) => ({ value:group, label:group }))])
 
 const paymentOpen = ref(false)
 const parkedOpen = ref(false)
@@ -540,7 +537,6 @@ function onDiscountApproved(result) {
 @media (max-width: 700px) {
   .catalog { padding: 12px; }
   .group-bar { flex-wrap: wrap; }
-  .group-scroll { flex-basis: 100%; }
 }
 .fav-grid {
   flex: 1;

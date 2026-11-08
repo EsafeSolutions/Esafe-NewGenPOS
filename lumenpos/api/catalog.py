@@ -214,6 +214,7 @@ def get_items(pos_profile: str, search: str = "", item_group: str = "", start: i
     fields = [
         "name as item_code",
         "item_name",
+        "description",
         "item_group",
         "brand",
         "stock_uom",

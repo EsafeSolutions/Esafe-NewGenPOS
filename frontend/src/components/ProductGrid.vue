@@ -24,6 +24,7 @@
           <img v-if="item.image" :src="item.image" :alt="item.item_name" loading="lazy" />
           <span v-else>{{ initials(item.item_name) }}</span>
         </div>
+        <span class="tile-details" role="button" tabindex="0" :aria-label="t('View details for {item}', { item: item.item_name })" :title="t('View item images and description')" @click.stop="showDetails(item)" @keydown.enter.stop.prevent="showDetails(item)" @keydown.space.stop.prevent="showDetails(item)"><Icon name="image" /></span>
         <div class="tile-name">{{ item.item_name }}</div>
         <div class="tile-foot">
           <span class="tile-price">{{ money(item.price) }}</span>
@@ -38,11 +39,30 @@
         </div>
       </button>
     </div>
+    <div v-if="selectedItem" class="modal-backdrop" @click.self="selectedItem = null">
+      <section class="modal item-details-modal" role="dialog" aria-modal="true" :aria-label="selectedItem.item_name">
+        <header class="modal-header"><span>{{ selectedItem.item_name }}</span><button class="btn-ghost" :aria-label="t('Close')" @click="selectedItem = null"><Icon name="close" /></button></header>
+        <div class="item-gallery">
+          <img v-if="selectedItem.image" :src="selectedItem.image" :alt="selectedItem.item_name" />
+          <div v-else class="item-no-image"><Icon name="image" :size="36" />{{ t('No item image') }}</div>
+        </div>
+        <div class="item-detail-meta">
+          <strong>{{ money(selectedItem.price) }}</strong>
+          <span>{{ selectedItem.item_code }}</span>
+          <span v-if="selectedItem.brand">{{ selectedItem.brand }}</span>
+          <span>{{ selectedItem.item_group }}</span>
+        </div>
+        <p class="item-description">{{ selectedItem.description || t('No description available.') }}</p>
+        <footer class="modal-footer"><button class="btn btn-outline" @click="selectedItem = null">{{ t('Close') }}</button></footer>
+      </section>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { computed } from 'vue'
+import { ref } from 'vue'
+import Icon from './Icon.vue'
 import { useCatalogStore } from '../stores/catalog'
 import { useSessionStore } from '../stores/session'
 import { money } from '../format'
@@ -51,12 +71,15 @@ import { t } from '../i18n'
 defineEmits(['select'])
 const catalog = useCatalogStore()
 const session = useSessionStore()
+const selectedItem = ref(null)
+function showDetails(item) { selectedItem.value = item }
 
 // Hide out-of-stock stock items unless the outlet opts in (Settings → General).
 // Non-stock items (services, gift cards) always show.
 const visibleItems = computed(() => {
-  if (session.settings?.show_out_of_stock) return catalog.items
-  return catalog.items.filter((i) => !i.is_stock_item || (i.actual_qty || 0) > 0)
+  const filtered = catalog.items.filter((item) => !catalog.brand || item.brand === catalog.brand)
+  if (session.settings?.show_out_of_stock) return filtered
+  return filtered.filter((i) => !i.is_stock_item || (i.actual_qty || 0) > 0)
 })
 
 function initials(name) {
@@ -91,6 +114,8 @@ function initials(name) {
   transition: border-color 0.1s, transform 0.05s;
 }
 .tile:hover { border-color: var(--brand-soft); }
+.tile-details { position:absolute; top:7px; right:7px; z-index:1; display:grid; place-items:center; width:30px; height:30px; border:1px solid var(--border); border-radius:9px; color:var(--text); background:var(--card-bg); box-shadow:var(--shadow); cursor:pointer; }
+.tile-details:hover, .tile-details:focus-visible { color:var(--brand-dark); border-color:var(--brand); outline:none; }
 .tile:active { transform: scale(0.98); }
 .tile-img {
   height: 92px;
@@ -162,4 +187,11 @@ function initials(name) {
   color: var(--text-muted);
 }
 .grid-hint { font-size: 12.5px; }
+.item-details-modal { width:min(640px, calc(100vw - 32px)); max-height:calc(100vh - 32px); overflow-y:auto; }
+.item-gallery { display:flex; justify-content:center; height:min(42vh,360px); padding:20px; background:var(--surface-2); }
+.item-gallery img { max-width:100%; max-height:100%; object-fit:contain; }
+.item-no-image { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; color:var(--text-muted); }
+.item-detail-meta { display:flex; flex-wrap:wrap; gap:12px; padding:16px 20px 0; color:var(--text-muted); }
+.item-detail-meta strong { color:var(--brand-dark); }
+.item-description { padding:0 20px; white-space:pre-wrap; line-height:1.55; }
 </style>

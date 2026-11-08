@@ -72,24 +72,14 @@
         >
           <Icon name="gift" /> {{ t('Bundles') }}
         </button>
-        <button
-          class="chip"
-          :class="{ active: !catalog.itemGroup && !showBundles && !showFavourites }"
-          @click="showBundles = false; showFavourites = false; catalog.itemGroup = ''; catalog.fetch()"
-        >
-          {{ t('All') }}
-        </button>
-        <div class="group-scroll">
-          <button
-            v-for="group in session.itemGroups"
-            :key="group"
-            class="chip"
-            :class="{ active: catalog.itemGroup === group }"
-            @click="catalog.setGroup(group)"
-          >
-            {{ group }}
-          </button>
-        </div>
+        <select aria-label="Brand" class="catalog-filter" :value="catalog.brand" @change="catalog.setBrand($event.target.value)">
+          <option value="">{{ t('All brands') }}</option>
+          <option v-for="brand in catalog.brands" :key="brand" :value="brand">{{ brand }}</option>
+        </select>
+        <select aria-label="Item group" class="catalog-filter" :value="catalog.itemGroup" @change="catalog.setGroup($event.target.value)">
+          <option value="">{{ t('All item groups') }}</option>
+          <option v-for="group in session.itemGroups" :key="group" :value="group">{{ group }}</option>
+        </select>
       </div>
 
       <div v-if="showBundles" class="bundle-grid">

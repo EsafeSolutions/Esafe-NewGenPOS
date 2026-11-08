@@ -20,10 +20,16 @@ export const useCatalogStore = defineStore('catalog', {
     loading: false,
     search: '',
     itemGroup: '',
+    brand: '',
     cachedCount: 0,
     _searchTimer: null,
     _requestId: 0,
   }),
+
+  getters: {
+    brands: (state) => [...new Set(state.items.map((item) => item.brand).filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b)),
+  },
 
   actions: {
     // LOCAL-FIRST: searches run against the IndexedDB cache (instant, works
@@ -41,7 +47,7 @@ export const useCatalogStore = defineStore('catalog', {
         const groups = this.itemGroup
           ? session.itemGroupMembers?.[this.itemGroup] || [this.itemGroup]
           : null
-        const items = await searchCatalog(this.search, groups)
+        const items = (await searchCatalog(this.search, groups, 500)).filter((item) => !this.brand || item.brand === this.brand).slice(0, 80)
         // The newest request clears "Loading…" here too: a cold start's server
         // request that lost the race to the full catalog download (which then
         // searched the device) never cleared it, and the grid stayed on
@@ -60,6 +66,7 @@ export const useCatalogStore = defineStore('catalog', {
           pos_profile: session.posProfile,
           search: this.search,
           item_group: this.itemGroup,
+          brand: this.brand,
           limit: 80,
         })
         if (requestId !== this._requestId) return // stale response
@@ -167,7 +174,12 @@ export const useCatalogStore = defineStore('catalog', {
     },
 
     setGroup(group) {
-      this.itemGroup = group === this.itemGroup ? '' : group
+      this.itemGroup = group || ''
+      this.fetch()
+    },
+
+    setBrand(brand) {
+      this.brand = brand || ''
       this.fetch()
     },
 

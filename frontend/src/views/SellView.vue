@@ -164,6 +164,7 @@ import SerialModal from '../components/SerialModal.vue'
 import PasscodeModal from '../components/PasscodeModal.vue'
 import PriceCheckModal from '../components/PriceCheckModal.vue'
 import { createScanGuard } from '../scanGuard'
+import { parseScaleBarcode } from '../barcode'
 
 const router = useRouter()
 const session = useSessionStore()
@@ -224,12 +225,13 @@ watch(
   () => cart.prefetchQuote()
 )
 
-function addToCart(item, serial = null) {
+function addToCart(item, serial = null, qty = 1) {
+  const addQty = Number(qty) || 1
   // Stock guard: no overselling stock items when negative stock is disallowed
   // (serialized items are covered by per-serial validation instead)
   if (!item.has_serial_no && item.is_stock_item && !session.allowNegativeStock && !session.offline) {
     const inCart = cart.lines.find((l) => l.item_code === item.item_code)?.qty || 0
-    if (inCart + 1 > (item.actual_qty || 0)) {
+    if (inCart + addQty > (item.actual_qty || 0)) {
       session.notify(t('{item}: only {qty} in stock', { item: item.item_name, qty: item.actual_qty || 0 }), true)
       return
     }
@@ -247,7 +249,7 @@ function addToCart(item, serial = null) {
     session.notify(t('Serial {serial} is already in this sale', { serial }), true)
     return
   }
-  cart.addItem(item, serial)
+  cart.addItem(item, serial, addQty)
 }
 
 function onSerialScanned(serial) {
@@ -340,7 +342,7 @@ async function onSearchEnter() {
           catalog.clearSearch()
           return
         }
-        addToCart(result.item, result.serial)
+        addToCart(result.item, result.serial, result.qty || 1)
         catalog.clearSearch()
         return
       }
@@ -355,8 +357,14 @@ async function onSearchEnter() {
       /* fall back to the grid below */
     }
   }
+  const scale = session.settings?.enable_scale_barcodes !== 0 ? parseScaleBarcode(term, {
+    prefixes: session.settings?.scale_barcode_prefixes ? session.settings.scale_barcode_prefixes.split(',').map((p) => p.trim()) : undefined,
+    pluLen: session.settings?.scale_barcode_plu_len || 5,
+    decimals: session.settings?.scale_barcode_weight_decimals || 3,
+  }) : null
+
   if (catalog.items.length === 1) {
-    addToCart(catalog.items[0])
+    addToCart(catalog.items[0], null, scale ? scale.weight : 1)
     catalog.clearSearch()
   }
 }

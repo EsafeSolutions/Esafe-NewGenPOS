@@ -87,6 +87,10 @@
   "features_col",
   "enable_price_checker",
   "enable_labels",
+  "enable_scale_barcodes",
+  "scale_barcode_prefixes",
+  "scale_barcode_plu_len",
+  "scale_barcode_weight_decimals",
   "salesperson_mode",
   "enable_xreport",
   "enable_audit_log",
@@ -586,6 +590,37 @@
    "fieldname": "enable_labels",
    "fieldtype": "Check",
    "label": "Barcode and price labels"
+  },
+  {
+   "default": "1",
+   "description": "Read variable-weight barcodes from weighing scales (e.g. EAN-13 starting with 20-29 or 02) and automatically set item quantity to the scanned weight.",
+   "fieldname": "enable_scale_barcodes",
+   "fieldtype": "Check",
+   "label": "Weight-embedded scale barcodes"
+  },
+  {
+   "default": "20,21,22,23,24,25,26,27,28,29,02",
+   "depends_on": "eval:doc.enable_scale_barcodes",
+   "description": "Comma-separated 2-digit prefixes used by in-store weighing scales.",
+   "fieldname": "scale_barcode_prefixes",
+   "fieldtype": "Data",
+   "label": "Scale barcode prefixes"
+  },
+  {
+   "default": "5",
+   "depends_on": "eval:doc.enable_scale_barcodes",
+   "description": "Number of digits allocated for item PLU (usually 4 or 5).",
+   "fieldname": "scale_barcode_plu_len",
+   "fieldtype": "Int",
+   "label": "Scale barcode PLU length"
+  },
+  {
+   "default": "3",
+   "depends_on": "eval:doc.enable_scale_barcodes",
+   "description": "Number of decimal places in the weight field (standard is 3, e.g. 01500 = 1.500 kg).",
+   "fieldname": "scale_barcode_weight_decimals",
+   "fieldtype": "Int",
+   "label": "Scale barcode weight decimals"
   },
   {
    "default": "Optional",
@@ -1170,4 +1205,4 @@
  "sort_order": "DESC",
  "states": [],
  "track_changes": 1
-}
+}

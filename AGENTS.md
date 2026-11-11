@@ -30,3 +30,7 @@ Add focused `unittest` cases named `test_<behavior>` beside the affected Python 
 Recent commits use concise imperative summaries, often version-prefixed (for example, `0.69.0: stock count from the till`) or scoped documentation prefixes such as `docs(website-guide): ...`. Keep commits focused.
 
 PRs should state the user impact, list verification commands, link the issue when applicable, and include screenshots for UI changes. Commit regenerated `lumenpos/public/pos/` assets with source changes under `frontend/src/`.
+
+## Project Logbook Updates
+
+For every project change or upgrade, update `docs/project-logbook-and-component-details.md` in the same change. Record the user-visible behavior and technical impact, the affected modules/components and data model where relevant, and the verification performed. For work not tied to a released version, add it under an `Unreleased` logbook heading; when a version is assigned, move or summarize the entry under that release. Keep the feature inventory, architecture, component responsibilities, and DocType overview current when the change affects them. Do not wait for the user to request this documentation update.

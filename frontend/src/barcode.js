@@ -133,3 +133,72 @@ export function svg(code, { height = 40, module = 1, color = '#000' } = {}) {
   }
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" shape-rendering="crispEdges"><g fill="${color}">${rects}</g></svg>`
 }
+
+// GS1 in-store / variable-measure prefixes (EAN-13 20-29, 02)
+export const DEFAULT_SCALE_PREFIXES = ['20', '21', '22', '23', '24', '25', '26', '27', '28', '29', '02']
+
+// Parse weight-embedded scale barcodes (EAN-13 / UPC-A).
+// Returns { isScaleBarcode: true, prefix, plu, weight, candidates, checkDigit } or null.
+export function parseScaleBarcode(code, { prefixes = DEFAULT_SCALE_PREFIXES, pluLen = 5, decimals = 3 } = {}) {
+  let raw = String(code || '').trim()
+  if (!raw || !/^\d+$/.test(raw)) return null
+
+  // 12-digit UPC-A: if starting with '2', normalize to 13 digits with leading '0'
+  if (raw.length === 12) {
+    if (raw.startsWith('2')) raw = '0' + raw
+    else return null
+  }
+
+  if (raw.length !== 13) return null
+
+  const allowed = new Set(
+    (Array.isArray(prefixes) ? prefixes : String(prefixes).split(','))
+      .map((p) => String(p).trim())
+      .filter(Boolean)
+  )
+
+  const prefix = raw.slice(0, 2)
+  if (!allowed.has(prefix)) return null
+
+  const pLen = pluLen === 4 ? 4 : 5
+  const dec = decimals == null || decimals < 0 ? 3 : Number(decimals)
+
+  const plu = raw.slice(2, 2 + pLen)
+  const rawWeight = raw.slice(2 + pLen, 12)
+  const checkDigit = raw[12]
+
+  const weightInt = Number(rawWeight)
+  if (!weightInt || weightInt <= 0 || !Number.isFinite(weightInt)) return null
+
+  const weight = Math.round((weightInt / (10 ** dec)) * 10000) / 10000
+
+  const candidates = []
+  const addCand = (val) => {
+    const s = String(val || '').trim()
+    if (s && !candidates.includes(s)) candidates.push(s)
+  }
+
+  addCand(prefix + plu)
+  addCand(plu)
+  const stripped = plu.replace(/^0+/, '')
+  if (stripped) addCand(stripped)
+
+  if (pLen === 5) {
+    const plu4 = raw.slice(2, 6)
+    addCand(prefix + plu4)
+    addCand(plu4)
+    const stripped4 = plu4.replace(/^0+/, '')
+    if (stripped4) addCand(stripped4)
+    addCand(`${prefix}${plu}000000`)
+  }
+
+  return {
+    isScaleBarcode: true,
+    prefix,
+    plu,
+    weight,
+    candidates,
+    checkDigit,
+  }
+}
+

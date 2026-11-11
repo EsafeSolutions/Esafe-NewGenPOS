@@ -134,6 +134,10 @@ def get_settings():
         "service_charge_account": doc.get("service_charge_account") or "",
         "enable_price_checker": 1 if doc.get("enable_price_checker") else 0,
         "enable_labels": 1 if labels.enabled() else 0,
+        "enable_scale_barcodes": 1 if doc.get("enable_scale_barcodes") is None or doc.get("enable_scale_barcodes") else 0,
+        "scale_barcode_prefixes": doc.get("scale_barcode_prefixes") or "20,21,22,23,24,25,26,27,28,29,02",
+        "scale_barcode_plu_len": cint(doc.get("scale_barcode_plu_len")) or 5,
+        "scale_barcode_weight_decimals": 3 if doc.get("scale_barcode_weight_decimals") is None else cint(doc.get("scale_barcode_weight_decimals")),
         **stock_app.settings_values(),
         "salesperson_mode": salespeople.mode(),
         "enable_insights": 1 if insights.enabled() else 0,
@@ -372,6 +376,14 @@ def save_settings(payload: dict | str):
     # Before 0.67.0 a payload had no such key: an old tab must not switch it off.
     if "enable_labels" in payload:
         doc.enable_labels = 1 if payload.get("enable_labels") else 0
+    if "enable_scale_barcodes" in payload:
+        doc.enable_scale_barcodes = 1 if payload.get("enable_scale_barcodes") else 0
+    if "scale_barcode_prefixes" in payload:
+        doc.scale_barcode_prefixes = payload.get("scale_barcode_prefixes") or "20,21,22,23,24,25,26,27,28,29,02"
+    if "scale_barcode_plu_len" in payload:
+        doc.scale_barcode_plu_len = cint(payload.get("scale_barcode_plu_len")) or 5
+    if "scale_barcode_weight_decimals" in payload:
+        doc.scale_barcode_weight_decimals = cint(payload.get("scale_barcode_weight_decimals")) if payload.get("scale_barcode_weight_decimals") is not None else 3
     # The Lumen Stock app (0.68.0): an older tab sends none of them.
     for field in stock_app.FIELDS:
         if field in payload:

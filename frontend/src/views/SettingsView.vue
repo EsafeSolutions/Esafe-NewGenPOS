@@ -1569,6 +1569,33 @@
               <span class="setting-desc">{{ t('A Labels screen prints barcode and price labels on a label printer or an A4 sheet: items from a search, a scan, a Purchase Receipt or Stock Entry, or the prices changed since a date. Who may print them is set under Permissions, Print labels.') }}</span>
             </span>
           </label>
+          <label class="setting-row">
+            <input type="checkbox" class="setting-toggle" v-model="generalForm.enable_scale_barcodes" :true-value="1" :false-value="0" />
+            <span class="setting-text">
+              <span class="setting-title">{{ t('Weight-embedded scale barcodes') }}</span>
+              <span class="setting-desc">{{ t('Read variable-weight barcodes from electronic scales (e.g. EAN-13 starting with 20–29 or 02) and automatically set item quantity to the scanned weight.') }}</span>
+            </span>
+          </label>
+          <div v-if="generalForm.enable_scale_barcodes" class="span-2" style="display:grid; grid-template-columns: 2fr 1fr 1fr; gap: 8px; margin: 4px 0 10px">
+            <label class="field">
+              <span class="setting-title" style="font-size: 11.5px">{{ t('Scale barcode prefixes') }}</span>
+              <input type="text" class="cf-in" v-model="generalForm.scale_barcode_prefixes" placeholder="20,21,22,23,24,25,26,27,28,29,02" />
+            </label>
+            <label class="field">
+              <span class="setting-title" style="font-size: 11.5px">{{ t('PLU length') }}</span>
+              <select class="cf-in" v-model="generalForm.scale_barcode_plu_len">
+                <option :value="5">{{ t('5 digits') }}</option>
+                <option :value="4">{{ t('4 digits') }}</option>
+              </select>
+            </label>
+            <label class="field">
+              <span class="setting-title" style="font-size: 11.5px">{{ t('Decimals') }}</span>
+              <select class="cf-in" v-model="generalForm.scale_barcode_weight_decimals">
+                <option :value="3">3 (1.500 kg)</option>
+                <option :value="2">2 (1.50 kg)</option>
+              </select>
+            </label>
+          </div>
           <label class="field span-2" style="display:block; margin: 6px 0 10px">
             <span class="setting-title">{{ t('Salesperson at the till') }}</span>
             <select v-model="generalForm.salesperson_mode" class="cf-in" style="width: 100%; margin-top: 4px">
@@ -2735,6 +2762,10 @@ const generalForm = ref({
   service_charge_account: '',
   enable_price_checker: 1,
   enable_labels: 1,
+  enable_scale_barcodes: 1,
+  scale_barcode_prefixes: '20,21,22,23,24,25,26,27,28,29,02',
+  scale_barcode_plu_len: 5,
+  scale_barcode_weight_decimals: 3,
   enable_stock_app: 1,
   stock_allow_count: 1,
   stock_count_in_till: 1,
@@ -3452,6 +3483,10 @@ async function load() {
     service_charge_account: info.service_charge_account || '',
     enable_price_checker: info.enable_price_checker ?? 1,
     enable_labels: info.enable_labels ?? 1,
+    enable_scale_barcodes: info.enable_scale_barcodes ?? 1,
+    scale_barcode_prefixes: info.scale_barcode_prefixes || '20,21,22,23,24,25,26,27,28,29,02',
+    scale_barcode_plu_len: info.scale_barcode_plu_len ?? 5,
+    scale_barcode_weight_decimals: info.scale_barcode_weight_decimals ?? 3,
     enable_stock_app: info.enable_stock_app ?? 1,
     stock_allow_count: info.stock_allow_count ?? 1,
     stock_count_in_till: info.stock_count_in_till ?? 1,
@@ -4239,6 +4274,10 @@ async function saveGeneral() {
     session.settings.service_charge_percent = info.service_charge_percent || 0
     session.settings.enable_price_checker = info.enable_price_checker ?? 1
     session.settings.enable_labels = info.enable_labels ?? 1
+    session.settings.enable_scale_barcodes = info.enable_scale_barcodes ?? 1
+    session.settings.scale_barcode_prefixes = info.scale_barcode_prefixes || '20,21,22,23,24,25,26,27,28,29,02'
+    session.settings.scale_barcode_plu_len = info.scale_barcode_plu_len ?? 5
+    session.settings.scale_barcode_weight_decimals = info.scale_barcode_weight_decimals ?? 3
     session.settings.salesperson_mode = info.salesperson_mode || 'Optional'
     session.settings.variance_reason_mode = info.variance_reason_mode || 'Optional'
     session.settings.variance_reason_threshold = info.variance_reason_threshold || 0

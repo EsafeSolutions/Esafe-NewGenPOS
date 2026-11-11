@@ -3,6 +3,7 @@
 // "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md.
 // Offline layer: IndexedDB cache for bootstrap + catalog, and a queue for
 // sales made while the network is down. No external dependencies.
+import { parseScaleBarcode } from './barcode'
 
 const DB_NAME = 'lumenpos'
 const DB_VERSION = 5
@@ -143,13 +144,22 @@ export async function searchCatalog(search = '', groups = null, limit = 80) {
   const all = await request(database.transaction('items').objectStore('items').getAll())
   const term = search.trim().toLowerCase()
   const allowed = Array.isArray(groups) ? groups : groups ? [groups] : null
+  const scale = parseScaleBarcode(term)
+  const scaleCands = scale ? scale.candidates.map((c) => c.toLowerCase()) : []
+
   const filtered = all.filter((item) => {
     if (allowed && !allowed.includes(item.item_group)) return false
     if (!term) return true
+    const b = (item.barcode || '').toLowerCase()
+    const c = (item.item_code || '').toLowerCase()
+    const n = (item.item_name || '').toLowerCase()
+    if (scaleCands.length) {
+      if (scaleCands.includes(b) || scaleCands.includes(c)) return true
+    }
     return (
-      (item.item_name || '').toLowerCase().includes(term) ||
-      (item.item_code || '').toLowerCase().includes(term) ||
-      (item.barcode || '').toLowerCase().includes(term)
+      n.includes(term) ||
+      c.includes(term) ||
+      b.includes(term)
     )
   })
   filtered.sort((a, b) => (a.item_name || '').localeCompare(b.item_name || ''))

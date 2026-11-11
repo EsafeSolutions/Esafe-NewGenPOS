@@ -375,9 +375,11 @@ export const useCartStore = defineStore('cart', {
 
   actions: {
     // For serialized items pass the scanned serial; qty is always locked to
-    // the number of serials on the line.
-    addItem(item, serial = null) {
+    // the number of serials on the line. For weighable / scale items, pass the
+    // scanned decimal weight as qty.
+    addItem(item, serial = null, qty = 1) {
       if (item.has_serial_no && !serial) return false // strict: no serial, no sale
+      const addQty = Math.round((Number(qty) || 1) * 10000) / 10000
       // never merge into a bundle line, bundle pricing is per-instance
       const existing = this.lines.find(
         (l) => l.item_code === item.item_code && !l.bundle_key
@@ -388,7 +390,7 @@ export const useCartStore = defineStore('cart', {
           existing.serial_nos.push(serial)
           existing.qty = existing.serial_nos.length
         } else {
-          existing.qty += 1
+          existing.qty = Math.round((existing.qty + addQty) * 10000) / 10000
         }
       } else {
         this.lines.push({
@@ -401,7 +403,7 @@ export const useCartStore = defineStore('cart', {
           warranty_days: item.warranty_days || 0,
           has_serial_no: item.has_serial_no || 0,
           serial_nos: serial ? [serial] : [],
-          qty: 1,
+          qty: addQty,
           price: item.price || 0,
           // The outlet's own price, for a sale switched back from another
           // currency while offline (_offlineCurrencyPrices).
@@ -604,7 +606,7 @@ export const useCartStore = defineStore('cart', {
 
     setQty(index, qty) {
       if (this.lines[index]?.has_serial_no) return // qty is locked to serial count
-      qty = Number(qty)
+      qty = Math.round((Number(qty) || 0) * 10000) / 10000
       if (!qty || qty <= 0) this.removeLine(index)
       else this.lines[index].qty = qty
     },

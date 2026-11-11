@@ -313,6 +313,7 @@ def resolve_scan(pos_profile: str, code: str, customer_group: str | None = None,
 
     item_code = frappe.db.get_value("Item Barcode", {"barcode": code}, "parent")
     serial = None
+    scanned_qty = 1.0
     if not item_code:
         sn = frappe.db.get_value(
             "Serial No", code, ["name", "item_code", "status", "warehouse"], as_dict=True
@@ -325,6 +326,27 @@ def resolve_scan(pos_profile: str, code: str, customer_group: str | None = None,
                 return {"found": False, "message": _held_message(sn.name, held)}
             item_code = sn.item_code
             serial = sn.name
+    if not item_code and not serial:
+        from lumenpos.scale_barcode import parse_scale_barcode, scale_settings
+
+        cfg = scale_settings()
+        if cfg.get("enable_scale_barcodes", 1):
+            prefixes = [p.strip() for p in (cfg.get("scale_barcode_prefixes") or "").split(",") if p.strip()]
+            scale_info = parse_scale_barcode(
+                code,
+                prefixes=prefixes or None,
+                plu_len=cfg.get("scale_barcode_plu_len", 5),
+                decimals=cfg.get("scale_barcode_weight_decimals", 3),
+            )
+            if scale_info:
+                for cand in scale_info["candidates"]:
+                    found = frappe.db.get_value("Item Barcode", {"barcode": cand}, "parent")
+                    if not found and frappe.db.exists("Item", cand):
+                        found = cand
+                    if found:
+                        item_code = found
+                        scanned_qty = scale_info["weight"]
+                        break
     if not item_code or item_code in internal_item_codes():
         return {"found": False}
 
@@ -365,7 +387,7 @@ def resolve_scan(pos_profile: str, code: str, customer_group: str | None = None,
         if profile.warehouse
         else 0
     )
-    return {"found": True, "item": item, "serial": serial}
+    return {"found": True, "item": item, "serial": serial, "qty": scanned_qty}
 
 
 @frappe.whitelist()
@@ -517,6 +539,26 @@ def price_check(pos_profile: str, query: str):
             item_codes = [sn_item]
         elif frappe.db.exists("Item", q):
             item_codes = [q]
+        else:
+            from lumenpos.scale_barcode import parse_scale_barcode, scale_settings
+
+            cfg = scale_settings()
+            if cfg.get("enable_scale_barcodes", 1):
+                prefixes = [p.strip() for p in (cfg.get("scale_barcode_prefixes") or "").split(",") if p.strip()]
+                scale_info = parse_scale_barcode(
+                    q,
+                    prefixes=prefixes or None,
+                    plu_len=cfg.get("scale_barcode_plu_len", 5),
+                    decimals=cfg.get("scale_barcode_weight_decimals", 3),
+                )
+                if scale_info:
+                    for cand in scale_info["candidates"]:
+                        found = frappe.db.get_value("Item Barcode", {"barcode": cand}, "parent")
+                        if not found and frappe.db.exists("Item", cand):
+                            found = cand
+                        if found:
+                            item_codes = [found]
+                            break
 
     # 2) Otherwise a name / code fragment search.
     if not item_codes:

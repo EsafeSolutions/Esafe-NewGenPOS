@@ -72,7 +72,7 @@
           <input
             type="number"
             min="0"
-            step="1"
+            step="any"
             :value="line.qty"
             @change="cart.setQty(index, $event.target.value)"
           />

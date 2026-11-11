@@ -1,7 +1,7 @@
 // The barcodes printed on labels (0.67.0): src/barcode.js against python-barcode 0.15.1, an
 // independent implementation (its bars for these codes were generated once and are kept
 // here), plus the rules that decide the format. Usage: node barcode-check.mjs (the gate runs it).
-import { encode, formatOf, eanCheckDigit, svg } from './src/barcode.js'
+import { encode, formatOf, eanCheckDigit, svg, parseScaleBarcode } from './src/barcode.js'
 
 let failures = 0
 function check(label, actual, expected) {
@@ -39,6 +39,28 @@ check('Arabic text has no barcode', formatOf('صنف'), null)
 check('an empty code has no barcode', formatOf(''), null)
 check('nothing drawn without a barcode', svg('صنف'), '')
 check('the drawing starts after the quiet zone', svg('LP-PLAIN').includes('<rect x="10"'), true)
+
+// Weight-embedded scale barcodes:
+const scale1 = parseScaleBarcode('2001234015006')
+check('scale barcode detected', Boolean(scale1?.isScaleBarcode), true)
+check('scale barcode prefix', scale1?.prefix, '20')
+check('scale barcode plu', scale1?.plu, '01234')
+check('scale barcode weight (1.5 kg)', scale1?.weight, 1.5)
+check('scale barcode candidate prefix+plu', scale1?.candidates.includes('2001234'), true)
+check('scale barcode candidate stripped plu', scale1?.candidates.includes('1234'), true)
+
+const scale2 = parseScaleBarcode('2100450003251')
+check('fractional scale barcode (0.325 kg)', scale2?.weight, 0.325)
+check('fractional scale barcode plu', scale2?.plu, '00450')
+
+const scaleUpc = parseScaleBarcode('201234015006')
+check('12-digit UPC-A scale barcode', scaleUpc?.weight, 1.5)
+check('12-digit UPC-A scale prefix', scaleUpc?.prefix, '02')
+
+check('regular barcode is not scale barcode', parseScaleBarcode('6281000001237'), null)
+check('zero weight scale barcode is rejected', parseScaleBarcode('2001234000000'), null)
+check('invalid text scale barcode is rejected', parseScaleBarcode('2001234abc000'), null)
+
 
 console.log(failures ? `${failures} FAILED` : "all passed")
 process.exit(failures ? 1 : 0)

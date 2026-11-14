@@ -1,5 +1,5 @@
 // The installed-app icons, drawn as pixels and encoded as PNG here so the repo
-// needs no image toolchain. The mark is the LumenPOS bars on the brand square,
+// needs no image toolchain. The mark is the EsafePOS bars on the brand square,
 // the same shape as the favicon in pos.html.
 import { deflateSync } from 'node:zlib'
 import { writeFileSync } from 'node:fs'

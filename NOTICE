@@ -37,7 +37,7 @@ a network must offer those users its complete source code.
 COMPATIBILITY WITH ERPNEXT AND FRAPPE
 -------------------------------------
 EsafePOS calls ERPNext's own code directly (loyalty points, POS invoice
-consolidation and the credit note builder, see lumenpos/erpnext_compat.py).
+consolidation and the credit note builder, see esafepos/erpnext_compat.py).
 ERPNext is licensed under version 3 of the GNU General Public License.
 
 The two licences are designed to be combined. Section 13 of the GPLv3 permits

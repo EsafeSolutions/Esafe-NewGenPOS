@@ -363,7 +363,7 @@ const reasonValue = computed(() =>
 )
 
 // The sale being returned: its currency and the rate it was sold at
-// (lumenpos.currency). Everything here is in that currency.
+// (esafepos.currency). Everything here is in that currency.
 const sold = ref({ currency: null, company_currency: null, rate: 1 })
 const foreign = computed(
   () => Boolean(sold.value.currency && sold.value.company_currency) && sold.value.currency !== sold.value.company_currency
@@ -442,7 +442,7 @@ function clearSelection() {
   selectedSerials.value = {}
 }
 
-// A sale on account (lumenpos.credit_sales, 0.60.0): what is still owed on it
+// A sale on account (esafepos.credit_sales, 0.60.0): what is still owed on it
 // (get_returnable). A return comes off that first; only the rest is money
 // back. Estimates, as refundTotal is: the server posts its own figures.
 const owedOnSale = ref(0)
@@ -502,7 +502,7 @@ function describeRestriction(r) {
 // the server (store credit, a gift card, cashback): then it waits.
 const noOfflineMode = computed(() => offline.value && !loading.value && !refundModes.value.length)
 
-// A supervisor's approval of the refund (lumenpos.refund_approval, 0.63.0).
+// A supervisor's approval of the refund (esafepos.refund_approval, 0.63.0).
 // Online the server says whether one is needed, valued as it will post
 // (sales.refund_check); without a connection the till cannot be given one.
 const refundAsk = ref(null) // {amount, currency} while the dialog is open
@@ -587,7 +587,7 @@ onMounted(async () => {
     return
   }
   try {
-    const data = await call('lumenpos.api.sales.get_returnable', {
+    const data = await call('esafepos.api.sales.get_returnable', {
       invoice: props.invoice,
       pos_profile: session.posProfile,
     })
@@ -617,7 +617,7 @@ onUnmounted(() => {
   clearInterval(pollTimer)
   // Withdraw a still-pending request so it doesn't linger for approvers.
   if (reqPhase.value === 'waiting' && reqName.value) {
-    call('lumenpos.api.approval_requests.cancel_request', { name: reqName.value }).catch(() => {})
+    call('esafepos.api.approval_requests.cancel_request', { name: reqName.value }).catch(() => {})
   }
 })
 
@@ -625,7 +625,7 @@ async function sendReturnRequest() {
   if (reqBusy.value) return
   reqBusy.value = true
   try {
-    const res = await call('lumenpos.api.approval_requests.create_request', {
+    const res = await call('esafepos.api.approval_requests.create_request', {
       request_type: 'Return',
       pos_profile: session.posProfile,
       return_invoice: props.invoice,
@@ -650,7 +650,7 @@ async function sendReturnRequest() {
 
 async function pollReturnStatus() {
   try {
-    const res = await call('lumenpos.api.approval_requests.request_status', { name: reqName.value })
+    const res = await call('esafepos.api.approval_requests.request_status', { name: reqName.value })
     if (res.status === 'Approved') {
       clearInterval(pollTimer)
       returnRequest.value = reqName.value
@@ -674,7 +674,7 @@ async function pollReturnStatus() {
 async function cancelReturnRequest() {
   clearInterval(pollTimer)
   if (reqName.value) {
-    await call('lumenpos.api.approval_requests.cancel_request', { name: reqName.value }).catch(() => {})
+    await call('esafepos.api.approval_requests.cancel_request', { name: reqName.value }).catch(() => {})
   }
   resetReturnReq()
 }
@@ -884,7 +884,7 @@ async function submit() {
   try {
     const { items, serials } = pickedItems()
     if (!refundOk.value) {
-      const check = await call('lumenpos.api.sales.refund_check', {
+      const check = await call('esafepos.api.sales.refund_check', {
         invoice: props.invoice,
         items,
         serials,
@@ -895,7 +895,7 @@ async function submit() {
         return
       }
     }
-    const receipt = await call('lumenpos.api.sales.create_return', {
+    const receipt = await call('esafepos.api.sales.create_return', {
       invoice: props.invoice,
       items,
       serials,

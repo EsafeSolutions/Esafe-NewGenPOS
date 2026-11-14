@@ -4,7 +4,7 @@
 <!-- The Salespeople tab of Insights (0.57.0): sales by salesperson over a
      period, one outlet or every outlet of its company, with the commission
      ERPNext works out. The server decides who may see it
-     (lumenpos.api.salespeople.report). -->
+     (esafepos.api.salespeople.report). -->
 <template>
   <div class="salespeople">
     <div class="card sp-card">
@@ -113,7 +113,7 @@ async function load() {
   loading.value = true
   error.value = ''
   try {
-    report.value = await call('lumenpos.api.salespeople.report', {
+    report.value = await call('esafepos.api.salespeople.report', {
       from_date: fromDate.value,
       to_date: toDate.value || fromDate.value,
       ...session.reportScope(scope.value),

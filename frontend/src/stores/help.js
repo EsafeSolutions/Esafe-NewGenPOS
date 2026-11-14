@@ -4,14 +4,14 @@
 //
 // Help for staff (0.58.0): the "?" panel, the tour on screen, and the card
 // that welcomes someone new or says what is new after an update. What each
-// person has seen is kept by the server (lumenpos.api.help) and, in case the
+// person has seen is kept by the server (esafepos.api.help) and, in case the
 // server could not be told, on this device too.
 import { defineStore } from 'pinia'
 import { call } from '../api'
 import { TOPICS, TOURS, WHATS_NEW } from '../help/content'
 import { useSessionStore } from './session'
 
-const LOCAL = 'lumenpos-help-seen:'
+const LOCAL = 'esafepos-help-seen:'
 const MAX_NEWS = 8
 
 // "0.58.0" and a test bench's "0.58.0-r42" are the same release.
@@ -130,7 +130,7 @@ export const useHelpStore = defineStore('help', {
       if (!version) return
       this.seenVersion = version
       keepLocal(session.user, version)
-      call('lumenpos.api.help.mark', { seen_version: version }).catch(() => {})
+      call('esafepos.api.help.mark', { seen_version: version }).catch(() => {})
     },
 
     dismissCard() {
@@ -183,7 +183,7 @@ export const useHelpStore = defineStore('help', {
       this.stepIndex = 0
       if (!finished || !id) return
       if (!this.toursDone.includes(id)) this.toursDone.push(id)
-      call('lumenpos.api.help.mark', { tour_done: id }).catch(() => {})
+      call('esafepos.api.help.mark', { tour_done: id }).catch(() => {})
     },
 
     // "Show me" on a piece of news: its tour, or its screen.

@@ -5,7 +5,7 @@
 // <html>. Defaults to the OS preference on first run.
 import { ref } from 'vue'
 
-const KEY = 'lumenpos-theme'
+const KEY = 'esafepos-theme'
 
 function initial() {
   const saved = localStorage.getItem(KEY)

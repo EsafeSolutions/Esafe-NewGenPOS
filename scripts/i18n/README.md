@@ -6,7 +6,7 @@ EsafePOS speaks a language in two places:
   (both in the main bundle), every other language is `frontend/src/locales/<code>.js`,
   fetched only when a cashier picks it. Keys are the English text.
 - **The server's messages** (errors, notices, DocType labels):
-  `lumenpos/translations/<code>.csv`, the file Frappe reads on v13 to v16.
+  `esafepos/translations/<code>.csv`, the file Frappe reads on v13 to v16.
   The till sends its language as Frappe's `_lang` with every request, so these
   and ERPNext's own messages come back in the language on the screen.
 
@@ -22,7 +22,7 @@ it is committed).
 1. **The server's texts.** Run `extract_server.py` with a site connected, on a
    bench that has the current code (the test benches: `run-py16.sh
    scripts/i18n/extract_server.py`). It lists what Frappe's own extractor sees
-   into `/tmp/lumenpos_msgs.json`: copy that to `<work>/lumenpos_msgs.json`.
+   into `/tmp/esafepos_msgs.json`: copy that to `<work>/esafepos_msgs.json`.
 2. **The till's texts:** `node scripts/i18n/prep.mjs <work>` writes
    `ui_strings.json`, `server_strings.json` and the parts to translate.
 3. **What ERPNext already translates:** `python3 scripts/i18n/erp_keys.py <work> <code>`

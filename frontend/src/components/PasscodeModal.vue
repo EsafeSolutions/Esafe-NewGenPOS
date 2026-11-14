@@ -110,7 +110,7 @@ async function verify() {
   checking.value = true
   error.value = ''
   try {
-    const result = await call('lumenpos.api.settings.verify_passcode', {
+    const result = await call('esafepos.api.settings.verify_passcode', {
       passcode: passcode.value,
     })
     if (result.valid) {
@@ -132,7 +132,7 @@ async function sendRequest() {
   sending.value = true
   error.value = ''
   try {
-    const res = await call('lumenpos.api.approval_requests.create_request', {
+    const res = await call('esafepos.api.approval_requests.create_request', {
       request_type: 'Discount',
       pos_profile: session.posProfile,
       discount_percent: cart.maxManualDiscount,
@@ -162,7 +162,7 @@ async function sendRequest() {
 
 async function pollStatus() {
   try {
-    const res = await call('lumenpos.api.approval_requests.request_status', {
+    const res = await call('esafepos.api.approval_requests.request_status', {
       name: requestName.value,
     })
     if (res.status === 'Approved') {
@@ -186,7 +186,7 @@ async function pollStatus() {
 async function cancelRequest() {
   clearInterval(pollTimer)
   if (requestName.value) {
-    await call('lumenpos.api.approval_requests.cancel_request', {
+    await call('esafepos.api.approval_requests.cancel_request', {
       name: requestName.value,
     }).catch(() => {})
   }
@@ -203,7 +203,7 @@ function onClose() {
   clearInterval(pollTimer)
   // Withdraw a still-pending request so it doesn't linger for approvers.
   if (phase.value === 'waiting' && requestName.value) {
-    call('lumenpos.api.approval_requests.cancel_request', {
+    call('esafepos.api.approval_requests.cancel_request', {
       name: requestName.value,
     }).catch(() => {})
   }

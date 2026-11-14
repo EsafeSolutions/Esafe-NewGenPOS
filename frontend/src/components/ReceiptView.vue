@@ -301,7 +301,7 @@ const s = computed(
   () => props.settings || { ...(session.settings || {}), ...(props.receipt.receipt_settings || {}) }
 )
 
-// Amounts print in the sale's own currency (lumenpos.currency). A sale in
+// Amounts print in the sale's own currency (esafepos.currency). A sale in
 // another currency also shows its local value, the rate, each tender in its own
 // money and the change in local money (it always comes out of the main drawer).
 const m = (amount) => money(amount, props.receipt.currency)

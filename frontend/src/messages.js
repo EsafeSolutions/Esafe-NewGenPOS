@@ -1801,7 +1801,7 @@ const helpForStaff = {
 }
 
 // 0.58.1: ERPNext accounting periods that lock sales invoices
-// (lumenpos.accounting_periods, PeriodHint.vue).
+// (esafepos.accounting_periods, PeriodHint.vue).
 const lockedPeriods = {
   "ERPNext's accounting period {period} ({from} to {to}) locks sales invoices today, so no sale can be posted. Tell whoever looks after the accounts.": "الفترة المحاسبية {period} في ERPNext (من {from} إلى {to}) تقفل فواتير المبيعات اليوم، فلا يمكن ترحيل أي عملية بيع. أبلغ المسؤول عن الحسابات.",
   "ERPNext's accounting period {period} ({from} to {to}) locks sales invoices today. You can sell, but this shift will not be able to close until the period is changed in ERPNext. Tell whoever looks after the accounts.": "الفترة المحاسبية {period} في ERPNext (من {from} إلى {to}) تقفل فواتير المبيعات اليوم. يمكنك البيع، لكن هذه الوردية لن تتمكن من الإغلاق حتى تعدل الفترة في ERPNext. أبلغ المسؤول عن الحسابات.",
@@ -1814,7 +1814,7 @@ const lockedPeriods = {
   "When an ERPNext accounting period locks sales invoices, the till now says so as a shift opens and explains a close it stops. Settings, System check lists such periods too.": "عندما تقفل فترة محاسبية في ERPNext فواتير المبيعات، أصبحت نقطة البيع تنبه إلى ذلك عند فتح الوردية، وتشرح سبب تعذر إغلاقها. ويعرض فحص النظام في الإعدادات هذه الفترات أيضا.",
 }
 
-// 0.59.0: a reason for a short or over at the close (lumenpos.variance,
+// 0.59.0: a reason for a short or over at the close (esafepos.variance,
 // VarianceReason.vue).
 const varianceReasons = {
   "The count is short or over. Why?": "في العد عجز أو زيادة. ما السبب؟",
@@ -1847,8 +1847,8 @@ const varianceReasons = {
   "Write the reason or tap one, and say what was done about it, for example recounted or reported to the manager.": "اكتب السبب أو اضغط أحد الأسباب، واذكر الإجراء المتخذ، مثل إعادة العد أو إبلاغ المدير.",
   "Your shop may make the reason required: the register then closes only with one.": "قد يجعل المتجر السبب إلزاميا، فلا يغلق الصندوق إلا به.",
 }
-// 0.60.0: sales on account (lumenpos.credit_sales) and reprints kept to whoever may.
-// 0.61.0: taking money out of the drawer (lumenpos.cash_out).
+// 0.60.0: sales on account (esafepos.credit_sales) and reprints kept to whoever may.
+// 0.61.0: taking money out of the drawer (esafepos.cash_out).
 const cashOut = {
   "Cash out approval needed": "مطلوب اعتماد السحب النقدي",
   "Taking {amount} out of the drawer needs a manager's approval.": "سحب {amount} من الدرج يحتاج اعتماد المدير.",

@@ -291,13 +291,13 @@ async function toggleFavourites() {
 function openCustomerDisplay() {
   // Same SPA, hash route, opens (or focuses) a dedicated second-screen window.
   const url = customerDisplayUrl()
-  window.open(url, 'lumenpos-customer-display', 'width=1024,height=720')
+  window.open(url, 'esafepos-customer-display', 'width=1024,height=720')
 }
 
 async function loadFavourites() {
   favLoading.value = true
   try {
-    const res = await call('lumenpos.api.catalog.get_quick_keys', {
+    const res = await call('esafepos.api.catalog.get_quick_keys', {
       pos_profile: session.posProfile,
     })
     favourites.value = res.items || []
@@ -328,7 +328,7 @@ async function onSearchEnter() {
   // Scanner fast path: barcodes and serial numbers resolve server-side
   if (!session.offline) {
     try {
-      const result = await call('lumenpos.api.catalog.resolve_scan', {
+      const result = await call('esafepos.api.catalog.resolve_scan', {
         pos_profile: session.posProfile,
         code: term,
         customer_group: cart.customer?.customer_group || null,
@@ -404,7 +404,7 @@ async function createQuotation() {
 const passcodeOpen = ref(false)
 
 function onPay() {
-  // The server refuses it too (lumenpos.api.salespeople.for_sale).
+  // The server refuses it too (esafepos.api.salespeople.for_sale).
   if (session.settings.salesperson_mode === 'Required' && session.salesPersons.length && !cart.salesPerson) {
     session.notify(t('Pick the salesperson first'), true)
     return

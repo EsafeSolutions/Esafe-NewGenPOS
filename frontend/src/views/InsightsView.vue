@@ -97,7 +97,7 @@ const tabs = computed(() =>
   ].filter(Boolean)
 )
 // The tab last opened on this device, a convenience only.
-const TAB_KEY = 'lumenpos-insights-tab'
+const TAB_KEY = 'esafepos-insights-tab'
 const active = ref(null)
 let dashboardLoaded = false
 
@@ -234,7 +234,7 @@ async function load() {
   loading.value = true
   error.value = ''
   try {
-    info.value = await call('lumenpos.api.insights.status')
+    info.value = await call('esafepos.api.insights.status')
   } catch (e) {
     error.value = e.message || String(e)
   } finally {
@@ -246,7 +246,7 @@ async function create() {
   working.value = true
   actionError.value = ''
   try {
-    info.value = await call('lumenpos.api.insights.ensure_dashboard', { lang: reportsLang.value })
+    info.value = await call('esafepos.api.insights.ensure_dashboard', { lang: reportsLang.value })
   } catch (e) {
     actionError.value = e.message || String(e)
   } finally {

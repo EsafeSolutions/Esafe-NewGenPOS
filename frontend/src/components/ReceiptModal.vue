@@ -154,7 +154,7 @@ const otherCompany = computed(
   () => Boolean(props.receipt?.company && session.company) && props.receipt.company !== session.company
 )
 
-// Exchanges stay in the outlet's currency (lumenpos.currency): a sale in
+// Exchanges stay in the outlet's currency (esafepos.currency): a sale in
 // another currency is refunded and the new goods rung up as a new sale.
 const soldInOtherCurrency = computed(
   () =>
@@ -170,7 +170,7 @@ function toggleShare() {
 
 async function getShareDetails() {
   if (shareDetails.value) return shareDetails.value
-  shareDetails.value = await call('lumenpos.api.sales.receipt_share_link', {
+  shareDetails.value = await call('esafepos.api.sales.receipt_share_link', {
     invoice: props.receipt.name,
   })
   if (!shareMobile.value && shareDetails.value.mobile) shareMobile.value = shareDetails.value.mobile
@@ -226,7 +226,7 @@ async function sendSms() {
   }
   smsing.value = true
   try {
-    const res = await call('lumenpos.api.sales.sms_receipt', {
+    const res = await call('esafepos.api.sales.sms_receipt', {
       invoice: props.receipt.name,
       mobile,
     })
@@ -268,7 +268,7 @@ async function emailReceipt() {
   emailing.value = true
   try {
     // Try the address on file first; if there is none (or it fails), ask once.
-    const res = await call('lumenpos.api.sales.email_receipt', { invoice: props.receipt.name })
+    const res = await call('esafepos.api.sales.email_receipt', { invoice: props.receipt.name })
     session.notify(t('Receipt emailed to {email}', { email: res.email }))
   } catch (e) {
     const typed = (window.prompt(t('Email the receipt to:'), '') || '').trim()
@@ -277,7 +277,7 @@ async function emailReceipt() {
       return
     }
     try {
-      const res = await call('lumenpos.api.sales.email_receipt', {
+      const res = await call('esafepos.api.sales.email_receipt', {
         invoice: props.receipt.name,
         email: typed,
       })
@@ -308,7 +308,7 @@ async function print() {
   // Offline it cannot be asked: the permission the till holds decides.
   if (again && !props.receipt.offline && !session.offline) {
     try {
-      await call('lumenpos.api.printing.allow_reprint', { invoice: props.receipt.name })
+      await call('esafepos.api.printing.allow_reprint', { invoice: props.receipt.name })
     } catch (e) {
       session.notify(e.message, true)
       return
@@ -319,7 +319,7 @@ async function print() {
   if (session.printerConfigured && !props.receipt.offline && !session.offline) {
     printing.value = true
     try {
-      await call('lumenpos.api.printing.print_receipt', {
+      await call('esafepos.api.printing.print_receipt', {
         invoice: props.receipt.name,
         // The reprint was allowed (and logged) above: the printer is not asked again.
         reprint: 0,

@@ -64,7 +64,7 @@ Install EsafePOS onto your site from the Frappe Marketplace, then let the site f
 ```bash
 cd frappe-bench
 bench get-app https://github.com/ma7mod7osam/EsafePOS
-bench --site your-site install-app lumenpos
+bench --site your-site install-app esafepos
 bench --site your-site clear-cache
 ```
 

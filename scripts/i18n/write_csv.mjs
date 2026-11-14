@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Esafe (PVT) LTD
 // SPDX-License-Identifier: AGPL-3.0-only
 // "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md.
-// Build lumenpos/translations/<code>.csv (Frappe's own format, read on v13 to
+// Build esafepos/translations/<code>.csv (Frappe's own format, read on v13 to
 // v16) from <work>/<code>_server_part*.json, after checking every string.
 // Rows for texts Frappe or ERPNext already translate (<work>/erp_keys_<code>.json,
 // from erp_keys.py) are left out: Frappe merges every app's translations and
@@ -12,7 +12,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url))
-const APP = join(ROOT, 'lumenpos', 'translations')
+const APP = join(ROOT, 'esafepos', 'translations')
 const [work, lang] = process.argv.slice(2)
 const dry = process.argv.includes('--dry')
 if (!work || !lang) throw new Error('usage: node write_csv.mjs <work> <code>')

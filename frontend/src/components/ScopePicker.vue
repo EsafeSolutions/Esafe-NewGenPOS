@@ -2,7 +2,7 @@
      SPDX-License-Identifier: AGPL-3.0-only
      "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md. -->
 <template>
-  <!-- Where a rule applies (lumenpos.scope): the whole group, one company, or
+  <!-- Where a rule applies (esafepos.scope): the whole group, one company, or
        outlets chosen by name. A site with one company keeps the plain list. -->
   <div class="scope-picker">
     <div v-if="multi" class="segmented">

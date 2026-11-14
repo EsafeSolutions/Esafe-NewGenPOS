@@ -32,7 +32,7 @@ export function sizeOf(key, custom = {}) {
   return { ...preset, w: clamp(custom.w, 20, 120, 50), h: clamp(custom.h, 15, 120, 30), cols: 0, rows: 0 }
 }
 
-// One label's HTML. `row` comes from lumenpos.api.labels (item_name, barcode,
+// One label's HTML. `row` comes from esafepos.api.labels (item_name, barcode,
 // item_code, price text...), `show` says which fields print.
 export function labelHtml(row, show, size) {
   const code = row.barcode || row.item_code

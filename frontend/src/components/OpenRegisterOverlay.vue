@@ -95,7 +95,7 @@
               <span class="oe-sess">({{ entry.opening_entry }})</span>
             </div>
             <div class="choice-hint">
-              {{ t('This opening was not created by ESafe New Gen POS. Open Register to safely end an unused entry or take over an empty opening from today.') }}
+              {{ t('This opening was not created by ESAFE POS. Open Register to safely end an unused entry or take over an empty opening from today.') }}
             </div>
             <button type="button" class="oe-go" :disabled="busy" @click="router.push('/register')">
               {{ t('Open the Register page') }}
@@ -246,7 +246,7 @@ const canOpen = computed(() => session.permissions.open_register !== false)
 
 // Shifts this person still holds at other outlets, and whether the shop's
 // "one open shift per person" setting stops this one until they are closed
-// (the server refuses it too, lumenpos.api.register).
+// (the server refuses it too, esafepos.api.register).
 const router = useRouter()
 const others = computed(() => session.otherOpenRegisters || [])
 const externalOpenings = computed(() => session.externalOpenings || [])
@@ -307,7 +307,7 @@ async function forceNew() {
 async function retry() {
   busy.value = true
   try {
-    await call('lumenpos.api.register.retry_closing', { session: pending.value.session })
+    await call('esafepos.api.register.retry_closing', { session: pending.value.session })
     session.notify(t('Finalising the previous shift…'))
     startPoll(pending.value.session)
   } catch (e) {
@@ -322,7 +322,7 @@ function startPoll(sessionName) {
   poll = setInterval(async () => {
     tries += 1
     try {
-      const res = await call('lumenpos.api.register.closing_entry_status', { session: sessionName })
+      const res = await call('esafepos.api.register.closing_entry_status', { session: sessionName })
       if (res.status === 'Closed') {
         clearInterval(poll)
         session.notify(t('Previous shift closed, you can open the register now'))

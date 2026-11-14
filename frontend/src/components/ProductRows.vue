@@ -1,7 +1,7 @@
 <!-- Copyright (c) 2026 Esafe (PVT) LTD
      SPDX-License-Identifier: AGPL-3.0-only
      "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md. -->
-<!-- One table of products added up (lumenpos.api.reports._grouped): sold,
+<!-- One table of products added up (esafepos.api.reports._grouped): sold,
      returned, net quantity and net sales, and the cost, gross profit and margin
      when the server sent them. -->
 <template>

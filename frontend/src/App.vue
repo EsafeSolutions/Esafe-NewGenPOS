@@ -11,7 +11,7 @@
     <div class="main">
       <header class="topbar">
         <div class="topbar-left">
-          <div class="brand-lockup" aria-label="Esafe New Gen POS">
+          <div class="brand-lockup" aria-label="ESAFE POS">
             <span class="brand-name">Esafe</span>
             <span class="brand-product">New Gen POS</span>
           </div>
@@ -279,7 +279,7 @@ async function openXReport() {
   if (!session.registerSession || xreportLoading.value) return
   xreportLoading.value = true
   try {
-    xreportSummary.value = await call('lumenpos.api.register.get_session_summary', {
+    xreportSummary.value = await call('esafepos.api.register.get_session_summary', {
       session: session.registerSession.name,
     })
     xreportOpen.value = true

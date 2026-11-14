@@ -1,5 +1,5 @@
 // Manual discounts follow promotions; direct item amounts are per unit in
-// the sale currency. Keep in sync with lumenpos/api/discounts.py.
+// the sale currency. Keep in sync with esafepos/api/discounts.py.
 export function discountBreakdown(lines, promo, bundles, order, factor = 1, round = (n) => Math.round((n + Number.EPSILON) * 100) / 100) {
   const positive = (n) => Number.isFinite(Number(n)) ? Math.max(0, Number(n)) : 0
   const pct = (n) => Math.min(100, positive(n))

@@ -84,7 +84,7 @@ function clock(creation) {
 async function refresh() {
   loading.value = true
   try {
-    requests.value = await call('lumenpos.api.approval_requests.pending_requests', {})
+    requests.value = await call('esafepos.api.approval_requests.pending_requests', {})
   } catch (e) {
     session.notify(e.message, true)
   } finally {
@@ -95,7 +95,7 @@ async function refresh() {
 async function approve(r) {
   busy.value = r.name
   try {
-    await call('lumenpos.api.approval_requests.approve_request', { name: r.name })
+    await call('esafepos.api.approval_requests.approve_request', { name: r.name })
     session.notify(t('Request approved'))
   } catch (e) {
     session.notify(e.message, true)
@@ -109,7 +109,7 @@ async function approve(r) {
 async function reject(r) {
   busy.value = r.name
   try {
-    await call('lumenpos.api.approval_requests.reject_request', { name: r.name })
+    await call('esafepos.api.approval_requests.reject_request', { name: r.name })
     session.notify(t('Request rejected'))
   } catch (e) {
     session.notify(e.message, true)

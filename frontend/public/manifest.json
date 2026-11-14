@@ -1,6 +1,6 @@
 {
-  "name": "ESafe New Gen POS",
-  "short_name": "ESafe POS",
+  "name": "ESAFE POS",
+  "short_name": "ESAFE POS",
   "description": "Point of sale for ERPNext. Sells, returns and exchanges, and keeps selling when the connection drops.",
   "id": "/pos",
   "start_url": "/pos",
@@ -14,13 +14,13 @@
   "categories": ["business", "productivity", "shopping"],
   "icons": [
     {
-      "src": "/assets/lumenpos/pos/icon-192.png",
+      "src": "/assets/esafepos/pos/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/assets/lumenpos/pos/icon-512.png",
+      "src": "/assets/esafepos/pos/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"

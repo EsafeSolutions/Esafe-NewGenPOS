@@ -4,7 +4,7 @@
 <!-- The Sales summary tab of Insights (0.62.0): takings, tax, returns,
      discounts and payments over a period, day by day (hour by hour for one
      day), and what each shift's close counted against what it expected. The
-     server decides who may see it (lumenpos.api.reports.sales_summary). -->
+     server decides who may see it (esafepos.api.reports.sales_summary). -->
 <template>
   <div class="rep">
     <div class="card rep-card">
@@ -215,7 +215,7 @@ async function load(args) {
   loading.value = true
   error.value = ''
   try {
-    report.value = await call('lumenpos.api.reports.sales_summary', asked)
+    report.value = await call('esafepos.api.reports.sales_summary', asked)
   } catch (e) {
     report.value = null
     error.value = e.message || String(e)

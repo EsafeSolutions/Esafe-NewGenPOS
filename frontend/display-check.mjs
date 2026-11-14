@@ -19,7 +19,7 @@ import { connectDisplayCustomerEntry } from '/src/displayCustomerEntry.js'
 import { publishCart, onDisplayRequest, onDisplayCustomerResult, displayTerminalId } from '/src/customerDisplay.js'
 import { setCurrency } from '/src/format.js'
 import '/src/styles.css'
-localStorage.setItem('lumenpos-theme', 'dark')
+localStorage.setItem('esafepos-theme', 'dark')
 document.documentElement.dataset.theme = 'dark'
 if (location.hash.startsWith('#/display')) {
   onDisplayCustomerResult((result) => { window.lastCustomerResult = result })
@@ -79,7 +79,7 @@ if (!process.argv.includes('--serve')) {
     await display.getByLabel('Customer name').waitFor()
     assert.equal(await display.evaluate(() => document.documentElement.dataset.theme), 'light')
     assert.equal(await till.evaluate(() => document.documentElement.dataset.theme), 'dark')
-    assert.equal(await display.evaluate(() => localStorage.getItem('lumenpos-theme')), 'dark')
+    assert.equal(await display.evaluate(() => localStorage.getItem('esafepos-theme')), 'dark')
     assert.equal(await display.locator('.cdisplay').evaluate((el) => getComputedStyle(el).backgroundColor), 'rgb(255, 255, 255)')
     for (const width of [1896, 390]) {
       await display.setViewportSize({ width, height: 940 })
@@ -151,7 +151,7 @@ if (!process.argv.includes('--serve')) {
     await display.getByLabel('Customer name').fill('Previous customer')
     await display.getByLabel('Contact number').fill('0770000002')
     await display.evaluate(() => { window.lastCustomerResult = null })
-    const request = till.waitForRequest('**/api/method/lumenpos.api.catalog.create_customer')
+    const request = till.waitForRequest('**/api/method/esafepos.api.catalog.create_customer')
     await display.getByRole('button', { name: 'Save details' }).click()
     await request
     await till.evaluate(() => { cart.clear(); seed() })

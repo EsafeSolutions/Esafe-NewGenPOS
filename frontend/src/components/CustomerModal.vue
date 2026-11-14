@@ -166,7 +166,7 @@ const form = ref({
 })
 let timer = null
 
-// The shop's form (lumenpos.customer_form). Before a till has it (an old
+// The shop's form (esafepos.customer_form). Before a till has it (an old
 // cached bootstrap), the built-in form as it always was.
 const BUILT_IN = [
   ['mobile_no', 'Mobile', 'Required', 'Required'],
@@ -227,7 +227,7 @@ function loadLinkValues(field) {
     try {
       linkValues.value = {
         ...linkValues.value,
-        [field.fieldname]: await call('lumenpos.customer_form.link_values', {
+        [field.fieldname]: await call('esafepos.customer_form.link_values', {
           fieldname: field.fieldname,
           search: form.value[field.fieldname] || '',
         }),
@@ -258,7 +258,7 @@ async function runSearch() {
   // Offline: search the cached recent-customers subset instead of the server.
   results.value = session.offline
     ? await searchCustomersOffline(search.value)
-    : await call('lumenpos.api.catalog.search_customers', { search: search.value })
+    : await call('esafepos.api.catalog.search_customers', { search: search.value })
   searched.value = true
 }
 
@@ -295,7 +295,7 @@ async function create() {
     return
   }
   try {
-    const customer = await call('lumenpos.api.catalog.create_customer', { payload: form.value })
+    const customer = await call('esafepos.api.catalog.create_customer', { payload: form.value })
     cart.setCustomer(customer)
     emit('close')
   } catch (e) {

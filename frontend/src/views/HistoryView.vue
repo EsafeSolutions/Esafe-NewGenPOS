@@ -344,7 +344,7 @@ async function load() {
       payload.company = companyFilter.value
       if (!profileFilter.value) payload.all_profiles = 1
     }
-    const rows = await call('lumenpos.api.sales.search_sales', { filters: payload })
+    const rows = await call('esafepos.api.sales.search_sales', { filters: payload })
     if (seq !== searchSeq) return // a newer search already answered
     sales.value = rows
   } catch (e) {
@@ -362,7 +362,7 @@ function clearFilters() {
 }
 
 async function show(name) {
-  receipt.value = await call('lumenpos.api.sales.get_receipt', { invoice: name })
+  receipt.value = await call('esafepos.api.sales.get_receipt', { invoice: name })
 }
 
 function startRefund(invoice) {

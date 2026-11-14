@@ -4,7 +4,7 @@
 <!-- The Products tab of Insights (0.62.0): what sold over a period, by item,
      item group, brand, the item a variant belongs to, and each variant
      attribute. The cost, gross profit and margin come only to whoever may see
-     the profit (lumenpos.api.reports.products decides). -->
+     the profit (esafepos.api.reports.products decides). -->
 <template>
   <div class="rep">
     <div class="card rep-card">
@@ -87,7 +87,7 @@ async function load(args) {
   loading.value = true
   error.value = ''
   try {
-    report.value = await call('lumenpos.api.reports.products', asked)
+    report.value = await call('esafepos.api.reports.products', asked)
     if (!views.value.some((v) => v.key === view.value)) view.value = 'item'
   } catch (e) {
     report.value = null

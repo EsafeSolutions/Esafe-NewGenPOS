@@ -62,7 +62,7 @@ export const useCatalogStore = defineStore('catalog', {
       // Cold start: no cache yet, query the server directly
       this.loading = true
       try {
-        const data = await call('lumenpos.api.catalog.get_items', {
+        const data = await call('esafepos.api.catalog.get_items', {
           pos_profile: session.posProfile,
           search: this.search,
           item_group: this.itemGroup,
@@ -89,15 +89,15 @@ export const useCatalogStore = defineStore('catalog', {
       const session = useSessionStore()
       if (!session.posProfile || session.offline) return
       try {
-        const items = await call('lumenpos.api.catalog.get_full_catalog', {
+        const items = await call('esafepos.api.catalog.get_full_catalog', {
           pos_profile: session.posProfile,
         })
         await saveCatalog(items)
         this.cachedCount = items.length
         // Selling in another currency without a connection: each currency
-        // walk-in's own prices (lumenpos.currency.offline_prices).
+        // walk-in's own prices (esafepos.currency.offline_prices).
         if (session.multiCurrency?.enabled) {
-          const prices = await call('lumenpos.currency.offline_prices', {
+          const prices = await call('esafepos.currency.offline_prices', {
             pos_profile: session.posProfile,
           }).catch(() => null)
           if (prices) {
@@ -117,7 +117,7 @@ export const useCatalogStore = defineStore('catalog', {
       const session = useSessionStore()
       if (!session.posProfile || session.offline) return
       try {
-        const res = await call('lumenpos.api.catalog.recent_customers', {
+        const res = await call('esafepos.api.catalog.recent_customers', {
           pos_profile: session.posProfile,
         })
         await saveCustomers(res.customers || [])

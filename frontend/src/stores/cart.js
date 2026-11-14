@@ -304,7 +304,7 @@ export const useCartStore = defineStore('cart', {
       )
     },
 
-    // What this sale is in (lumenpos.currency). A customer billed in another
+    // What this sale is in (esafepos.currency). A customer billed in another
     // currency buys in it, at the rate the shift sells at. The cart keeps
     // adding up in the outlet's currency, exactly as before, and `factor`
     // converts for display; the server's quote is the authority at payment.
@@ -431,7 +431,7 @@ export const useCartStore = defineStore('cart', {
       }
       if (!session.offline) {
         try {
-          const data = await call('lumenpos.api.catalog.get_prices', {
+          const data = await call('esafepos.api.catalog.get_prices', {
             pos_profile: session.posProfile,
             item_codes: codes,
             customer_group: this.customer?.customer_group || null,
@@ -514,8 +514,8 @@ export const useCartStore = defineStore('cart', {
       }
       try {
         // The customer too: one billed in another currency may have their
-        // own price list in it (lumenpos.currency).
-        const data = await call('lumenpos.api.catalog.get_prices', {
+        // own price list in it (esafepos.currency).
+        const data = await call('esafepos.api.catalog.get_prices', {
           pos_profile: session.posProfile,
           item_codes: this.lines.map((l) => l.item_code),
           customer_group: this.customer?.customer_group || null,
@@ -541,7 +541,7 @@ export const useCartStore = defineStore('cart', {
     },
 
     // Offline, a sale in another currency takes the prices of that currency's
-    // walk-in's own price list, as the server will (lumenpos.currency
+    // walk-in's own price list, as the server will (esafepos.currency
     // .offline_prices), and a sale back in the outlet's currency the prices
     // the lines came with.
     _offlineCurrencyPrices() {
@@ -636,7 +636,7 @@ export const useCartStore = defineStore('cart', {
       const session = useSessionStore()
       if (session.offline) return // wallet needs the server
       try {
-        this.wallet = await call('lumenpos.api.loyalty.get_wallet', {
+        this.wallet = await call('esafepos.api.loyalty.get_wallet', {
           customer: customer.name,
           company: session.company,
         })
@@ -702,7 +702,7 @@ export const useCartStore = defineStore('cart', {
       const session = useSessionStore()
       // Coupon promos are never in the bootstrap payload, fetch via the
       // validation endpoint (throws on a bad code) and merge it in.
-      const promo = await call('lumenpos.api.session.check_coupon', {
+      const promo = await call('esafepos.api.session.check_coupon', {
         pos_profile: session.posProfile,
         code,
       })
@@ -822,7 +822,7 @@ export const useCartStore = defineStore('cart', {
       }
       this.submitting = true
       try {
-        const result = await call('lumenpos.api.exchanges.submit_exchange', { payload })
+        const result = await call('esafepos.api.exchanges.submit_exchange', { payload })
         // What came back moves too, not only what went out (0.56.1).
         useCatalogStore().applyStock({ ...(result?.return?.stock_after || {}), ...(result?.sale?.stock_after || {}) })
         markReturned(this.exchange.invoice, this.exchange.items)
@@ -846,7 +846,7 @@ export const useCartStore = defineStore('cart', {
       if (cached && cached.signature === signature && Date.now() - cached.at < 60000) {
         return cached.promise
       }
-      const promise = call('lumenpos.api.sales.quote_sale', { payload }).catch(() => null)
+      const promise = call('esafepos.api.sales.quote_sale', { payload }).catch(() => null)
       this._quoteCache = { signature, at: Date.now(), promise }
       // A failed quote is not an answer, don't keep it (the till falls back to
       // its own total and tries again next time).
@@ -879,7 +879,7 @@ export const useCartStore = defineStore('cart', {
       if (!this.lines.length) throw new Error('Add at least one item before creating a quotation')
       this.submitting = true
       try {
-        const result = await call('lumenpos.api.sales.create_pos_quotation', {
+        const result = await call('esafepos.api.sales.create_pos_quotation', {
           payload: {
             ...this._basePayload(),
             discount_passcode: this.discountPasscode,
@@ -905,7 +905,7 @@ export const useCartStore = defineStore('cart', {
       }
       this.submitting = true
       try {
-        const receipt = await call('lumenpos.api.sales.submit_sale', { payload })
+        const receipt = await call('esafepos.api.sales.submit_sale', { payload })
         useCatalogStore().applyStock(receipt?.stock_after)
         this._keepShiftSale(payload.idempotency_key, receipt)
         this.clear()
@@ -924,7 +924,7 @@ export const useCartStore = defineStore('cart', {
       const session = useSessionStore()
       // A sale in another currency is priced at the rate the shift fixed as
       // it opened, which the till knows, and the server posts it only at that
-      // rate (lumenpos.currency.assert_till_rate). A named customer billed in
+      // rate (esafepos.currency.assert_till_rate). A named customer billed in
       // another currency may have prices of their own the till does not keep.
       const sale = this.saleCurrency
       if (sale.foreign) {
@@ -1096,7 +1096,7 @@ export const useCartStore = defineStore('cart', {
 
     async park(note) {
       const session = useSessionStore()
-      await call('lumenpos.api.sales.park_sale', {
+      await call('esafepos.api.sales.park_sale', {
         pos_profile: session.posProfile,
         customer: this.customer?.name || null,
         customer_name: this.customer?.customer_name || null,
@@ -1110,10 +1110,10 @@ export const useCartStore = defineStore('cart', {
     },
 
     async retrieve(name) {
-      const data = await call('lumenpos.api.sales.retrieve_parked', { name })
+      const data = await call('esafepos.api.sales.retrieve_parked', { name })
       this.clear()
       if (data.customer) {
-        const matches = await call('lumenpos.api.catalog.search_customers', {
+        const matches = await call('esafepos.api.catalog.search_customers', {
           search: data.customer,
         })
         await this.setCustomer(matches.find((c) => c.name === data.customer) || null)

@@ -1,7 +1,7 @@
 <!-- Copyright (c) 2026 Esafe (PVT) LTD
      SPDX-License-Identifier: AGPL-3.0-only
      "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md. -->
-<!-- Stock count from the till (0.69.0, lumenpos.api.stock_app): scan or search, count, and
+<!-- Stock count from the till (0.69.0, esafepos.api.stock_app): scan or search, count, and
      either save the count as an ERPNext Stock Reconciliation draft (and submit it), or take
      part in a shared count with the phones of the EsafePOS Stock app and merge it. -->
 <template>
@@ -152,8 +152,8 @@ import { useSessionStore } from '../stores/session'
 import Icon from '../components/Icon.vue'
 
 const session = useSessionStore()
-const STORE_KEY = 'lumenpos-count'
-const DEVICE_KEY = 'lumenpos-count-device'
+const STORE_KEY = 'esafepos-count'
+const DEVICE_KEY = 'esafepos-count-device'
 const DOWNLOADS = {
   phone: 'https://esafe.lk/downloads/LumenStock.apk',
   handheld: 'https://esafe.lk/downloads/LumenStock-handheld.apk',
@@ -270,7 +270,7 @@ async function scan() {
   if (!code) return
   clearTimeout(searchTimer)
   await run(async () => {
-    const hit = await call('lumenpos.api.stock_app.count_lookup', { warehouse: warehouse.value, code })
+    const hit = await call('esafepos.api.stock_app.count_lookup', { warehouse: warehouse.value, code })
     if (hit && hit.found) {
       addItem(hit, hit.serial_no || null)
       if (hit.needs_serial) waitingSerial.value = hit.item_name
@@ -296,7 +296,7 @@ async function search() {
     return
   }
   try {
-    found.value = await call('lumenpos.api.stock_app.count_search', { warehouse: warehouse.value, text })
+    found.value = await call('esafepos.api.stock_app.count_search', { warehouse: warehouse.value, text })
   } catch {
     found.value = []
   }
@@ -318,7 +318,7 @@ function payload() {
 
 async function saveAlone() {
   await run(async () => {
-    const res = await call('lumenpos.api.stock_app.count_save', {
+    const res = await call('esafepos.api.stock_app.count_save', {
       pos_profile: session.posProfile, warehouse: warehouse.value, lines: JSON.stringify(payload()),
       name: recoName.value || null, zero_uncounted: zeroUncounted.value ? 1 : 0,
     })
@@ -331,13 +331,13 @@ async function saveAlone() {
 async function loadActions() {
   actions.value = []
   if (!recoName.value || !setup.value.submit) return
-  const res = await call('lumenpos.api.stock_app.stock_actions', { doctype: 'Stock Reconciliation', name: recoName.value })
+  const res = await call('esafepos.api.stock_app.stock_actions', { doctype: 'Stock Reconciliation', name: recoName.value })
   actions.value = res.actions || []
 }
 async function submit(action) {
   if (!confirm(t('Submit the stock count {name}? The stock is set to the counted quantities.', { name: recoName.value }))) return
   await run(async () => {
-    await call('lumenpos.api.stock_app.stock_submit', { doctype: 'Stock Reconciliation', name: recoName.value, action })
+    await call('esafepos.api.stock_app.stock_submit', { doctype: 'Stock Reconciliation', name: recoName.value, action })
     info.value = t('Stock count {name} is submitted.', { name: recoName.value })
     recoName.value = ''
     actions.value = []
@@ -350,7 +350,7 @@ async function submit(action) {
 async function loadSessions() {
   if (mode.value !== 'shared' || !warehouse.value) return
   try {
-    sessions.value = await call('lumenpos.api.stock_app.count_sessions', { warehouse: warehouse.value })
+    sessions.value = await call('esafepos.api.stock_app.count_sessions', { warehouse: warehouse.value })
   } catch (e) {
     sessions.value = []
     error.value = e.message || String(e)
@@ -358,7 +358,7 @@ async function loadSessions() {
 }
 async function startShared() {
   await run(async () => {
-    const s = await call('lumenpos.api.stock_app.count_session_open', {
+    const s = await call('esafepos.api.stock_app.count_session_open', {
       warehouse: warehouse.value, title: newTitle.value || null, full_count: newFull.value ? 1 : 0,
     })
     newTitle.value = ''
@@ -371,7 +371,7 @@ async function join(s) {
   if (!lines.value.length) {
     // this till's own lines, if it sent some before (the count was reopened)
     try {
-      const own = await call('lumenpos.api.stock_app.count_session_device', { session: s.name, device_id: deviceId() })
+      const own = await call('esafepos.api.stock_app.count_session_device', { session: s.name, device_id: deviceId() })
       for (const [code, v] of Object.entries(own.data || {})) {
         lines.value.push({ item_code: code, item_name: code, has_serial_no: (v.s || []).length ? 1 : 0, shelf: null, qty: v.q || 0, serials: v.s || [] })
       }
@@ -388,7 +388,7 @@ async function send() {
     const data = {}
     for (const r of lines.value) data[r.item_code] = r.serials.length ? { q: r.serials.length, s: r.serials } : { q: Number(r.qty) || 0 }
     const label = (session.posProfile || 'EsafePOS') + (session.userFullname ? ' · ' + session.userFullname : '')
-    const res = await call('lumenpos.api.stock_app.count_session_push', {
+    const res = await call('esafepos.api.stock_app.count_session_push', {
       session: joined.value.name, device_id: deviceId(), device_label: label, data: JSON.stringify(data),
     })
     lastSent.value = String(res.last_sync || '').slice(11, 16)
@@ -399,7 +399,7 @@ async function send() {
 async function refreshStatus() {
   if (!joined.value) return
   try {
-    status.value = await call('lumenpos.api.stock_app.count_session_status', { session: joined.value.name })
+    status.value = await call('esafepos.api.stock_app.count_session_status', { session: joined.value.name })
   } catch (e) {
     error.value = e.message || String(e)
   }
@@ -407,7 +407,7 @@ async function refreshStatus() {
 async function merge() {
   if (!confirm(t('Merge every device of {name} into one stock count draft? Send your own count first.', { name: joined.value.title || joined.value.name }))) return
   await run(async () => {
-    const res = await call('lumenpos.api.stock_app.count_session_merge', { session: joined.value.name })
+    const res = await call('esafepos.api.stock_app.count_session_merge', { session: joined.value.name })
     recoName.value = res.reconciliation
     joined.value = null
     lines.value = []
@@ -420,7 +420,7 @@ async function merge() {
 async function closeShared() {
   if (!confirm(t('Close {name} without making a stock count?', { name: joined.value.title || joined.value.name }))) return
   await run(async () => {
-    await call('lumenpos.api.stock_app.count_session_close', { session: joined.value.name })
+    await call('esafepos.api.stock_app.count_session_close', { session: joined.value.name })
     leave()
   })
 }
@@ -448,7 +448,7 @@ function onWarehouse() {
 onMounted(async () => {
   if (!session.permissions.stock_count) return
   await run(async () => {
-    const res = await call('lumenpos.api.stock_app.count_setup', { pos_profile: session.posProfile })
+    const res = await call('esafepos.api.stock_app.count_setup', { pos_profile: session.posProfile })
     setup.value = { ...res, downloads: res.downloads || DOWNLOADS }
     const keep = stored()
     const same = keep.profile === session.posProfile && res.warehouses.includes(keep.warehouse)

@@ -1,4 +1,4 @@
-# EsafePOS: a professional Point of Sale for ERPNext / Frappe
+# ESAFE POS for ERPNext / Frappe
 
 > 📘 **[Full user guide & documentation → docs/user-guide.md](docs/user-guide.md)**
 > (setup, every feature in detail, settings reference, troubleshooting, changelog,
@@ -64,7 +64,7 @@ ERPNext desk. Brand accent color: `#2E5BFF`.
   which sold serials are coming back. Serialized items can't be sold offline.
 - Sales post as standard **Sales Invoices** (`is_pos = 1`) so stock, GL and
   reports work exactly as ERPNext expects. Applied promotions are stored on
-  the invoice (`lumenpos_promotions`) for auditing.
+  the invoice (`esafepos_promotions`) for auditing.
 
 ## Requirements
 
@@ -74,15 +74,17 @@ ERPNext desk. Brand accent color: `#2E5BFF`.
 
 ## Install
 
-The frontend ships pre-built (`lumenpos/public/pos`), so the bench does **not**
+The frontend ships pre-built (`esafepos/public/pos`), so the bench does **not**
 need Node or npm:
 
 ```bash
 cd frappe-bench
-bench get-app https://github.com/ma7mod7osam/lumenpos
-bench --site yoursite install-app lumenpos
+bench get-app https://github.com/EsafeSolutions/Esafe-NewGenPOS
+bench --site yoursite install-app esafepos
 bench --site yoursite clear-cache
 ```
+
+For a site running the previous app, follow the [in-place upgrade guide](docs/esafepos-upgrade.md).
 
 If you change anything under `frontend/src`, rebuild and commit the assets:
 `cd frontend && npm install && npm run build`.
@@ -116,14 +118,14 @@ Discounts never exceed the line/basket total.
 ## Architecture
 
 ```
-lumenpos/
-├── lumenpos/
+esafepos/
+├── esafepos/
 │   ├── promotions/
 │   │   ├── engine.py        # pure evaluation engine (no Frappe imports)
 │   │   ├── loader.py        # POS Promotion -> engine dicts
 │   │   └── test_engine.py   # standalone unit tests
 │   ├── api/                 # whitelisted endpoints (session, catalog, sales, register)
-│   ├── lumenpos/doctype/        # POS Promotion (+children), POS Register Session, POS Parked Sale
+│   ├── esafepos/doctype/        # POS Promotion (+children), POS Register Session, POS Parked Sale
 │   └── www/pos.html         # serves the built SPA at /pos
 └── frontend/                # Vue 3 + Vite + Pinia
     └── src/promotions.js    # JS mirror of engine.py (instant cart feedback)
@@ -135,7 +137,7 @@ only one that is trusted. `frontend/parity-check.mjs` runs the same scenarios
 through the JS engine that `test_engine.py` covers in Python:
 
 ```bash
-python -m unittest lumenpos.promotions.test_engine   # from the app root
+python -m unittest esafepos.promotions.test_engine   # from the app root
 node parity-check.mjs                            # from frontend/
 ```
 

@@ -356,7 +356,7 @@ async function toggleTool(name) {
 }
 
 // The breakdown under the total: folded unless this device opened it.
-const DETAILS_KEY = 'lumenpos-cart-details'
+const DETAILS_KEY = 'esafepos-cart-details'
 function detailsRemembered() {
   try {
     return localStorage.getItem(DETAILS_KEY) === '1'

@@ -1,9 +1,9 @@
 [project]
-name = "lumenpos"
+name = "esafepos"
 authors = [
     { name = "Esafe (PVT) LTD", email = "hello@esafe.lk" },
 ]
-description = "ESafe New Gen POS: professional, multi-business Point of Sale for ERPNext / Frappe"
+description = "ESAFE POS: professional, multi-business Point of Sale for ERPNext / Frappe"
 # 3.7, not 3.10: Frappe v13 runs on Python 3.7 to 3.9, and every line of this
 # app parses under 3.7 (verified by AST). A >=3.10 floor was blocking v13
 # installs for no reason in our own code.
@@ -29,7 +29,7 @@ build-backend = "flit_core.buildapi"
 # Version-sensitive behaviour is handled in code, not by excluding releases:
 #   * serials  - v15+ reads the Serial and Batch Bundle, v13/v14 the legacy
 #                serial_no field (sales._has_serial_bundle)
-#   * ERPNext  - the four internals we call go through lumenpos/erpnext_compat.py,
+#   * ERPNext  - the four internals we call go through esafepos/erpnext_compat.py,
 #                which reports a clear message if a release moves one
 frappe = ">=13.0.0,<17.0.0"
 erpnext = ">=13.0.0,<17.0.0"

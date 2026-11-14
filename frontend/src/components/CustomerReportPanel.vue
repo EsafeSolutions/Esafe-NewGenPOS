@@ -4,7 +4,7 @@
 <!-- The Customers tab of Insights (0.62.0): how many named customers bought,
      came back or are new, the average basket and how often they buy, the best,
      the regulars and the most recent, beside the walk-in sales
-     (lumenpos.api.reports.customers). -->
+     (esafepos.api.reports.customers). -->
 <template>
   <div class="rep">
     <div class="card rep-card">
@@ -118,7 +118,7 @@ async function load(args) {
   loading.value = true
   error.value = ''
   try {
-    report.value = await call('lumenpos.api.reports.customers', asked)
+    report.value = await call('esafepos.api.reports.customers', asked)
   } catch (e) {
     report.value = null
     error.value = e.message || String(e)

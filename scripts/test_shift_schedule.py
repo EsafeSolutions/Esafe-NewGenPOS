@@ -23,7 +23,7 @@ import sys
 import types
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-SRC = ROOT / "lumenpos" / "api" / "register.py"
+SRC = ROOT / "esafepos" / "api" / "register.py"
 
 WANTED = {"_as_time", "_scheduled_end"}
 SLOTS = []

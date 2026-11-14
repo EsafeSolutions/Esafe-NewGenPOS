@@ -1,7 +1,7 @@
 <!-- Copyright (c) 2026 Esafe (PVT) LTD
      SPDX-License-Identifier: AGPL-3.0-only
      "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md. -->
-<!-- Barcode and price labels (0.67.0, lumenpos.api.labels): items from a search
+<!-- Barcode and price labels (0.67.0, esafepos.api.labels): items from a search
      or a scan, from a document that brought goods in, or from the prices changed
      since a date; the size, what prints, a preview, and the print itself. -->
 <template>
@@ -126,7 +126,7 @@ import Icon from '../components/Icon.vue'
 
 const session = useSessionStore()
 const DOCTYPES = ['Purchase Receipt', 'Stock Entry', 'Purchase Invoice']
-const STORE_KEY = 'lumenpos-labels'
+const STORE_KEY = 'esafepos-labels'
 
 const rows = ref([])
 const query = ref('')
@@ -212,7 +212,7 @@ async function run(fn) {
 
 function addItems(list) {
   return run(async () => {
-    const data = await call('lumenpos.api.labels.items', { pos_profile: session.posProfile, items: list })
+    const data = await call('esafepos.api.labels.items', { pos_profile: session.posProfile, items: list })
     merge(data.rows)
     found.value = []
     query.value = ''
@@ -232,7 +232,7 @@ async function search() {
     return
   }
   try {
-    const data = await call('lumenpos.api.catalog.get_items', { pos_profile: session.posProfile, search: q, limit: 12 })
+    const data = await call('esafepos.api.catalog.get_items', { pos_profile: session.posProfile, search: q, limit: 12 })
     found.value = (data.items || []).map((i) => ({ item_code: i.item_code, item_name: i.item_name }))
   } catch {
     found.value = []
@@ -245,7 +245,7 @@ async function scanOrPick() {
   if (!q) return
   clearTimeout(searchTimer)
   await run(async () => {
-    const hit = await call('lumenpos.api.catalog.resolve_scan', { pos_profile: session.posProfile, code: q })
+    const hit = await call('esafepos.api.catalog.resolve_scan', { pos_profile: session.posProfile, code: q })
     if (hit && hit.found && hit.item) return addItems([{ item_code: hit.item.item_code, qty: 1 }])
     await search()
     if (found.value.length === 1) return addItems([{ item_code: found.value[0].item_code, qty: 1 }])
@@ -260,19 +260,19 @@ function debouncedDocuments() {
 }
 function loadDocuments() {
   return run(async () => {
-    docs.value = await call('lumenpos.api.labels.documents', { pos_profile: session.posProfile, doctype: docType.value, search: docSearch.value })
+    docs.value = await call('esafepos.api.labels.documents', { pos_profile: session.posProfile, doctype: docType.value, search: docSearch.value })
   })
 }
 function fromDocument(name) {
   return run(async () => {
-    const data = await call('lumenpos.api.labels.from_document', { pos_profile: session.posProfile, doctype: docType.value, name })
+    const data = await call('esafepos.api.labels.from_document', { pos_profile: session.posProfile, doctype: docType.value, name })
     merge(data.rows)
     if (!data.rows.length) error.value = t('{doc} has no items to label.', { doc: name })
   })
 }
 function priceChanges() {
   return run(async () => {
-    const data = await call('lumenpos.api.labels.price_changes', { pos_profile: session.posProfile, since: since.value })
+    const data = await call('esafepos.api.labels.price_changes', { pos_profile: session.posProfile, since: since.value })
     merge(data.rows)
     if (!data.rows.length) error.value = t('No price changed since that date.')
   })

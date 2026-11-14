@@ -1,7 +1,7 @@
 <!-- Copyright (c) 2026 Esafe (PVT) LTD
      SPDX-License-Identifier: AGPL-3.0-only
      "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md. -->
-<!-- Sales by salesperson, as lumenpos.api.salespeople returns them: one row a
+<!-- Sales by salesperson, as esafepos.api.salespeople returns them: one row a
      person, sales nobody was named on last. The commission column shows only
      when the server sent it (whoever may see the salesperson report). -->
 <template>

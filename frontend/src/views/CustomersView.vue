@@ -180,7 +180,7 @@ const loadingTxns = ref(false)
 const receipt = ref(null)
 
 onMounted(async () => {
-  groups.value = await call('lumenpos.api.customers.customer_groups').catch(() => [])
+  groups.value = await call('esafepos.api.customers.customer_groups').catch(() => [])
   reload()
 })
 
@@ -194,7 +194,7 @@ async function reload() {
   listStart.value = 0
   loadingList.value = true
   try {
-    const res = await call('lumenpos.api.customers.search_customers', {
+    const res = await call('esafepos.api.customers.search_customers', {
       search: search.value || null,
       customer_group: group.value || null,
       start: 0,
@@ -213,7 +213,7 @@ async function loadMore() {
   listStart.value += LIST_LIMIT
   loadingList.value = true
   try {
-    const res = await call('lumenpos.api.customers.search_customers', {
+    const res = await call('esafepos.api.customers.search_customers', {
       search: search.value || null,
       customer_group: group.value || null,
       start: listStart.value,
@@ -236,7 +236,7 @@ async function select(c) {
   detail.value = null
   loadingDetail.value = true
   try {
-    detail.value = await call('lumenpos.api.customers.customer_detail', {
+    detail.value = await call('esafepos.api.customers.customer_detail', {
       customer: c.name,
       company: companyView.value || session.company,
     })
@@ -269,7 +269,7 @@ async function reloadTxns() {
   txnStart.value = 0
   loadingTxns.value = true
   try {
-    const rows = await call('lumenpos.api.sales.search_sales', txnFilters(0))
+    const rows = await call('esafepos.api.sales.search_sales', txnFilters(0))
     txns.value = rows || []
     txnsMore.value = (rows || []).length === TXN_LIMIT
   } catch (e) {
@@ -283,7 +283,7 @@ async function loadMoreTxns() {
   txnStart.value += TXN_LIMIT
   loadingTxns.value = true
   try {
-    const rows = await call('lumenpos.api.sales.search_sales', txnFilters(txnStart.value))
+    const rows = await call('esafepos.api.sales.search_sales', txnFilters(txnStart.value))
     txns.value = txns.value.concat(rows || [])
     txnsMore.value = (rows || []).length === TXN_LIMIT
   } catch (e) {
@@ -305,7 +305,7 @@ function openInHistory() {
 
 async function openReceipt(tx) {
   try {
-    receipt.value = await call('lumenpos.api.sales.get_receipt', { invoice: tx.name })
+    receipt.value = await call('esafepos.api.sales.get_receipt', { invoice: tx.name })
   } catch (e) {
     session.notify(e.message, true)
   }

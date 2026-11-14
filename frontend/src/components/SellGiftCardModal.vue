@@ -76,7 +76,7 @@ async function sell() {
   }
   busy.value = true
   try {
-    const receipt = await call('lumenpos.api.sales.sell_gift_card', {
+    const receipt = await call('esafepos.api.sales.sell_gift_card', {
       payload: {
         pos_profile: session.posProfile,
         amount: amount.value,

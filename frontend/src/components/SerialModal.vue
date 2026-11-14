@@ -75,7 +75,7 @@ async function confirm() {
   }
   checking.value = true
   try {
-    const result = await call('lumenpos.api.catalog.validate_serial', {
+    const result = await call('esafepos.api.catalog.validate_serial', {
       pos_profile: session.posProfile,
       item_code: props.item.item_code,
       serial_no: value,

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+{#- Copyright (c) 2026 Esafe (PVT) LTD | SPDX-License-Identifier: AGPL-3.0-only | "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md. #}
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>ESAFE POS</title>
+  <link rel="icon" type="image/png" href="/assets/esafepos/pos/icon-192.png">
+  <link rel="manifest" href="/assets/esafepos/pos/manifest.json">
+  <meta name="theme-color" content="#10254B">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="ESAFE POS">
+  <link rel="apple-touch-icon" href="/assets/esafepos/pos/icon-192.png">
+  <link rel="stylesheet" href="/assets/esafepos/pos/pos.css?v={{ esafepos_version }}">
+</head>
+<body>
+  <div id="app"></div>
+  <script>
+    window.csrf_token = "{{ csrf_token }}";
+    window.esafepos_version = "{{ esafepos_version }}";
+    // Keep the shell on the device so the till opens with no connection at
+    // all, and so a reload during an outage is not the end of the shift.
+    // Registered with the version, a release is a new worker and a new cache.
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", function () {
+        navigator.serviceWorker
+          .register("/sw.js?v={{ esafepos_version }}", { scope: "/pos" })
+          .catch(function () {
+            /* no service worker (old browser, plain http): the till still works online */
+          });
+      });
+    }
+  </script>
+  <script type="module" src="/assets/esafepos/pos/pos.js?v={{ esafepos_version }}"></script>
+</body>
+</html>

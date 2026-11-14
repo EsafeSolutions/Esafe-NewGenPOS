@@ -46,7 +46,7 @@ onMounted(load)
 async function load() {
   loading.value = true
   try {
-    parked.value = await call('lumenpos.api.sales.list_parked', {
+    parked.value = await call('esafepos.api.sales.list_parked', {
       pos_profile: session.posProfile,
     })
   } finally {
@@ -66,7 +66,7 @@ async function retrieve(name) {
 
 async function discard(name) {
   if (!confirm(t('Discard this parked sale?'))) return
-  await call('lumenpos.api.sales.discard_parked', { name })
+  await call('esafepos.api.sales.discard_parked', { name })
   await load()
 }
 </script>

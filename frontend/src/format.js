@@ -20,7 +20,7 @@ export function isolate(text) {
 }
 
 // `code` names the currency when it is not the outlet's: a sale to a customer
-// billed in another currency, or a drawer that holds one (lumenpos.currency).
+// billed in another currency, or a drawer that holds one (esafepos.currency).
 export function money(amount, code) {
   const unit = code || currency
   let formatted

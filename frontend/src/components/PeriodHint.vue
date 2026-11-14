@@ -28,7 +28,7 @@
 
 <script setup>
 // An ERPNext Accounting Period that locks Sales Invoices
-// (lumenpos.accounting_periods, 0.58.1): why a close failed ("failed"), or,
+// (esafepos.accounting_periods, 0.58.1): why a close failed ("failed"), or,
 // as a shift opens, why its close would fail ("today"). A shop that made a
 // period ahead of time "to open" a month sells all day and then cannot close
 // the shift, because the close posts the shift's sales as a Sales Invoice.

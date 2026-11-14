@@ -4,7 +4,7 @@
 <template>
   <nav class="rail" data-tour="nav-rail">
     <div class="logo">
-      <img :src="esafeMark" alt="Esafe New Gen POS" />
+      <img :src="esafeMark" alt="ESAFE POS" />
     </div>
     <!-- The reports alone (0.65.0): Insights, the theme and the way back to ERPNext. -->
     <router-link v-if="!session.reportsOnly" to="/" class="rail-item" exact-active-class="active">
@@ -110,7 +110,7 @@ async function refreshPending() {
   try {
     // No profile scoping, an approver sees every open-shift request they can
     // act on, even when their till is on a different POS profile than the cashier.
-    const rows = await call('lumenpos.api.approval_requests.pending_requests', {})
+    const rows = await call('esafepos.api.approval_requests.pending_requests', {})
     pendingCount.value = rows.length
   } catch {
     /* ignore, the badge is best-effort */

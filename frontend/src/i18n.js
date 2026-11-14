@@ -19,7 +19,7 @@ import { computed, ref } from 'vue'
 
 import { messages } from './messages'
 
-const KEY = 'lumenpos-locale'
+const KEY = 'esafepos-locale'
 
 // Every language the till speaks, named in itself, in the order ERPNext is used
 // in them (a study of public ERPNext sites and Frappe Cloud installs,

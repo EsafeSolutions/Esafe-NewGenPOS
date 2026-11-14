@@ -152,7 +152,7 @@ async function load(append = false) {
   if (!props.priceList) return
   loading.value = true
   try {
-    const data = await call('lumenpos.api.settings.list_price_book_prices', {
+    const data = await call('esafepos.api.settings.list_price_book_prices', {
       price_list: props.priceList,
       search: search.value,
       start: append ? rows.value.length : 0,
@@ -171,7 +171,7 @@ async function load(append = false) {
 
 async function savePrice(row) {
   try {
-    await call('lumenpos.api.settings.set_price_book_price', {
+    await call('esafepos.api.settings.set_price_book_price', {
       price_list: props.priceList,
       item_code: row.item_code,
       rate: row.rate || 0,
@@ -186,7 +186,7 @@ async function savePrice(row) {
 async function removePrice(row) {
   if (!confirm(t('Remove {item} from "{list}"?', { item: row.item_name, list: props.priceList }))) return
   try {
-    await call('lumenpos.api.settings.remove_price_book_price', {
+    await call('esafepos.api.settings.remove_price_book_price', {
       price_list: props.priceList,
       item_code: row.item_code,
     })
@@ -217,7 +217,7 @@ function addRow(option) {
 async function doExport() {
   exporting.value = true
   try {
-    const res = await call('lumenpos.api.settings.export_price_book_prices', {
+    const res = await call('esafepos.api.settings.export_price_book_prices', {
       price_list: props.priceList,
       compare_price_list: props.compareList || undefined,
     })
@@ -245,7 +245,7 @@ function onImportFile(event) {
     importing.value = true
     importReport.value = null
     try {
-      const res = await call('lumenpos.api.settings.import_price_book_prices', {
+      const res = await call('esafepos.api.settings.import_price_book_prices', {
         price_list: props.priceList,
         filename: file.name,
         content: reader.result,

@@ -4,7 +4,7 @@
 // Prepare a translation job in <work>: the till's texts (every key of the
 // Arabic dictionary, the till's complete list, with its English, its Arabic as
 // a hint for short labels, and the screen it is on) and the server's texts
-// (<work>/lumenpos_msgs.json from extract_server.py, minus Frappe's navbar
+// (<work>/esafepos_msgs.json from extract_server.py, minus Frappe's navbar
 // labels), each split in parts. Usage: node prep.mjs <work> [parts]
 import { mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -47,13 +47,13 @@ const ui = Object.keys(messages.ar).map((key, i) => ({
   screen: [...(screens[key] || [])].slice(0, 3).join(', ') || (key.includes(':') ? key.split(':')[0] + ' names' : 'shared'),
 }))
 
-const server = JSON.parse(readFileSync(join(work, 'lumenpos_msgs.json'), 'utf8'))
+const server = JSON.parse(readFileSync(join(work, 'esafepos_msgs.json'), 'utf8'))
   .filter((r) => !r.path.startsWith('Navbar'))
   .map((r, i) => ({
     id: 's' + String(i + 1).padStart(4, '0'),
     en: r.message,
     context: r.context || '',
-    where: r.path.startsWith('DocType:') ? r.path : r.path.replace(/^apps\/lumenpos\//, ''),
+    where: r.path.startsWith('DocType:') ? r.path : r.path.replace(/^apps\/esafepos\//, ''),
   }))
 
 for (const [name, rows] of [['ui', ui], ['server', server]]) {

@@ -4,7 +4,7 @@
 <!-- The Cashiers tab of Insights (0.62.0): what each cashier rang up, the
      returns and discounts they gave, the price edits the audit log holds for
      them, and how their shifts' counts compared with what was expected. The
-     server decides who may see it (lumenpos.api.reports.cashiers). -->
+     server decides who may see it (esafepos.api.reports.cashiers). -->
 <template>
   <div class="rep">
     <div class="card rep-card">
@@ -105,7 +105,7 @@ async function load(args) {
   loading.value = true
   error.value = ''
   try {
-    report.value = await call('lumenpos.api.reports.cashiers', asked)
+    report.value = await call('esafepos.api.reports.cashiers', asked)
   } catch (e) {
     report.value = null
     error.value = e.message || String(e)

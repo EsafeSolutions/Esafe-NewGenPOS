@@ -1,7 +1,7 @@
 <!-- Copyright (c) 2026 Esafe (PVT) LTD
      SPDX-License-Identifier: AGPL-3.0-only
      "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md. -->
-<!-- A supervisor's approval for a refund (0.63.0, lumenpos.refund_approval):
+<!-- A supervisor's approval for a refund (0.63.0, esafepos.refund_approval):
      their passcode at the till, or a return request from the Approvals tray for
      this amount, the way a cash out is approved. The server checks it again
      when the refund posts. `allowRequest` false (a hold being cancelled): the
@@ -106,7 +106,7 @@ async function verify() {
   checking.value = true
   error.value = ''
   try {
-    const result = await call('lumenpos.api.settings.verify_passcode', { passcode: passcode.value })
+    const result = await call('esafepos.api.settings.verify_passcode', { passcode: passcode.value })
     if (result.valid) {
       emit('approved', { passcode: passcode.value, approver: result.approver || '' })
     } else {
@@ -126,7 +126,7 @@ async function sendRequest() {
   sending.value = true
   error.value = ''
   try {
-    const res = await call('lumenpos.api.approval_requests.create_request', {
+    const res = await call('esafepos.api.approval_requests.create_request', {
       request_type: 'Return',
       pos_profile: session.posProfile,
       return_invoice: props.invoice,
@@ -148,7 +148,7 @@ async function sendRequest() {
 
 async function pollStatus() {
   try {
-    const res = await call('lumenpos.api.approval_requests.request_status', { name: requestName.value })
+    const res = await call('esafepos.api.approval_requests.request_status', { name: requestName.value })
     if (res.status === 'Approved') {
       clearInterval(pollTimer)
       emit('approved', { request: requestName.value, approver: res.approver_name || '' })
@@ -170,7 +170,7 @@ async function pollStatus() {
 async function cancelRequest() {
   clearInterval(pollTimer)
   if (requestName.value) {
-    await call('lumenpos.api.approval_requests.cancel_request', { name: requestName.value }).catch(() => {})
+    await call('esafepos.api.approval_requests.cancel_request', { name: requestName.value }).catch(() => {})
   }
   reset()
 }
@@ -184,7 +184,7 @@ function onClose() {
   clearInterval(pollTimer)
   // Withdraw a still-pending request so it does not linger for approvers.
   if (phase.value === 'waiting' && requestName.value) {
-    call('lumenpos.api.approval_requests.cancel_request', { name: requestName.value }).catch(() => {})
+    call('esafepos.api.approval_requests.cancel_request', { name: requestName.value }).catch(() => {})
   }
   emit('close')
 }

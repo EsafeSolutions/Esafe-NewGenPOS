@@ -143,7 +143,7 @@
       </div>
       <div class="panel-body">
         <p class="muted small" style="margin: 0 0 10px">
-          {{ t('ERPNext 16 permits one open shift per outlet. These openings were not created by ESafe New Gen POS, so they must be handled before a new register can sell.') }}
+          {{ t('ERPNext 16 permits one open shift per outlet. These openings were not created by ESAFE POS, so they must be handled before a new register can sell.') }}
         </p>
         <div v-for="opening in externalOpenings" :key="opening.opening_entry" class="external-row">
           <div class="external-info">
@@ -224,7 +224,7 @@
               <div class="muted small">{{ t('{n} taken, in the drawer', { n: summary.customer_payments.length }) }}</div>
             </div>
           </div>
-          <!-- Who sold what on this shift (lumenpos.api.salespeople.shift_rows). -->
+          <!-- Who sold what on this shift (esafepos.api.salespeople.shift_rows). -->
           <div v-if="summary.salespeople?.length" class="sp-block">
             <div class="days-title">{{ t('By salesperson') }}</div>
             <SalespeopleTable :rows="summary.salespeople" :currency="local" />
@@ -353,7 +353,7 @@
             </tbody>
           </table>
           </div>
-          <!-- A short or over: why, and what was done (lumenpos.variance). -->
+          <!-- A short or over: why, and what was done (esafepos.variance). -->
           <VarianceReason
             v-if="ownAsk.show"
             v-model:reason="varianceReason"
@@ -559,7 +559,7 @@ const cashOutHint = computed(() => {
 })
 
 // Shift figures are in the company currency; each drawer in another currency
-// ("Cash USD") keeps its own float, movements and count (lumenpos.currency).
+// ("Cash USD") keeps its own float, movements and count (esafepos.currency).
 const local = computed(() => summary.value?.company_currency || session.localCurrency)
 const foreignDrawers = computed(() =>
   (session.paymentModes || []).filter(
@@ -585,7 +585,7 @@ const externalBusy = ref(null)
 
 async function loadExternalOpenings() {
   if (session.offline || !session.posProfile) return
-  session.externalOpenings = await call('lumenpos.api.register.list_external_openings', {
+  session.externalOpenings = await call('esafepos.api.register.list_external_openings', {
     pos_profile: session.posProfile,
   }).catch(() => [])
 }
@@ -595,7 +595,7 @@ async function takeOverExternal(opening) {
   if (!confirm(t('Take over the empty opening of {name}? You become responsible for the register and its cash drawer.', { name }))) return
   externalBusy.value = opening.opening_entry
   try {
-    await call('lumenpos.api.register.take_over_external_opening', { opening_entry: opening.opening_entry })
+    await call('esafepos.api.register.take_over_external_opening', { opening_entry: opening.opening_entry })
     await session.bootstrap(session.posProfile)
     pending.value = session.pendingClosing
     session.notify(t('Opening taken over. You can continue selling.'))
@@ -612,7 +612,7 @@ async function endExternal(opening) {
   if (!confirm(t('End the unused opening of {name}? This cancels its empty ERPNext POS Opening Entry.', { name }))) return
   externalBusy.value = opening.opening_entry
   try {
-    await call('lumenpos.api.register.end_external_opening', { opening_entry: opening.opening_entry })
+    await call('esafepos.api.register.end_external_opening', { opening_entry: opening.opening_entry })
     await session.bootstrap(session.posProfile)
     pending.value = session.pendingClosing
     session.notify(t('Unused ERPNext opening ended. You can open a new register now.'))
@@ -657,7 +657,7 @@ async function openRegister() {
 async function retryClosing(sessionName, isPending = false) {
   retrying.value = sessionName
   try {
-    await call('lumenpos.api.register.retry_closing', { session: sessionName })
+    await call('esafepos.api.register.retry_closing', { session: sessionName })
     session.notify(t('Finalising the shift…'))
     pollCloseState(sessionName)
   } catch (e) {
@@ -689,7 +689,7 @@ async function loadOtherShifts() {
     otherShifts.value = []
     return
   }
-  otherShifts.value = await call('lumenpos.api.register.list_open_shifts', {
+  otherShifts.value = await call('esafepos.api.register.list_open_shifts', {
     pos_profile: session.posProfile,
   }).catch(() => [])
   if (otherTarget.value && !otherShifts.value.some((r) => r.session === otherTarget.value.session)) {
@@ -707,7 +707,7 @@ async function pickOther(row) {
   otherError.value = ''
   otherLoading.value = true
   try {
-    otherSummary.value = await call('lumenpos.api.register.get_session_summary', { session: row.session })
+    otherSummary.value = await call('esafepos.api.register.get_session_summary', { session: row.session })
     for (const r of otherSummary.value.expected) otherCounted.value[r.mode_of_payment] = null
   } catch (e) {
     // The drawers can still be counted: the close goes through and the
@@ -747,7 +747,7 @@ async function closeOther() {
     for (const [mode, value] of Object.entries(otherCounted.value)) {
       countedClean[mode] = parseMoney(value) || 0
     }
-    await call('lumenpos.api.register.close_register', {
+    await call('esafepos.api.register.close_register', {
       session: target.session,
       counted: countedClean,
       closing_note: otherNote.value || null,
@@ -770,7 +770,7 @@ async function closeOther() {
 
 async function loadHistory() {
   if (session.offline) return
-  history.value = await call('lumenpos.api.register.list_sessions', {
+  history.value = await call('esafepos.api.register.list_sessions', {
     pos_profile: session.posProfile,
   }).catch(() => [])
 }
@@ -782,7 +782,7 @@ function pollCloseState(sessionName) {
   closingPoll = setInterval(async () => {
     tries += 1
     try {
-      const res = await call('lumenpos.api.register.closing_entry_status', { session: sessionName })
+      const res = await call('esafepos.api.register.closing_entry_status', { session: sessionName })
       // keep the visible close panel in sync if it's this session
       if (closedResult.value && closedResult.value.name === sessionName) {
         closeState.value = res
@@ -838,7 +838,7 @@ const countRows = computed(() => {
   return rows
 })
 
-// A reason for a short or over at the close (lumenpos.variance, 0.59.0). The
+// A reason for a short or over at the close (esafepos.variance, 0.59.0). The
 // threshold is in the company currency, a drawer in another one valued at its
 // shift rate, as the server does it.
 const vrMode = computed(() => session.settings?.variance_reason_mode || 'Optional')
@@ -875,7 +875,7 @@ async function load() {
   loadError.value = ''
   loadingSummary.value = true
   try {
-    summary.value = await call('lumenpos.api.register.get_session_summary', {
+    summary.value = await call('esafepos.api.register.get_session_summary', {
       session: session.registerSession.name,
     })
     for (const row of summary.value.expected) {
@@ -912,9 +912,9 @@ async function addMovement() {
       session.notify(t('Write why the money is taken out.'), true)
       return
     }
-    // The server says whether a manager must approve it (lumenpos.cash_out).
+    // The server says whether a manager must approve it (esafepos.cash_out).
     try {
-      const check = await call('lumenpos.api.register.cash_out_check', {
+      const check = await call('esafepos.api.register.cash_out_check', {
         session: session.registerSession.name,
         amount,
         mode_of_payment: m.mode_of_payment || null,
@@ -935,7 +935,7 @@ async function addMovement() {
 async function postMovement(amount, approval) {
   movementBusy.value = true
   try {
-    await call('lumenpos.api.register.add_cash_movement', {
+    await call('esafepos.api.register.add_cash_movement', {
       session: session.registerSession.name,
       movement_type: movement.value.movement_type,
       amount,
@@ -975,7 +975,7 @@ const retryingDays = ref(false)
 async function retryDays() {
   retryingDays.value = true
   try {
-    await call('lumenpos.api.register.retry_days', { session: session.registerSession.name })
+    await call('esafepos.api.register.retry_days', { session: session.registerSession.name })
     // It runs in the background: read the shift again in a moment.
     setTimeout(() => {
       retryingDays.value = false
@@ -1029,7 +1029,7 @@ async function close() {
       countedClean[mode] = parseMoney(value) || 0
     }
     const closedSession = session.registerSession.name
-    closedResult.value = await call('lumenpos.api.register.close_register', {
+    closedResult.value = await call('esafepos.api.register.close_register', {
       session: closedSession,
       counted: countedClean,
       closing_note: closingNote.value || null,

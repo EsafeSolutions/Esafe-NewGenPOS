@@ -42,7 +42,7 @@
 </template>
 
 <script setup>
-// A reason for a short or over at the close (lumenpos.variance, 0.59.0). The
+// A reason for a short or over at the close (esafepos.variance, 0.59.0). The
 // cashier writes it in their own words, or taps one of the shop's reasons
 // (kept as the shop wrote it, so it reads in each person's language), and can
 // say what was done about it. Used for the cashier's own close and for a

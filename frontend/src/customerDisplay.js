@@ -12,7 +12,7 @@
 
 import { newId } from './offline'
 
-const NAME = 'lumenpos-customer-display'
+const NAME = 'esafepos-customer-display'
 let channel = null
 // Each till tab owns its display; customer input must never reach another till.
 export const displayTerminalId = newId()

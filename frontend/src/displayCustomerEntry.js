@@ -13,7 +13,7 @@ export function customerEntryError(name, mobile) {
 }
 
 async function resolveCustomer(payload, session) {
-  if (!session.offline) return call('lumenpos.api.catalog.create_customer', { payload })
+  if (!session.offline) return call('esafepos.api.catalog.create_customer', { payload })
   const digits = (value) => String(value || '').replace(/\D/g, '')
   const matches = await searchCustomersOffline('', Number.MAX_SAFE_INTEGER)
   const existing = matches.find((c) => digits(c.mobile_no) === digits(payload.mobile_no))

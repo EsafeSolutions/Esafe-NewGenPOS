@@ -39,7 +39,7 @@ export const useSessionStore = defineStore('session', {
     invoiceMode: 'POS Invoice',
     availableProfiles: [],
     profileCompanies: {}, // register -> its company
-    // The outlet each register stands in (lumenpos.outlets, 0.64.0): registers
+    // The outlet each register stands in (esafepos.outlets, 0.64.0): registers
     // that sell from one warehouse, or carry one Outlet name, are one outlet.
     // [{outlet, name, company, registers, size}], registers = the ones this
     // person may use, size = how many the outlet has in all.
@@ -49,7 +49,7 @@ export const useSessionStore = defineStore('session', {
     reportsOnly: false,
     companyList: [],
     otherOpenRegisters: [],
-    // Native ERPNext openings that have no ESafe New Gen POS register session
+    // Native ERPNext openings that have no ESAFE POS register session
     // yet. The Register screen offers a guarded recovery flow for them.
     externalOpenings: [],
     company: null,
@@ -71,7 +71,7 @@ export const useSessionStore = defineStore('session', {
     storeCreditMode: 'Store Credit',
     cashbackMode: 'Cashback',
     giftCardMode: 'Gift Card',
-    // EsafePOS's tender for a sale on account (lumenpos.credit_sales, 0.60.0).
+    // EsafePOS's tender for a sale on account (esafepos.credit_sales, 0.60.0).
     creditMode: 'Credit Sale',
     salesPersons: [],
     allowNegativeStock: false,
@@ -81,7 +81,7 @@ export const useSessionStore = defineStore('session', {
     // currencies: [{currency, symbol, walk_in_customer, walk_in_name,
     // walk_in_group, cash_mode, show_equivalent, rate}]}
     multiCurrency: { enabled: 0, currencies: [] },
-    // Help for staff (lumenpos.api.help): the shop's three switches and what
+    // Help for staff (esafepos.api.help): the shop's three switches and what
     // this person has seen. A bootstrap without it (an older cache) is off.
     help: { in_till: 0, offer_tour: 0, whats_new: 0, seen_version: '', tours_done: [] },
     settings: {
@@ -130,7 +130,7 @@ export const useSessionStore = defineStore('session', {
     permissions: {},
     pendingClosing: null,
     // An ERPNext accounting period that locks Sales Invoices today at this
-    // outlet's company (lumenpos.accounting_periods): {period, from, to, ended}.
+    // outlet's company (esafepos.accounting_periods): {period, from, to, ended}.
     periodLock: null,
     offline: false,
     queuedCount: 0,
@@ -213,7 +213,7 @@ export const useSessionStore = defineStore('session', {
         .map((mode) => (mode && mode === s.creditMode ? t('On account') : mode))
         .join(', '),
     // The money the main drawer holds, and that change is given in: the
-    // company currency (lumenpos.currency).
+    // company currency (esafepos.currency).
     localCurrency: (s) => s.multiCurrency?.company_currency || s.currency,
     // The currencies a sale can be switched to, besides the outlet's own.
     saleCurrencies: (s) =>
@@ -267,14 +267,14 @@ export const useSessionStore = defineStore('session', {
       let target = posProfile
       if (!target) {
         try {
-          target = localStorage.getItem('lumenpos_profile') || null
+          target = localStorage.getItem('esafepos_profile') || null
         } catch {
           target = null
         }
       }
       try {
         const asked = Date.now()
-        const data = await call('lumenpos.api.session.get_bootstrap', {
+        const data = await call('esafepos.api.session.get_bootstrap', {
           pos_profile: target,
         })
         this._applyBootstrap(data)
@@ -302,7 +302,7 @@ export const useSessionStore = defineStore('session', {
           // The remembered outlet is stale / no longer permitted, forget it and
           // boot the user's default outlet instead.
           try {
-            localStorage.removeItem('lumenpos_profile')
+            localStorage.removeItem('esafepos_profile')
           } catch {
             /* ignore */
           }
@@ -328,7 +328,7 @@ export const useSessionStore = defineStore('session', {
     async switchProfile(name) {
       if (!name || name === this.posProfile) return
       try {
-        localStorage.setItem('lumenpos_profile', name)
+        localStorage.setItem('esafepos_profile', name)
       } catch {
         /* ignore */
       }
@@ -401,7 +401,7 @@ export const useSessionStore = defineStore('session', {
       try {
         navigator.serviceWorker?.addEventListener('message', (event) => {
           const data = event.data || {}
-          if (data.type !== 'lumenpos-queue') return
+          if (data.type !== 'esafepos-queue') return
           useCatalogStore().applyStock(data.stock)
           this.refreshQueueCount()
           if (data.synced) this.notify(t('Sent {n} sales made without a connection', { n: data.synced }))
@@ -434,7 +434,7 @@ export const useSessionStore = defineStore('session', {
           return
         }
         try {
-          await call('lumenpos.api.session.ping', {}, { timeout: 4000 })
+          await call('esafepos.api.session.ping', {}, { timeout: 4000 })
         } catch {
           return // still down, try again on the next tick
         }
@@ -498,7 +498,7 @@ export const useSessionStore = defineStore('session', {
             // A return made without a connection: its payload is already
             // create_return's arguments, the sale it takes back named by
             // invoice or, when that sale was queued too, by its own key.
-            const receipt = await call('lumenpos.api.sales.create_return', entry.payload, { lang: entry.lang })
+            const receipt = await call('esafepos.api.sales.create_return', entry.payload, { lang: entry.lang })
             useCatalogStore().applyStock(receipt?.stock_after)
             await removeQueued(entry.local_id)
             await patchSaleLog(key, {
@@ -520,14 +520,14 @@ export const useSessionStore = defineStore('session', {
             if (!localMap[cust]) {
               const pending = await getPendingCustomer(cust)
               if (!pending) throw new Error('offline customer record is missing')
-              const res = await call('lumenpos.api.catalog.resolve_pending_customer', {
+              const res = await call('esafepos.api.catalog.resolve_pending_customer', {
                 payload: pending.payload,
               })
               localMap[cust] = res.name
             }
             payload = { ...payload, customer: localMap[cust] }
           }
-          const receipt = await call('lumenpos.api.sales.submit_sale', { payload }, { lang: entry.lang })
+          const receipt = await call('esafepos.api.sales.submit_sale', { payload }, { lang: entry.lang })
           // The server's figure replaces the estimate the till made offline.
           useCatalogStore().applyStock(receipt?.stock_after)
           // ...and its lines, rates and taxes replace the till's in the sale
@@ -603,13 +603,13 @@ export const useSessionStore = defineStore('session', {
 
     async refreshPromotions() {
       if (!this.posProfile || this.offline) return
-      this.promotions = await call('lumenpos.api.session.get_promotions', {
+      this.promotions = await call('esafepos.api.session.get_promotions', {
         pos_profile: this.posProfile,
       })
     },
 
     async openRegister(openingFloat, extra = {}) {
-      const result = await call('lumenpos.api.register.open_register', {
+      const result = await call('esafepos.api.register.open_register', {
         pos_profile: this.posProfile,
         opening_float: openingFloat,
         ...extra,

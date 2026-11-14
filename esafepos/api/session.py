@@ -1,0 +1,846 @@
+# Copyright (c) 2026 Esafe (PVT) LTD
+# SPDX-License-Identifier: AGPL-3.0-only
+# "ESAFEPOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md.
+from __future__ import annotations
+
+import frappe
+from frappe import _
+from frappe.utils import flt
+
+from esafepos.promotions.loader import get_active_promotions
+from esafepos.api import salespeople
+from esafepos.api.help import state as help_state
+
+
+@frappe.whitelist()
+def ping():
+    """Is the server reachable? Touches no table on purpose: an offline till
+    calls this every few seconds until it gets an answer, and the answer must
+    cost nothing. Returns the user so a session that expired while the till was
+    offline still comes back as a failure, not a false recovery."""
+    return {"ok": True, "user": frappe.session.user}
+
+
+@frappe.whitelist()
+def get_bootstrap(pos_profile: str | None = None):
+    """Everything the POS needs to start: profile, payment modes, item groups,
+    promotions, currency and the current register session."""
+    from esafepos import reports_access
+
+    # Management with the EsafePOS Reports role alone: the reports, no till
+    # (0.65.0). Before the POS Invoice check, which they need not pass.
+    if reports_access.reports_only():
+        return _reports_bootstrap()
+    if not frappe.has_permission("POS Invoice", "read"):
+        frappe.throw(
+            _("You do not have access to the POS. Ask an administrator to grant you the EsafePOS Cashier role (or POS Invoice access)."),
+            frappe.PermissionError,
+        )
+    profile_name = pos_profile or _default_pos_profile()
+    if not profile_name:
+        frappe.throw(
+            _("No POS Profile is assigned to you. Create one and add yourself under Applicable for Users.")
+        )
+    # A user may only operate an outlet they're assigned to (managers/admins:
+    # any). The outlet switcher only offers assigned outlets, but guard the API
+    # too so a switch to an unassigned outlet is rejected.
+    if pos_profile:
+        from esafepos.api import permissions
+
+        permissions.assert_outlet(pos_profile)
+
+    profile = frappe.get_doc("POS Profile", profile_name)
+
+    from esafepos import currency as sale_currency
+
+    payment_modes = []
+    for row in profile.payments:
+        mop_type = frappe.db.get_value("Mode of Payment", row.mode_of_payment, "type")
+        rule = _payment_rules().get(row.mode_of_payment) or {}
+        payment_modes.append(
+            {
+                "mode_of_payment": row.mode_of_payment,
+                "type": mop_type or "General",
+                # Its account's currency: the till offers a tender only on sales
+                # ERPNext will accept it for (esafepos.currency).
+                "account_currency": sale_currency.mode_currency(row.mode_of_payment, profile.company),
+                "default": row.default,
+                "require_reference": rule.get("require_reference", 0),
+                "reference_label": rule.get("reference_label", ""),
+            }
+        )
+
+    currency = profile.currency or frappe.get_cached_value(
+        "Company", profile.company, "default_currency"
+    )
+
+    from esafepos.api.catalog import item_groups_under
+
+    item_groups = [row.item_group for row in (profile.item_groups or [])]
+    # The whole tree listed ("All Item Groups") is the same as none listed.
+    if item_groups and item_groups_under(item_groups) is None:
+        item_groups = []
+    if not item_groups:
+        item_groups = frappe.get_all(
+            "Item Group",
+            filters={"is_group": 0},
+            order_by="name",
+            limit_page_length=50,
+            pluck="name",
+        )
+
+    session = get_open_session(profile_name)
+
+    return {
+        "user": frappe.session.user,
+        "user_fullname": frappe.utils.get_fullname(frappe.session.user),
+        "desk_theme": frappe.db.get_value("User", frappe.session.user, "desk_theme")
+        or "Automatic",
+        "pos_profile": profile_name,
+        "invoice_mode": profile.get("esafepos_invoice_mode") or "POS Invoice",
+        "company": profile.company,
+        "currency": currency,
+        "price_list": profile.selling_price_list,
+        "warehouse": profile.warehouse,
+        "default_customer": profile.customer,
+        "default_customer_name": frappe.db.get_value(
+            "Customer", profile.customer, "customer_name"
+        )
+        if profile.customer
+        else None,
+        "allow_negative_stock": frappe.db.get_single_value(
+            "Stock Settings", "allow_negative_stock"
+        ),
+        "payment_modes": payment_modes,
+        "item_groups": item_groups,
+        # A chip covers the groups beneath it, on the device too (offline.js).
+        "item_group_members": _item_group_members(item_groups),
+        "taxes": _profile_taxes(profile),
+        "promotions": get_active_promotions(profile_name),
+        "register_session": session,
+        # The site's own clock, in the zone its times are written in: the shift
+        # clock in the top bar counts from it, so a device set to another zone
+        # (or a wrong time) never shows a shift as hours old (0.61.1).
+        "server_now": str(frappe.utils.now_datetime()),
+        "other_open_registers": _other_open_registers(profile_name),
+        # Native ERPNext openings that pre-date or bypassed ESAFE POS.
+        # The Register page can safely end an unused one or attach a current
+        # opening to its operator; an ERPNext 16 outlet otherwise cannot sell.
+        "external_openings": _external_openings(profile_name),
+        "pending_closing": _pending_closing(profile_name),
+        "period_lock": _period_lock(profile),
+        "permissions": {
+            **get_user_permissions(),
+            # Typing a price on a line: this outlet's own switch and the rule.
+            "can_change_price": _can_change_price(profile),
+        },
+        "available_profiles": _user_profiles(),
+        # Each outlet's company, so a till on a site with several companies can
+        # say which one an outlet, a sale or a figure belongs to.
+        "profile_companies": {
+            p.name: p.company
+            for p in frappe.get_all("POS Profile", filters={"name": ["in", _user_profiles() or [""]]}, fields=["name", "company"])
+        },
+        # The outlet each register stands in (esafepos.outlets, 0.64.0): the till
+        # names a register by its outlet, and the reports pick an outlet.
+        "outlets": _outlets_for_till(),
+        "printer_configured": bool(profile.get("esafepos_printer_ip")),
+        "print_format": profile.print_format,
+        "store_credit_mode": "Store Credit",
+        "cashback_mode": "Cashback",
+        "gift_card_mode": _gift_card_mode(),
+        # Nobody to pick from when the shop does not use salespeople.
+        "sales_persons": _sales_persons() if salespeople.mode() != "Off" else [],
+        "pin_set": _pin_set(),
+        "settings": _client_settings(profile_name),
+        "bundles": get_bundles(profile_name),
+        # Other currencies: which ones, their walk-in customer and drawer, and
+        # the rate this shift sells at (esafepos.currency).
+        "multi_currency": _multi_currency(profile, session),
+        # Help for staff: the shop's switches and what this person has seen
+        # (esafepos.api.help).
+        "help": help_state(),
+    }
+
+
+def _reports_bootstrap():
+    """What EsafePOS needs to open on the reports alone (esafepos.reports_access):
+    who, the companies and their outlets, which reports, the languages. No
+    outlet, shift, products or prices: this person sells nothing."""
+    from esafepos import outlets as outlet_groups
+    from esafepos import reports_access
+    from esafepos import currency as sale_currency
+    from esafepos.api import insights as insights_mod
+    from esafepos.api import reports as reports_mod
+
+    registers = reports_access.registers()
+    company = reports_access.default_company()
+    if not registers or not company:
+        frappe.throw(_("There is no outlet in a company you may see, so there is no report to show yet."))
+    perms = {
+        "reports_only": True,
+        "sales_reports": reports_mod.can_see_sales_reports(),
+        "cashier_report": reports_mod.can_see_cashier_report(),
+        "profit_report": reports_mod.can_see_profit(),
+        "sales_by_person": salespeople.mode() != "Off" and reports_mod.permissions.can_see_sales_by_person(),
+        "insights": bool(insights_mod.enabled() and reports_mod.permissions.is_manager()),
+    }
+    if not (perms["sales_reports"] or perms["cashier_report"] or perms["profit_report"] or perms["sales_by_person"]):
+        frappe.throw(
+            _("The shop has not let the EsafePOS Reports role see any report. A manager names it in Settings, General, Approvals and access, Permissions."),
+            frappe.PermissionError,
+        )
+    groups = outlet_groups.for_registers(registers)
+    profile_companies = {
+        p.name: p.company
+        for p in frappe.get_all("POS Profile", filters={"name": ["in", registers]}, fields=["name", "company"])
+    }
+    from esafepos import languages
+
+    return {
+        "reports_only": 1,
+        "user": frappe.session.user,
+        "user_fullname": frappe.utils.get_fullname(frappe.session.user),
+        "desk_theme": frappe.db.get_value("User", frappe.session.user, "desk_theme") or "Automatic",
+        "pos_profile": None,
+        "company": company,
+        "companies": reports_access.companies(),
+        "currency": sale_currency.company_currency(company),
+        "server_now": str(frappe.utils.now_datetime()),
+        "permissions": perms,
+        "available_profiles": [],
+        "profile_companies": profile_companies,
+        "outlets": [
+            {"outlet": g["outlet"], "name": g["name"], "company": g["company"], "registers": g["registers"], "size": g["size"]}
+            for g in groups
+        ],
+        "settings": {
+            "till_languages": languages.offered(),
+            "salesperson_mode": salespeople.mode(),
+        },
+        # The help walks the till's screens: not for someone who has none.
+        "help": {"in_till": 0, "offer_tour": 0, "whats_new": 0, "seen_version": "", "tours_done": []},
+    }
+
+
+def _multi_currency(profile, session):
+    from esafepos import currency
+
+    try:
+        return currency.client_config(profile, (session or {}).get("name"))
+    except Exception:
+        # Never let this block the till from starting.
+        frappe.log_error(title="EsafePOS: currency setup for the till failed", message=frappe.get_traceback())
+        return {"enabled": 0, "currencies": []}
+
+
+def _payment_rules():
+    from esafepos.api.sales import _payment_rules as rules
+
+    try:
+        return rules()
+    except Exception:
+        return {}
+
+
+def _pin_set():
+    from esafepos.api import pin as pin_api
+
+    try:
+        return bool(pin_api.pin_is_set())
+    except Exception:
+        return True  # fail open, never lock a half-migrated site out
+
+
+def _gift_card_mode():
+    from esafepos import gift_cards
+
+    return gift_cards.mode_of_payment()
+
+
+def get_user_permissions():
+    """Capability map derived from the user's ERPNext DocType permissions, so
+    admins control who can see/do what entirely through the standard Role
+    Permissions Manager (no ESAFE POS-specific switches). The frontend uses this to
+    show/hide tabs and disable actions; every API also re-checks server-side."""
+    has = frappe.has_permission
+
+    def caps(doctype):
+        return {
+            "read": bool(has(doctype, "read")),
+            "write": bool(has(doctype, "write")),
+            "create": bool(has(doctype, "create")),
+            "delete": bool(has(doctype, "delete")),
+        }
+
+    from esafepos.api import insights as insights_mod
+    from esafepos.api import permissions as caps_mod
+    from esafepos.api import reports as reports_mod
+    from esafepos.api.labels import can_print_labels as labels_perm
+    from esafepos.api.stock_app import can_count_in_till
+
+    roles = set(frappe.get_roles())
+    return {
+        "sell": bool(has("POS Invoice", "create")),
+        "view_history": bool(has("POS Invoice", "read")),
+        "customers": bool(has("Customer", "read")),
+        # EsafePOS capability gates (role-configurable in Settings → Permissions).
+        "can_edit_price": caps_mod.can_edit_price(),
+        "can_return": caps_mod.can_return(),
+        "can_exchange": caps_mod.can_exchange(),
+        "can_exceed_return_window": caps_mod.can_exceed_return_window(),
+        "can_move_cash": caps_mod.can_move_cash(),
+        "can_cash_in": caps_mod.can_cash_in(),
+        "can_cash_out": caps_mod.can_cash_out(),
+        "can_hold_goods": caps_mod.can_hold_goods(),
+        "can_reprint": caps_mod.can_reprint(),
+        "sales_by_person": caps_mod.can_see_sales_by_person(),
+        "system_check": caps_mod.can_see_system_check(),
+        # The reports in Insights (0.62.0): the shop's switch and the person's
+        # capability, both re-checked server-side in esafepos.api.reports.
+        "sales_reports": reports_mod.can_see_sales_reports(),
+        "cashier_report": reports_mod.can_see_cashier_report(),
+        "profit_report": reports_mod.can_see_profit(),
+        # Barcode and price labels (0.67.0): the switch and the capability.
+        "print_labels": labels_perm(),
+        # The Stock count screen (0.69.0): the switches, the capability and ERPNext create on Stock Reconciliation.
+        "stock_count": can_count_in_till(),
+        # Sales on account (0.60.0), each nobody's but a manager's until named.
+        "sell_on_account": caps_mod.can_sell_on_account(),
+        "take_customer_payments": caps_mod.can_take_customer_payments(),
+        "set_customer_credit": caps_mod.can_set_customer_credit(),
+        # ERPNext's document permission AND the shop's own rule, both must pass.
+        "open_register": bool(has("POS Opening Entry", "create")) and caps_mod.can_open_register(),
+        "close_register": bool(has("POS Closing Entry", "create")) and caps_mod.can_close_register(),
+        "promotions": caps("POS Promotion"),
+        "cashback": caps("POS Cashback Rule"),
+        "bundles": caps("POS Bundle"),
+        "price_books": caps("POS Price Book"),
+        "edit_item_prices": bool(has("Item Price", "write")),
+        "create_price_list": bool(has("Price List", "create")),
+        "settings": bool(has("EsafePOS Settings", "write")),
+        # Insights: sales statistics are for managers, and the page itself
+        # can be switched off in Settings. Both re-checked server-side in
+        # esafepos.api.insights.
+        "insights": bool(insights_mod.enabled() and caps_mod.is_manager()),
+        "loyalty": bool(has("Loyalty Program", "create")),
+        "gift_cards": bool(has("POS Gift Card", "write")),
+        "is_manager": bool(
+            {"System Manager", "EsafePOS Manager"} & roles or has("EsafePOS Settings", "write")
+        ),
+    }
+
+
+def _pending_closing(pos_profile):
+    """A shift on this register whose close hasn't fully consolidated yet
+    (status 'Closing'). The Sell screen uses it to prompt 'retry the closing'
+    instead of letting anyone resume or sell on a finished shift."""
+    row = frappe.db.get_value(
+        "POS Register Session",
+        {"pos_profile": pos_profile, "status": "Closing"},
+        ["name", "closing_status", "closing_error", "pos_closing_entry", "closed_at"],
+        as_dict=True,
+    )
+    if not row:
+        return None
+    from esafepos.api.register import _closing_hint
+
+    return {
+        "session": row.name,
+        "closing_status": row.closing_status,
+        "closing_error": row.closing_error,
+        # An ERPNext accounting period the failed close names (0.58.1).
+        "closing_hint": _closing_hint(pos_profile, row.closing_error) if row.closing_status == "Failed" else None,
+        "pos_closing_entry": row.pos_closing_entry,
+        "closed_at": str(row.closed_at) if row.closed_at else None,
+    }
+
+
+def _period_lock(profile):
+    """An ERPNext accounting period that locks Sales Invoices today at this
+    outlet's company (0.58.1): the till says so when a shift opens, because the
+    close posts the shift's sales as one (and a Sales Invoice outlet's every
+    sale is one). None when nothing locks today, or the shop switched it off."""
+    from esafepos import accounting_periods
+
+    try:
+        return accounting_periods.till_lock(profile.company)
+    except Exception:
+        frappe.log_error(title="EsafePOS: reading accounting periods", message=frappe.get_traceback())
+        return None
+
+
+def get_bundles(pos_profile=None):
+    """Active, in-date POS Bundles for the sell screen, filtered by outlet."""
+    from frappe.utils import getdate, nowdate
+
+    today = getdate(nowdate())
+    bundles = []
+    for name in frappe.get_all("POS Bundle", filters={"status": "Active"}, pluck="name"):
+        doc = frappe.get_doc("POS Bundle", name)
+        # Validity window: not before valid_from, not after valid_to (expired).
+        if doc.get("valid_from") and getdate(doc.valid_from) > today:
+            continue
+        if doc.get("valid_to") and getdate(doc.valid_to) < today:
+            continue
+        profiles = [row.pos_profile for row in (doc.pos_profiles or [])]
+        from esafepos import scope
+
+        if not scope.applies_to(doc.get("company"), profiles, pos_profile):
+            continue
+        bundles.append(
+            {
+                "name": doc.name,
+                "title": doc.title,
+                "bundle_price": doc.bundle_price,
+                "items": [
+                    {
+                        "item_code": row.item_code,
+                        "item_name": row.item_name
+                        or frappe.get_cached_value("Item", row.item_code, "item_name"),
+                        "qty": row.qty,
+                        "allocated_amount": row.get("allocated_amount"),
+                    }
+                    for row in doc.items
+                ],
+            }
+        )
+    return bundles
+
+
+def _profile_taxes(profile):
+    """The profile's tax template rows, so the cart can compute taxes the
+    same way the server will, the displayed total must equal the invoice
+    grand total."""
+    if not profile.taxes_and_charges:
+        return []
+    template = frappe.get_cached_doc(
+        "Sales Taxes and Charges Template", profile.taxes_and_charges
+    )
+    return [
+        {
+            "description": row.description,
+            "charge_type": row.charge_type,
+            "rate": row.rate or 0,
+            "tax_amount": row.tax_amount or 0,
+            "included": row.included_in_print_rate or 0,
+            # A line's own tax rates are keyed by account (refund.js).
+            "account_head": row.account_head,
+            "row_id": row.get("row_id") or None,
+        }
+        for row in (template.taxes or [])
+    ]
+
+
+def _sales_persons():
+    """ALL enabled sales persons; includes the site's custom
+    sales_person_no field when it exists so cashiers can pick by number."""
+    fields = ["name", "sales_person_name"]
+    meta = frappe.get_meta("Sales Person")
+    number_field = next(
+        (f for f in ("sales_person_no", "custom_sales_person_no") if meta.has_field(f)),
+        None,
+    )
+    if number_field:
+        fields.append(f"{number_field} as sales_person_no")
+    return frappe.get_all(
+        "Sales Person",
+        filters={"is_group": 0, "enabled": 1},
+        fields=fields,
+        order_by="sales_person_name asc",
+        limit_page_length=0,
+    )
+
+
+def _open_holds(profile_name=None):
+    """How many holds this outlet still owes goods or money on."""
+    filters = {"status": "Open"}
+    if profile_name:
+        filters["pos_profile"] = profile_name
+    try:
+        return frappe.db.count("POS Layaway", filters)
+    except Exception:
+        return 0  # site pulled without a migrate, the doctype is not there yet
+
+
+def _client_settings(profile_name=None):
+    from esafepos import __version__
+
+    from frappe.utils import cint
+
+    from esafepos import accounting_periods, cash_out, credit_sales, languages, refund_approval, variance
+    from esafepos.api import approval_requests
+    from esafepos.api import labels as labels_mod
+
+    doc = frappe.get_cached_doc("EsafePOS Settings")
+    data = {
+        "version": __version__,
+        "discount_limit_percent": doc.discount_limit_percent or 0,
+        "discount_approval_mode": doc.get("discount_approval_mode") or "Passcode only",
+        "can_approve_requests": approval_requests.can_approve(),
+        "approval_requests_in_use": 1 if approval_requests.in_use() else 0,
+        "restrict_returns_to_window": 1 if doc.get("restrict_returns_to_window") else 0,
+        "return_window_days": cint(doc.get("return_window_days")) or 0,
+        "show_out_of_stock": 1 if doc.get("show_out_of_stock") else 0,
+        "serial_scan_only": 1 if doc.get("serial_scan_only") else 0,
+        "shift_scope": doc.get("shift_scope") or "Per cashier",
+        "one_shift_per_user": 1 if doc.get("one_shift_per_user") else 0,
+        "warn_locked_periods": 1 if accounting_periods.switch() else 0,
+        "enable_order_discount": 1 if doc.get("enable_order_discount") else 0,
+        "enable_service_charge": 1 if doc.get("enable_service_charge") else 0,
+        "service_charge_percent": flt(doc.get("service_charge_percent")),
+        "enable_price_checker": 1 if doc.get("enable_price_checker") else 0,
+        "enable_labels": 1 if labels_mod.enabled() else 0,
+        "enable_scale_barcodes": 1 if doc.get("enable_scale_barcodes") is None or doc.get("enable_scale_barcodes") else 0,
+        "scale_barcode_prefixes": doc.get("scale_barcode_prefixes") or "20,21,22,23,24,25,26,27,28,29,02",
+        "scale_barcode_plu_len": cint(doc.get("scale_barcode_plu_len")) or 5,
+        "scale_barcode_weight_decimals": 3 if doc.get("scale_barcode_weight_decimals") is None else cint(doc.get("scale_barcode_weight_decimals")),
+        "salesperson_mode": salespeople.mode(),
+        "enable_layaway": 1 if doc.get("enable_layaway") else 0,
+        "layaway_days": cint(doc.get("layaway_days")) or 0,
+        "layaway_min_percent": flt(doc.get("layaway_min_percent")),
+        "deposit_with_tax": 1 if doc.get("deposit_with_tax") else 0,
+        "enable_xreport": 1 if doc.get("enable_xreport") else 0,
+        "enable_email_receipt": 1 if doc.get("enable_email_receipt") else 0,
+        "enable_customer_display": 1 if doc.get("enable_customer_display") else 0,
+        "enable_till_lock": 1 if doc.get("enable_till_lock") else 0,
+        "auto_lock_minutes": cint(doc.get("auto_lock_minutes")) or 0,
+        "enable_quick_keys": 1 if doc.get("enable_quick_keys") else 0,
+        # The languages the cashier may pick, [] = all (esafepos.languages).
+        "till_languages": languages.offered(doc),
+        "receipt_template": doc.get("receipt_template") or "Retail",
+        "receipt_paper_width": doc.get("receipt_paper_width") or "80mm",
+        "receipt_logo": doc.get("receipt_logo") or "",
+        "receipt_header": doc.get("receipt_header") or "",
+        "receipt_footer": doc.get("receipt_footer") or "",
+        "receipt_show_item_code": 1 if doc.get("receipt_show_item_code") else 0,
+        "receipt_show_barcode": 1 if doc.get("receipt_show_barcode") else 0,
+        "receipt_show_serial": 1 if doc.get("receipt_show_serial") else 0,
+        "receipt_show_unit_price": 1 if doc.get("receipt_show_unit_price") else 0,
+        "receipt_show_payments": 1 if doc.get("receipt_show_payments") else 0,
+        "receipt_show_note": 1 if doc.get("receipt_show_note") else 0,
+        "receipt_show_tax_id": 1 if doc.get("receipt_show_tax_id") else 0,
+        "receipt_tax_id": doc.get("receipt_tax_id") or "",
+        "receipt_show_address": 1 if doc.get("receipt_show_address") else 0,
+        "receipt_address": doc.get("receipt_address") or "",
+        "receipt_show_terms": 1 if doc.get("receipt_show_terms") else 0,
+        "receipt_terms": doc.get("receipt_terms") or "",
+        "return_reasons": [
+            r.reason for r in (doc.get("return_reasons") or []) if (r.reason or "").strip()
+        ],
+        # A reason for a short or over at the close (esafepos.variance, 0.59.0).
+        **variance.client_facts(),
+        # Sales on account (esafepos.credit_sales, 0.60.0).
+        **credit_sales.client_facts(),
+        # Taking money out of the drawer (esafepos.cash_out, 0.61.0).
+        **cash_out.client_facts(),
+        # A supervisor approves refunds (esafepos.refund_approval, 0.63.0).
+        **refund_approval.client_facts(),
+        "delivery_apps": [
+            {
+                "app_name": row.app_name,
+                "price_list": row.price_list,
+                "require_order_id": row.require_order_id,
+            }
+            for row in (doc.delivery_apps or [])
+        ],
+    }
+    # A shop can switch holds off while money is still sitting on open ones, so
+    # the till keeps the screen (not the button) until those are settled.
+    data["open_holds"] = _open_holds(profile_name)
+    data.update(_offline_facts(doc, profile_name))
+    # The shop's new-customer form (esafepos.customer_form).
+    from esafepos import customer_form
+
+    data["customer_form"] = customer_form.client_form(
+        frappe.get_cached_value("POS Profile", profile_name, "company") if profile_name else None
+    )
+    # Per-outlet receipt: overlay this outlet's override on the global receipt so
+    # the sell screen renders the right one (falls back to global when none set).
+    if profile_name:
+        from esafepos.api.settings import effective_receipt
+
+        data.update(effective_receipt(profile_name))
+    return data
+
+
+def _offline_facts(doc, profile_name):
+    """Working without a connection (0.56.0): the three switches, and what a
+    till needs to take back a sale it made itself while the server is out of
+    reach. The shop's refund policy (a sale still waiting to upload has no
+    answer from the server on how it may be refunded), whether any return
+    restriction applies here (nor on its products), and how ERPNext rounds a
+    total in each currency this till sells in."""
+    from esafepos import currency, return_restrictions
+    from esafepos.api.sales import rounding_rule
+    from esafepos.api.settings import offline_switch
+
+    out = {
+        "offline_returns": 1 if offline_switch("offline_returns") else 0,
+        "background_upload": 1 if offline_switch("background_upload") else 0,
+        "warn_unprotected_storage": 1 if offline_switch("warn_unprotected_storage") else 0,
+        "refund_policy": {
+            "restrict": 1 if doc.get("restrict_refund_to_paid_mode") else 0,
+            "store_credit": 1 if doc.get("allow_store_credit_refund") else 0,
+            "rules": [
+                {"paid_mode": r.paid_mode, "refund_mode": r.refund_mode}
+                for r in (doc.get("refund_rules") or [])
+                if r.paid_mode and r.refund_mode
+            ],
+        },
+        "return_restricted": 0,
+        "rounding": {},
+    }
+    try:
+        out["return_restricted"] = 1 if return_restrictions.active_rules(profile_name) else 0
+        if profile_name:
+            profile = frappe.get_cached_doc("POS Profile", profile_name)
+            codes = {profile.currency or frappe.get_cached_value("Company", profile.company, "default_currency")}
+            if currency.enabled():
+                codes.update(currency.currency_rows())
+            codes.add(currency.company_currency(profile.company))
+            out["rounding"] = {code: rounding_rule(code, profile=profile) for code in codes if code}
+    except Exception:
+        # Never block the till from starting: without these a till simply
+        # refuses a return offline.
+        out["return_restricted"] = 1
+        frappe.log_error(title="EsafePOS: offline facts for the till failed", message=frappe.get_traceback())
+    return out
+
+
+@frappe.whitelist()
+def unlock_till(passcode: str | None = None):
+    """Unlock the till lock screen with the caller's OWN personal PIN.
+
+    No manager bypass and no shared code: the lock screen protects an unattended
+    till, it doesn't authorise anything, so "let a manager in with the master
+    code" bought nothing while a shared code destroyed the answer to "who
+    unlocked this?". The separate approvals passcode (over-limit discounts) is
+    untouched. Still throttled to blunt PIN guessing."""
+    from frappe.utils import cint
+
+    from esafepos.api import audit, pin as pin_api
+
+    user = frappe.session.user
+    key = f"esafepos_unlock:{user}"
+    attempts = cint(frappe.cache().get_value(key) or 0)
+    if attempts >= 8:
+        frappe.throw(_("Too many attempts, wait a minute and try again."))
+
+    result = pin_api.check_own_pin(passcode)
+    if result == "no_pin":
+        # Nothing to check against, the client shows the "create your PIN" step.
+        return {"ok": False, "no_pin": True}
+    if result != "ok":
+        frappe.cache().set_value(key, attempts + 1, expires_in_sec=60)
+        return {"ok": False}
+    frappe.cache().delete_value(key)
+    audit.log(audit.TILL_UNLOCK, detail=_("Unlocked by {0}").format(frappe.utils.get_fullname(user)))
+    return {"ok": True}
+
+
+@frappe.whitelist()
+def get_promotions(pos_profile: str):
+    """Lightweight refresh endpoint so the client can re-pull promotions."""
+    return get_active_promotions(pos_profile)
+
+
+@frappe.whitelist()
+def check_coupon(pos_profile: str, code: str):
+    """Validate a coupon code and hand back its promotion. Coupon-locked
+    promotions are never shipped in the bootstrap payload, so this is the
+    only way a client learns about one, and only with the right code."""
+    raw = (code or "").strip()
+    if not raw:
+        frappe.throw(_("Enter a coupon code"))
+    upper = raw.upper()
+    active = get_active_promotions(pos_profile, coupon_only=True)
+    # Legacy single coupon_code on a promotion.
+    for promo in active:
+        if (promo.get("coupon_code") or "").upper() == upper:
+            return promo
+    # Bulk coupon pool: a generated/imported code that unlocks its promotion.
+    from esafepos import coupons
+
+    row = coupons.resolve(raw)
+    if row:
+        for promo in active:
+            if promo.get("name") == row.promotion:
+                promo["coupon_code"] = raw  # so the live cart engine unlocks it
+                return promo
+        frappe.throw(_("This coupon's promotion isn't available right now"))
+    frappe.throw(_("Invalid or expired coupon code"))
+
+
+def shift_scope():
+    """"Per cashier" (the default since 0.60.1): each cashier opens their OWN
+    shift on that register and sells only on their own, so several people can
+    share one counter and each still gets their own Z-report and drawer
+    accountability. "Per outlet": ONE shift per register, any assigned cashier
+    sells on it. A site that had shifts before 0.60.1 keeps what it had (patch
+    v0_60.keep_shift_scope)."""
+    try:
+        return (
+            frappe.db.get_single_value("EsafePOS Settings", "shift_scope") or "Per cashier"
+        )
+    except Exception:
+        # The setting cannot be read at all: let any cashier sell rather than
+        # stop every sale but the opener's.
+        return "Per outlet"
+
+
+def get_open_session(pos_profile, user=None):
+    filters = {"pos_profile": pos_profile, "status": "Open"}
+    if shift_scope() == "Per cashier":
+        filters["opened_by"] = user or frappe.session.user
+    name = frappe.db.get_value("POS Register Session", filters, "name")
+    if not name:
+        return None
+    doc = frappe.get_doc("POS Register Session", name)
+    return {
+        "name": doc.name,
+        "opened_at": str(doc.opened_at),
+        "opened_by": doc.opened_by,
+        "opening_float": doc.opening_float,
+        "pos_opening_entry": doc.get("pos_opening_entry"),
+    }
+
+
+def _can_change_price(profile):
+    from esafepos.api import permissions
+
+    try:
+        return permissions.can_change_price(profile)
+    except Exception:
+        return False
+
+
+def _item_group_members(groups):
+    """{group: [it and every group beneath it]} for the till's group chips
+    that have groups beneath them, so the catalog on the device filters the
+    way the server does (catalog.item_groups_under)."""
+    from esafepos.api.catalog import item_groups_under
+
+    members = {}
+    for group in groups:
+        under = item_groups_under([group]) or []
+        if len(under) > 1:
+            members[group] = under
+    return members
+
+
+def _default_pos_profile():
+    """Prefer an outlet this user already has a LIVE shift on, otherwise a
+    manager (or anyone on several outlets) lands on an arbitrary assignment row
+    while their open register sits somewhere else."""
+    user = frappe.session.user
+    live = frappe.db.get_value(
+        "POS Register Session", {"opened_by": user, "status": "Open"}, "pos_profile"
+    )
+    if live:
+        return live
+    name = frappe.db.get_value(
+        "POS Profile User", {"user": user, "parenttype": "POS Profile"}, "parent"
+    )
+    if name:
+        return name
+    # Fall back to an outlet this user may use (single-store setups often skip
+    # user mapping; a user held to some companies gets one of theirs).
+    allowed = _user_profiles()
+    return allowed[0] if allowed else None
+
+
+def _other_open_registers(current_profile):
+    """Open shifts this user still holds on OTHER outlets, so the Open Register
+    dialog can remind them a drawer is open elsewhere (multi-outlet allows more
+    than one open at once, so a forgotten shift wouldn't otherwise surface).
+
+    `reachable`: the outlet is one this user can still work on at the till
+    (enabled, and theirs), so they can go and close the shift there. Only such
+    a shift holds them back under "One open shift per person"; one they cannot
+    reach any more (outlet disabled, access removed) is for a manager to close
+    and must never lock them out."""
+    rows = frappe.get_all(
+        "POS Register Session",
+        filters={
+            "opened_by": frappe.session.user,
+            "status": "Open",
+            "pos_profile": ["!=", current_profile or ""],
+        },
+        fields=["name", "pos_profile", "opened_at"],
+        order_by="opened_at asc",
+    )
+    reachable = set(_user_profiles()) if rows else set()
+    return [
+        {
+            "session": r.name,
+            "pos_profile": r.pos_profile,
+            "opened_at": str(r.opened_at) if r.opened_at else None,
+            "reachable": r.pos_profile in reachable,
+        }
+        for r in rows
+    ]
+
+
+def _external_openings(pos_profile):
+    """A small, permission-filtered view of native openings needing recovery."""
+    try:
+        from esafepos.api import register
+
+        return register._external_opening_rows(pos_profile)
+    except Exception:
+        # A recovery aid must never stop the till from loading. The Register
+        # page can still refresh it explicitly once the site is fully migrated.
+        frappe.log_error(title="ESAFE POS: external opening lookup", message=frappe.get_traceback())
+        return []
+
+
+def _outlets_for_till():
+    from esafepos import outlets
+
+    try:
+        return [
+            {"outlet": g["outlet"], "name": g["name"], "company": g["company"], "registers": g["registers"], "size": g["size"]}
+            for g in outlets.for_registers(_user_profiles())
+        ]
+    except Exception:
+        frappe.log_error(title="EsafePOS: outlets for the till")
+        return []
+
+
+def _user_profiles():
+    """Outlets this user may operate. A MANAGER sees every enabled outlet, they
+    supervise the shop, and being stranded on one arbitrary assignment row (or on
+    none at all) left them unable to help a branch that needed them."""
+    user = frappe.session.user
+    from esafepos.api import permissions
+
+    # Only outlets of companies ERPNext's User Permissions allow this user.
+    companies = permissions.allowed_companies(user)
+    enabled = {"disabled": 0}
+    if companies is not None:
+        enabled["company"] = ["in", list(companies)]
+    if permissions.is_manager():
+        return sorted(frappe.get_all("POS Profile", filters=enabled, pluck="name"))
+    names = frappe.get_all(
+        "POS Profile User",
+        filters={"user": user, "parenttype": "POS Profile"},
+        pluck="parent",
+    )
+    if names:
+        names = frappe.get_all("POS Profile", filters={**enabled, "name": ["in", names]}, pluck="name")
+    else:
+        names = frappe.get_all("POS Profile", filters=enabled, pluck="name", limit_page_length=20)
+    return sorted(set(names))
+
+
+def can_open_till() -> bool:
+    """Frappe's apps screen (hooks.add_to_apps_screen) shows EsafePOS to this
+    user: the same test get_bootstrap makes before anything else. Not
+    whitelisted, Frappe calls it itself."""
+    try:
+        from esafepos import reports_access
+
+        return bool(frappe.has_permission("POS Invoice", "read")) or reports_access.is_viewer()
+    except Exception:
+        return False

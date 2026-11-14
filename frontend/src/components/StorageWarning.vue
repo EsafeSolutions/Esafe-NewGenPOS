@@ -32,7 +32,7 @@ import { t } from '../i18n'
 import { ensurePersistentStorage, storagePersisted } from '../offline'
 import { useSessionStore } from '../stores/session'
 
-const SNOOZE_KEY = 'lumenpos-storage-snooze'
+const SNOOZE_KEY = 'esafepos-storage-snooze'
 const SNOOZE_MS = 24 * 3600 * 1000
 
 const session = useSessionStore()

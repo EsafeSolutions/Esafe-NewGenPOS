@@ -5,15 +5,15 @@
 // sales made while the network is down. No external dependencies.
 import { parseScaleBarcode } from './barcode'
 
-const DB_NAME = 'lumenpos'
+const DB_NAME = 'esafepos'
 const DB_VERSION = 5
 
 // The till page and the service worker's background upload (public/sw.js)
 // take turns through this Web Lock, so one queued sale is never sent by both
 // at once. sw.js uses the same name.
-export const UPLOAD_LOCK = 'lumenpos-queue-upload'
+export const UPLOAD_LOCK = 'esafepos-queue-upload'
 // The Background Sync tag the page asks for and sw.js answers.
-export const SYNC_TAG = 'lumenpos-queue'
+export const SYNC_TAG = 'esafepos-queue'
 
 // A unique client id for offline records (queued-sale idempotency keys,
 // offline-created customer temp ids).

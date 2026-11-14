@@ -9,7 +9,7 @@
           <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="m21 21-4.3-4.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
           <input
             v-model="filters.search"
-            :placeholder="t('Invoice no, customer, mobile or order ID…')"
+            :placeholder="t('Invoice no, customer, walk-in code, mobile or order ID…')"
             @input="debouncedLoad"
             @keydown.enter.prevent="load"
           />
@@ -169,7 +169,7 @@
         >
           <div class="sale-info">
             <div class="sale-customer">
-              {{ sale.customer_name }}
+              {{ sale.walk_in_code || sale.customer_name }}
               <span v-if="sale.is_return" class="tag red">{{ t('REFUND') }}</span>
               <span v-if="sale.is_exchange" class="tag purple"><Icon name="exchange" /> {{ t('EXCHANGE') }}</span>
               <span v-if="sale.docstatus === 2" class="tag red">{{ t('CANCELLED') }}</span>
@@ -201,6 +201,7 @@
       :can-exchange="session.permissions.can_exchange !== false"
       reprint
       @close="receipt = null"
+      @updated="receipt = $event"
       @refund="startRefund"
       @exchange="startExchange"
     />

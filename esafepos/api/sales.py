@@ -7,6 +7,7 @@ from collections.abc import Callable
 
 import json
 import math
+import secrets
 
 import frappe
 from frappe import _
@@ -739,6 +740,9 @@ def submit_sale(payload: dict | str):
     _set_custom(invoice, ("esafepos_session",), session["name"])
     if key:
         _set_custom(invoice, ("esafepos_idempotency_key",), key)
+    if (not payload.get("customer") and invoice.meta.has_field("esafepos_walk_in_code")
+            and cint(frappe.db.get_single_value("EsafePOS Settings", "enable_walk_in_codes"))):
+        invoice.esafepos_walk_in_code = "W-" + secrets.token_hex(8).upper()
 
     # Tenders ERPNext will accept for this sale at the close, and the wallets
     # that hold one currency only (their ledgers are in the outlet's).
@@ -1943,8 +1947,10 @@ def email_receipt(invoice: str, email: str | None = None):
     doc = frappe.get_doc(doctype, invoice)
     doc.check_permission("read")
 
-    recipient = (email or "").strip() or doc.get("contact_email")
-    if not recipient and doc.get("customer"):
+    recipient = (email or "").strip()
+    if not recipient and not doc.get("esafepos_walk_in_code"):
+        recipient = doc.get("contact_email")
+    if not recipient and not doc.get("esafepos_walk_in_code") and doc.get("customer"):
         recipient = frappe.db.get_value("Customer", doc.customer, "email_id")
     if not recipient:
         frappe.throw(_("No email address. Add one to the customer or type it in."))
@@ -2022,6 +2028,37 @@ def sms_receipt(invoice: str, mobile: str | None = None):
         pos_profile=doc.get("pos_profile"),
     )
     return {"sent": True, "mobile": compact}
+
+
+@frappe.whitelist()
+def save_walk_in_details(invoice: str, customer_name: str = "", mobile_no: str = ""):
+    """Save optional receipt details without changing the ERPNext customer."""
+    doc = frappe.get_doc(_doctype_of(invoice), invoice)
+    doc.check_permission("read")
+    if not _can_edit_walk_in(doc):
+        frappe.throw(_("You are not permitted to edit walk-in customer details."), frappe.PermissionError)
+    name, phone = (customer_name or "").strip(), (mobile_no or "").strip()
+    if len(name) > 140 or len(phone) > 32 or any(ord(char) < 32 for char in name + phone):
+        frappe.throw(_("Enter a name of up to 140 characters and a contact number of up to 32 characters."))
+    doc.db_set({"esafepos_walk_in_name": name, "esafepos_walk_in_phone": phone})
+    from esafepos.api import audit
+
+    audit.log("Walk-in details updated", reference_doctype=doc.doctype, reference_name=doc.name,
+              pos_profile=doc.pos_profile)
+    return get_receipt(doc.name)
+
+
+def _can_edit_walk_in(doc):
+    if not doc.get("esafepos_walk_in_code") or doc.docstatus != 1 or doc.is_return:
+        return False
+    from esafepos.api.permissions import allowed_companies, can_use_outlet
+
+    companies = allowed_companies()
+    return (
+        (companies is None or doc.company in companies)
+        and can_use_outlet(doc.get("pos_profile"))
+        and (frappe.has_permission("Customer", "write") or frappe.has_permission("Customer", "create"))
+    )
 
 
 @frappe.whitelist()
@@ -2156,6 +2193,9 @@ def get_receipt(invoice: str):
         except Exception:
             customer_phone = ""
     cashier = frappe.db.get_value("User", doc.owner, "full_name") or doc.owner
+    walk_in_code = doc.get("esafepos_walk_in_code")
+    if walk_in_code:
+        customer_phone = doc.get("esafepos_walk_in_phone") or ""
 
     return {
         "name": doc.name,
@@ -2177,8 +2217,11 @@ def get_receipt(invoice: str):
         "posting_date": str(doc.posting_date),
         "posting_time": str(doc.posting_time),
         "customer": doc.customer,
-        "customer_name": doc.customer_name,
+        "customer_name": (doc.get("esafepos_walk_in_name") or walk_in_code) if walk_in_code else doc.customer_name,
         "customer_phone": customer_phone,
+        "walk_in_code": walk_in_code,
+        "walk_in_name": doc.get("esafepos_walk_in_name") or "",
+        "can_edit_walk_in": _can_edit_walk_in(doc),
         "cashier": cashier,
         "terminal": doc.get("pos_profile") or "",
         "company": doc.company,
@@ -2336,6 +2379,8 @@ def _search_probe_names(doctype, term, order_field=None, cap=SEARCH_PROBE_CAP):
 
     # 1) exact invoice number, primary key, instant
     add(q(f"select name from `{tbl}` where name = %s limit 1", (term,)))
+    if term.upper().startswith("W-") and frappe.db.has_column(doctype, "esafepos_walk_in_code"):
+        add(q(f"select name from `{tbl}` where esafepos_walk_in_code like %s limit %s", (prefix, remaining())))
     # 2) invoice-number prefix, primary-key range
     add(q(f"select name from `{tbl}` where name like %s limit %s", (prefix, remaining())))
     # 3) customer id prefix, indexed foreign key
@@ -2565,6 +2610,11 @@ def _search_sales_in(doctype, f):
     exchange_select = (
         f"pi.{exchange_field} as is_exchange" if exchange_field else "0 as is_exchange"
     )
+    walk_in_select = (
+        "pi.esafepos_walk_in_code as walk_in_code"
+        if frappe.db.has_column(doctype, "esafepos_walk_in_code")
+        else "null as walk_in_code"
+    )
     pay_modes_select = (
         "(select group_concat(distinct sip.mode_of_payment separator ', ')"
         " from `tabSales Invoice Payment` sip"
@@ -2581,7 +2631,7 @@ def _search_sales_in(doctype, f):
                pi.creation, pi.grand_total, pi.currency, pi.posting_date, pi.posting_time,
                pi.status, pi.docstatus, pi.is_return, pi.owner, u.full_name as owner_name,
                {app_select}, {order_select}, {online_select}, {exchange_select},
-               {pay_modes_select}
+               {pay_modes_select}, {walk_in_select}
         from `tab{doctype}` pi
         left join `tabCustomer` c on c.name = pi.customer
         left join `tabUser` u on u.name = pi.owner

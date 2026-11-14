@@ -37,10 +37,16 @@ const receipt = reactive({ name: 'ACC-PSINV-2026-00004', company: 'Weerakoon Agr
   items: [{ item_name: 'Test', qty: 2, rate: 1000, price_list_rate: 1000, amount: 2000 }],
   payments: [{ mode_of_payment: 'Cash', amount: 2000 }], receipt_settings: {} })
 const pinia = createPinia()
-createApp({ render: () => h(ReceiptModal, { receipt }) }).use(pinia).mount('#app')
+createApp({ render: () => h(ReceiptModal, { receipt, onUpdated: (updated) => Object.assign(receipt, updated) }) }).use(pinia).mount('#app')
 const session = useSessionStore(pinia)
 session.settings = { receipt_template: 'Retail', receipt_show_payments: 1, receipt_show_unit_price: 1 }
 session.offline = true
+window.enableWalkIn = () => {
+  session.offline = false
+  receipt.walk_in_code = 'W-0123456789ABCDEF'
+  receipt.customer_name = receipt.walk_in_code
+  receipt.can_edit_walk_in = true
+}
 window.prepare = async ({ width, count, template = 'Retail', currency = 'LKR', dark = false, rtl = false, extras = false }) => {
   document.documentElement.dataset.theme = dark ? 'dark' : 'light'
   document.documentElement.dir = rtl ? 'rtl' : 'ltr'
@@ -166,6 +172,25 @@ try {
   }
   assert.equal(await page.locator('#receipt-print').count(), 1, 'Printing must leave the original receipt intact')
   console.log('PASS print button, offline reprint and afterprint cleanup')
+  await page.evaluate(() => window.enableWalkIn())
+  await page.locator('#receipt-print').getByText('W-0123456789ABCDEF').waitFor()
+  await page.route('**/api/method/esafepos.api.sales.save_walk_in_details', async (route) => {
+    assert.deepEqual(route.request().postDataJSON().invoice, 'ACC-PSINV-2026-00004')
+    assert.equal(route.request().postDataJSON().mobile_no, '0770000000')
+    await route.fulfill({ json: { message: {
+      walk_in_code: 'W-0123456789ABCDEF',
+      customer_name: 'Sample Customer',
+      walk_in_name: 'Sample Customer',
+      customer_phone: '0770000000',
+    } } })
+  })
+  await page.getByRole('button', { name: 'Edit walk-in details' }).click()
+  await page.getByLabel('Customer name').fill('Sample Customer')
+  await page.getByLabel('Contact number').fill('0770000000')
+  await page.getByRole('button', { name: 'Save details' }).click()
+  await page.locator('#receipt-print').getByText(/Sample Customer/).waitFor()
+  await page.locator('#receipt-print').getByText('W-0123456789ABCDEF').waitFor()
+  console.log('PASS receipt code and later optional customer details')
   assert.deepEqual(errors, [], 'Receipt must render without browser errors')
 } finally {
   await browser.close()

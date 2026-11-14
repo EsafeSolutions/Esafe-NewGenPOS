@@ -96,6 +96,7 @@
   "enable_audit_log",
   "enable_email_receipt",
   "enable_customer_display",
+  "enable_walk_in_codes",
   "enable_till_lock",
   "auto_lock_minutes",
   "enable_quick_keys",
@@ -657,6 +658,13 @@
    "fieldname": "enable_customer_display",
    "fieldtype": "Check",
    "label": "Customer-facing display"
+  },
+  {
+   "default": "0",
+   "description": "Assign a code to each sale made without selecting a customer. Staff can add receipt details later in Sales History.",
+   "fieldname": "enable_walk_in_codes",
+   "fieldtype": "Check",
+   "label": "Automatic walk-in customer codes"
   },
   {
    "default": "0",

@@ -118,7 +118,7 @@
     <PaymentOverlay v-if="paymentOpen" @close="paymentOpen = false" @done="onSaleDone" />
     <HoldModal v-if="holdOpen" @close="holdOpen = false" @done="onHeld" />
     <ParkedSalesModal v-if="parkedOpen" @close="parkedOpen = false" />
-    <ReceiptModal v-if="receipt" :receipt="receipt" @close="receipt = null" />
+    <ReceiptModal v-if="receipt" :receipt="receipt" @close="receipt = null" @updated="receipt = $event" />
     <SerialModal
       v-if="serialItem"
       :item="serialItem"

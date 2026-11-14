@@ -124,7 +124,12 @@ def build_receipt_bytes(receipt, open_drawer=0):
     out += NORMAL_SIZE + BOLD_OFF
     out += _text(receipt["name"]) + b"\n"
     out += _text(f"{receipt['posting_date']} {str(receipt['posting_time']).split('.')[0]}") + b"\n"
-    out += _text(receipt["customer_name"] or "") + b"\n"
+    if receipt.get("walk_in_code"):
+        out += _text("Customer code: " + receipt["walk_in_code"]) + b"\n"
+    if receipt["customer_name"] != receipt.get("walk_in_code"):
+        out += _text(receipt["customer_name"] or "") + b"\n"
+    if receipt.get("walk_in_code") and receipt.get("customer_phone"):
+        out += _text(receipt["customer_phone"]) + b"\n"
     # The selling company's VAT number (its receipt's, else the company's own),
     # when the shop shows it on receipts.
     receipt_settings = receipt.get("receipt_settings") or {}
@@ -232,10 +237,12 @@ def _retail_receipt_body(receipt, width):
     ).strip()
     if when:
         out += _text(_pad("TIME", when, width)) + b"\n"
-    if receipt.get("customer_name"):
-        customer = receipt["customer_name"]
-        if receipt.get("customer_phone"):
-            customer += " / " + receipt["customer_phone"]
+    code = receipt.get("walk_in_code")
+    if code:
+        out += _text(_pad("CUSTOMER CODE", code, width)) + b"\n"
+    name = receipt.get("customer_name")
+    customer = " / ".join(value for value in (name if name != code else "", receipt.get("customer_phone")) if value)
+    if customer:
         out += _text(_pad("CUSTOMER", customer, width)) + b"\n"
     if receipt.get("cashier"):
         out += _text(_pad("CASHIER", receipt["cashier"], width)) + b"\n"

@@ -148,6 +148,7 @@ def get_settings():
         "enable_audit_log": 1 if doc.get("enable_audit_log") else 0,
         "enable_email_receipt": 1 if doc.get("enable_email_receipt") else 0,
         "enable_customer_display": 1 if doc.get("enable_customer_display") else 0,
+        "enable_walk_in_codes": cint(doc.get("enable_walk_in_codes")),
         "enable_till_lock": 1 if doc.get("enable_till_lock") else 0,
         "auto_lock_minutes": cint(doc.get("auto_lock_minutes")) or 0,
         "enable_quick_keys": 1 if doc.get("enable_quick_keys") else 0,
@@ -402,6 +403,8 @@ def save_settings(payload: dict | str):
     doc.enable_audit_log = 1 if payload.get("enable_audit_log") else 0
     doc.enable_email_receipt = 1 if payload.get("enable_email_receipt") else 0
     doc.enable_customer_display = 1 if payload.get("enable_customer_display") else 0
+    if "enable_walk_in_codes" in payload:
+        doc.enable_walk_in_codes = 1 if cint(payload["enable_walk_in_codes"]) else 0
     doc.enable_till_lock = 1 if payload.get("enable_till_lock") else 0
     doc.auto_lock_minutes = cint(payload.get("auto_lock_minutes")) or 0
     doc.enable_quick_keys = 1 if payload.get("enable_quick_keys") else 0

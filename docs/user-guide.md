@@ -126,6 +126,8 @@ Help for staff**, all on by default.
 
 ## 2. The Sell screen
 
+For a customer who prefers to stay anonymous, leave the customer field blank and take payment normally. The POS Profile needs a default walk-in customer. With **Settings → General → Features → Automatic walk-in customer codes** enabled, each submitted walk-in sale gets a code starting with `W-`. The built-in receipt shows the code. Search for it in **Sales History**, open the receipt, and select **Edit walk-in details** to add a name, contact number, or both. The details belong to that receipt. Queued offline sales receive their code when they post to ERPNext. Turning the switch off stops assigning new codes and leaves existing codes searchable.
+
 Use **Item view** to switch between **List**, **Images**, and **Images and full descriptions**. The till remembers your choice on that browser. Scroll or select **Load more items** to continue through the catalog. Each item has an **Add** button for quick entry. Tap the item itself to enlarge its image, read its description, and edit the quantity, price or discount. Quantity uses the item's configured ERPNext stock unit. Price and discount edits follow the till's existing permissions and approval limits.
 
 Select **Display** to open the [customer screen](customer-display.md). It follows the basket and payment, highlights savings, and shows the completed receipt and rewards.

@@ -1669,6 +1669,13 @@
             </span>
           </label>
           <label class="setting-row">
+            <input type="checkbox" class="setting-toggle" v-model="generalForm.enable_walk_in_codes" :true-value="1" :false-value="0" />
+            <span class="setting-text">
+              <span class="setting-title">{{ t('Automatic walk-in customer codes') }}</span>
+              <span class="setting-desc">{{ t('Assign a code when no customer is selected. Add a name or contact number later from the receipt in Sales History.') }}</span>
+            </span>
+          </label>
+          <label class="setting-row">
             <input type="checkbox" class="setting-toggle" v-model="generalForm.enable_till_lock" :true-value="1" :false-value="0" />
             <span class="setting-text">
               <span class="setting-title">{{ t('Lock screen (PIN to unlock)') }}</span>
@@ -2786,6 +2793,7 @@ const generalForm = ref({
   enable_audit_log: 1,
   enable_email_receipt: 0,
   enable_customer_display: 0,
+  enable_walk_in_codes: 0,
   enable_till_lock: 0,
   auto_lock_minutes: 0,
   enable_quick_keys: 0,
@@ -3507,6 +3515,7 @@ async function load() {
     enable_audit_log: info.enable_audit_log ?? 1,
     enable_email_receipt: info.enable_email_receipt || 0,
     enable_customer_display: info.enable_customer_display || 0,
+    enable_walk_in_codes: info.enable_walk_in_codes || 0,
     enable_till_lock: info.enable_till_lock || 0,
     auto_lock_minutes: info.auto_lock_minutes || 0,
     enable_quick_keys: info.enable_quick_keys || 0,

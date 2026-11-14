@@ -66,6 +66,20 @@
             {{ t('WhatsApp opens a ready message for confirmation. SMS uses ERPNext SMS Settings.') }}
           </div>
         </div>
+        <form v-if="walkInOpen" class="share-card" @submit.prevent="saveWalkIn">
+          <label class="share-mobile">
+            <span>{{ t('Customer name') }}</span>
+            <input v-model.trim="walkInName" maxlength="140" />
+          </label>
+          <label class="share-mobile">
+            <span>{{ t('Contact number') }}</span>
+            <input v-model.trim="walkInPhone" type="tel" autocomplete="tel" maxlength="32" />
+          </label>
+          <div class="share-actions">
+            <button type="button" class="btn btn-outline" @click="walkInOpen = false">{{ t('Cancel') }}</button>
+            <button class="btn btn-primary" :disabled="walkInSaving">{{ t('Save details') }}</button>
+          </div>
+        </form>
         <ReceiptView :receipt="receipt" printable />
       </div>
       <div class="modal-footer">
@@ -104,6 +118,9 @@
         >
           {{ emailing ? t('Sending…') : t('Email receipt') }}
         </button>
+        <button v-if="receipt.can_edit_walk_in && !session.offline && !walkInOpen" class="btn btn-outline" @click="openWalkIn">
+          {{ t('Edit walk-in details') }}
+        </button>
         <button v-if="!receipt.offline" class="btn btn-outline" @click="toggleShare">
           <Icon name="globe" /> {{ t('Send e-invoice') }}
         </button>
@@ -137,7 +154,7 @@ const props = defineProps({
   // Opened later, from History or Customers: printing it again is a reprint.
   reprint: { type: Boolean, default: false },
 })
-defineEmits(['close', 'refund', 'exchange', 'open-in-history'])
+const emit = defineEmits(['close', 'refund', 'exchange', 'open-in-history', 'updated'])
 
 const session = useSessionStore()
 const printing = ref(false)
@@ -148,6 +165,37 @@ const sharing = ref(false)
 const smsing = ref(false)
 const copied = ref(false)
 const shareDetails = ref(null)
+const walkInOpen = ref(false)
+const walkInSaving = ref(false)
+const walkInName = ref('')
+const walkInPhone = ref('')
+
+function openWalkIn() {
+  walkInName.value = props.receipt.walk_in_name || ''
+  walkInPhone.value = props.receipt.customer_phone || ''
+  walkInOpen.value = true
+}
+
+async function saveWalkIn() {
+  if (walkInSaving.value) return
+  walkInSaving.value = true
+  try {
+    const updated = await call('esafepos.api.sales.save_walk_in_details', {
+      invoice: props.receipt.name,
+      customer_name: walkInName.value,
+      mobile_no: walkInPhone.value,
+    })
+    shareDetails.value = null
+    shareMobile.value = ''
+    emit('updated', updated)
+    walkInOpen.value = false
+    session.notify(t('Customer details saved'))
+  } catch (error) {
+    session.notify(error.message, true)
+  } finally {
+    walkInSaving.value = false
+  }
+}
 
 // A sale of another company (a manager covering outlets of two companies).
 const otherCompany = computed(

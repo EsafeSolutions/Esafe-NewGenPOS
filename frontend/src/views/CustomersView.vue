@@ -136,6 +136,7 @@
       reprint
       @open-in-history="openInHistory"
       @close="receipt = null"
+      @updated="receipt = $event"
     />
   </div>
 </template>

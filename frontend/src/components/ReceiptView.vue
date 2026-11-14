@@ -29,8 +29,11 @@
         <div class="retail-meta-row">
           <span>{{ t('Time') }}</span><span>{{ receipt.posting_date }} {{ String(receipt.posting_time || '').split('.')[0] }}</span>
         </div>
-        <div v-if="receipt.customer_name" class="retail-meta-row">
-          <span>{{ t('Customer') }}</span><span>{{ receipt.customer_name }}<template v-if="receipt.customer_phone"> · {{ receipt.customer_phone }}</template></span>
+        <div v-if="receipt.walk_in_code" class="retail-meta-row">
+          <span>{{ t('Customer code') }}</span><span>{{ receipt.walk_in_code }}</span>
+        </div>
+        <div v-if="(receipt.customer_name && receipt.customer_name !== receipt.walk_in_code) || receipt.customer_phone" class="retail-meta-row">
+          <span>{{ t('Customer') }}</span><span>{{ [receipt.customer_name !== receipt.walk_in_code ? receipt.customer_name : '', receipt.customer_phone].filter(Boolean).join(' · ') }}</span>
         </div>
         <div v-if="receipt.cashier || receipt.sales_person" class="retail-meta-row">
           <span>{{ t('Cashier') }}</span><span>{{ receipt.cashier || receipt.sales_person }}</span>
@@ -148,7 +151,8 @@
         {{ receipt.name }} · {{ receipt.posting_date }} {{ String(receipt.posting_time || '').split('.')[0] }}
       </div>
       <div class="muted small" v-if="receipt.return_against">{{ t('against') }} {{ receipt.return_against }}</div>
-      <div class="muted small">{{ receipt.customer_name }}</div>
+      <div v-if="receipt.walk_in_code" class="muted small">{{ t('Customer code') }} {{ receipt.walk_in_code }}</div>
+      <div v-if="receipt.customer_name !== receipt.walk_in_code || receipt.customer_phone" class="muted small">{{ [receipt.customer_name !== receipt.walk_in_code ? receipt.customer_name : '', receipt.walk_in_code ? receipt.customer_phone : ''].filter(Boolean).join(' · ') }}</div>
       <div class="muted small" v-if="receipt.sales_person">{{ t('Served by') }} {{ receipt.sales_person }}</div>
       <div class="muted small" v-if="receipt.app_type">
         {{ receipt.app_type }}<span v-if="receipt.order_id"> · {{ t('Order') }} {{ receipt.order_id }}</span>

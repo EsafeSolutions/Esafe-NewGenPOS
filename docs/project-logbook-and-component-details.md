@@ -30,7 +30,8 @@ EsafePOS is a browser-based point-of-sale application for ERPNext and Frappe. It
 - Multiple payment methods, split tender, cash shortcuts, change due, payment references, and customer payment collection.
 - Per-profile choice of POS Invoice (normally consolidated at shift close) or Sales Invoice (posted directly); both use standard ERPNext documents.
 - Printable receipts, configurable receipt details, browser printing, ESC/POS network printing, reprints, and cash-drawer kick where configured.
-- A second-screen customer display that mirrors the active cart and accepts customer contact details.
+- Three catalog views with quick Add, progressive loading and a tap-to-open item editor for quantity, stock unit, authorized price edits and discounts.
+- A read-only second-screen customer display with live item prices and savings, payment balance and change, followed by the sale receipt and rewards.
 
 ### 2.2 Pricing, promotions, and offers
 
@@ -134,7 +135,7 @@ Typical startup calls `esafepos.api.session.get_bootstrap`, which supplies the s
 |---|---|
 | `NavRail.vue` | Main navigation, theme toggle, current screen navigation |
 | `Icon.vue` | Shared inline icon set |
-| `ProductGrid.vue`, `ProductRows.vue`, `ProductsPanel.vue` | Product tile/list presentation and catalog selection |
+| `ProductGrid.vue`, `ItemDetailModal.vue` | Three sell-screen layouts, progressive catalog rendering and item quantity, price and discount edits |
 | `CartPanel.vue`, `CartLine.vue` | Cart summary and editable line-level controls |
 | `PaymentOverlay.vue`, `PaymentBrand.vue` | Tender entry, payment method display, split payments and checkout |
 | `CustomerModal.vue`, `CustomerCredit.vue` | Customer selection/creation and account/credit operations |
@@ -167,7 +168,7 @@ Typical startup calls `esafepos.api.session.get_bootstrap`, which supplies the s
 | `promotions.js`, `discounts.js` | Client promotion evaluation/suggestions and discount breakdown helpers |
 | `refund.js`, `refundApproval.js` | Return calculations, offline eligibility and approval policy helpers |
 | `barcode.js`, `scanGuard.js`, `labels.js` | Barcode generation/handling, weight-embedded scale barcode parser, scanner input guard, and label layout data |
-| `customerDisplay.js`, `displayCustomerEntry.js` | Customer display synchronization and input capture |
+| `customerDisplay.js` | Per-till customer display synchronization and receipt snapshots |
 | `receiptPrint.js` | Browser print and receipt formatting helpers |
 | `format.js` | Currency, date/time, number, and display formatting |
 | `theme.js`, `i18n.js`, `messages.js`, `locales/` | Theme selection, locale/RTL initialization, translations |
@@ -238,6 +239,7 @@ The table below groups the DocTypes present under `esafepos/esafepos/doctype/`. 
 Entries are summarized from the release notes. The [user guide changelog](user-guide.md#19-changelog) contains the full release-by-release wording and should be updated alongside each release.
 
 ### Unreleased
+- **Catalog views and customer display:** Added List, Images and Images and full descriptions modes, quick Add and a stock-unit-aware item editor. The customer display is read-only and shows live savings, checkout balance, receipt and rewards.
 - **App rename:** ESAFE POS ships under the `esafepos` package and continues to open at `/pos`. Existing sites use the [one-time upgrade](esafepos-upgrade.md) and sync each till before switching browser databases.
 - **Weight-embedded scale barcode reading:** Added support for variable-weight scale barcodes (EAN-13 and UPC-A using standard in-store prefixes `20`–`29`, `02`). The scanner automatically parses the item PLU/code and decimal weight, looks up the item (via prefix+PLU, PLU, or stripped PLU in `Item Barcode` and `Item`), and adds the item to the cart with the exact measured quantity. Supported both online (in `resolve_scan` and `price_check`) and offline (in IndexedDB `searchCatalog` and `SellView`). Configurable in `EsafePOS Settings` (enable/disable, custom prefixes, PLU length 4/5, decimal places).
 
@@ -268,6 +270,7 @@ Entries are summarized from the release notes. The [user guide changelog](user-g
 
 | Date | Change | Impact |
 |---|---|---|
+| 2026-11-15 | Added three catalog modes, an item editor and a read-only customer display. | `SellView.vue`, `ProductGrid.vue`, `ItemDetailModal.vue` and the catalog store handle progressive loading and permitted cart edits. The catalog API exposes ERPNext stock units and whole-unit rules. `App.vue`, `PaymentOverlay.vue` and the receipt API supply line discounts, payments, tax, savings, change and rewards over the per-till display channel. Removed the contact entry flow. Verified the production build, endpoint resolution, 50 Python tests, and desktop/mobile browser checks for catalog, display, discounts and receipts. Browser checks use fixtures. |
 | 2026-11-14 | Renamed the application to ESAFE POS and moved its Python package, six named DocType controllers, Desk definitions and built frontend to `esafepos`. | Updated API and asset paths, roles, POS-owned field names and browser storage. Added an [in-place site upgrade](esafepos-upgrade.md) for existing settings, permissions, audit logs and POS records. Verified the production build, Python 3.7 syntax, DocType metadata and controller discovery, 50 Python tests, endpoint resolution, scheduling, frontend parity, and browser checks for discounts, receipts and customer display. The site upgrade still needs verification on a restored ERPNext site. |
 | 2026-11-09 | Established a standing project-documentation rule: every project change and upgrade updates this logbook in the same change. | Added the rule to the repository guidelines so it persists across future work. |
 

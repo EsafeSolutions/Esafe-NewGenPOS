@@ -2123,6 +2123,7 @@ def get_receipt(invoice: str):
                 "item_code": row.item_code,
                 "item_name": row.item_name,
                 "qty": row.qty,
+                "uom": row.uom,
                 "price_list_rate": row.price_list_rate,
                 "rate": row.rate,
                 "amount": row.amount,
@@ -2139,6 +2140,13 @@ def get_receipt(invoice: str):
         )
 
     payable_total = doc.rounded_total or doc.grand_total
+    cashback_earned = 0
+    if not doc.is_return and frappe.db.table_exists(cashback.LEDGER):
+        cashback_earned = sum(flt(amount) for amount in frappe.get_all(
+            cashback.LEDGER,
+            filters={"reference_doctype": doc.doctype, "reference_invoice": doc.name, "entry_type": "Earn"},
+            pluck="amount",
+        ))
     customer_phone = (
         _get_custom(doc, ("contact_mobile", "contact_phone", "mobile_no")) or ""
     )
@@ -2159,6 +2167,7 @@ def get_receipt(invoice: str):
         "is_return": doc.is_return,
         "return_against": doc.return_against,
         "loyalty_points_earned": cint(earned_points),
+        "cashback_earned": cashback_earned,
         "loyalty_points_redeemed": cint(doc.loyalty_points) if doc.get("redeem_loyalty_points") else 0,
         "loyalty_amount": flt(doc.loyalty_amount) if doc.get("redeem_loyalty_points") else 0,
         "sales_person": doc.sales_team[0].sales_person if doc.get("sales_team") else None,

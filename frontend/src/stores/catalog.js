@@ -14,6 +14,8 @@ import {
 } from '../offline'
 import { useSessionStore } from './session'
 
+const PAGE_SIZE = 80
+
 export const useCatalogStore = defineStore('catalog', {
   state: () => ({
     items: [],
@@ -22,6 +24,7 @@ export const useCatalogStore = defineStore('catalog', {
     itemGroup: '',
     brand: '',
     cachedCount: 0,
+    hasMore: false,
     _searchTimer: null,
     _requestId: 0,
   }),
@@ -35,9 +38,9 @@ export const useCatalogStore = defineStore('catalog', {
     // LOCAL-FIRST: searches run against the IndexedDB cache (instant, works
     // offline). The cache is filled on startup and refreshed in the
     // background, the server is only hit when the cache is empty.
-    async fetch() {
+    async fetch(append = false) {
       const session = useSessionStore()
-      if (!session.posProfile) return
+      if (!session.posProfile || (append && (this.loading || !this.hasMore))) return
       const requestId = ++this._requestId
 
       if (!this.cachedCount) {
@@ -47,34 +50,41 @@ export const useCatalogStore = defineStore('catalog', {
         const groups = this.itemGroup
           ? session.itemGroupMembers?.[this.itemGroup] || [this.itemGroup]
           : null
-        const items = (await searchCatalog(this.search, groups, 500)).filter((item) => !this.brand || item.brand === this.brand).slice(0, 80)
+        const items = await searchCatalog(this.search, groups, Infinity, this.brand).catch(() => null)
         // The newest request clears "Loading…" here too: a cold start's server
         // request that lost the race to the full catalog download (which then
         // searched the device) never cleared it, and the grid stayed on
         // "Loading…" with the products already there.
-        if (requestId === this._requestId) {
+        if (items && requestId === this._requestId) {
           this.items = items
+          this.hasMore = false
           this.loading = false
         }
-        return
+        if (items || requestId !== this._requestId) return
       }
 
       // Cold start: no cache yet, query the server directly
       this.loading = true
+      const start = append ? this.items.length : 0
       try {
         const data = await call('esafepos.api.catalog.get_items', {
           pos_profile: session.posProfile,
           search: this.search,
           item_group: this.itemGroup,
           brand: this.brand,
-          limit: 80,
+          start,
+          limit: PAGE_SIZE,
         })
         if (requestId !== this._requestId) return // stale response
-        this.items = data.items
+        this.items = append ? [...this.items, ...data.items] : data.items
+        this.hasMore = data.items.length === PAGE_SIZE
       } catch (e) {
         if (e instanceof OfflineError) {
           session.markOffline()
-          if (requestId === this._requestId) this.items = []
+          if (requestId === this._requestId) {
+            if (!append) this.items = []
+            this.hasMore = false
+          }
         } else {
           throw e
         }

@@ -74,6 +74,11 @@
         </button>
         <SearchSelect :label="t('Brand')" :model-value="catalog.brand" :options="brandOptions" @change="catalog.setBrand" />
         <SearchSelect :label="t('Item group')" :model-value="catalog.itemGroup" :options="groupOptions" @change="catalog.setGroup" />
+        <select v-if="!showBundles && !showFavourites" class="catalog-mode" :aria-label="t('Item view')" v-model="itemMode">
+          <option value="list">{{ t('List') }}</option>
+          <option value="image">{{ t('Images') }}</option>
+          <option value="detail">{{ t('Images and full descriptions') }}</option>
+        </select>
       </div>
 
       <div v-if="showBundles" class="bundle-grid">
@@ -93,19 +98,19 @@
         <div v-if="!session.bundles.length" class="muted">{{ t('No bundles configured') }}</div>
       </div>
       <div v-else-if="showFavourites" class="fav-grid">
-        <button
+        <article
           v-for="fav in favourites"
           :key="fav.item_code"
           class="fav-card card"
-          @click="addToCart(fav)"
         >
-          <div class="fav-name">{{ fav.quick_label || fav.item_name }}</div>
+          <button class="btn btn-ghost fav-name" @click="inspectItem(fav)">{{ fav.quick_label || fav.item_name }}</button>
           <div class="fav-price">{{ money(fav.price) }}</div>
           <div v-if="fav.is_stock_item" class="muted small">{{ t('{qty} in stock', { qty: fav.actual_qty }) }}</div>
-        </button>
+          <button class="btn btn-outline btn-sm" @click="addToCart(fav)">{{ t('Add') }}</button>
+        </article>
         <div v-if="!favourites.length" class="muted">{{ favLoading ? t('Loading…') : t('No favourites configured. Add some in Settings → Features.') }}</div>
       </div>
-      <ProductGrid v-else data-tour="sell-products" @select="addToCart" />
+      <ProductGrid v-else :mode="itemMode" data-tour="sell-products" @select="addToCart" @inspect="inspectItem" />
     </section>
 
     <CartPanel @pay="onPay" @park="parkOpen = true" @hold="holdOpen = true" @quotation="createQuotation" @receipt="receipt = $event" />
@@ -117,7 +122,7 @@
     <SerialModal
       v-if="serialItem"
       :item="serialItem"
-      @close="serialItem = null"
+      @close="serialItem = null; serialEdits = null"
       @add="onSerialScanned"
     />
     <PasscodeModal
@@ -126,6 +131,8 @@
       @approved="onDiscountApproved"
     />
     <PriceCheckModal v-if="priceCheckOpen" @close="priceCheckOpen = false" />
+    <ItemDetailModal v-if="detailItem" :item="detailItem" :line="detailLine"
+      @close="detailItem = null" @save="saveItemDetails" />
 
     <div v-if="parkOpen" class="modal-backdrop" @click.self="parkOpen = false">
       <div class="modal" style="width: 420px">
@@ -163,6 +170,7 @@ import ReceiptModal from '../components/ReceiptModal.vue'
 import SerialModal from '../components/SerialModal.vue'
 import PasscodeModal from '../components/PasscodeModal.vue'
 import PriceCheckModal from '../components/PriceCheckModal.vue'
+import ItemDetailModal from '../components/ItemDetailModal.vue'
 import { createScanGuard } from '../scanGuard'
 import { parseScaleBarcode } from '../barcode'
 
@@ -198,7 +206,14 @@ const parkNote = ref('')
 const receipt = ref(null)
 const searchInput = ref(null)
 const serialItem = ref(null)
+const serialEdits = ref(null)
 const priceCheckOpen = ref(false)
+const detailItem = ref(null)
+const detailLine = computed(() => cart.lines.find((line) => line.item_code === detailItem.value?.item_code && !line.bundle_key))
+const modeKey = 'esafepos-item-view'
+const savedMode = localStorage.getItem(modeKey)
+const itemMode = ref(['list', 'image', 'detail'].includes(savedMode) ? savedMode : 'image')
+watch(itemMode, (mode) => localStorage.setItem(modeKey, mode))
 
 const holdOpen = ref(false)
 
@@ -225,17 +240,25 @@ watch(
   () => cart.prefetchQuote()
 )
 
-function addToCart(item, serial = null, qty = 1) {
-  const addQty = Number(qty) || 1
+function hasStock(item, totalQty) {
   // Stock guard: no overselling stock items when negative stock is disallowed
   // (serialized items are covered by per-serial validation instead)
   if (!item.has_serial_no && item.is_stock_item && !session.allowNegativeStock && !session.offline) {
-    const inCart = cart.lines.find((l) => l.item_code === item.item_code)?.qty || 0
-    if (inCart + addQty > (item.actual_qty || 0)) {
+    if (Math.round(totalQty * 10000) / 10000 > (item.actual_qty || 0)) {
       session.notify(t('{item}: only {qty} in stock', { item: item.item_name, qty: item.actual_qty || 0 }), true)
-      return
+      return false
     }
   }
+  return true
+}
+
+function cartQty(item) {
+  return cart.lines.filter((line) => line.item_code === item.item_code).reduce((sum, line) => sum + line.qty, 0)
+}
+
+function addToCart(item, serial = null, qty = 1) {
+  const addQty = Number(qty) || 1
+  if (!hasStock(item, cartQty(item) + addQty)) return false
   if (item.has_serial_no && !serial) {
     // Strict: a serialized item can only enter the cart with a scanned serial
     if (session.offline) {
@@ -249,13 +272,43 @@ function addToCart(item, serial = null, qty = 1) {
     session.notify(t('Serial {serial} is already in this sale', { serial }), true)
     return
   }
-  cart.addItem(item, serial, addQty)
+  return cart.addItem(item, serial, addQty)
 }
 
 function onSerialScanned(serial) {
   const item = serialItem.value
   serialItem.value = null
-  cart.addItem(item, serial)
+  if (addToCart(item, serial) && serialEdits.value) applyItemEdits(item, serialEdits.value)
+  serialEdits.value = null
+}
+
+function inspectItem(item) {
+  detailItem.value = item
+}
+
+function applyItemEdits(item, edits) {
+  const index = cart.lines.findIndex((line) => line.item_code === item.item_code && !line.bundle_key)
+  if (edits.price !== null) cart.setLinePrice(index, edits.price)
+  if (edits.discount !== null) cart.setLineDiscount(index, edits.discount, edits.method)
+}
+
+function saveItemDetails(edits) {
+  const item = detailItem.value
+  const existing = detailLine.value
+  if (!existing) {
+    if (!addToCart(item, null, edits.qty)) {
+      if (serialItem.value) {
+        serialEdits.value = edits
+        detailItem.value = null
+      }
+      return
+    }
+  } else if (!item.has_serial_no) {
+    if (!hasStock(item, cartQty(item) - existing.qty + edits.qty)) return
+    cart.setQty(cart.lines.indexOf(existing), edits.qty)
+  }
+  applyItemEdits(item, edits)
+  detailItem.value = null
 }
 
 const showBundles = ref(false)
@@ -497,11 +550,13 @@ function onDiscountApproved(result) {
 }
 .group-bar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   margin: 12px 0 4px;
   min-height: 36px;
 }
+.catalog-mode { max-width: 100%; }
 .group-scroll {
   display: flex;
   min-width: 0;

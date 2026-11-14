@@ -1,6 +1,5 @@
-// Two-window customer display regression checks. Uses a local isolated cashier,
-// real Vue stores/BroadcastChannel/IndexedDB, and mocked ERP HTTP responses.
-// node display-check.mjs [--serve]; optional PLAYWRIGHT_MODULE / CHROME_PATH / DISPLAY_ARTIFACTS.
+// Browser regression checks for the till catalog and its read-only customer display.
+// Run: node display-check.mjs. Optional PLAYWRIGHT_MODULE, CHROME_PATH and DISPLAY_ARTIFACTS.
 import assert from 'node:assert/strict'
 import { mkdir } from 'node:fs/promises'
 import path from 'node:path'
@@ -10,43 +9,47 @@ import { createServer } from 'vite'
 const root = path.dirname(fileURLToPath(import.meta.url))
 const html = `<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"></head><body>
 <div id="app"></div><script type="module">
-import { createApp, h } from 'vue'
+import { createApp, h, ref } from 'vue'
 import { createPinia } from 'pinia'
+import ProductGrid from '/src/components/ProductGrid.vue'
+import ItemDetailModal from '/src/components/ItemDetailModal.vue'
 import CustomerDisplayView from '/src/views/CustomerDisplayView.vue'
-import { useCartStore } from '/src/stores/cart.js'
+import { useCatalogStore } from '/src/stores/catalog.js'
 import { useSessionStore } from '/src/stores/session.js'
-import { connectDisplayCustomerEntry } from '/src/displayCustomerEntry.js'
-import { publishCart, onDisplayRequest, onDisplayCustomerResult, displayTerminalId } from '/src/customerDisplay.js'
-import { setCurrency } from '/src/format.js'
+import { publishCart, onDisplayRequest, displayTerminalId, receiptSnapshot } from '/src/customerDisplay.js'
 import '/src/styles.css'
-localStorage.setItem('esafepos-theme', 'dark')
-document.documentElement.dataset.theme = 'dark'
-if (location.hash.startsWith('#/display')) {
-  onDisplayCustomerResult((result) => { window.lastCustomerResult = result })
-  createApp(CustomerDisplayView).mount('#app')
-} else {
-  const pinia = createPinia()
-  createApp({ render: () => h('div', { style: 'padding:24px' }, [h('h1', 'Customer display test till'), h('a', { href: '#/display?terminal=' + displayTerminalId, target: '_blank' }, 'Open customer display')]) }).use(pinia).mount('#app')
-  const session = useSessionStore(pinia)
-  session.company = 'Weerakoon Agro'
-  session.currency = 'LKR'
-  setCurrency('LKR')
-  session.settings.enable_customer_display = 1
-  session.offline = true
-  const cart = useCartStore(pinia)
-  const seed = () => { cart.lines = [{ item_code:'TEST', item_name:'Test', price:1000, qty:2, manual_discount_percent:0 }] }
-  seed()
-  const publish = () => publishCart({ company: session.company, saleId: cart.displaySaleId,
-    customer: cart.customer?.customer_name || '', customerKey: cart.customer?.name || '',
-    customerEntryEnabled: !session.locked && !cart.submitting,
-    items: cart.lines.map((l) => ({ name:l.item_name, qty:l.qty, rate:cart.show(l.price), amount:cart.show(l.qty*l.price) })),
-    count:cart.itemCount, total:cart.show(cart.total), savings:'' })
-  cart.$subscribe(publish)
-  onDisplayRequest(publish)
-  connectDisplayCustomerEntry(cart, session, publish)
-  Object.assign(window, { cart, session, publish, seed, displayTerminalId })
+
+const pinia = createPinia()
+const mode = ref('image')
+const item = ref(null)
+const catalog = useCatalogStore(pinia)
+const session = useSessionStore(pinia)
+session.permissions = { can_change_price: true, can_edit_price: true }
+const image = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
+catalog.items = Array.from({ length: 81 }, (_, i) => ({
+  item_code: 'ITEM-' + i, item_name: i === 0 ? 'Roasted coffee' : 'Product ' + i,
+  image, price: 20, stock_uom: 'Kg', description: '<p>Full description of the product.</p>',
+}))
+const isDisplay = location.hash.startsWith('#/display')
+createApp({ render: () => isDisplay ? h(CustomerDisplayView) : h('main', [
+  h(ProductGrid, { mode: mode.value, onInspect: (row) => { item.value = row }, onSelect: (row) => { window.added = row.item_code } }),
+  item.value ? h(ItemDetailModal, { item: item.value, onClose: () => { item.value = null }, onSave: (edits) => { window.edits = edits; item.value = null } }) : null,
+]) }).use(pinia).mount('#app')
+
+let snapshot = { company: 'ESAFE POS', count: 1, items: [
+  { name: 'Roasted coffee', code: 'ITEM-0', image, qty: 2, uom: 'Kg', rate: '20.00', amount: '32.00', gross: '40.00', discount: '8.00' },
+], subtotal: '40.00', total: '32.00', savings: '8.00', due: '12.00', paid: '20.00' }
+window.showReceipt = () => {
+  snapshot = receiptSnapshot({
+    name: 'POS-0001', company: 'ESAFE POS', currency: 'LKR', posting_date: '2026-11-15', posting_time: '11:20:00',
+    items: [{ item_name:'Roasted coffee', item_code:'ITEM-0', qty: 2, uom:'Kg', rate:16, gross_amount:40, line_discount_amount:8, amount:32 }],
+    gross_total: 40, grand_total: 32, total_savings: 8, paid_amount: 40, change_amount: 8,
+    payments:[{ mode_of_payment:'Cash', amount:40 }], loyalty_points_earned:3, loyalty:{ balance:18 },
+  }, { 'ITEM-0': image })
+  publishCart(snapshot)
 }
-window.ready = true
+if (!isDisplay) onDisplayRequest(() => publishCart(snapshot))
+Object.assign(window, { ready: true, mode, displayTerminalId, publishCart })
 </script></body></html>`
 const server = await createServer({ root, base: '/', server: { port: 0, host: '127.0.0.1', open: false },
   plugins: [{ name: 'display-check', configureServer(server) {
@@ -63,104 +66,65 @@ if (!process.argv.includes('--serve')) {
   const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright')
   const output = process.env.DISPLAY_ARTIFACTS
   if (output) await mkdir(output, { recursive: true })
-  const browser = await chromium.launch({ headless: true, ...(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : { channel: 'chrome' }) })
+  const browser = await chromium.launch({
+    headless: true,
+    ...(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : { channel: 'chrome' }),
+  })
   try {
     const context = await browser.newContext()
     const errors = []
     const till = await context.newPage()
-    till.on('pageerror', (e) => errors.push(e.message))
+    till.on('pageerror', (error) => errors.push(error.message))
     await till.goto(url)
     await till.waitForFunction(() => window.ready)
+    await till.getByRole('button', { name: 'Add Roasted coffee to cart' }).click()
+    assert.equal(await till.evaluate(() => window.added), 'ITEM-0')
+    await till.getByRole('button', { name: /Roasted coffee ITEM-0/ }).click()
+    const editor = till.getByRole('dialog')
+    await editor.getByText('Full description of the product.').waitFor()
+    await editor.getByLabel(/Quantity/).fill('1.25')
+    await editor.getByLabel(/Unit price/).fill('18')
+    await editor.getByLabel(/^Discount /).fill('10')
+    await editor.getByRole('button', { name: 'Add to cart' }).click()
+    assert.deepEqual(await till.evaluate(() => window.edits), { qty: 1.25, price: 18, discount: 10, method: 'percent' })
+    await till.evaluate(() => { mode.value = 'list' })
+    await till.locator('.grid.list').waitFor()
+    assert.equal(await till.locator('.tile img').count(), 0)
+    await till.evaluate(() => { mode.value = 'detail' })
+    await till.locator('.grid.detail').waitFor()
+    assert.equal(await till.locator('.tile-copy p').count(), 12)
+    await till.getByRole('button', { name: 'Load more items' }).click()
+    assert.equal(await till.locator('.tile-copy p').count(), 24)
+
     const terminal = await till.evaluate(() => window.displayTerminalId)
     const display = await context.newPage()
-    display.on('pageerror', (e) => errors.push(e.message))
-    await display.setViewportSize({ width: 1896, height: 940 })
+    display.on('pageerror', (error) => errors.push(error.message))
     await display.goto(url + '#/display?terminal=' + terminal)
-    await display.getByLabel('Customer name').waitFor()
-    assert.equal(await display.evaluate(() => document.documentElement.dataset.theme), 'light')
-    assert.equal(await till.evaluate(() => document.documentElement.dataset.theme), 'dark')
-    assert.equal(await display.evaluate(() => localStorage.getItem('esafepos-theme')), 'dark')
-    assert.equal(await display.locator('.cdisplay').evaluate((el) => getComputedStyle(el).backgroundColor), 'rgb(255, 255, 255)')
-    for (const width of [1896, 390]) {
-      await display.setViewportSize({ width, height: 940 })
-      assert.equal(await display.evaluate(() => document.querySelector('.cdisplay').scrollWidth <= innerWidth), true)
-      if (output) await display.screenshot({ path: path.join(output, `customer-display-${width}.png`), fullPage: true })
+    await display.getByText('Roasted coffee').waitFor()
+    await display.getByText('Balance due').waitFor()
+    assert.equal(await display.locator('input').count(), 0)
+    assert.equal(await display.locator('del').textContent(), '40.00')
+    const otherTill = await context.newPage()
+    await otherTill.goto(url)
+    await otherTill.waitForFunction(() => window.ready)
+    await otherTill.evaluate(() => publishCart({ items: [{ name:'Different till' }] }))
+    await till.evaluate(() => showReceipt())
+    await display.getByText(/POS-0001/).waitFor()
+    assert.equal(await display.getByText('Different till').count(), 0)
+    for (const label of ['Change', 'Points earned', 'Points balance', 'You save']) {
+      await display.getByText(label, { exact: true }).waitFor()
     }
-    await display.setViewportSize({ width: 1896, height: 940 })
-    await display.getByLabel('Customer name').fill('Display Test Customer')
-    await display.getByLabel('Contact number').fill('abc')
-    await display.getByRole('button', { name: 'Save details' }).click()
-    await display.getByRole('alert').waitFor()
-    assert.equal(await till.evaluate(() => cart.customer), null)
-    await display.getByLabel('Contact number').fill('0770000000')
-    await display.getByRole('button', { name: 'Save details' }).click()
-    await display.getByText('Thank you. Your details have been added to this sale.').waitFor()
-    const first = await till.evaluate(() => ({ ...cart.customer }))
-    assert.equal(first.customer_name, 'Display Test Customer')
-    assert.equal(first.mobile_no, '0770000000')
-    assert.equal(first.__local, true)
-    await display.getByRole('button', { name: 'Edit details' }).click()
-    await display.getByRole('button', { name: 'Save details' }).click()
-    await display.getByText('Thank you. Your details have been added to this sale.').waitFor()
-    assert.equal(await till.evaluate(() => cart.customer.name), first.name, 'Reuse offline mobile match')
-
-    // Another cashier tab must not overwrite this display or receive its input.
-    const other = await context.newPage()
-    await other.goto(url)
-    await other.waitForFunction(() => window.ready)
-    await other.evaluate(() => { session.company = 'Other till'; publish() })
-    assert.equal(await display.locator('.cd-company').textContent(), 'Weerakoon Agro')
-    assert.equal(await other.evaluate(() => cart.customer), null)
-
-    await till.evaluate(() => { cart.clear(); seed() })
-    await display.waitForFunction(() => document.getElementById('display-customer-name')?.value === '')
-    assert.equal(await display.getByLabel('Contact number').inputValue(), '')
-    await till.evaluate(() => { session.offline = false })
-    await till.route('**/api/method/**', async (route) => {
-      if (route.request().url().includes('create_customer')) {
-        await route.fulfill({ json: { message: { name: 'CUST-ONLINE', customer_name: 'Online Customer', mobile_no: '0770000001' } } })
-      } else await route.fulfill({ json: { message: {} } })
-    })
-    await display.getByLabel('Customer name').fill('Online Customer')
-    await display.getByLabel('Contact number').fill('0770000001')
-    await display.getByRole('button', { name: 'Save details' }).click()
-    await display.getByText('Thank you. Your details have been added to this sale.').waitFor()
-    assert.equal(await till.evaluate(() => cart.customer.name), 'CUST-ONLINE')
-
-    // Backend validation/permission errors remain visible and the form can retry.
-    await display.getByRole('button', { name: 'Edit details' }).click()
-    await till.unroute('**/api/method/**')
-    await till.route('**/api/method/**', async (route) => {
-      await route.fulfill({ status: 403, json: { exception: 'PermissionError: Please ask the cashier for help.' } })
-    })
-    await display.getByRole('button', { name: 'Save details' }).click()
-    await display.getByRole('alert').waitFor()
-    assert.equal(await display.getByRole('button', { name: 'Save details' }).isEnabled(), true)
-    assert.equal(await till.evaluate(() => cart.customer.name), 'CUST-ONLINE')
-
-    // A response arriving after the sale changes cannot select the next customer.
-    await till.evaluate(() => { cart.clear(); seed() })
-    await display.waitForFunction(() => document.getElementById('display-customer-name')?.value === '')
-    let release
-    const held = new Promise((resolve) => { release = resolve })
-    await till.unroute('**/api/method/**')
-    await till.route('**/api/method/**', async (route) => {
-      await held
-      await route.fulfill({ json: { message: { name:'STALE', customer_name:'Previous customer' } } })
-    })
-    await display.getByLabel('Customer name').fill('Previous customer')
-    await display.getByLabel('Contact number').fill('0770000002')
-    await display.evaluate(() => { window.lastCustomerResult = null })
-    const request = till.waitForRequest('**/api/method/esafepos.api.catalog.create_customer')
-    await display.getByRole('button', { name: 'Save details' }).click()
-    await request
-    await till.evaluate(() => { cart.clear(); seed() })
-    release()
-    await display.waitForFunction(() => window.lastCustomerResult?.error)
-    await display.waitForFunction(() => document.getElementById('display-customer-name')?.value === '')
-    assert.equal(await till.evaluate(() => cart.customer), null)
+    for (const width of [1440, 390]) {
+      await display.setViewportSize({ width, height: 900 })
+      assert.ok(await display.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
+      if (output) {
+        await display.screenshot({ path: path.join(output, `customer-display-${width}.png`), fullPage: true })
+        await till.setViewportSize({ width, height: 900 })
+        await till.screenshot({ path: path.join(output, `catalog-detail-${width}.png`), fullPage: false })
+      }
+    }
     assert.deepEqual(errors, [])
-    console.log('PASS light display, responsive form, validation, offline matching, online save, till isolation and stale-sale protection')
+    console.log('PASS catalog modes, quick add, item editor, progressive loading, display isolation, receipt and responsive layout')
   } finally {
     await browser.close()
     await server.close()

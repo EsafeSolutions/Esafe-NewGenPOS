@@ -27,7 +27,6 @@ function round2(n) {
 
 export const useCartStore = defineStore('cart', {
   state: () => ({
-    displaySaleId: newId(),
     lines: [], // {item_code, item_name, item_group, brand, qty, price, manual_discount_percent}
     customer: null, // {name, customer_name, customer_group}
     wallet: null, // {loyalty_points, conversion_factor, store_credit}
@@ -396,6 +395,8 @@ export const useCartStore = defineStore('cart', {
         this.lines.push({
           item_code: item.item_code,
           item_name: item.item_name,
+          uom: item.stock_uom || item.uom,
+          image: item.image,
           item_group: item.item_group,
           brand: item.brand,
           tags: item.tags || [],
@@ -457,6 +458,8 @@ export const useCartStore = defineStore('cart', {
         this.lines.push({
           item_code: component.item_code,
           item_name: detail.item_name || component.item_name,
+          uom: detail.stock_uom || detail.uom,
+          image: detail.image,
           item_group: detail.item_group || null,
           brand: detail.brand || null,
           tags: detail.tags || [],
@@ -480,7 +483,6 @@ export const useCartStore = defineStore('cart', {
 
     removeBundle(key) {
       this.lines = this.lines.filter((line) => line.bundle_key !== key)
-      if (!this.lines.length) this.displaySaleId = newId()
     },
 
     // "Sell in dollars": the sale goes to that currency's walk-in customer,
@@ -613,7 +615,6 @@ export const useCartStore = defineStore('cart', {
 
     removeLine(index) {
       this.lines.splice(index, 1)
-      if (!this.lines.length) this.displaySaleId = newId()
     },
 
     async setCustomer(customer) {
@@ -646,7 +647,6 @@ export const useCartStore = defineStore('cart', {
     },
 
     clear() {
-      this.displaySaleId = newId()
       this.lines = []
       this.customer = null
       this.wallet = null
@@ -1003,11 +1003,16 @@ export const useCartStore = defineStore('cart', {
             item_code: l.item_code,
             item_name: l.item_name,
             qty: l.qty,
+            uom: l.uom,
+            gross_amount: inSale(l.price * l.qty),
+            line_discount_amount: inSale(this.unitDiscounts[i] * l.qty),
             rate: l.qty ? lineTotal / l.qty : 0,
             amount: lineTotal,
           }
         }),
         discount_amount: 0, // All discounts are already allocated to the lines.
+        gross_total: inSale(this.subtotal),
+        total_savings: inSale(this.promoSavings + this.bundleSavings + this.manualDiscountTotal + this.orderDiscountTotal),
         taxes: [],
         grand_total: saleTotal,
         rounded_total: saleTotal,

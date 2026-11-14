@@ -178,8 +178,7 @@ import { useSessionStore } from './stores/session'
 import { useCatalogStore } from './stores/catalog'
 import { useCartStore } from './stores/cart'
 import { money, shiftClock, isolate } from './format'
-import { publishCart, onDisplayRequest } from './customerDisplay'
-import { connectDisplayCustomerEntry } from './displayCustomerEntry'
+import { displayPayment, displayReceipt, publishCart, onDisplayRequest } from './customerDisplay'
 import { ensurePersistentStorage } from './offline'
 import { t, locale, setLocale, offeredLanguages, LANGUAGES } from './i18n'
 import Icon from './components/Icon.vue'
@@ -209,6 +208,7 @@ async function switchOutlet(event) {
     return
   }
   cart.clear()
+  displayReceipt.value = null
   await session.switchProfile(name)
   catalog.fetch()
   catalog.cacheFullCatalog()
@@ -293,11 +293,15 @@ async function openXReport() {
 // Push a fully-formatted cart snapshot to any open customer display.
 function publishDisplaySnapshot() {
   if (!session.settings?.enable_customer_display || session.locked) {
-    publishCart({ items: [], customer: '', saleId: cart.displaySaleId, displayEnabled: false, customerEntryEnabled: false })
+    publishCart({ items: [] })
     return
   }
-  const saved =
-    cart.promoSavings + cart.bundleSavings + cart.manualDiscountTotal + cart.orderDiscountTotal
+  if (!cart.lines.length && displayReceipt.value) {
+    publishCart({ logo: session.settings?.receipt_logo || '', ...displayReceipt.value })
+    return
+  }
+  const saved = cart.promoSavings + cart.bundleSavings + cart.manualDiscountTotal + cart.orderDiscountTotal
+  const discounts = cart.unitDiscounts
   // A sale in another currency is shown in it, with its local value under it.
   const sale = cart.saleCurrency
   const mc = session.multiCurrency || {}
@@ -306,24 +310,29 @@ function publishDisplaySnapshot() {
       ? money(Math.round(cart.total * mc.outlet_rate * 100) / 100, mc.company_currency)
       : ''
   publishCart({
-    saleId: cart.displaySaleId,
-    displayEnabled: true,
-    customerEntryEnabled: Boolean(cart.lines.length && !cart.submitting),
     company: session.company,
     logo: session.settings?.receipt_logo || '',
     customer: cart.customer?.customer_name || '',
-    customerKey: cart.customer?.name || '',
-    items: cart.lines.map((l) => ({
+    items: cart.lines.map((l, index) => ({
       name: l.item_name,
+      code: l.item_code,
+      image: l.image,
       qty: l.qty,
+      uom: l.uom,
       rate: cart.show(l.price),
-      amount: cart.show(l.price * l.qty),
+      amount: cart.show((l.price - discounts[index]) * l.qty),
+      gross: discounts[index] > 0 ? cart.show(l.price * l.qty) : '',
+      discount: discounts[index] > 0 ? cart.show(discounts[index] * l.qty) : '',
     })),
-    count: cart.itemCount,
+    count: cart.lines.length,
     subtotal: cart.show(cart.subtotal),
     total: cart.show(cart.total),
     equivalent,
     savings: saved > 0.005 ? cart.show(saved) : '',
+    tax: cart.taxBreakdown.exclusiveTotal ? cart.show(cart.taxBreakdown.exclusiveTotal) : '',
+    service: cart.serviceCharge ? cart.show(cart.serviceCharge) : '',
+    due: cart.lines.length ? cart.show(cart.total) : '',
+    ...(cart.lines.length ? displayPayment.value : null),
   })
 }
 
@@ -360,10 +369,12 @@ onMounted(async () => {
     if (session.queuedCount && !session.offline) session.flushQueue()
     // Mirror the cart to any open customer display, and answer a display that
     // opens later and asks for the current state.
-    displayCleanup.push(cart.$subscribe(() => publishDisplaySnapshot()))
+    displayCleanup.push(cart.$subscribe(() => {
+      if (cart.lines.length) displayReceipt.value = null
+      publishDisplaySnapshot()
+    }))
     displayCleanup.push(onDisplayRequest(publishDisplaySnapshot))
-    displayCleanup.push(connectDisplayCustomerEntry(cart, session, publishDisplaySnapshot))
-    displayCleanup.push(watch(() => [session.settings?.enable_customer_display, session.locked], publishDisplaySnapshot))
+    displayCleanup.push(watch(() => [session.settings?.enable_customer_display, session.locked, displayPayment.value, displayReceipt.value], publishDisplaySnapshot))
     publishDisplaySnapshot()
     setupAutoLock()
     // Who sees the welcome, or what is new since their last visit.

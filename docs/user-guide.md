@@ -126,6 +126,10 @@ Help for staff**, all on by default.
 
 ## 2. The Sell screen
 
+Use **Item view** to switch between **List**, **Images**, and **Images and full descriptions**. The till remembers your choice on that browser. Scroll or select **Load more items** to continue through the catalog. Each item has an **Add** button for quick entry. Tap the item itself to enlarge its image, read its description, and edit the quantity, price or discount. Quantity uses the item's configured ERPNext stock unit. Price and discount edits follow the till's existing permissions and approval limits.
+
+Select **Display** to open the [customer screen](customer-display.md). It follows the basket and payment, highlights savings, and shows the completed receipt and rewards.
+
 | Area | What it does |
 |---|---|
 | **Search bar** | Type to search name/code/barcode (instant, served from a local cache). Press **Enter** with a scanned barcode or serial number to add the item directly. |
@@ -1578,6 +1582,8 @@ which both EsafePOS roles are given.
 The earlier entries below cover the shared release history inherited from the original app.
 
 ### Unreleased
+
+- Added three Sell catalog modes, quick Add and tap-to-open item editing. The read-only customer display shows line savings, running totals, amount due or change, and the completed receipt with earned rewards.
 
 - The ERPNext app, web app and launcher now use the ESAFE POS name. The Python package and API namespace are `esafepos`. Existing sites use the [one-time upgrade](esafepos-upgrade.md).
 

@@ -1665,7 +1665,7 @@
             <input type="checkbox" class="setting-toggle" v-model="generalForm.enable_customer_display" :true-value="1" :false-value="0" />
             <span class="setting-text">
               <span class="setting-title">{{ t('Customer-facing display') }}</span>
-              <span class="setting-desc">{{ t('Adds a Display button on the sell screen that opens a second-screen window mirroring the cart for the customer.') }}</span>
+              <span class="setting-desc">{{ t('Shows the cart, savings, payment and receipt on a second screen.') }}</span>
             </span>
           </label>
           <label class="setting-row">

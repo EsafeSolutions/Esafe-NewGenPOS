@@ -186,13 +186,15 @@ def item_group_and_below(group):
 
 
 @frappe.whitelist()
-def get_items(pos_profile: str, search: str = "", item_group: str = "", start: int | str = 0, limit: int | str = 60, price_list: str | None = None):
+def get_items(pos_profile: str, search: str = "", item_group: str = "", start: int | str = 0, limit: int | str = 60, price_list: str | None = None, brand: str = ""):
     """Items with selling price and stock for the POS grid."""
     start, limit = int(start), min(int(limit), 500)
     profile = frappe.get_cached_doc("POS Profile", pos_profile)
     active_price_list = price_list or resolve_price_list(profile)
 
     filters = {"disabled": 0, "is_sales_item": 1, "has_variants": 0}
+    if brand:
+        filters["brand"] = brand
     # EsafePOS's own placeholder items (gift card, hold deposit) are never
     # tapped as a product. Keep them out of the grid / search / offline cache.
     internal = internal_item_codes()
@@ -231,7 +233,7 @@ def get_items(pos_profile: str, search: str = "", item_group: str = "", start: i
         filters=filters,
         or_filters=or_filters,
         fields=fields,
-        order_by="item_name asc",
+        order_by="item_name asc, name asc",
         limit_start=start,
         limit_page_length=limit,
     )
@@ -267,6 +269,7 @@ def get_items(pos_profile: str, search: str = "", item_group: str = "", start: i
     ):
         barcode_map.setdefault(row.parent, row.barcode)
 
+    _set_quantity_rules(items)
     for item in items:
         item["price"] = price_map.get(item["item_code"], 0)
         item["standard_price"] = standard_map.get(item["item_code"]) or item["price"]
@@ -277,6 +280,17 @@ def get_items(pos_profile: str, search: str = "", item_group: str = "", start: i
         item["tags"] = [t.strip() for t in (item.pop("_user_tags", "") or "").split(",") if t.strip()]
 
     return {"items": items, "price_list": active_price_list}
+
+
+def _set_quantity_rules(items):
+    units = {item["stock_uom"] for item in items if item["stock_uom"]}
+    if not units:
+        return
+    whole_units = set(frappe.get_all(
+        "UOM", filters={"name": ["in", sorted(units)], "must_be_whole_number": 1}, pluck="name"
+    ))
+    for item in items:
+        item["whole_qty"] = item["stock_uom"] in whole_units
 
 
 @frappe.whitelist()
@@ -354,7 +368,7 @@ def resolve_scan(pos_profile: str, code: str, customer_group: str | None = None,
     wf = warranty_field()
     scan_fields = [
         "name as item_code", "item_name", "item_group", "brand", "stock_uom",
-        "is_stock_item", "has_serial_no", "has_batch_no", "_user_tags",
+        "image", "is_stock_item", "has_serial_no", "has_batch_no", "_user_tags",
     ]
     if wf:
         scan_fields.append(f"`{wf}` as warranty_days")
@@ -652,7 +666,7 @@ def get_quick_keys(pos_profile: str):
     wf = warranty_field()
     fields = [
         "name as item_code", "item_name", "item_group", "brand", "stock_uom",
-        "image", "is_stock_item", "has_serial_no", "has_batch_no", "_user_tags",
+        "image", "description", "is_stock_item", "has_serial_no", "has_batch_no", "_user_tags",
     ]
     if wf:
         fields.append(f"`{wf}` as warranty_days")
@@ -666,6 +680,7 @@ def get_quick_keys(pos_profile: str):
     if not fcodes:
         return {"items": []}
 
+    _set_quantity_rules(found)
     uom_map = {i["item_code"]: i["stock_uom"] for i in found}
     price_map = effective_prices(profile, fcodes, None, None, uom_map)
     standard_map = standard_prices(profile, fcodes, uom_map)

@@ -139,7 +139,7 @@ export async function saveCatalog(items) {
 
 // `groups`: the picked group and every group beneath it (the server sends
 // them per chip), or one group name, or nothing for all.
-export async function searchCatalog(search = '', groups = null, limit = 80) {
+export async function searchCatalog(search = '', groups = null, limit = 80, brand = '') {
   const database = await db()
   const all = await request(database.transaction('items').objectStore('items').getAll())
   const term = search.trim().toLowerCase()
@@ -148,6 +148,7 @@ export async function searchCatalog(search = '', groups = null, limit = 80) {
   const scaleCands = scale ? scale.candidates.map((c) => c.toLowerCase()) : []
 
   const filtered = all.filter((item) => {
+    if (brand && item.brand !== brand) return false
     if (allowed && !allowed.includes(item.item_group)) return false
     if (!term) return true
     const b = (item.barcode || '').toLowerCase()

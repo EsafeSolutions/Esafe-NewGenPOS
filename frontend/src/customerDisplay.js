@@ -11,11 +11,15 @@
 // waiting for the next change).
 
 import { newId } from './offline'
+import { shallowRef } from 'vue'
+import { money } from './format'
 
 const NAME = 'esafepos-customer-display'
 let channel = null
-// Each till tab owns its display; customer input must never reach another till.
+// Each till tab owns its display.
 export const displayTerminalId = newId()
+export const displayPayment = shallowRef(null)
+export const displayReceipt = shallowRef(null)
 
 export function customerDisplayUrl() {
   return window.location.href.replace(/#.*$/, '') + '#/display?terminal=' + displayTerminalId
@@ -36,26 +40,50 @@ export function publishCart(snapshot) {
   }
 }
 
-export function sendDisplayCustomer(message) {
-  chan()?.postMessage({ kind: 'customer', ...message })
-}
-
-export function replyDisplayCustomer(message) {
-  chan()?.postMessage({ kind: 'customer-result', terminalId: displayTerminalId, ...message })
-}
-
-function listen(kind, handler) {
-  const c = chan()
-  if (!c) return () => {}
-  const fn = (event) => {
-    if (event.data?.kind === kind) handler(event.data)
+export function receiptSnapshot(receipt, images = {}) {
+  const show = (value) => money(value, receipt.currency)
+  return {
+    receipt: receipt.name,
+    pending: Boolean(receipt.offline),
+    company: receipt.company,
+    customer: receipt.customer_name,
+    date: receipt.posting_date,
+    time: receipt.posting_time?.slice(0, 5),
+    terminal: receipt.terminal,
+    cashier: receipt.cashier,
+    items: (receipt.items || []).map((line) => ({
+      name: line.item_name, code: line.item_code, image: images[line.item_code],
+      qty: line.qty, uom: line.uom, rate: show(line.rate), amount: show(line.amount),
+      discount: Number(line.line_discount_amount) > 0 ? show(line.line_discount_amount) : '',
+      gross: Number(line.line_discount_amount) > 0 ? show(line.gross_amount) : '',
+    })),
+    count: receipt.item_count ?? receipt.items?.length ?? 0,
+    subtotal: show(receipt.gross_total ?? receipt.total ?? receipt.grand_total),
+    equivalent: receipt.base_grand_total && receipt.company_currency
+      ? money(receipt.base_grand_total, receipt.company_currency) : '',
+    savings: Number(receipt.total_savings) > 0 ? show(receipt.total_savings) : '',
+    tax: Number(receipt.total_taxes_and_charges) ? show(receipt.total_taxes_and_charges) : '',
+    taxes: (receipt.taxes || []).filter((row) => Number(row.tax_amount)).map((row) => ({
+      label: row.description || row.account_head, amount: show(row.tax_amount),
+    })),
+    rounding: Number(receipt.rounding_adjustment) ? show(receipt.rounding_adjustment) : '',
+    total: show(receipt.rounded_total || receipt.grand_total),
+    paid: show(receipt.paid_amount),
+    due: Number(receipt.on_account?.owed_on_sale) > 0 ? show(receipt.on_account.owed_on_sale) : '',
+    cashback: Number(receipt.cashback_earned) > 0 ? show(receipt.cashback_earned) : '',
+    change: Number(receipt.change_amount) > 0
+      ? money(receipt.change_currency && receipt.change_currency !== receipt.currency
+        ? receipt.base_change_amount ?? receipt.change_amount : receipt.change_amount,
+      receipt.change_currency || receipt.currency) : '',
+    payments: (receipt.payments || []).map((payment) => ({
+      label: payment.mode_of_payment,
+      amount: payment.currency && payment.tendered != null ? money(payment.tendered, payment.currency) : show(payment.amount),
+    })),
+    redeemed: receipt.loyalty_amount > 0 ? show(receipt.loyalty_amount) : '',
+    earnedPoints: receipt.loyalty_points_earned || 0,
+    pointsBalance: receipt.loyalty?.balance,
   }
-  c.addEventListener('message', fn)
-  return () => c.removeEventListener('message', fn)
 }
-
-export const onDisplayCustomer = (handler) => listen('customer', handler)
-export const onDisplayCustomerResult = (handler) => listen('customer-result', handler)
 
 // Main window: answer a display's request for the current state.
 export function onDisplayRequest(handler) {

@@ -265,7 +265,8 @@
 import Icon from './Icon.vue'
 import PaymentBrand from './PaymentBrand.vue'
 import RefundApproval from './RefundApproval.vue'
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watchEffect } from 'vue'
+import { displayPayment, displayReceipt, receiptSnapshot } from '../customerDisplay'
 import { call } from '../api'
 import { useCartStore } from '../stores/cart'
 import { useSessionStore } from '../stores/session'
@@ -379,6 +380,27 @@ const localChange = computed(() => {
   const paidLocal = payments.value.reduce((sum, p) => sum + round2(p.amount * rate), 0)
   return round2(paidLocal - round2(payable.value * rate))
 })
+
+watchEffect(() => {
+  if (!session.settings?.enable_customer_display) return
+  const currency = sale.value.currency
+  displayPayment.value = {
+    total: money(total.value, currency),
+    paid: money(paid.value, currency),
+    due: remaining.value > 0 ? money(remaining.value, currency) : '',
+    change: remaining.value < 0 ? (changeInSale.value
+      ? money(-remaining.value, currency) : money(localChange.value, local.value)) : '',
+    redeemed: loyaltyAmount.value ? money(loyaltyAmount.value, currency) : '',
+    exchangeCredit: exchangeCredit.value ? money(exchangeCredit.value, currency) : '',
+    cashback: cashbackEarn.value > 0 ? money(cashbackEarn.value, local.value) : '',
+    payments: payments.value.map((payment) => ({
+      label: payment.mode_of_payment,
+      amount: payment.tender_currency && payment.tender_amount != null
+        ? money(payment.tender_amount, payment.tender_currency) : money(payment.amount, currency),
+    })),
+  }
+})
+onBeforeUnmount(() => { displayPayment.value = null })
 
 const canComplete = computed(() => {
   if (!referencesOk.value) return false
@@ -766,6 +788,7 @@ async function complete() {
     return
   }
   try {
+    const itemImages = Object.fromEntries(cart.lines.map((line) => [line.item_code, line.image]))
     const giftCards = payments.value
       .filter((p) => p.card_no)
       .map((p) => ({ card_no: p.card_no, amount: p.amount }))
@@ -777,11 +800,15 @@ async function complete() {
         giftCards
       )
       session.notify(t('Exchange completed'))
+      if (result.sale && session.settings?.enable_customer_display) {
+        displayReceipt.value = receiptSnapshot(result.sale, itemImages)
+      }
       emit('done', result.sale)
       return
     }
     const receipt = await cart.submit(payments.value, redeemPoints.value, giftCards)
     session.notify(receipt.offline ? t('Sale queued (offline)') : t('Sale completed'))
+    if (session.settings?.enable_customer_display) displayReceipt.value = receiptSnapshot(receipt, itemImages)
     emit('done', receipt)
   } catch (e) {
     session.notify(e.message, true)

@@ -381,7 +381,8 @@ export const useCartStore = defineStore('cart', {
       const addQty = Math.round((Number(qty) || 1) * 10000) / 10000
       // never merge into a bundle line, bundle pricing is per-instance
       const existing = this.lines.find(
-        (l) => l.item_code === item.item_code && !l.bundle_key
+        (l) => l.item_code === item.item_code && !l.bundle_key &&
+          (l.selling_uom || null) === (item.selling_uom || null)
       )
       if (existing) {
         if (item.has_serial_no) {
@@ -396,6 +397,9 @@ export const useCartStore = defineStore('cart', {
           item_code: item.item_code,
           item_name: item.item_name,
           uom: item.stock_uom || item.uom,
+          selling_uom: item.selling_uom || null,
+          conversion_factor: item.conversion_factor || 1,
+          whole_qty: item.whole_qty,
           image: item.image,
           item_group: item.item_group,
           brand: item.brand,
@@ -526,6 +530,7 @@ export const useCartStore = defineStore('cart', {
         })
         this.activePriceList = data.price_list
         for (const line of this.lines) {
+          if (line.selling_uom) continue
           const listed = data.prices[line.item_code]
           const std = data.standard_prices?.[line.item_code]
           // A typed price stays: the list's goes where clearing it returns to.
@@ -553,6 +558,7 @@ export const useCartStore = defineStore('cart', {
         ? (session.offlinePrices || {})[sale.currency] || {}
         : null
       for (const line of this.lines) {
+        if (line.selling_uom) continue
         if (line.price_override != null) continue
         if (line.catalog_price == null) line.catalog_price = line.price
         const price = own ? own[line.item_code] : null
@@ -609,6 +615,7 @@ export const useCartStore = defineStore('cart', {
     setQty(index, qty) {
       if (this.lines[index]?.has_serial_no) return // qty is locked to serial count
       qty = Math.round((Number(qty) || 0) * 10000) / 10000
+      if (this.lines[index]?.whole_qty && !Number.isInteger(qty)) return
       if (!qty || qty <= 0) this.removeLine(index)
       else this.lines[index].qty = qty
     },
@@ -677,7 +684,7 @@ export const useCartStore = defineStore('cart', {
     // be taken back without a connection. Best effort, never holds a sale up.
     async _keepShiftSale(key, receipt) {
       const session = useSessionStore()
-      if (!key || !session.registerSession?.name || !receipt?.name) return
+      if (!key || !session.registerSession?.name || !receipt?.name || receipt.has_alternate_units) return
       try {
         await putShiftSale({
           key,
@@ -754,6 +761,7 @@ export const useCartStore = defineStore('cart', {
         items: this.lines.map((l) => ({
           item_code: l.item_code,
           qty: l.qty,
+          ...(l.selling_uom ? { uom: l.selling_uom } : {}),
           manual_discount_percent: l.manual_discount_percent || 0,
           manual_discount_method: l.manual_discount_method || 'percent',
           manual_discount_amount: l.manual_discount_amount || 0,
@@ -922,6 +930,9 @@ export const useCartStore = defineStore('cart', {
 
     async _queueOffline(payload, payments) {
       const session = useSessionStore()
+      if (payload.items.some((item) => item.uom)) {
+        throw new Error('Alternate selling units need a connection to confirm their price and stock conversion.')
+      }
       // A sale in another currency is priced at the rate the shift fixed as
       // it opened, which the till knows, and the server posts it only at that
       // rate (esafepos.currency.assert_till_rate). A named customer billed in

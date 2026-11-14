@@ -126,6 +126,12 @@ Help for staff**, all on by default.
 
 ## 2. The Sell screen
 
+Turn **Weight-embedded scale barcodes** on or off in **Settings → General → Features**. Configure the prefixes, PLU length and weight decimals to match the scale's labels. The same settings apply when the till searches its cached catalog offline.
+
+To sell the same item loose and in packs, keep one ERPNext Item with **Kg** as its stock unit. Add an alternate **Pack** unit and set its conversion factor in ERPNext. For a 500 g pack, use `0.5`. In POS, open **Items**, find the product by name, item code or barcode, and set separate prices for Kg and Pack on the outlet's selling price list. Tap the product on Sell, choose the selling unit, and enter the quantity. Selling 1.25 kg and two 500 g packs uses 2.25 kg from the same stock. Quick Add and weight barcodes use the stock unit.
+
+**Items** requires ERPNext Item and Item Price permissions. It changes the item display name and standing price for each configured unit. A shared price list carries the same edit to every outlet using it. Alternate-unit checkout uses an online sale on the outlet's regular price list in its own currency. Holds use the stock unit. Return alternate-unit sales from online Sales History.
+
 For a customer who prefers to stay anonymous, leave the customer field blank and take payment normally. The POS Profile needs a default walk-in customer. With **Settings → General → Features → Automatic walk-in customer codes** enabled, each submitted walk-in sale gets a code starting with `W-`. The built-in receipt shows the code. Search for it in **Sales History**, open the receipt, and select **Edit walk-in details** to add a name, contact number, or both. The details belong to that receipt. Queued offline sales receive their code when they post to ERPNext. Turning the switch off stops assigning new codes and leaves existing codes searchable.
 
 Use **Item view** to switch between **List**, **Images**, and **Images and full descriptions**. The till remembers your choice on that browser. Scroll or select **Load more items** to continue through the catalog. Each item has an **Add** button for quick entry. Tap the item itself to enlarge its image, read its description, and edit the quantity, price or discount. Quantity uses the item's configured ERPNext stock unit. Price and discount edits follow the till's existing permissions and approval limits.

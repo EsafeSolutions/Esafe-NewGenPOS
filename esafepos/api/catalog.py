@@ -279,6 +279,9 @@ def get_items(pos_profile: str, search: str = "", item_group: str = "", start: i
         # so promotions can target items by tag.
         item["tags"] = [t.strip() for t in (item.pop("_user_tags", "") or "").split(",") if t.strip()]
 
+    from esafepos.item_units import add_options
+
+    add_options(items, active_price_list)
     return {"items": items, "price_list": active_price_list}
 
 
@@ -712,6 +715,9 @@ def get_quick_keys(pos_profile: str):
         item["tags"] = [t.strip() for t in (item.pop("_user_tags", "") or "").split(",") if t.strip()]
         item["quick_label"] = label_map.get(code) or item["item_name"]
         items.append(item)
+    from esafepos.item_units import add_options
+
+    add_options(items, profile.selling_price_list)
     return {"items": items}
 
 

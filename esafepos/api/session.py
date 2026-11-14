@@ -286,6 +286,7 @@ def get_user_permissions():
         "customers": bool(has("Customer", "read")),
         # EsafePOS capability gates (role-configurable in Settings → Permissions).
         "can_edit_price": caps_mod.can_edit_price(),
+        "edit_items": _can_edit_items(),
         "can_return": caps_mod.can_return(),
         "can_exchange": caps_mod.can_exchange(),
         "can_exceed_return_window": caps_mod.can_exceed_return_window(),
@@ -704,6 +705,12 @@ def get_open_session(pos_profile, user=None):
         "opening_float": doc.opening_float,
         "pos_opening_entry": doc.get("pos_opening_entry"),
     }
+
+
+def _can_edit_items():
+    from esafepos.api.items import can_edit
+
+    return can_edit()
 
 
 def _can_change_price(profile):

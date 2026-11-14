@@ -43,7 +43,7 @@
           </button>
         </div>
       </div>
-      <div class="line-qty">×{{ line.qty }}</div>
+      <div class="line-qty">×{{ line.qty }} {{ line.selling_uom || line.uom }}</div>
       <div class="line-amount">
         <div :class="{ struck: totalDiscount > 0 }">{{ cart.show(line.price * line.qty) }}</div>
         <div v-if="totalDiscount > 0" class="discounted" :class="{ 'bundle-color': line.bundle_key }">
@@ -72,7 +72,7 @@
           <input
             type="number"
             min="0"
-            step="any"
+            :step="line.whole_qty ? 1 : 'any'"
             :value="line.qty"
             @change="cart.setQty(index, $event.target.value)"
           />

@@ -318,7 +318,7 @@ function publishDisplaySnapshot() {
       code: l.item_code,
       image: l.image,
       qty: l.qty,
-      uom: l.uom,
+      uom: l.selling_uom || l.uom,
       rate: cart.show(l.price),
       amount: cart.show((l.price - discounts[index]) * l.qty),
       gross: discounts[index] > 0 ? cart.show(l.price * l.qty) : '',
@@ -346,6 +346,7 @@ const pageTitle = computed(
       '/register': t('Register'),
       '/insights': t('Insights'),
       '/labels': t('Labels'),
+      '/items': t('Items'),
       '/count': t('Stock count'),
       '/settings': t('Settings'),
     })[route.path] || t('Sell')

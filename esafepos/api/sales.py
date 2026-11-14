@@ -279,8 +279,13 @@ def _build_sale_invoice(
         ctx, [line["item_code"] for line in lines], {line["item_code"]: line["stock_uom"] for line in lines}
     )
     for line in lines:
-        if line["item_code"] in own:
+        if line["uom"] == line["stock_uom"] and line["item_code"] in own:
             line["price"] = own[line["item_code"]]
+        if line["uom"] != line["stock_uom"]:
+            if cint(payload.get("queued_offline")):
+                frappe.throw(_("Alternate selling units need a connection to confirm their price and stock conversion."))
+            if ctx.foreign or app:
+                frappe.throw(_("Pack prices are available on the outlet's regular price list in its own currency."))
     # A price typed at the till replaces the line's price before offers, as a
     # price list price would (the outlet's switch and the rule are checked).
     price_overrides = _price_overrides(payload, lines, ctx, profile)
@@ -396,7 +401,8 @@ def _build_sale_invoice(
         row = {
             "item_code": line["item_code"],
             "qty": line["qty"],
-            "uom": line["stock_uom"],
+            "uom": line["uom"],
+            "conversion_factor": line["conversion_factor"],
             "warehouse": profile.warehouse,
         }
         if return_groups[i]:
@@ -858,6 +864,8 @@ def submit_sale(payload: dict | str):
     posted = _insert_once(invoice, key)
     if posted:
         return _sale_answer(posted)
+    if any(row.uom != row.stock_uom for row in invoice.items):
+        _assert_alternate_unit_stock(invoice, profile)
     t_insert = _perf_now()
     # The change account ERPNext settled on must be one this sale can book.
     currency.check_change(invoice)
@@ -1879,6 +1887,21 @@ def _apply_loyalty_redemption(invoice, customer, company, payload):
     invoice.loyalty_redemption_cost_center = details.cost_center
 
 
+def _assert_alternate_unit_stock(invoice, profile):
+    if not profile.warehouse or cint(frappe.db.get_single_value("Stock Settings", "allow_negative_stock")):
+        return
+    from esafepos.api.catalog import stock_levels
+
+    codes = {row.item_code for row in invoice.items if row.uom != row.stock_uom}
+    levels = stock_levels(profile.warehouse, codes)
+    for code in codes:
+        if not frappe.get_cached_value("Item", code, "is_stock_item"):
+            continue
+        requested = sum(flt(row.qty) * flt(row.conversion_factor or 1) for row in invoice.items if row.item_code == code)
+        if flt(requested, 6) > flt(levels.get(code, 0), 6):
+            frappe.throw(_("There is not enough stock for {0} in {1}.").format(code, profile.warehouse))
+
+
 def _build_lines(items, profile, customer_group=None, app_price_list=None):
     """Resolve server-side prices and attributes for the engine. Client
     prices are ignored. `price` is the effective unit price (price-book
@@ -1906,6 +1929,15 @@ def _build_lines(items, profile, customer_group=None, app_price_list=None):
     uom_map = {code: d.stock_uom for code, d in details.items()}
     price_map = effective_prices(profile, codes, customer_group, app_price_list, uom_map)
     standard_map = standard_prices(profile, codes, uom_map)
+    alternate_codes = {row["item_code"] for row in items
+                       if row.get("uom") and row["uom"] != uom_map.get(row["item_code"])}
+    from esafepos.item_units import conversions, prices_by_unit
+
+    factors = conversions(alternate_codes)
+    alternate_prices = prices_by_unit(factors, profile.selling_price_list)
+    whole_units = set(frappe.get_all("UOM", filters={
+        "name": ["in", sorted({unit for _, unit in factors})], "must_be_whole_number": 1,
+    }, pluck="name")) if factors else set()
 
     lines = []
     for row in items:
@@ -1916,6 +1948,17 @@ def _build_lines(items, profile, customer_group=None, app_price_list=None):
         if qty <= 0:
             frappe.throw(_("Quantity for {0} must be positive").format(detail.item_name))
         price = flt(price_map.get(detail.name, 0))
+        standard_price = flt(standard_map.get(detail.name) or price)
+        unit = row.get("uom") or detail.stock_uom
+        factor = 1
+        if unit != detail.stock_uom:
+            factor = factors.get((detail.name, unit))
+            price = alternate_prices.get((detail.name, unit))
+            if not factor or not price or detail.has_serial_no or row.get("bundle_key"):
+                frappe.throw(_("{0} has no selling price or conversion for {1}.").format(detail.item_name, unit))
+            if unit in whole_units and qty != int(qty):
+                frappe.throw(_("Enter a whole quantity for {0}.").format(unit))
+            standard_price = price
         lines.append(
             {
                 "item_code": detail.name,
@@ -1923,10 +1966,12 @@ def _build_lines(items, profile, customer_group=None, app_price_list=None):
                 "brand": detail.brand,
                 "tags": _split_tags(detail.get("_user_tags")),
                 "stock_uom": detail.stock_uom,
+                "uom": unit,
+                "conversion_factor": factor,
                 "has_serial_no": detail.has_serial_no,
                 "qty": qty,
                 "price": price,
-                "standard_price": flt(standard_map.get(detail.name) or price),
+                "standard_price": standard_price,
             }
         )
     return lines
@@ -2239,6 +2284,7 @@ def get_receipt(invoice: str):
         "item_discount_total": item_discount_total,
         "total_savings": flt(item_discount_total + flt(doc.discount_amount)),
         "rounding_adjustment": flt(payable_total - doc.grand_total),
+        "has_alternate_units": any(row.uom != row.stock_uom for row in doc.items),
         "item_count": len(receipt_items),
         "total_qty": total_qty,
         "total_taxes_and_charges": doc.total_taxes_and_charges,
@@ -2676,15 +2722,15 @@ def get_returnable(invoice: str, pos_profile: str | None = None):
         # fields. `doctype` is POS Invoice or Sales Invoice, not user input.
         for row in frappe.db.sql(  # nosemgrep
             f"""
-            select item_code, sum(qty) as qty
+            select item_code, uom, sum(qty) as qty
             from `tab{doctype} Item`
             where parent in %(parents)s
-            group by item_code
+            group by item_code, uom
             """,
             {"parents": tuple(return_names)},
             as_dict=True,
         ):
-            returned[row.item_code] = abs(flt(row.qty))
+            returned[(row.item_code, row.uom)] = abs(flt(row.qty))
 
     sold_serials = _sold_serials(doc)
     # Which serials have ALREADY come back on a prior credit note. Read from our
@@ -2696,9 +2742,11 @@ def get_returnable(invoice: str, pos_profile: str | None = None):
     # was un-returnable at the till. Our own records are authoritative here.
     already_returned = _returned_serials(doctype, return_names)
     items = []
+    mixed = _mixed_unit_codes(doc.items)
     for row in doc.items:
-        already = min(returned.get(row.item_code, 0), row.qty)
-        returned[row.item_code] = returned.get(row.item_code, 0) - already
+        key = (row.item_code, row.uom)
+        already = min(returned.get(key, 0), row.qty)
+        returned[key] = returned.get(key, 0) - already
         has_serial = frappe.get_cached_value("Item", row.item_code, "has_serial_no")
         returnable_serials = []
         if has_serial:
@@ -2708,6 +2756,8 @@ def get_returnable(invoice: str, pos_profile: str | None = None):
         items.append(
             {
                 "item_code": row.item_code,
+                "return_key": _return_key(row, mixed),
+                "uom": row.uom,
                 "item_name": row.item_name,
                 "qty": row.qty,
                 "rate": row.rate,
@@ -2753,6 +2803,17 @@ def _return_window(original):
     return {"restrict": restrict, "window_days": days, "age_days": age, "within": within}
 
 
+def _mixed_unit_codes(rows):
+    units = {}
+    for row in rows:
+        units.setdefault(row.item_code, set()).add(row.uom)
+    return {code for code, values in units.items() if len(values) > 1}
+
+
+def _return_key(row, mixed):
+    return "uom:" + json.dumps([row.item_code, row.uom], separators=(",", ":")) if row.item_code in mixed else row.item_code
+
+
 def _build_return_doc(original, sale_doctype, invoice, items, serials, pos_profile, return_reason):
     """The credit note for `items`, calculated but NOT inserted.
 
@@ -2794,12 +2855,14 @@ def _build_return_doc(original, sale_doctype, invoice, items, serials, pos_profi
     # Keep one row per returned item code (a quantity may span duplicate
     # lines on the original; the aggregate returnable check above still holds)
     kept, seen = [], set()
+    mixed = _mixed_unit_codes(original.items)
     for row in return_doc.items:
-        if row.item_code in items and row.item_code not in seen:
+        key = _return_key(row, mixed)
+        if key in items and key not in seen:
             kept.append(row)
-            seen.add(row.item_code)
+            seen.add(key)
     return_doc.items = kept
-    if not return_doc.items:
+    if not return_doc.items or seen != set(items):
         frappe.throw(_("Selected items were not found on the original sale"))
     sold = _sold_serials(original)
     # Serials already returned on a previous credit note (our own record. See
@@ -2817,12 +2880,13 @@ def _build_return_doc(original, sale_doctype, invoice, items, serials, pos_profi
             row.warehouse = handling_profile.warehouse
         if handling_profile.get("cost_center"):
             row.cost_center = handling_profile.cost_center
-        row.qty = -items[row.item_code]
+        picked_qty = items[_return_key(row, mixed)]
+        row.qty = -picked_qty
         if row.get("stock_qty"):
             row.stock_qty = row.qty * flt(row.conversion_factor or 1)
         row_serials = _validate_return_serials(
             row.item_code,
-            items[row.item_code],
+            picked_qty,
             (serials or {}).get(row.item_code),
             sold,
             already_returned,
@@ -3224,7 +3288,9 @@ def create_return(
     # Return request as an over-window return, so validate that request once.
     from esafepos import return_restrictions
 
-    restricted_lines = _restriction_items_for_codes(list(items))
+    mixed = _mixed_unit_codes(original.items)
+    keys_to_codes = {_return_key(row, mixed): row.item_code for row in original.items}
+    restricted_lines = _restriction_items_for_codes([keys_to_codes[key] for key in items if key in keys_to_codes])
     outlet = pos_profile or original.get("pos_profile")
     if return_restrictions.blocked_items(restricted_lines, outlet):
         if return_request and return_approver is None:
@@ -3255,9 +3321,12 @@ def create_return(
         )
 
     returnable_items = get_returnable(invoice)["items"]
-    returnable = {row["item_code"]: row["returnable_qty"] for row in returnable_items}
+    returnable = {}
+    for row in returnable_items:
+        key = row["return_key"]
+        returnable[key] = returnable.get(key, 0) + row["returnable_qty"]
     for code, qty in items.items():
-        if qty > returnable.get(code, 0) + 0.005:
+        if code not in returnable or qty > returnable[code] + 0.005:
             frappe.throw(
                 _("Only {0} x {1} can still be returned").format(returnable.get(code, 0), code)
             )
@@ -3475,8 +3544,9 @@ def _enforce_return_groups(returnable_items, items):
         if not g:
             continue
         members.setdefault(g, {})
-        members[g][r["item_code"]] = members[g].get(r["item_code"], 0) + flt(r["returnable_qty"])
-        group_of[r["item_code"]] = g
+        key = r.get("return_key") or r["item_code"]
+        members[g][key] = members[g].get(key, 0) + flt(r["returnable_qty"])
+        group_of[key] = g
 
     touched = {group_of[c] for c in items if c in group_of}
     for g in touched:

@@ -139,12 +139,12 @@ export async function saveCatalog(items) {
 
 // `groups`: the picked group and every group beneath it (the server sends
 // them per chip), or one group name, or nothing for all.
-export async function searchCatalog(search = '', groups = null, limit = 80, brand = '') {
+export async function searchCatalog(search = '', groups = null, limit = 80, brand = '', scaleOptions = null) {
   const database = await db()
   const all = await request(database.transaction('items').objectStore('items').getAll())
   const term = search.trim().toLowerCase()
   const allowed = Array.isArray(groups) ? groups : groups ? [groups] : null
-  const scale = parseScaleBarcode(term)
+  const scale = scaleOptions && parseScaleBarcode(term, scaleOptions)
   const scaleCands = scale ? scale.candidates.map((c) => c.toLowerCase()) : []
 
   const filtered = all.filter((item) => {
@@ -163,7 +163,14 @@ export async function searchCatalog(search = '', groups = null, limit = 80, bran
       b.includes(term)
     )
   })
-  filtered.sort((a, b) => (a.item_name || '').localeCompare(b.item_name || ''))
+  const barcodeRank = (item) => {
+    const code = (item.item_code || '').toLowerCase()
+    const barcode = (item.barcode || '').toLowerCase()
+    if (term && (code === term || barcode === term)) return -2
+    const candidate = scaleCands.findIndex((value) => value === code || value === barcode)
+    return candidate === -1 ? scaleCands.length : candidate
+  }
+  filtered.sort((a, b) => barcodeRank(a) - barcodeRank(b) || (a.item_name || '').localeCompare(b.item_name || ''))
   return filtered.slice(0, limit)
 }
 

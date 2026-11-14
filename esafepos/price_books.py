@@ -23,7 +23,7 @@ def resolve_price_list(profile, customer_group=None, app_price_list=None):
     return app_price_list or profile.selling_price_list
 
 
-def get_price_map(item_codes, price_list, stock_uom_map=None, on_date=None):
+def get_price_map(item_codes, price_list, stock_uom_map=None, on_date=None, exact_uom=None):
     """Batch price lookup for a list of items on one price list.
 
     ONLY rows actually in effect today count. Without this an Item Price row
@@ -35,9 +35,13 @@ def get_price_map(item_codes, price_list, stock_uom_map=None, on_date=None):
     if not item_codes or not price_list:
         return {}
     today = getdate(on_date or nowdate())
+    filters = {"item_code": ["in", item_codes], "price_list": price_list, "selling": 1}
+    if exact_uom:
+        filters.update({"uom": exact_uom, "customer": ("is", "not set"), "supplier": ("is", "not set"),
+                        "batch_no": ("is", "not set"), "packing_unit": ("in", [0, 1])})
     prices = frappe.get_all(
         "Item Price",
-        filters={"item_code": ["in", item_codes], "price_list": price_list, "selling": 1},
+        filters=filters,
         fields=["item_code", "price_list_rate", "uom", "valid_from", "valid_upto"],
         order_by="valid_from asc",
     )

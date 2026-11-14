@@ -12,7 +12,12 @@
         <p class="muted">{{ [item.item_code, item.brand, item.stock_uom || item.uom].filter(Boolean).join(' · ') }}</p>
         <p class="description">{{ plainText(item.description) || t('No description available.') }}</p>
         <div class="item-edit">
-          <label>{{ t('Quantity') }}<span v-if="item.stock_uom || item.uom"> ({{ item.stock_uom || item.uom }})</span>
+          <label v-if="units.length > 1">{{ t('Selling unit') }}
+            <select v-model="selectedUnit" @change="resetUnit">
+              <option v-for="unit in units" :key="unit.uom" :value="unit.uom">{{ unit.uom }}</option>
+            </select>
+          </label>
+          <label>{{ t('Quantity') }}<span v-if="selectedUnit"> ({{ selectedUnit }})</span>
             <input v-model.number="qty" type="number" :min="quantityStep" :step="quantityStep" required :disabled="Boolean(item.has_serial_no)" />
           </label>
           <label>{{ t('Unit price') }} ({{ cart.saleCurrency.currency }})
@@ -32,7 +37,7 @@
       </div>
       <footer class="modal-footer">
         <button type="button" class="btn btn-outline" @click="$emit('close')">{{ t('Cancel') }}</button>
-        <button class="btn btn-primary" type="submit">{{ line ? t('Update cart') : t('Add to cart') }}</button>
+        <button class="btn btn-primary" type="submit">{{ activeLine ? t('Update cart') : t('Add to cart') }}</button>
       </footer>
     </form>
   </div>
@@ -51,14 +56,31 @@ const emit = defineEmits(['close', 'save'])
 const cart = useCartStore()
 const session = useSessionStore()
 const canDiscount = computed(() => session.permissions?.can_edit_price !== false)
-const quantityStep = computed(() => props.item.whole_qty ? 1 : 0.0001)
-const qty = ref(props.line?.qty || 1)
-const initialPrice = props.line?.price_override ?? cart.inSale(props.line?.price ?? props.item.price)
-const price = ref(initialPrice)
-const initialMethod = props.line?.manual_discount_method || 'percent'
-const method = ref(initialMethod)
-const initialDiscount = (initialMethod === 'amount' ? props.line?.manual_discount_amount : props.line?.manual_discount_percent) || 0
-const discount = ref(initialDiscount)
+const stockUnit = props.item.stock_uom || props.item.uom || ''
+const units = computed(() => [
+  { uom: stockUnit, factor: 1, price: props.item.price, whole_qty: props.item.whole_qty },
+  ...(!session.offline && !cart.saleCurrency.foreign && !cart.appType ? props.item.selling_units || [] : []),
+])
+const selectedUnit = ref(stockUnit)
+const option = computed(() => units.value.find((unit) => unit.uom === selectedUnit.value) || units.value[0])
+const activeLine = computed(() => selectedUnit.value === stockUnit ? props.line :
+  cart.lines.find((line) => !line.bundle_key && line.item_code === props.item.item_code && line.selling_uom === selectedUnit.value))
+const quantityStep = computed(() => option.value.whole_qty ? 1 : 0.0001)
+const initialPrice = computed(() => activeLine.value?.price_override ?? cart.inSale(activeLine.value?.price ?? option.value.price))
+const initialMethod = computed(() => activeLine.value?.manual_discount_method || 'percent')
+const initialDiscount = computed(() => (initialMethod.value === 'amount'
+  ? activeLine.value?.manual_discount_amount : activeLine.value?.manual_discount_percent) || 0)
+const qty = ref(1)
+const price = ref(0)
+const method = ref('percent')
+const discount = ref(0)
+function resetUnit() {
+  qty.value = activeLine.value?.qty || 1
+  price.value = initialPrice.value
+  method.value = initialMethod.value
+  discount.value = initialDiscount.value
+}
+resetUnit()
 const closeButton = ref(null)
 const trigger = document.activeElement
 onMounted(() => closeButton.value?.focus())
@@ -67,8 +89,9 @@ onBeforeUnmount(() => trigger?.focus())
 function save() {
   emit('save', {
     qty: Number(qty.value),
-    price: price.value !== initialPrice && session.permissions?.can_change_price ? price.value : null,
-    discount: (discount.value !== initialDiscount || method.value !== initialMethod) && canDiscount.value
+    ...(option.value.factor !== 1 || selectedUnit.value !== stockUnit ? { unit: option.value } : {}),
+    price: price.value !== initialPrice.value && session.permissions?.can_change_price ? price.value : null,
+    discount: (discount.value !== initialDiscount.value || method.value !== initialMethod.value) && canDiscount.value
       ? discount.value : null,
     method: method.value,
   })

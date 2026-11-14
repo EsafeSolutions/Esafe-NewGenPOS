@@ -378,7 +378,7 @@ def save_settings(payload: dict | str):
     if "enable_labels" in payload:
         doc.enable_labels = 1 if payload.get("enable_labels") else 0
     if "enable_scale_barcodes" in payload:
-        doc.enable_scale_barcodes = 1 if payload.get("enable_scale_barcodes") else 0
+        doc.enable_scale_barcodes = 1 if cint(payload.get("enable_scale_barcodes")) else 0
     if "scale_barcode_prefixes" in payload:
         doc.scale_barcode_prefixes = payload.get("scale_barcode_prefixes") or "20,21,22,23,24,25,26,27,28,29,02"
     if "scale_barcode_plu_len" in payload:

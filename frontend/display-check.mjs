@@ -14,7 +14,10 @@ import { createPinia } from 'pinia'
 import ProductGrid from '/src/components/ProductGrid.vue'
 import ItemDetailModal from '/src/components/ItemDetailModal.vue'
 import CustomerDisplayView from '/src/views/CustomerDisplayView.vue'
-import { useCatalogStore } from '/src/stores/catalog.js'
+import ItemsView from '/src/views/ItemsView.vue'
+import { scaleBarcodeOptions, useCatalogStore } from '/src/stores/catalog.js'
+import { saveCatalog, searchCatalog } from '/src/offline.js'
+import { useCartStore } from '/src/stores/cart.js'
 import { useSessionStore } from '/src/stores/session.js'
 import { publishCart, onDisplayRequest, displayTerminalId, receiptSnapshot } from '/src/customerDisplay.js'
 import '/src/styles.css'
@@ -24,14 +27,18 @@ const mode = ref('image')
 const item = ref(null)
 const catalog = useCatalogStore(pinia)
 const session = useSessionStore(pinia)
-session.permissions = { can_change_price: true, can_edit_price: true }
+const cart = useCartStore(pinia)
+session.permissions = { can_change_price: true, can_edit_price: true, edit_items: true }
+session.posProfile = 'Test Till'
 const image = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
 catalog.items = Array.from({ length: 81 }, (_, i) => ({
   item_code: 'ITEM-' + i, item_name: i === 0 ? 'Roasted coffee' : 'Product ' + i,
   image, price: 20, stock_uom: 'Kg', description: '<p>Full description of the product.</p>',
+  selling_units: [{ uom: 'Pack', factor: 0.5, price: 12, whole_qty: true }],
 }))
 const isDisplay = location.hash.startsWith('#/display')
-createApp({ render: () => isDisplay ? h(CustomerDisplayView) : h('main', [
+const isItems = location.hash.startsWith('#/items')
+createApp({ render: () => isDisplay ? h(CustomerDisplayView) : isItems ? h(ItemsView) : h('main', [
   h(ProductGrid, { mode: mode.value, onInspect: (row) => { item.value = row }, onSelect: (row) => { window.added = row.item_code } }),
   item.value ? h(ItemDetailModal, { item: item.value, onClose: () => { item.value = null }, onSave: (edits) => { window.edits = edits; item.value = null } }) : null,
 ]) }).use(pinia).mount('#app')
@@ -49,6 +56,19 @@ window.showReceipt = () => {
   publishCart(snapshot)
 }
 if (!isDisplay) onDisplayRequest(() => publishCart(snapshot))
+window.checkUnits = () => {
+  const product = catalog.items[0]
+  cart.addItem(product, null, 1.25)
+  cart.addItem({ ...product, selling_uom:'Pack', conversion_factor:0.5, price:12 })
+  return cart._basePayload().items
+}
+window.checkOfflineScale = async () => {
+  await saveCatalog([{ item_code:'01234', item_name:'Loose coffee' }])
+  const label = '2001234015006'
+  const enabled = await searchCatalog(label, null, 5, '', scaleBarcodeOptions({ enable_scale_barcodes: 1 }))
+  const disabled = await searchCatalog(label, null, 5, '', scaleBarcodeOptions({ enable_scale_barcodes: 0 }))
+  return [enabled.length, disabled.length]
+}
 Object.assign(window, { ready: true, mode, displayTerminalId, publishCart })
 </script></body></html>`
 const server = await createServer({ root, base: '/', server: { port: 0, host: '127.0.0.1', open: false },
@@ -87,6 +107,14 @@ if (!process.argv.includes('--serve')) {
     await editor.getByLabel(/^Discount /).fill('10')
     await editor.getByRole('button', { name: 'Add to cart' }).click()
     assert.deepEqual(await till.evaluate(() => window.edits), { qty: 1.25, price: 18, discount: 10, method: 'percent' })
+    await till.getByRole('button', { name: /Roasted coffee ITEM-0/ }).click()
+    await editor.getByLabel('Selling unit').selectOption('Pack')
+    assert.equal(await editor.getByLabel(/Unit price/).inputValue(), '12')
+    assert.equal(await editor.getByLabel(/Quantity/).getAttribute('step'), '1')
+    await editor.getByRole('button', { name: 'Add to cart' }).click()
+    assert.equal(await till.evaluate(() => window.edits.unit.factor), 0.5)
+    assert.deepEqual(await till.evaluate(() => window.checkUnits().map((line) => [line.qty, line.uom || null])), [[1.25, null], [1, 'Pack']])
+    assert.deepEqual(await till.evaluate(() => window.checkOfflineScale()), [1, 0])
     await till.evaluate(() => { mode.value = 'list' })
     await till.locator('.grid.list').waitFor()
     assert.equal(await till.locator('.tile img').count(), 0)
@@ -123,8 +151,40 @@ if (!process.argv.includes('--serve')) {
         await till.screenshot({ path: path.join(output, `catalog-detail-${width}.png`), fullPage: false })
       }
     }
+    const manager = await context.newPage()
+    manager.on('pageerror', (error) => errors.push(error.message))
+    const details = { item_code: 'ITEM-0', item_name: 'Roasted coffee', stock_uom: 'Kg',
+      price_list: 'Standard Selling', currency: 'LKR',
+      units: [{ uom: 'Kg', factor: 1, price: 20 }, { uom: 'Pack', factor: 0.5, price: 12 }] }
+    await manager.route('**/api/method/**', async (route) => {
+      const method = route.request().url().split('.').pop()
+      let message = []
+      if (method === 'search_items') message = [{ name: 'ITEM-0', item_name: details.item_name, stock_uom: 'Kg' }]
+      if (method === 'get_items') message = { items: [] }
+      if (method === 'item_details') message = details
+      if (method === 'save_item') {
+        const payload = route.request().postDataJSON()
+        assert.equal(payload.item_name, 'Fresh roasted coffee')
+        assert.deepEqual(payload.prices, [{ uom: 'Pack', price: 13 }])
+        message = { ...details, item_name: payload.item_name }
+      }
+      await route.fulfill({ json: { message } })
+    })
+    await manager.goto(url + '#/items')
+    await manager.getByRole('button', { name: /Roasted coffee/ }).click()
+    await manager.getByLabel('Item name').fill('Fresh roasted coffee')
+    await manager.getByLabel(/Pack/).fill('13')
+    await manager.getByRole('button', { name: 'Save changes' }).click()
+    await manager.getByRole('button', { name: /Fresh roasted coffee/ }).waitFor()
+    if (output) {
+      for (const width of [1440, 390]) {
+        await manager.setViewportSize({ width, height: 900 })
+        assert.ok(await manager.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
+        await manager.screenshot({ path: path.join(output, `items-editor-${width}.png`) })
+      }
+    }
     assert.deepEqual(errors, [])
-    console.log('PASS catalog modes, quick add, item editor, progressive loading, display isolation, receipt and responsive layout')
+    console.log('PASS catalog modes, pack and loose cart lines, selling-price editor, customer display and responsive layout')
   } finally {
     await browser.close()
     await server.close()

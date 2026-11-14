@@ -74,7 +74,7 @@
             </td>
           </tr>
           <tr class="retail-item-values">
-            <td></td><td>{{ qty(item.qty) }}</td><td>{{ itemMoney(originalRate(item)) }}</td><td>{{ itemMoney(lineSaving(item)) }}</td><td>{{ itemMoney(item.amount) }}</td>
+            <td></td><td>{{ qty(item.qty) }}<template v-if="receipt.has_alternate_units"> {{ item.uom }}</template></td><td>{{ itemMoney(originalRate(item)) }}</td><td>{{ itemMoney(lineSaving(item)) }}</td><td>{{ itemMoney(item.amount) }}</td>
           </tr>
         </tbody>
       </table>
@@ -181,7 +181,7 @@
               {{ t('SN') }}: {{ String(item.serial_no).split('\n').join(', ') }}
             </div>
             <div v-if="s.receipt_show_unit_price" class="muted small">
-              {{ item.qty }} × {{ m(item.rate) }}
+              {{ item.qty }}<template v-if="receipt.has_alternate_units"> {{ item.uom }}</template> × {{ m(item.rate) }}
             </div>
             <div v-else class="muted small">{{ t('Qty') }} {{ item.qty }}</div>
           </td>

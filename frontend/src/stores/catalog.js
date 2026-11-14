@@ -16,6 +16,15 @@ import { useSessionStore } from './session'
 
 const PAGE_SIZE = 80
 
+export function scaleBarcodeOptions(settings) {
+  if (Number(settings?.enable_scale_barcodes ?? 1) === 0) return null
+  return {
+    prefixes: settings?.scale_barcode_prefixes?.split(',').map((prefix) => prefix.trim()),
+    pluLen: Number(settings?.scale_barcode_plu_len ?? 5),
+    decimals: Number(settings?.scale_barcode_weight_decimals ?? 3),
+  }
+}
+
 export const useCatalogStore = defineStore('catalog', {
   state: () => ({
     items: [],
@@ -50,7 +59,7 @@ export const useCatalogStore = defineStore('catalog', {
         const groups = this.itemGroup
           ? session.itemGroupMembers?.[this.itemGroup] || [this.itemGroup]
           : null
-        const items = await searchCatalog(this.search, groups, Infinity, this.brand).catch(() => null)
+        const items = await searchCatalog(this.search, groups, Infinity, this.brand, scaleBarcodeOptions(session.settings)).catch(() => null)
         // The newest request clears "Loading…" here too: a cold start's server
         // request that lost the race to the full catalog download (which then
         // searched the device) never cleared it, and the grid stayed on
@@ -115,7 +124,7 @@ export const useCatalogStore = defineStore('catalog', {
             await kvSet('currency_prices', prices).catch(() => {})
           }
         }
-        this.fetch()
+        await this.fetch()
       } catch {
         /* cache refresh is best-effort */
       }

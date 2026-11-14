@@ -92,10 +92,10 @@
               </button>
             </div>
           </div>
-          <div v-for="row in returnable" :key="row.item_code" class="return-row" :class="{ serialized: row.has_serial_no }">
+          <div v-for="row in returnable" :key="row.return_key || row.item_code" class="return-row" :class="{ serialized: row.has_serial_no }">
             <div class="return-info">
               <div class="return-name">
-                {{ row.item_name }}
+                {{ row.item_name }}<template v-if="row.uom"> ({{ row.uom }})</template>
                 <span v-if="row.return_group" class="set-badge">{{ t('Set, return together') }}</span>
                 <span v-if="offlineBlocked[row.item_code]" class="no-return-badge">{{ t('Needs a connection') }}</span>
                 <span v-else-if="restrictions[row.item_code]" class="no-return-badge">
@@ -135,10 +135,10 @@
             <div v-if="offlineBlocked[row.item_code]" class="serial-count">0</div>
             <div v-else-if="!row.has_serial_no" class="stepper">
               <button class="btn btn-outline" @click="dec(row)">−</button>
-              <input type="number" min="0" :max="row.returnable_qty" :readonly="!!row.return_group" v-model.number="quantities[row.item_code]" />
+              <input type="number" min="0" :max="row.returnable_qty" :readonly="!!row.return_group" v-model.number="quantities[row.return_key || row.item_code]" />
               <button class="btn btn-outline" @click="inc(row)">+</button>
             </div>
-            <div v-else class="serial-count">{{ quantities[row.item_code] || 0 }}</div>
+            <div v-else class="serial-count">{{ quantities[row.return_key || row.item_code] || 0 }}</div>
           </div>
 
           <div v-if="refundTotal > 0" class="refund-summary">
@@ -416,13 +416,13 @@ const refundModes = computed(() => {
 const refundTotal = computed(() => {
   if (offline.value) return estimateRefund(props.local, pickedItems().items)?.total || 0
   return returnable.value.reduce(
-    (sum, row) => sum + (quantities.value[row.item_code] || 0) * row.rate,
+    (sum, row) => sum + (quantities.value[row.return_key || row.item_code] || 0) * row.rate,
     0
   )
 })
 
 const selectedQuantity = computed(() =>
-  returnable.value.reduce((sum, row) => sum + (Number(quantities.value[row.item_code]) || 0), 0)
+  returnable.value.reduce((sum, row) => sum + (Number(quantities.value[row.return_key || row.item_code]) || 0), 0)
 )
 // Selecting every line would be unsafe for serialised products and return
 // groups: they have their own scan/together rules. This only accelerates the
@@ -434,11 +434,11 @@ const simpleReturnable = computed(() =>
 )
 
 function selectStandardItems() {
-  for (const row of simpleReturnable.value) quantities.value[row.item_code] = row.returnable_qty
+  for (const row of simpleReturnable.value) quantities.value[row.return_key || row.item_code] = row.returnable_qty
 }
 
 function clearSelection() {
-  for (const row of returnable.value) quantities.value[row.item_code] = 0
+  for (const row of returnable.value) quantities.value[row.return_key || row.item_code] = 0
   selectedSerials.value = {}
 }
 
@@ -485,7 +485,7 @@ const canExceed = computed(() => session.permissions?.can_exceed_return_window =
 // Return request as an over-window return; the others never clear.
 const pickedRestricted = computed(() =>
   returnable.value
-    .filter((row) => (quantities.value[row.item_code] || 0) > 0 && restrictions.value[row.item_code])
+    .filter((row) => (quantities.value[row.return_key || row.item_code] || 0) > 0 && restrictions.value[row.item_code])
     .map((row) => ({ ...restrictions.value[row.item_code], item_name: row.item_name }))
 )
 const blockedOutright = computed(() => pickedRestricted.value.filter((r) => !r.needs_approval))
@@ -514,8 +514,8 @@ const offlineNeedsApproval = computed(
 )
 const pickedDetails = computed(() =>
   returnable.value
-    .filter((r) => (quantities.value[r.item_code] || 0) > 0)
-    .map((r) => quantities.value[r.item_code] + ' x ' + r.item_name)
+    .filter((r) => (quantities.value[r.return_key || r.item_code] || 0) > 0)
+    .map((r) => quantities.value[r.return_key || r.item_code] + ' x ' + r.item_name)
     .join(String.fromCharCode(10))
 )
 // An approval is for what was picked when it was given.
@@ -576,7 +576,7 @@ function loadLocal() {
   }
   customer.value = record.customer || null
   customerName.value = record.customer_name || null
-  for (const row of returnable.value) quantities.value[row.item_code] = 0
+  for (const row of returnable.value) quantities.value[row.return_key || row.item_code] = 0
   refundMode.value = refundModes.value[0] || null
 }
 
@@ -603,7 +603,7 @@ onMounted(async () => {
     restrictions.value = data.restrictions || {}
     customer.value = data.customer || null
     customerName.value = data.customer_name || null
-    for (const row of returnable.value) quantities.value[row.item_code] = 0
+    for (const row of returnable.value) quantities.value[row.return_key || row.item_code] = 0
     refundMode.value = refundModes.value[0] || null
   } catch (e) {
     session.notify(e.message, true)
@@ -634,8 +634,8 @@ async function sendReturnRequest() {
       customer_name: customerName.value || null,
       // What is actually being returned, so the approver can judge it.
       details: returnable.value
-        .filter((r) => (quantities.value[r.item_code] || 0) > 0)
-        .map((r) => quantities.value[r.item_code] + ' x ' + r.item_name)
+        .filter((r) => (quantities.value[r.return_key || r.item_code] || 0) > 0)
+        .map((r) => quantities.value[r.return_key || r.item_code] + ' x ' + r.item_name)
         .join(String.fromCharCode(10)),
     })
     reqName.value = res.name
@@ -700,20 +700,20 @@ const groupMembers = computed(() => {
 function setGroup(group, full) {
   for (const r of groupMembers.value[group] || []) {
     if (r.has_serial_no) continue
-    quantities.value[r.item_code] = full ? r.returnable_qty : 0
+    quantities.value[r.return_key || r.item_code] = full ? r.returnable_qty : 0
   }
 }
 
 function inc(row) {
   if (row.return_group) return setGroup(row.return_group, true)
-  const current = quantities.value[row.item_code] || 0
-  quantities.value[row.item_code] = Math.min(row.returnable_qty, current + 1)
+  const current = quantities.value[row.return_key || row.item_code] || 0
+  quantities.value[row.return_key || row.item_code] = Math.min(row.returnable_qty, current + 1)
 }
 
 function dec(row) {
   if (row.return_group) return setGroup(row.return_group, false)
-  const current = quantities.value[row.item_code] || 0
-  quantities.value[row.item_code] = Math.max(0, current - 1)
+  const current = quantities.value[row.return_key || row.item_code] || 0
+  quantities.value[row.return_key || row.item_code] = Math.max(0, current - 1)
 }
 
 // Serialized returns: the cashier must scan/type each serial (forcing them to
@@ -740,7 +740,7 @@ function addSerial(row, event) {
     return
   }
   selectedSerials.value[row.item_code] = [...list, code]
-  quantities.value[row.item_code] = selectedSerials.value[row.item_code].length
+  quantities.value[row.return_key || row.item_code] = selectedSerials.value[row.item_code].length
 }
 
 function removeSerial(itemCode, serial) {

@@ -113,7 +113,7 @@
       <ProductGrid v-else :mode="itemMode" data-tour="sell-products" @select="addToCart" @inspect="inspectItem" />
     </section>
 
-    <CartPanel @pay="onPay" @park="parkOpen = true" @hold="holdOpen = true" @quotation="createQuotation" @receipt="receipt = $event" />
+    <CartPanel @pay="onPay" @park="parkOpen = true" @hold="openHold" @quotation="createQuotation" @receipt="receipt = $event" />
 
     <PaymentOverlay v-if="paymentOpen" @close="paymentOpen = false" @done="onSaleDone" />
     <HoldModal v-if="holdOpen" @close="holdOpen = false" @done="onHeld" />
@@ -159,7 +159,8 @@ import { call } from '../api'
 import { customerDisplayUrl } from '../customerDisplay'
 import { money } from '../format'
 import { useSessionStore } from '../stores/session'
-import { useCatalogStore } from '../stores/catalog'
+import { scaleBarcodeOptions, useCatalogStore } from '../stores/catalog'
+import { searchCatalog } from '../offline'
 import { useCartStore } from '../stores/cart'
 import ProductGrid from '../components/ProductGrid.vue'
 import CartPanel from '../components/CartPanel.vue'
@@ -209,13 +210,20 @@ const serialItem = ref(null)
 const serialEdits = ref(null)
 const priceCheckOpen = ref(false)
 const detailItem = ref(null)
-const detailLine = computed(() => cart.lines.find((line) => line.item_code === detailItem.value?.item_code && !line.bundle_key))
+const detailLine = computed(() => cart.lines.find((line) => line.item_code === detailItem.value?.item_code && !line.bundle_key && !line.selling_uom))
 const modeKey = 'esafepos-item-view'
 const savedMode = localStorage.getItem(modeKey)
 const itemMode = ref(['list', 'image', 'detail'].includes(savedMode) ? savedMode : 'image')
 watch(itemMode, (mode) => localStorage.setItem(modeKey, mode))
 
 const holdOpen = ref(false)
+function openHold() {
+  if (cart.lines.some((line) => line.selling_uom)) {
+    session.notify(t('Use the stock unit for items placed on hold.'), true)
+    return
+  }
+  holdOpen.value = true
+}
 
 // Goods put aside for a customer: the cart is cleared by the modal, the hold
 // itself lives on the Holds screen from here on.
@@ -253,12 +261,13 @@ function hasStock(item, totalQty) {
 }
 
 function cartQty(item) {
-  return cart.lines.filter((line) => line.item_code === item.item_code).reduce((sum, line) => sum + line.qty, 0)
+  return cart.lines.filter((line) => line.item_code === item.item_code)
+    .reduce((sum, line) => sum + line.qty * (line.conversion_factor || 1), 0)
 }
 
 function addToCart(item, serial = null, qty = 1) {
   const addQty = Number(qty) || 1
-  if (!hasStock(item, cartQty(item) + addQty)) return false
+  if (!hasStock(item, cartQty(item) + addQty * (item.conversion_factor || 1))) return false
   if (item.has_serial_no && !serial) {
     // Strict: a serialized item can only enter the cart with a scanned serial
     if (session.offline) {
@@ -287,14 +296,19 @@ function inspectItem(item) {
 }
 
 function applyItemEdits(item, edits) {
-  const index = cart.lines.findIndex((line) => line.item_code === item.item_code && !line.bundle_key)
+  const index = cart.lines.findIndex((line) => line.item_code === item.item_code && !line.bundle_key &&
+    (line.selling_uom || null) === (item.selling_uom || null))
   if (edits.price !== null) cart.setLinePrice(index, edits.price)
   if (edits.discount !== null) cart.setLineDiscount(index, edits.discount, edits.method)
 }
 
 function saveItemDetails(edits) {
-  const item = detailItem.value
-  const existing = detailLine.value
+  const unit = edits.unit
+  const item = unit ? {
+    ...detailItem.value, selling_uom: unit.uom, conversion_factor: unit.factor,
+    whole_qty: unit.whole_qty, price: unit.price, standard_price: unit.price,
+  } : detailItem.value
+  const existing = unit ? cart.lines.find((line) => line.item_code === item.item_code && line.selling_uom === unit.uom) : detailLine.value
   if (!existing) {
     if (!addToCart(item, null, edits.qty)) {
       if (serialItem.value) {
@@ -304,7 +318,7 @@ function saveItemDetails(edits) {
       return
     }
   } else if (!item.has_serial_no) {
-    if (!hasStock(item, cartQty(item) - existing.qty + edits.qty)) return
+    if (!hasStock(item, cartQty(item) + (edits.qty - existing.qty) * (existing.conversion_factor || 1))) return
     cart.setQty(cart.lines.indexOf(existing), edits.qty)
   }
   applyItemEdits(item, edits)
@@ -378,6 +392,8 @@ async function onSearchEnter() {
   scanGuard.reset()
   const term = catalog.search.trim()
   if (!term) return
+  const options = scaleBarcodeOptions(session.settings)
+  const scale = options && parseScaleBarcode(term, options)
   // Scanner fast path: barcodes and serial numbers resolve server-side
   if (!session.offline) {
     try {
@@ -406,18 +422,17 @@ async function onSearchEnter() {
         catalog.clearSearch()
         return
       }
+      if (scale) return
     } catch {
       /* fall back to the grid below */
     }
   }
-  const scale = session.settings?.enable_scale_barcodes !== 0 ? parseScaleBarcode(term, {
-    prefixes: session.settings?.scale_barcode_prefixes ? session.settings.scale_barcode_prefixes.split(',').map((p) => p.trim()) : undefined,
-    pluLen: session.settings?.scale_barcode_plu_len || 5,
-    decimals: session.settings?.scale_barcode_weight_decimals || 3,
-  }) : null
-
-  if (catalog.items.length === 1) {
-    addToCart(catalog.items[0], null, scale ? scale.weight : 1)
+  const matches = await searchCatalog(term, null, 2, '', options).catch(() => [])
+  if (catalog.search.trim() !== term) return
+  if (matches.length === 1 || (scale && matches.length)) {
+    const item = matches[0]
+    const exact = item.barcode === term || item.item_code === term
+    addToCart(item, null, scale && !exact ? scale.weight : 1)
     catalog.clearSearch()
   }
 }

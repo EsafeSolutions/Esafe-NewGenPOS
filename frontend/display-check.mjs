@@ -157,6 +157,7 @@ if (!process.argv.includes('--serve')) {
     await otherTill.waitForFunction(() => window.ready)
     await otherTill.evaluate(() => publishCart({ items: [{ name:'Different till' }] }))
     await till.evaluate(() => showReceipt())
+    await display.getByText('ESAFE ERP+POS - pos.esafe.lk', { exact: true }).waitFor()
     await display.getByText(/POS-0001/).waitFor()
     assert.equal(await display.getByText('Different till').count(), 0)
     for (const label of ['Change', 'Points earned', 'Points balance', 'You save']) {
@@ -232,36 +233,73 @@ if (!process.argv.includes('--serve')) {
     assert.equal(await till.evaluate(() => catalog.items[0].item_code), '01234')
 
     const manager = await context.newPage()
+    let priceAccess = true
     manager.on('pageerror', (error) => errors.push(error.message))
     const details = { item_code: 'ITEM-0', item_name: 'Roasted coffee', stock_uom: 'Kg',
-      price_list: 'Standard Selling', currency: 'LKR',
-      units: [{ uom: 'Kg', factor: 1, price: 20 }, { uom: 'Pack', factor: 0.5, price: 12 }] }
+      price_list: 'Standard Selling', currency: 'LKR', can_edit_item: true, can_edit_prices: true,
+      units: [{ uom: 'Kg', factor: 1, price: 20, editable: false }, { uom: 'Pack', factor: 0.5, price: 12, editable: true }] }
+    const imagePng = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aok8AAAAASUVORK5CYII=', 'base64')
     await manager.route('**/api/method/**', async (route) => {
       const method = route.request().url().split('.').pop()
       let message = []
+      if (method === 'editor_options') message = {
+        item_groups: ['Groceries'], brands: ['Hill Coffee'], default_price_list: 'Standard Selling',
+        price_lists: priceAccess ? [{ name: 'Standard Selling', currency: 'LKR' }, { name: 'Wholesale', currency: 'LKR' }] : [],
+      }
       if (method === 'search_items') {
-        const { start, limit } = route.request().postDataJSON()
-        message = Array.from({ length: start === 0 ? limit : 1 }, (_, index) => ({
+        const { start, limit, item_group, brand } = route.request().postDataJSON()
+        message = Array.from({ length: start === 0 && !item_group && !brand ? limit : 1 }, (_, index) => ({
           name: 'ITEM-' + (start + index),
           item_name: start + index === 0 ? details.item_name : 'Editor item ' + (start + index),
           stock_uom: 'Kg',
+          item_group: 'Groceries', brand: 'Hill Coffee',
         }))
       }
       if (method === 'get_items') message = { items: [] }
-      if (method === 'item_details') message = details
+      if (method === 'item_details') {
+        message = !priceAccess ? { ...details, can_edit_prices: false, price_list: null, units: [] }
+          : route.request().postDataJSON().price_list === 'Wholesale'
+          ? { ...details, price_list: 'Wholesale', units: [{ uom: 'Pack', factor: 0.5, price: 10, editable: true }] }
+          : details
+      }
       if (method === 'save_item') {
         const payload = route.request().postDataJSON()
+        if (!priceAccess) {
+          assert.equal(payload.item_name, 'Coffee with updated label')
+          assert.deepEqual(payload.prices, [])
+          return route.fulfill({ json: { message: { ...details, item_name: payload.item_name, can_edit_prices: false, price_list: null, units: [] } } })
+        }
         assert.equal(payload.item_name, 'Fresh roasted coffee')
+        assert.equal(payload.price_list, 'Wholesale')
+        assert.equal(payload.image_content, imagePng.toString('base64'))
         assert.deepEqual(payload.prices, [{ uom: 'Pack', price: 13 }])
-        message = { ...details, item_name: payload.item_name }
+        message = { ...details, item_name: payload.item_name, price_list: 'Wholesale',
+          image: 'data:image/png;base64,' + payload.image_content,
+          units: [{ uom: 'Pack', factor: 0.5, price: 13, editable: true }] }
       }
       await route.fulfill({ json: { message } })
     })
     await manager.goto(url + '#/items')
     await manager.getByRole('button', { name: 'Load more items' }).click()
     await manager.getByRole('button', { name: /Editor item 50/ }).waitFor()
+    await manager.getByRole('button', { name: /Category All categories/ }).click()
+    const categorySearch = manager.waitForRequest((request) => request.url().endsWith('.search_items') &&
+      request.postDataJSON().item_group === 'Groceries')
+    await manager.getByRole('option', { name: 'Groceries' }).click()
+    await categorySearch
+    await manager.getByRole('button', { name: /Brand All brands/ }).click()
+    const brandSearch = manager.waitForRequest((request) => request.url().endsWith('.search_items') &&
+      request.postDataJSON().item_group === 'Groceries' && request.postDataJSON().brand === 'Hill Coffee')
+    await manager.getByRole('option', { name: 'Hill Coffee' }).click()
+    await brandSearch
     await manager.getByRole('button', { name: /Roasted coffee/ }).click()
+    assert.equal(await manager.getByLabel('Kg', { exact: true }).getAttribute('readonly'), '')
     await manager.getByLabel('Item name').fill('Fresh roasted coffee')
+    await manager.getByLabel('Product image').setInputFiles({ name: 'coffee.png', mimeType: 'image/png', buffer: imagePng })
+    await manager.getByLabel('Selling price list').selectOption('Wholesale')
+    await manager.waitForFunction(() => document.querySelector('.unit-prices input')?.value === '10')
+    assert.equal(await manager.getByLabel('Item name').inputValue(), 'Fresh roasted coffee')
+    assert.match(await manager.locator('.image-preview img').getAttribute('src'), /^blob:/)
     await manager.getByLabel(/Pack/).fill('13')
     await manager.getByRole('button', { name: 'Save changes' }).click()
     await manager.getByRole('button', { name: /Fresh roasted coffee/ }).waitFor()
@@ -272,8 +310,16 @@ if (!process.argv.includes('--serve')) {
         await manager.screenshot({ path: path.join(output, `items-editor-${width}.png`) })
       }
     }
+    priceAccess = false
+    await manager.reload()
+    await manager.getByRole('button', { name: /Roasted coffee/ }).click()
+    await manager.getByText('Your account cannot edit item selling prices.').waitFor()
+    assert.equal(await manager.getByLabel('Selling price list').count(), 0)
+    await manager.getByLabel('Item name').fill('Coffee with updated label')
+    await manager.getByRole('button', { name: 'Save changes' }).click()
+    await manager.getByRole('button', { name: /Coffee with updated label/ }).waitFor()
     assert.deepEqual(errors, [])
-    console.log('PASS catalog and editor, display receipt, contact lookup and skip, product icons, repeat scan and responsive layout')
+    console.log('PASS catalog paging, item filters, image upload, price access, display and responsive layout')
   } finally {
     await browser.close()
     await server.close()

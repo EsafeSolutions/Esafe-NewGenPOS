@@ -792,11 +792,11 @@
   },
   {
    "default": "Retail",
-   "description": "Retail is the full supermarket-style breakdown with MRP, line savings, totals and loyalty balance. Compact = tight; Standard = balanced; Detailed = spacious.",
+   "description": "Retail and Table include MRP, line savings, totals and loyalty. Table adds thin grid lines. Compact is tight, Standard is balanced and Detailed is spacious.",
    "fieldname": "receipt_template",
    "fieldtype": "Select",
    "label": "Receipt template",
-   "options": "Retail\nCompact\nStandard\nDetailed"
+   "options": "Retail\nCompact\nStandard\nDetailed\nTable"
   },
   {
    "default": "80mm",

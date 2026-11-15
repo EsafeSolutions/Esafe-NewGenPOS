@@ -2,6 +2,14 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 """Display-only receipt switches, shared by settings and thermal printing."""
 
+RECEIPT_BRAND = "ESAFE ERP+POS - pos.esafe.lk"
+
+
+def receipt_footer(settings):
+    custom_lines = (settings.get("receipt_footer") or "").strip().splitlines()
+    return "\n".join([line for line in custom_lines if line.strip() != RECEIPT_BRAND] + [RECEIPT_BRAND])
+
+
 RECEIPT_OPTION_DEFAULTS = {
     "receipt_show_line_discount": 1,
     "receipt_show_mrp": 1,

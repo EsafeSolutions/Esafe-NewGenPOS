@@ -47,13 +47,13 @@ window.enableWalkIn = () => {
   receipt.customer_name = receipt.walk_in_code
   receipt.can_edit_walk_in = true
 }
-window.prepare = async ({ width, count, template = 'Retail', currency = 'LKR', dark = false, rtl = false, extras = false }) => {
+window.prepare = async ({ width, count, template = 'Retail', currency = 'LKR', dark = false, rtl = false, extras = false, customFooter = '' }) => {
   document.documentElement.dataset.theme = dark ? 'dark' : 'light'
   document.documentElement.dir = rtl ? 'rtl' : 'ltr'
   receipt.currency = currency
   receipt.receipt_settings = { receipt_paper_width: width + 'mm', receipt_template: template,
     receipt_show_item_code: extras, receipt_show_serial: extras,
-    receipt_logo: extras ? '/receipt-logo.svg' : '' }
+    receipt_logo: extras ? '/receipt-logo.svg' : '', receipt_footer: customFooter }
   receipt.items = Array.from({ length: count }, (_, i) => ({
     item_name: count === 1 ? 'Test' : 'Ceylon Salt Iodated Table Salt 400 G',
     qty: i ? 1.01 : 2, rate: 1000, price_list_rate: 1200, amount: i ? 1010 : 2000,
@@ -87,6 +87,9 @@ try {
     { width: 80, count: 80 },
     { width: 58, count: 1, template: 'Classic', rtl: true },
     { width: 80, count: 1, template: 'Compact' },
+    { width: 80, count: 5, template: 'Table', customFooter: 'Visit again!\nESAFE ERP+POS - pos.esafe.lk' },
+    { width: 58, count: 13, template: 'Table', dark: true, extras: true },
+    { width: 80, count: 1, template: 'Standard' },
     { width: 58, count: 1, template: 'Detailed' },
     { width: 80, count: 1, currency: 'KWD' },
     { width: 58, count: 1, currency: 'JPY' },
@@ -99,12 +102,15 @@ try {
       const receipt = document.getElementById('receipt-print')
       const rect = receipt.getBoundingClientRect()
       const cells = [...receipt.querySelectorAll('.retail-item-values td, .retail-no')]
+      const grid = receipt.querySelector('.retail-items th')
       return { width: rect.width, height: rect.height, scrollWidth: receipt.scrollWidth,
         color: getComputedStyle(receipt).color,
         fontSize: getComputedStyle(receipt).fontSize,
         overflow: cells.filter((cell) => cell.scrollWidth > cell.clientWidth + 1).length,
         amounts: cells.map((cell) => cell.textContent),
         counts: receipt.querySelector('.retail-counts')?.textContent,
+        footer: receipt.querySelector('footer').innerText,
+        grid: grid && [getComputedStyle(grid).borderInlineEndStyle, getComputedStyle(grid).borderInlineEndColor],
         logoHeight: receipt.querySelector('img')?.getBoundingClientRect().height,
         mode: document.compatMode,
         html: '<!doctype html>' + document.documentElement.outerHTML }
@@ -113,6 +119,9 @@ try {
     assert.ok(geometry.scrollWidth <= geometry.width + 1, 'Receipt must fit the roll')
     assert.equal(geometry.overflow, 0, 'Price columns must fit without clipping')
     assert.equal(geometry.mode, 'CSS1Compat', 'Table fonts must inherit in standards mode')
+    assert.equal(geometry.footer.split('\n').filter((line) => line === 'ESAFE ERP+POS - pos.esafe.lk').length, 1)
+    if (config.customFooter) assert.match(geometry.footer, /Visit again!/)
+    if (config.template === 'Table') assert.deepEqual(geometry.grid, ['solid', 'rgb(181, 181, 181)'])
     assert.ok(!geometry.counts?.includes('999999'), 'Fractional quantity sums must not print floating-point noise')
     if (config.extras) assert.ok(geometry.logoHeight > 0, 'Wait for logo loading before measuring paper')
     assert.equal(geometry.color, 'rgb(0, 0, 0)', 'Dark-mode receipts must print black')
@@ -141,6 +150,10 @@ try {
     if (output && config.width === 80 && config.count === 13) {
       await printPage.setViewportSize({ width: Math.ceil(geometry.width), height: Math.ceil(geometry.height) })
       await printPage.screenshot({ path: path.join(output, 'receipt-80mm.png'), fullPage: true })
+    }
+    if (output && config.template === 'Table') {
+      await printPage.setViewportSize({ width: Math.ceil(geometry.width), height: Math.ceil(geometry.height) })
+      await printPage.screenshot({ path: path.join(output, `receipt-table-${config.width}mm.png`), fullPage: true })
     }
     await printPage.close()
     console.log('PASS', JSON.stringify(config), `${Math.round(geometry.height * 25.4 / 96)}mm content`)

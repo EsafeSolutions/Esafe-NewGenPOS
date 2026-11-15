@@ -20,6 +20,7 @@ from esafepos.api import insights
 from esafepos.api import salespeople
 from esafepos.api import reports
 from esafepos.api import labels
+from esafepos.api import permissions
 from esafepos.api import stock_app
 from esafepos import cash_out, cashback_rules, credit_sales, languages, refund_approval, reports_access, scope, variance
 
@@ -57,6 +58,13 @@ def _require(doctype, ptype="write"):
 
 def _require_manager():
     _require("EsafePOS Settings", "write")
+
+
+def _require_item_price_access(price_list, ptype):
+    if not permissions.allowed(permissions.ITEM_PRICE_EDIT):
+        frappe.throw(_("You do not have permission to edit item selling prices."), frappe.PermissionError)
+    _require("Item Price", ptype)
+    frappe.get_doc("Price List", price_list).check_permission("read")
 
 
 def _default_selling_price_list():
@@ -1707,7 +1715,6 @@ def _upsert_item_price(price_list, item_code, rate):
     if existing:
         doc = frappe.get_doc("Item Price", existing)
         doc.price_list_rate = rate
-        doc.flags.ignore_permissions = True
         doc.save()
         return "updated"
     frappe.get_doc(
@@ -1718,7 +1725,7 @@ def _upsert_item_price(price_list, item_code, rate):
             "price_list_rate": rate,
             "selling": 1,
         }
-    ).insert(ignore_permissions=True)
+    ).insert()
     return "created"
 
 
@@ -1738,7 +1745,7 @@ def _resolve_item(value):
 @frappe.whitelist()
 def set_price_book_price(price_list: str, item_code: str, rate: float | str):
     """Upsert one item's price on a price book's price list."""
-    _require("Item Price", "write")
+    _require_item_price_access(price_list, "write")
     _block_if_protected(price_list)
     _upsert_item_price(price_list, item_code, rate)
     return {"item_code": item_code, "rate": flt(rate)}
@@ -1802,10 +1809,8 @@ def import_price_book_prices(price_list: str, filename: str, content: str):
     to items by code, name or barcode; the price comes from a Book Price /
     Price / Rate column (or the last column if there's no header). Returns a
     created/updated count plus any rows that couldn't be matched."""
-    _require("Item Price", "write")
+    _require_item_price_access(price_list, "write")
     _block_if_protected(price_list)
-    if not frappe.db.exists("Price List", price_list):
-        frappe.throw(_("Price list {0} does not exist").format(price_list))
 
     rows = _parse_price_table(filename, content)
     updated = created = 0
@@ -2059,7 +2064,7 @@ def parse_price_rows(filename: str, content: str):
 
 @frappe.whitelist()
 def remove_price_book_price(price_list: str, item_code: str):
-    _require("Item Price", "delete")
+    _require_item_price_access(price_list, "delete")
     _block_if_protected(price_list)
     existing = frappe.db.get_value(
         "Item Price",
@@ -2067,7 +2072,7 @@ def remove_price_book_price(price_list: str, item_code: str):
         "name",
     )
     if existing:
-        frappe.delete_doc("Item Price", existing, ignore_permissions=True)
+        frappe.delete_doc("Item Price", existing)
 
 
 @frappe.whitelist()

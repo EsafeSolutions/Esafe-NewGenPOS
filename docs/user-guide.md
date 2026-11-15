@@ -132,7 +132,9 @@ Turn **Weight-embedded scale barcodes** on or off in **Settings → General → 
 
 To sell the same item loose and in packs, keep one ERPNext Item with **Kg** as its stock unit. Add an alternate **Pack** unit and set its conversion factor in ERPNext. For a 500 g pack, use `0.5`. In POS, open **Items**, find the product by name, item code or barcode, and set separate prices for Kg and Pack on the outlet's selling price list. Tap the product on Sell, choose the selling unit, and enter the quantity. Selling 1.25 kg and two 500 g packs uses 2.25 kg from the same stock. Quick Add and weight barcodes use the stock unit.
 
-**Items** requires ERPNext Item and Item Price permissions. It changes the item display name and standing price for each configured unit. A shared price list carries the same edit to every outlet using it. Alternate-unit checkout uses an online sale on the outlet's regular price list in its own currency. Holds use the stock unit. Return alternate-unit sales from online Sales History.
+In **Items**, combine the category and brand filters with item name, code or barcode search. Users with ERPNext Item write access can edit the display name and upload a JPEG, PNG or WebP product photo up to 5 MB. **Save changes** attaches the image to the ERPNext Item and refreshes the POS catalog.
+
+**Edit item selling prices** is available to System Managers and EsafePOS Managers by default. To delegate access, add a role or person under **Settings → General → Approvals and permissions**. The user also needs ERPNext read access to Item, Price List and Item Price, plus Item Price write permission to change an existing price or create permission to add one. Use **Selling price list** to choose which enabled selling list to edit. A shared price list carries the same edit to every outlet using it. Alternate-unit checkout uses an online sale on the outlet's regular price list in its own currency. Holds use the stock unit. Return alternate-unit sales from online Sales History.
 
 For a customer who prefers to stay anonymous, leave the customer field blank and take payment normally. The POS Profile needs a default walk-in customer. With **Settings → General → Features → Automatic walk-in customer codes** enabled, each submitted walk-in sale gets a code starting with `W-`. The built-in receipt shows the code. Search for it in **Sales History**, open the receipt, and select **Edit walk-in details** to add a name, contact number, or both. The details belong to that receipt. Queued offline sales receive their code when they post to ERPNext. Turning the switch off stops assigning new codes and leaves existing codes searchable.
 
@@ -639,6 +641,15 @@ Settings → Receipt (including the sale outlet's override). It prints a separat
 black-on-white receipt with a page length fitted to its contents. The **Retail**
 template includes item quantities, original prices, discounts and amounts, with
 the currency shown in the header.
+
+Choose **Settings → General → Receipt → Table** for the retail breakdown with
+thin grid lines around item rows and columns. Browser receipts also outline
+the totals and loyalty sections. Choose **All outlets (default)** to use it
+site-wide, or select an outlet and save its own layout. Built-in POS receipts
+automatically end with **ESAFE ERP+POS - pos.esafe.lk**, below any custom footer.
+The branded line also appears on digital receipts, the completed customer
+display and customer payment receipts. A POS Profile Print Format controls its
+own footer.
 
 For a USB thermal printer such as the XP-80C, choose the matching roll width in
 the printer driver, use **100% scale**, **no margins**, and turn off browser
@@ -1471,6 +1482,7 @@ plus Fatima" is two rows rather than a role invented for one person.
 | Action | What it covers |
 |---|---|
 | **Edit price / discount** | A manual discount on a sale line, and typing a new price on it where the outlet allows that (POS Profile, **Allow User to Edit Rate**) |
+| **Edit item selling prices** | Managing saved ERPNext selling prices in Items and in the delivery price-list editor, subject to the user's ERPNext permissions |
 | **Make returns** | Creating a credit note from the till |
 | **Return past the window** | Returning a sale older than the return window WITHOUT an approval request |
 | **Exchange goods** | The one-step exchange (needs *Make returns* as well) |
@@ -1486,12 +1498,10 @@ plus Fatima" is two rows rather than a role invented for one person.
 | **Take customer payments** | Taking a customer's payment of what they owe into the drawer (0.60.0) |
 | **Set a customer's credit** | Allowing a customer on account and setting their credit limit, from Customers (0.60.0) |
 
-Rules for the same action are an OR: any row that matches lets the person
-through. **An action with no row is open to everyone**, so nothing locks up the
-day you update. Six stay shut until somebody is named: *Return past the
-window* (everyone else sends an approval request), *See sales by salesperson*,
-*See the system check*, and the three of sales on account.
-System and EsafePOS Managers always pass.
+Any matching row grants the POS capability. Most actions are open with no rule.
+Editing item selling prices, returning past the window, sales on account and
+customer credit actions, and restricted reports require manager access or a
+matching rule. The EsafePOS Reports role grants access to its reports by default.
 
 The till hides what a person may not do (the cash in/out panel, the reprint
 button, the open and close buttons), and every one of those actions is checked

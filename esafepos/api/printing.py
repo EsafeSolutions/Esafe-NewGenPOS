@@ -16,12 +16,15 @@ from where Frappe runs. On cloud-hosted sites use the browser-print fallback.
 from __future__ import annotations
 
 import socket
+from itertools import zip_longest
+from textwrap import wrap
 
 import frappe
 from frappe import _
 from frappe.utils import cint, flt
 
 from esafepos.api.sales import get_receipt
+from esafepos.receipt_options import receipt_footer
 
 ESC = b"\x1b"
 GS = b"\x1d"
@@ -114,8 +117,9 @@ def build_receipt_bytes(receipt, open_drawer=0):
 
     settings = receipt.get("receipt_settings") or {}
     width = 32 if settings.get("receipt_paper_width") == "58mm" else WIDTH
-    if (settings.get("receipt_template") or "").lower() == "retail":
-        out += _retail_receipt_body(receipt, width)
+    template = (settings.get("receipt_template") or "Retail").lower()
+    if template in ("retail", "table"):
+        out += _retail_receipt_body(receipt, width, lined=template == "table")
         out += FEED_CUT
         return bytes(out)
 
@@ -197,12 +201,12 @@ def build_receipt_bytes(receipt, open_drawer=0):
     if receipt.get("loyalty_points_earned"):
         out += _text(f"Points earned: {receipt['loyalty_points_earned']}") + b"\n"
 
-    out += ALIGN_CENTER + b"\n" + _text("Thank you!") + b"\n"
+    out += _receipt_footer_bytes(settings, width)
     out += FEED_CUT
     return bytes(out)
 
 
-def _retail_receipt_body(receipt, width):
+def _retail_receipt_body(receipt, width, lined=False):
     """The same supermarket-style breakdown as the browser receipt.
 
     ESC/POS cannot reliably print an arbitrary uploaded logo, so the raw
@@ -251,12 +255,17 @@ def _retail_receipt_body(receipt, width):
     if receipt.get("return_against"):
         out += _text(_pad("AGAINST", receipt["return_against"], width)) + b"\n"
 
-    out += _line(width) + b"\n"
-    out += _text(_retail_columns("QTY", "MRP", "DISC", "AMOUNT", width)) + b"\n"
-    out += _line(width) + b"\n"
+    rule = _retail_grid_rule(width) if lined else _line(width)
+    out += rule + b"\n"
+    out += _text(_retail_columns("QTY", "MRP", "DISC", "AMOUNT", width, lined)) + b"\n"
+    out += rule + b"\n"
     for index, item in enumerate(receipt.get("items") or []):
         name = "{}) {}".format(index + 1, item.get("item_name") or item.get("item_code") or "")
-        out += _text(name[:width]) + b"\n"
+        if lined:
+            for part in wrap(name, width=width - 2):
+                out += _text("|" + part.ljust(width - 2) + "|") + b"\n"
+        else:
+            out += _text(name[:width]) + b"\n"
         out += _text(
             _retail_columns(
                 _num(item.get("qty")),
@@ -264,10 +273,14 @@ def _retail_receipt_body(receipt, width):
                 _num(item.get("line_discount_amount")),
                 _num(item.get("amount")),
                 width,
+                lined,
             )
         ) + b"\n"
+        if lined:
+            out += rule + b"\n"
 
-    out += _line(width) + b"\n"
+    if not lined:
+        out += rule + b"\n"
     out += _text(_pad("GROSS TOTAL", _num(receipt.get("gross_total")), width)) + b"\n"
     savings = flt(receipt.get("total_savings"))
     if savings > 0 and not receipt.get("is_return"):
@@ -308,22 +321,41 @@ def _retail_receipt_body(receipt, width):
         out += _line(width) + b"\n"
         for part in str(settings["receipt_terms"]).splitlines() or [settings["receipt_terms"]]:
             out += _text(part[:width]) + b"\n"
-    out += ALIGN_CENTER + b"\n"
-    if settings.get("receipt_footer"):
-        out += _text(settings["receipt_footer"][:width]) + b"\n"
-    out += _text("Thank you!") + b"\n"
+    out += _receipt_footer_bytes(settings, width)
     return out
 
 
-def _retail_columns(qty, mrp, discount, amount, width):
-    """Right-align the four retail columns within a 58 mm or 80 mm line."""
+def _receipt_footer_bytes(settings, width):
+    out = bytearray(ALIGN_CENTER + b"\nThank you!\n")
+    for line in receipt_footer(settings).splitlines():
+        for part in wrap(line, width=width):
+            out += _text(part) + b"\n"
+    return out
+
+
+def _retail_column_widths(width, lined):
     amount_width = 10 if width >= 42 else 8
     price_width = 9 if width >= 42 else 7
     discount_width = 9 if width >= 42 else 7
-    qty_width = width - amount_width - price_width - discount_width - 3
+    qty_width = width - amount_width - price_width - discount_width - (5 if lined else 3)
+    return qty_width, price_width, discount_width, amount_width
+
+
+def _retail_grid_rule(width):
+    return b"+" + b"+".join(b"-" * size for size in _retail_column_widths(width, True)) + b"+"
+
+
+def _retail_columns(qty, mrp, discount, amount, width, lined=False):
+    """Right-align the four retail columns within a 58 mm or 80 mm line."""
     values = (qty, mrp, discount, amount)
-    widths = (qty_width, price_width, discount_width, amount_width)
-    return " ".join(_right(value, size) for value, size in zip(values, widths))
+    widths = _retail_column_widths(width, lined)
+    if not lined:
+        return " ".join(_right(value, size) for value, size in zip(values, widths))
+    columns = [wrap(value, width=size) for value, size in zip(values, widths)]
+    return "\n".join(
+        "|" + "|".join(value.rjust(size) for value, size in zip(row, widths)) + "|"
+        for row in zip_longest(*columns, fillvalue="")
+    )
 
 
 def _right(value, width):

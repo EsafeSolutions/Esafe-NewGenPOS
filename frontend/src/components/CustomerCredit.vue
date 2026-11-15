@@ -122,6 +122,7 @@
         </div>
         <div class="pr-row pr-total"><span>{{ t('Paid') }}</span><span>{{ money(paid.amount, paid.currency) }}</span></div>
         <div class="pr-row"><span>{{ t('Still owed') }}</span><span>{{ money(paid.owed_after, paid.currency) }}</span></div>
+        <footer class="pr-brand muted small">{{ RECEIPT_BRAND }}</footer>
       </div>
       <div class="cr-actions">
         <button class="btn btn-outline" @click="printPayment"><Icon name="download" /> {{ t('Print') }}</button>
@@ -137,6 +138,7 @@ import { ref, computed, watch } from 'vue'
 import { call } from '../api'
 import { useSessionStore } from '../stores/session'
 import { money, parseMoney } from '../format'
+import { RECEIPT_BRAND } from '../receiptOptions'
 import { t } from '../i18n'
 import { newId } from '../offline'
 
@@ -328,6 +330,7 @@ watch(() => [props.customer, props.company], load, { immediate: true })
 .pr-title { font-weight: 800; text-align: center; margin-bottom: 6px; }
 .pr-row { display: flex; justify-content: space-between; gap: 10px; padding: 3px 0; }
 .pr-total { font-weight: 800; border-top: 1px solid var(--border); margin-top: 4px; padding-top: 6px; }
+.pr-brand { text-align: center; margin-top: 10px; }
 .badge {
   display: inline-block;
   padding: 2px 9px;

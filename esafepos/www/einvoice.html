@@ -33,6 +33,8 @@
     .items th:first-child, .items td:first-child { padding-left: 32px; text-align: left; }
     .items th:last-child, .items td:last-child { padding-right: 32px; }
     .items td { padding: 15px 10px; border-bottom: 1px solid var(--line); text-align: right; vertical-align: top; }
+    .items.lined :is(th, td) { border: 1px solid var(--line); }
+    .items.lined :is(th, td):first-child { overflow-wrap: anywhere; }
     .item-name { font-weight: 750; }
     .item-code { margin-top: 2px; color: var(--muted); font-size: 12px; }
     .saving { margin-top: 2px; color: var(--teal); font-size: 11px; font-weight: 700; }
@@ -42,6 +44,11 @@
     .row.total { margin-top: 8px; padding-top: 14px; border-top: 2px solid var(--navy); font-size: 18px; font-weight: 850; }
     .row.total span { color: var(--ink); }
     .row.owed { color: #b54708; font-weight: 800; }
+    .summary.lined > .row { border-inline: 1px solid var(--line); padding: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 45%); gap: 0; }
+    .summary.lined > .row { border-top: 1px solid var(--line); margin: 0; }
+    .summary.lined > .row:last-child { border-bottom: 1px solid var(--line); }
+    .summary.lined > .row > * { padding: 6px 8px; overflow-wrap: anywhere; }
+    .summary.lined > .row > :last-child { border-inline-start: 1px solid var(--line); text-align: end; }
     .terms { padding: 0 32px 28px; color: var(--muted); font-size: 12px; white-space: pre-line; }
     .foot { padding: 20px 32px; border-top: 1px solid var(--line); color: var(--muted); text-align: center; white-space: pre-line; }
     .actions { display: flex; justify-content: center; margin-top: 18px; }
@@ -105,7 +112,7 @@
         <div><span class="label">Currency</span><span class="value">{{ receipt.currency }}</span></div>
         {% if receipt.return_against %}<div><span class="label">Original invoice</span><span class="value">{{ receipt.return_against }}</span></div>{% endif %}
       </section>
-      <table class="items">
+      <table class="items{% if receipt.lined_table %} lined{% endif %}">
         <thead><tr><th>Item</th><th>Qty</th><th>Rate</th><th>Amount</th></tr></thead>
         <tbody>
           {% for item in receipt.items %}
@@ -116,7 +123,7 @@
           {% endfor %}
         </tbody>
       </table>
-      <section class="summary">
+      <section class="summary{% if receipt.lined_table %} lined{% endif %}">
         <div class="row"><span>Net total</span><strong>{{ receipt.net_total }}</strong></div>
         {% if receipt.discount %}<div class="row"><span>Discount</span><strong>-{{ receipt.discount }}</strong></div>{% endif %}
         {% for tax in receipt.taxes %}<div class="row"><span>{{ tax.description }}</span><strong>{{ tax.amount }}</strong></div>{% endfor %}
@@ -125,7 +132,7 @@
         <div class="row total"><span>Total</span><span>{{ receipt.grand_total }}</span></div>
       </section>
       {% if receipt.terms %}<section class="terms"><span class="label">Terms</span>{{ receipt.terms }}</section>{% endif %}
-      <footer class="foot">{% if receipt.footer %}{{ receipt.footer }}<br>{% endif %}Thank you for your purchase.</footer>
+      <footer class="foot"><div>Thank you for your purchase.</div><div>{{ receipt.footer }}</div></footer>
     </article>
     <div class="actions"><button type="button" onclick="window.print()">Print or save PDF</button></div>
     {% else %}

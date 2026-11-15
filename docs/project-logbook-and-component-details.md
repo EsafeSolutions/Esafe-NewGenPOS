@@ -26,11 +26,11 @@ EsafePOS is a browser-based point-of-sale application for ERPNext and Frappe. It
 ### 2.1 Till and checkout
 
 - Product browsing by category and search, with barcode, weight-embedded scale barcode, and serial-number scanning.
-- Sale of loose and packed quantities from one ERPNext item, with per-unit prices and a POS Items editor for standing prices and names.
+- Sale of loose and packed quantities from one ERPNext item, with per-unit prices and a POS Items editor for standing prices, names and photos. Saved price editing requires manager access or a rule backed by ERPNext permissions.
 - Cached catalog search, product stock availability, price check, and a cart with customer, channel, salesperson, note, coupon, and discount controls.
 - Multiple payment methods, split tender, cash shortcuts, change due, payment references, and customer payment collection.
 - Per-profile choice of POS Invoice (normally consolidated at shift close) or Sales Invoice (posted directly); both use standard ERPNext documents.
-- Printable receipts, configurable receipt details, browser printing, ESC/POS network printing, reprints, and cash-drawer kick where configured.
+- Printable receipts with a default ESAFE footer, configurable details and a lightly lined Table template. Includes browser printing, ESC/POS network printing, reprints, and cash-drawer kick where configured.
 - Three catalog views with quick Add, progressive loading and a tap-to-open item editor for quantity, stock unit, authorized price edits and discounts.
 - A second-screen customer display with an optional membership keypad, latest-item highlight, automatic product icons, pinned totals and a completed receipt with rewards.
 
@@ -170,7 +170,7 @@ Typical startup calls `esafepos.api.session.get_bootstrap`, which supplies the s
 | `refund.js`, `refundApproval.js` | Return calculations, offline eligibility and approval policy helpers |
 | `barcode.js`, `scanGuard.js`, `labels.js` | Barcode generation/handling, weight-embedded scale barcode parser, scanner input guard, and label layout data |
 | `customerDisplay.js`, `displayContact.js` | Per-till cart and receipt snapshots, scoped contact prompts and customer lookup lifecycle |
-| `receiptPrint.js` | Browser print and receipt formatting helpers |
+| `receiptPrint.js`, `receiptOptions.js` | Browser print sizing and shared POS receipt footer |
 | `format.js` | Currency, date/time, number, and display formatting |
 | `theme.js`, `i18n.js`, `messages.js`, `locales/` | Theme selection, locale/RTL initialization, translations |
 | `help/content.js` | Screen-level help and tour content |
@@ -240,6 +240,9 @@ The table below groups the DocTypes present under `esafepos/esafepos/doctype/`. 
 Entries are summarized from the release notes. The [user guide changelog](user-guide.md#19-changelog) contains the full release-by-release wording and should be updated alongside each release.
 
 ### Unreleased
+- **Receipt branding and Table layout:** Built-in receipts show `ESAFE ERP+POS - pos.esafe.lk` automatically. The Table template adds a light grid and can be selected for all outlets or saved as an outlet override.
+- **Item price access:** System Managers and EsafePOS Managers can edit saved selling prices when their ERPNext permissions allow it. Managers can delegate the POS capability to a role or person under Approvals and permissions. Item name and photo edits use ERPNext Item permissions.
+- **Items editor:** Added category and brand filters, product image upload and a selling price-list selector. Item photos are attached to ERPNext Item records and unit prices are saved to the selected ERPNext price list.
 - **Product catalog paging:** Sell loads live item pages while online, even with a limited offline cache. The Items editor can load results beyond its first 50 products.
 - **Customer display and membership keypad:** Added a welcome screen and cashier-triggered contact popup for exact customer lookup. The live display highlights the latest item with automatic offline icons and shows pinned totals, savings and rewards.
 - **Shared stock for loose and packed sales:** Checkout uses ERPNext unit conversion and a separate selling price per alternate unit. The POS Items page edits standard item names and outlet price-list entries. Offline scale decoding honors the switch and format configured in General settings.
@@ -275,6 +278,9 @@ Entries are summarized from the release notes. The [user guide changelog](user-g
 
 | Date | Change | Impact |
 |---|---|---|
+| 2026-11-15 | Added the default ESAFE receipt footer and a lightly lined Table template. | `ReceiptView.vue`, `receiptOptions.js`, `receipt_options.py`, and the print and digital receipt renderers append the branded line once after any custom text. Customer payment receipts and the completed customer display also show the line. The Table template is selectable in `EsafePOS Settings` and in outlet overrides. Browser and digital receipts use thin borders, and ESC/POS uses a character grid on both roll widths. ERPNext Print Formats supply their own footer and layout. Verified the production build, 178 API references, 50 existing Python tests, three thermal and footer tests, and Chrome receipt PDFs at 58 mm and 80 mm and the customer display. Physical printer output and live ERPNext remain unverified. |
+| 2026-11-15 | Restricted saved ERPNext price editing in POS. | Added the manager-default `Edit item selling prices` rule to `POS Capability Rule`, with role or person delegation in Settings. `api/items.py` and `ItemsView.vue` enforce price access separately from Item name and photo access and respect native Item Price create and write permissions. The delivery price-list endpoints apply the same POS rule and native permissions. Successful edits from Items record the unit, list, and old and new rates when POS audit logging is enabled. Verified the production build, 178 API references, 50 existing Python tests, five mocked authorization tests and the Chrome Items workflow. Live ERPNext permissions and saves still need verification. |
+| 2026-11-15 | Expanded the POS Items editor with filters, images and price-list selection. | `ItemsView.vue` keeps category and brand filters beside item search and shows a photo preview in the editor. `api/items.py` applies filters to paginated item results, attaches validated images to ERPNext Items and saves standing per-unit prices to the selected enabled selling list. The POS refreshes the online and offline catalog after a save. Verified the production build, 178 API endpoint references, 50 Python tests, server image validation and the desktop/mobile Chrome workflow. Browser saves used simulated ERPNext responses. |
 | 2026-11-15 | Fixed incomplete product lists on Sell and Items. | Sell reads live pages by outlet, group, brand and search while online. The offline cache is used during outages. Brand choices come from startup data as well as loaded products. The Items editor can request additional pages. The POS Profile's item groups, sellable-item checks and out-of-stock display setting still control what appears. Verified the production build, 177 API references, 50 Python tests, and Chrome checks for a second Sell page despite a limited cache, offline fallback, and Items results beyond 50. The browser used simulated ERPNext responses. |
 | 2026-11-15 | Rebuilt the production POS bundle for the customer display update. | `npm run build` succeeded and regenerated the assets under `esafepos/public/pos/`. The bundle includes the welcome keypad with Skip, the cashier-triggered contact popup, automatic Lucide product icons, the latest-item highlight and pinned totals. The build is ready locally. Deployment and live ERPNext contact lookup remain pending. |
 | 2026-11-15 | Added the customer welcome and refreshed the live display. | `CustomerDisplayView.vue` shows the latest item, basket, loyalty and pinned totals. `DisplayContactPad.vue` runs at the start or in a cashier-triggered popup. The catalog lookup matches existing customers by contact number with POS, outlet and customer permissions. `DisplayProductIcon.vue` bundles Lucide fallbacks. Verified the production build, 177 API endpoint references, 50 Python tests, and Chrome checks for contact lookup, skip, retry, terminal isolation, icons, repeat scans and responsive layout. The browser uses a simulated ERPNext lookup. |

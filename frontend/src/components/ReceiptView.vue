@@ -132,7 +132,6 @@
           <div v-else class="muted small receipt-extra"><span v-if="f.label">{{ f.label }}: </span>{{ f.value }}</div>
         </template>
       </div>
-      <div class="receipt-foot muted small"><div v-if="s.receipt_footer" class="receipt-extra">{{ s.receipt_footer }}</div>{{ t('Thank you!') }}</div>
     </template>
 
     <template v-else>
@@ -273,11 +272,11 @@
       </template>
     </div>
 
-    <div class="receipt-foot muted small">
-      <div v-if="s.receipt_footer" class="receipt-extra">{{ s.receipt_footer }}</div>
-      {{ t('Thank you!') }}
-    </div>
     </template>
+    <footer class="receipt-foot muted small">
+      <div>{{ t('Thank you!') }}</div>
+      <div class="receipt-extra">{{ footer }}</div>
+    </footer>
   </div>
 </template>
 
@@ -285,6 +284,7 @@
 import { computed } from 'vue'
 import { t } from '../i18n'
 import { isolate, money, outletCurrency, rateLine } from '../format'
+import { receiptFooter } from '../receiptOptions'
 import { useSessionStore } from '../stores/session'
 
 const props = defineProps({
@@ -304,6 +304,7 @@ const session = useSessionStore()
 const s = computed(
   () => props.settings || { ...(session.settings || {}), ...(props.receipt.receipt_settings || {}) }
 )
+const footer = computed(() => receiptFooter(s.value.receipt_footer || ''))
 
 // Amounts print in the sale's own currency (esafepos.currency). A sale in
 // another currency also shows its local value, the rate, each tender in its own
@@ -329,7 +330,7 @@ const foreign = computed(
     props.receipt.base_grand_total != null
 )
 const tpl = computed(() => (s.value.receipt_template || 'Retail').toLowerCase())
-const retail = computed(() => tpl.value === 'retail')
+const retail = computed(() => tpl.value === 'retail' || tpl.value === 'table')
 const paperWidth = computed(() => (s.value.receipt_paper_width === '58mm' ? '58' : '80'))
 const number = (value) => Number(value) || 0
 const qty = (value) => String(Number(number(value).toFixed(6)))
@@ -462,7 +463,7 @@ const paymentRows = computed(() =>
 .small { font-size: 11.5px; }
 
 /* ---- Retail breakdown ---- */
-.tpl-retail {
+.tpl-retail, .tpl-table {
   border-style: solid;
   border-radius: 4px;
   font-size: 12px;
@@ -524,6 +525,38 @@ const paymentRows = computed(() =>
 .retail-loyalty-balance { border-top: 1px solid var(--border-subtle); margin-top: 3px; padding-top: 5px !important; }
 
 /* ---- Templates ---- */
+.tpl-table { --table-rule: var(--border); }
+.tpl-table .retail-head, .tpl-table .retail-meta, .tpl-table .retail-custom-fields { border-color: var(--table-rule); }
+.tpl-table .retail-items :is(th, td) {
+  border: 1px solid var(--table-rule);
+  padding: 3px 2px;
+  overflow-wrap: anywhere;
+}
+.tpl-table .retail-item-name td { padding-block: 5px; }
+.tpl-table .retail-no { text-align: center; }
+.tpl-table .retail-items th:nth-child(1) { width: 9%; }
+.tpl-table .retail-items th:nth-child(4) { width: 26%; }
+.tpl-table .retail-items th:nth-child(5) { width: 29%; }
+.tpl-table .retail-totals, .tpl-table .retail-loyalty { border: 1px solid var(--table-rule); padding: 0; }
+.tpl-table :is(.retail-totals, .retail-loyalty) .row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 46%);
+  border: 0;
+  margin: 0;
+  padding: 0 !important;
+}
+.tpl-table :is(.retail-totals, .retail-loyalty) .row + .row { border-top: 1px solid var(--table-rule); }
+.tpl-table :is(.retail-totals, .retail-loyalty) .row > span,
+.tpl-table .retail-loyalty .row > strong { padding: 4px 5px; }
+.tpl-table :is(.retail-totals, .retail-loyalty) .row > :last-child {
+  border-inline-start: 1px solid var(--table-rule);
+  text-align: end;
+  overflow-wrap: anywhere;
+}
+.tpl-table .retail-loyalty-title { padding: 4px; border-bottom: 1px solid var(--table-rule); }
+.tpl-table .retail-savings { border-color: var(--table-rule); }
+.receipt-paper.tpl-table { --table-rule: #b5b5b5; }
+
 .tpl-compact { font-size: 11.5px; padding: 12px; border: none; }
 .tpl-compact .receipt-company { font-size: 13.5px; }
 .tpl-compact .receipt-head { margin-bottom: 8px; }

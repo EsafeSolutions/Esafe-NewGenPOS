@@ -1884,7 +1884,7 @@
                 <input v-model="receiptForm.receipt_header" :placeholder="t('e.g. Main Branch · 0500000000')" />
               </label>
               <label class="field span-2">
-                <span>{{ t('Footer line') }}</span>
+                <span>{{ t('Custom footer line') }}</span>
                 <input v-model="receiptForm.receipt_footer" :placeholder="t('e.g. Thank you for shopping with us')" />
               </label>
             </div>
@@ -2387,10 +2387,13 @@
           </button>
         </div>
         <p class="muted hint-row">
-          {{ t('An action with no rule is open to everyone. Returning past the window is the exception: nobody does it directly until you name someone, everyone else sends an approval request.') }}
+          {{ t('Most actions are open until you add a rule. Restricted actions require a manager or a matching rule.') }}
         </p>
         <p class="muted hint-row">
           {{ t('Edit price / discount also covers typing a new price on a sale line, at an outlet whose POS Profile has Allow User to Edit Rate ticked.') }}
+        </p>
+        <p class="muted hint-row">
+          {{ t('Edit item selling prices controls saved ERPNext prices. Managers have POS access by default. Add a rule to grant access to another role or person. ERPNext permissions also apply.') }}
         </p>
       </div>
 
@@ -2669,6 +2672,7 @@ let cardTimer = null
 // keeps meaning what it says even if the till is translated.
 const capabilityOptions = [
   'Edit price / discount',
+  'Edit item selling prices',
   'Make returns',
   'Return past the window',
   'Exchange goods',
@@ -3115,7 +3119,7 @@ const companyRow = computed(
 )
 
 // ---- receipt designer ----
-const RECEIPT_TEMPLATES = ['Retail', 'Compact', 'Standard', 'Detailed']
+const RECEIPT_TEMPLATES = ['Retail', 'Compact', 'Standard', 'Detailed', 'Table']
 const sampleReceipt = {
   name: 'INV-2026-00042',
   company: session.company || 'Your Store',
@@ -3284,7 +3288,7 @@ const previewReceipt = computed(() => ({
 
 // ---- audit log viewer ----
 const AUDIT_ACTIONS = [
-  'Sale', 'Return', 'Over-limit discount', 'Price edit',
+  'Sale', 'Return', 'Over-limit discount', 'Price edit', 'Item selling price updated in POS',
   'Register open', 'Register close', 'ERPNext day closed', 'Settings change', 'Email receipt', 'Till unlock',
   'Customer payment', 'Customer credit', 'Reprint',
 ]

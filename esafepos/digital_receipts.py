@@ -20,6 +20,7 @@ from urllib.parse import urlencode
 import frappe
 from frappe import _
 from frappe.utils import cint, flt, fmt_money, get_url
+from esafepos.receipt_options import receipt_footer
 
 
 LINK_LIFETIME_SECONDS = 365 * 24 * 60 * 60
@@ -206,7 +207,8 @@ def public_receipt(type_code, invoice, expires, signature):
         "owed": _money(owed, currency) if owed else "",
         "logo": _safe_logo(settings.get("receipt_logo")),
         "header": settings.get("receipt_header") or "",
-        "footer": settings.get("receipt_footer") or "",
+        "footer": receipt_footer(settings),
+        "lined_table": settings.get("receipt_template") == "Table",
         "address": settings.get("receipt_address") if cint(settings.get("receipt_show_address")) else "",
         "tax_id": tax_id if cint(settings.get("receipt_show_tax_id")) else "",
         "terms": settings.get("receipt_terms") if cint(settings.get("receipt_show_terms")) else "",

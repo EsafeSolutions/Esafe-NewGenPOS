@@ -318,7 +318,11 @@ def get_user_permissions():
         "cashback": caps("POS Cashback Rule"),
         "bundles": caps("POS Bundle"),
         "price_books": caps("POS Price Book"),
-        "edit_item_prices": bool(has("Item Price", "write")),
+        "edit_item_prices": (
+            caps_mod.allowed(caps_mod.ITEM_PRICE_EDIT)
+            and bool(has("Price List", "read"))
+            and bool(has("Item Price", "write"))
+        ),
         "create_price_list": bool(has("Price List", "create")),
         "settings": bool(has("EsafePOS Settings", "write")),
         # Insights: sales statistics are for managers, and the page itself

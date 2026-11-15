@@ -23,7 +23,7 @@ export async function createReceiptPrintFrame(source) {
     doc.documentElement.lang = document.documentElement.lang
     doc.documentElement.dir = document.documentElement.dir || 'ltr'
     // Reuse the loaded Vue scoped styles, including offline. Remote font imports
-    // are unnecessary: thermal output uses system fonts and solid black rules.
+    // are unnecessary: thermal output uses system fonts and monochrome rules.
     const styles = document.createElement('style')
     styles.textContent = Array.from(document.styleSheets).map((sheet) => {
       try {

@@ -72,6 +72,7 @@
       <div class="cd-grand"><span>{{ t('Total') }}</span><strong>{{ snap.total }}</strong></div>
       <div v-if="snap.change || snap.due" class="cd-balance"><span>{{ snap.change ? t('Change') : t('Balance due') }}</span><strong>{{ snap.change || snap.due }}</strong></div>
     </footer>
+    <small v-if="snap.receipt" class="cd-receipt-brand muted">{{ RECEIPT_BRAND }}</small>
     <div v-if="snap.contact" class="cd-overlay" @keydown.esc="skipContact">
       <div class="cd-dialog" role="dialog" aria-modal="true" aria-labelledby="display-contact-title">
         <DisplayContactPad :key="snap.contact.id" :busy="busy" :error="error" @submit="submitContact" @skip="skipContact" @edit="error = ''" />
@@ -85,6 +86,7 @@
 import { computed, ref, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { t } from '../i18n'
 import { connectContactChannel, onCart } from '../customerDisplay'
+import { RECEIPT_BRAND } from '../receiptOptions'
 import DisplayContactPad from '../components/DisplayContactPad.vue'
 import DisplayProductIcon from '../components/DisplayProductIcon.vue'
 import Icon from '../components/Icon.vue'
@@ -207,6 +209,7 @@ onBeforeUnmount(() => {
 .cd-totals .cd-saving { background: #e3f4ed; }
 .cd-totals .cd-grand { background: #174f9b; color: white; }
 .cd-totals .cd-balance { background: #d9eafe; }
+.cd-receipt-brand { display: block; text-align: center; margin-top: 6px; }
 .cd-equivalent { text-align: end; }
 .cd-next { margin-top: 12px; }
 .cd-empty { margin: 12vh auto; text-align: center; color: var(--text-muted); font-size: 1.25rem; }

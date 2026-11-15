@@ -6,9 +6,8 @@
 A shop restricts an action by adding rows to **Who can do what** in EsafePOS
 Settings. A row names a ROLE or a PERSON, and any matching row passes, so
 "the shift supervisors plus Fatima" is two rows, not a special role invented
-for one person. A capability with no rows at all is open to everyone (the one
-exception is returning past the window, which stays shut unless someone is
-named). A System / EsafePOS Manager always passes.
+for one person. Capabilities in CLOSED_BY_DEFAULT require a matching rule.
+A System / EsafePOS Manager always passes the POS capability check.
 
 Every check is enforced HERE, server-side, and mirrored to the UI through
 session.get_user_permissions so the till can hide what a cashier may not do.
@@ -26,6 +25,7 @@ MANAGER_ROLES = {"System Manager", "EsafePOS Manager"}
 # The stored label of each capability (the Select on POS Capability Rule) and
 # the legacy single-role field it replaced.
 PRICE_EDIT = "Edit price / discount"
+ITEM_PRICE_EDIT = "Edit item selling prices"
 RETURN = "Make returns"
 RETURN_EXCEED = "Return past the window"
 EXCHANGE = "Exchange goods"
@@ -69,7 +69,7 @@ LEGACY_FIELD = {
 # reports of 0.62.0: the shop's takings and each cashier's record.
 CLOSED_BY_DEFAULT = {
     RETURN_EXCEED, SALES_BY_PERSON, SYSTEM_CHECK, SELL_ON_ACCOUNT, TAKE_PAYMENTS, SET_CREDIT,
-    SALES_REPORTS, CASHIER_REPORT, PROFIT,
+    SALES_REPORTS, CASHIER_REPORT, PROFIT, ITEM_PRICE_EDIT,
 }
 # The reports a holder of the EsafePOS Reports role sees while a shop names
 # nobody for them (esafepos.reports_access, 0.65.0): that role exists to read

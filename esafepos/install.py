@@ -142,7 +142,21 @@ def ensure_setup():
     ensure_currencies()
     ensure_credit_sales()
     ensure_store_credit()
+    ensure_walk_in_customer()
     ensure_hot_indexes()
+
+
+def ensure_walk_in_customer():
+    from esafepos import walk_in
+
+    if not walk_in.enabled():
+        return
+    frappe.db.savepoint("esafepos_walk_in_setup")
+    try:
+        walk_in.ensure_customer()
+    except Exception:
+        frappe.db.rollback(save_point="esafepos_walk_in_setup")
+        frappe.log_error(title="EsafePOS: setting up automatic walk-in billing failed", message=frappe.get_traceback())
 
 
 def ensure_currencies():

@@ -51,7 +51,7 @@ def get_bootstrap(pos_profile: str | None = None):
 
     profile = frappe.get_doc("POS Profile", profile_name)
 
-    from esafepos import currency as sale_currency
+    from esafepos import currency as sale_currency, walk_in
 
     payment_modes = []
     for row in profile.payments:
@@ -90,6 +90,7 @@ def get_bootstrap(pos_profile: str | None = None):
         )
 
     session = get_open_session(profile_name)
+    default_customer = walk_in.default_customer(profile)
 
     return {
         "user": frappe.session.user,
@@ -102,11 +103,11 @@ def get_bootstrap(pos_profile: str | None = None):
         "currency": currency,
         "price_list": profile.selling_price_list,
         "warehouse": profile.warehouse,
-        "default_customer": profile.customer,
+        "default_customer": default_customer,
         "default_customer_name": frappe.db.get_value(
-            "Customer", profile.customer, "customer_name"
+            "Customer", default_customer, "customer_name"
         )
-        if profile.customer
+        if default_customer
         else None,
         "allow_negative_stock": frappe.db.get_single_value(
             "Stock Settings", "allow_negative_stock"

@@ -1672,7 +1672,7 @@
             <input type="checkbox" class="setting-toggle" v-model="generalForm.enable_walk_in_codes" :true-value="1" :false-value="0" />
             <span class="setting-text">
               <span class="setting-title">{{ t('Automatic walk-in customer codes') }}</span>
-              <span class="setting-desc">{{ t('Assign a code when no customer is selected. Add a name or contact number later from the receipt in Sales History.') }}</span>
+              <span class="setting-desc">{{ t('Finish sales without entering customer details. POS uses the outlet’s default customer or ESAFE POS Walk-in and adds a receipt code. Add contact details later from Sales History.') }}</span>
             </span>
           </label>
           <label class="setting-row">

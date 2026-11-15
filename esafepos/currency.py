@@ -839,10 +839,11 @@ def sale_info(pos_profile: str, customer: str | None = None):
     from esafepos.api.sales import _require_sell
     from esafepos.api.session import get_open_session
     from esafepos.price_books import resolve_price_list
+    from esafepos.walk_in import default_customer
 
     _require_sell()
     profile = frappe.get_cached_doc("POS Profile", pos_profile)
-    customer = customer or profile.customer
+    customer = customer or default_customer(profile)
     group = frappe.get_cached_value("Customer", customer, "customer_group") if customer else None
     session = get_open_session(pos_profile)
     ctx = sale_context(

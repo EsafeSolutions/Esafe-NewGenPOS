@@ -5,4 +5,10 @@ from frappe.model.document import Document
 
 
 class EsafePOSSettings(Document):
-    pass
+    def validate(self):
+        from frappe.utils import cint
+
+        if cint(self.get("enable_walk_in_codes")):
+            from esafepos.walk_in import ensure_customer
+
+            ensure_customer()

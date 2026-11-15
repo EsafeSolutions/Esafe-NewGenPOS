@@ -664,6 +664,7 @@
    "description": "Assign a code to each sale made without selecting a customer. Staff can add receipt details later in Sales History.",
    "fieldname": "enable_walk_in_codes",
    "fieldtype": "Check",
+   "description": "Allow checkout without selecting a customer. Uses the outlet default or the shared ESAFE POS Walk-in customer.",
    "label": "Automatic walk-in customer codes"
   },
   {

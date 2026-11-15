@@ -260,7 +260,10 @@ def walk_ins():
     """Customers that stand for whoever walks in: every outlet's default
     customer and each currency's walk-in (esafepos.currency). A debt on them
     has nobody to collect it from."""
+    from esafepos.walk_in import FALLBACK_CUSTOMER
+
     names = set(frappe.get_all("POS Profile", filters={"customer": ["is", "set"]}, pluck="customer"))
+    names.add(FALLBACK_CUSTOMER)
     try:
         from esafepos import currency
 

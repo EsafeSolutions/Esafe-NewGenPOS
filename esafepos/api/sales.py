@@ -7,7 +7,6 @@ from collections.abc import Callable
 
 import json
 import math
-import secrets
 
 import frappe
 from frappe import _
@@ -18,6 +17,7 @@ from esafepos.price_books import effective_prices, resolve_price_list, standard_
 from esafepos.promotions.engine import evaluate
 from esafepos.promotions.loader import get_active_promotions
 from esafepos import erpnext_compat
+from esafepos import walk_in
 from esafepos.api import salespeople
 from esafepos.api.discounts import discount_breakdown
 
@@ -255,9 +255,7 @@ def _build_sale_invoice(
                 ", ".join(internal)
             )
         )
-    customer = payload.get("customer") or profile.customer
-    if not customer:
-        frappe.throw(_("Select a customer (or set a default customer on the POS Profile)"))
+    customer = walk_in.billing_customer(profile, payload.get("customer"))
     customer_group = frappe.db.get_value("Customer", customer, "customer_group")
 
     app = _resolve_delivery_app(payload)
@@ -746,9 +744,7 @@ def submit_sale(payload: dict | str):
     _set_custom(invoice, ("esafepos_session",), session["name"])
     if key:
         _set_custom(invoice, ("esafepos_idempotency_key",), key)
-    if (not payload.get("customer") and invoice.meta.has_field("esafepos_walk_in_code")
-            and cint(frappe.db.get_single_value("EsafePOS Settings", "enable_walk_in_codes"))):
-        invoice.esafepos_walk_in_code = "W-" + secrets.token_hex(8).upper()
+    walk_in.assign_receipt_code(invoice, payload.get("customer"))
 
     # Tenders ERPNext will accept for this sale at the close, and the wallets
     # that hold one currency only (their ledgers are in the outlet's).
@@ -946,9 +942,7 @@ def sell_gift_card(payload: dict | str):
     credit_sales.refuse_tender(payload.get("payments"), _("A gift card cannot be put on account."))
 
     gift_card_account = gift_cards.ensure_setup(profile.company)
-    customer = payload.get("customer") or profile.customer
-    if not customer:
-        frappe.throw(_("Select a customer (or set a default customer on the POS Profile)"))
+    customer = walk_in.billing_customer(profile, payload.get("customer"))
     # A card's balance is one currency, the outlet's (esafepos.currency).
     currency.assert_local(
         currency.sale_context(profile, customer, profile.selling_price_list), _("Gift cards")
@@ -987,6 +981,7 @@ def sell_gift_card(payload: dict | str):
         }
     )
     _set_custom(invoice, ("esafepos_session",), session["name"])
+    walk_in.assign_receipt_code(invoice, payload.get("customer"))
     invoice.append(
         "items",
         {
@@ -1867,6 +1862,8 @@ def _apply_loyalty_redemption(invoice, customer, company, payload):
     points = cint(payload.get("redeem_loyalty_points"))
     if points <= 0:
         return
+    if customer == walk_in.FALLBACK_CUSTOMER:
+        frappe.throw(_("Select a loyalty customer to redeem points."))
     from esafepos.erpnext_compat import loyalty_details
 
     details = loyalty_details(customer, company)

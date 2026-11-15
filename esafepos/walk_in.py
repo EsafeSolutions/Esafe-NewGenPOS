@@ -46,12 +46,17 @@ def contact_number(value):
 
 def receipt_customer_name(invoice):
     return (
-        invoice.get("esafepos_walk_in_phone")
-        or (invoice.get("esafepos_walk_in_name") if invoice.get("esafepos_walk_in_code") else None)
+        invoice.get("esafepos_walk_in_name")
+        or invoice.get("esafepos_walk_in_phone")
         or invoice.get("esafepos_walk_in_code")
         or invoice.get("customer_name")
         or ""
     )
+
+
+def receipt_custom_name(invoice):
+    name = invoice.get("esafepos_walk_in_name") or ""
+    return name if name != invoice.get("esafepos_walk_in_phone") else ""
 
 
 def ensure_customer():

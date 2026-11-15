@@ -72,8 +72,15 @@
             <input ref="customerPhoneInput" v-model.trim="customerPhone" type="tel" inputmode="tel"
               autocomplete="tel" maxlength="32" required :disabled="customerSaving" />
           </label>
-          <div class="share-help muted small">{{ t('The contact number will appear as the customer name on this invoice.') }}</div>
+          <label v-if="customerNameOpen" class="share-mobile">
+            <span>{{ t('Customer name (optional)') }}</span>
+            <input ref="customerNameInput" v-model.trim="customerName" autocomplete="name"
+              maxlength="140" :disabled="customerSaving" />
+          </label>
+          <div class="share-help muted small">{{ t('Leave the name blank to use the contact number on this invoice.') }}</div>
           <div class="share-actions">
+            <button v-if="!customerNameOpen" type="button" class="btn btn-outline"
+              :disabled="customerSaving" @click="showCustomerName">{{ t('Add name') }}</button>
             <button type="button" class="btn btn-outline" :disabled="customerSaving" @click="customerEditorOpen = false">{{ t('Cancel') }}</button>
             <button class="btn btn-primary" :disabled="customerSaving">{{ t('Save details') }}</button>
           </div>
@@ -168,13 +175,26 @@ const customerEditorOpen = ref(false)
 const customerSaving = ref(false)
 const customerPhone = ref('')
 const customerPhoneInput = ref(null)
+const customerName = ref('')
+const customerNameOpen = ref(false)
+const customerNameInput = ref(null)
 
 async function openCustomerDetails() {
-  if (!customerEditorOpen.value) customerPhone.value = props.receipt.customer_phone || ''
+  if (!customerEditorOpen.value) {
+    customerPhone.value = props.receipt.customer_phone || ''
+    customerName.value = props.receipt.receipt_name || ''
+    customerNameOpen.value = Boolean(customerName.value)
+  }
   shareOpen.value = false
   customerEditorOpen.value = true
   await nextTick()
   customerPhoneInput.value?.focus()
+}
+
+async function showCustomerName() {
+  customerNameOpen.value = true
+  await nextTick()
+  customerNameInput.value?.focus()
 }
 
 async function saveCustomerDetails() {
@@ -184,6 +204,7 @@ async function saveCustomerDetails() {
     const updated = await call('esafepos.api.sales.save_walk_in_details', {
       invoice: props.receipt.name,
       mobile_no: customerPhone.value,
+      ...(customerNameOpen.value ? { customer_name: customerName.value } : {}),
     })
     shareDetails.value = null
     shareMobile.value = ''

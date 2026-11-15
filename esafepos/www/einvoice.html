@@ -107,7 +107,7 @@
         <div><span class="label">Customer code</span><span class="value">{{ receipt.walk_in_code }}</span></div>
         {% endif %}
         {% if receipt.customer_name != receipt.walk_in_code or not receipt.walk_in_code %}
-        <div><span class="label">Customer</span><span class="value">{{ receipt.customer_name or 'Walk-in customer' }}</span></div>
+        <div><span class="label">Customer</span><span class="value">{{ receipt.customer_name or 'Walk-in customer' }}</span>{% if receipt.receipt_contact and receipt.receipt_contact != receipt.customer_name %}<div>{{ receipt.receipt_contact }}</div>{% endif %}</div>
         {% endif %}
         <div><span class="label">Currency</span><span class="value">{{ receipt.currency }}</span></div>
         {% if receipt.return_against %}<div><span class="label">Original invoice</span><span class="value">{{ receipt.return_against }}</span></div>{% endif %}

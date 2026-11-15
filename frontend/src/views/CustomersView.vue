@@ -110,7 +110,9 @@
             <tr v-for="tx in txns" :key="tx.name" class="txn-row" @click="openReceipt(tx)">
               <td>
                 <button class="btn-ghost mono txn-invoice" @click.stop="openReceipt(tx)">{{ tx.name }}</button>
-                <div v-if="tx.receipt_contact" class="small muted">{{ tx.receipt_contact }}</div>
+                <div v-if="tx.receipt_name || tx.receipt_contact" class="small muted">
+                  {{ [tx.receipt_name, tx.receipt_contact].filter(Boolean).join(' · ') }}
+                </div>
               </td>
               <td class="muted small">{{ shortTime(tx.posting_date + ' ' + tx.posting_time) }}</td>
               <td>
@@ -318,7 +320,7 @@ async function openReceipt(tx) {
 function updateReceipt(updated) {
   receipt.value = updated
   const row = txns.value.find((tx) => tx.name === updated.name)
-  if (row) row.receipt_contact = updated.receipt_contact
+  if (row) Object.assign(row, { receipt_contact: updated.receipt_contact, receipt_name: updated.receipt_name })
 }
 </script>
 

@@ -169,7 +169,7 @@
         >
           <div class="sale-info">
             <div class="sale-customer">
-              {{ sale.receipt_contact || sale.walk_in_code || sale.customer_name }}
+              {{ sale.receipt_name || sale.receipt_contact || sale.walk_in_code || sale.customer_name }}
               <span v-if="sale.is_return" class="tag red">{{ t('REFUND') }}</span>
               <span v-if="sale.is_exchange" class="tag purple"><Icon name="exchange" /> {{ t('EXCHANGE') }}</span>
               <span v-if="sale.docstatus === 2" class="tag red">{{ t('CANCELLED') }}</span>
@@ -178,7 +178,7 @@
               <span v-if="sale.online_order && !sale.app_type" class="tag blue">{{ t('ONLINE') }}</span>
             </div>
             <div class="muted small">
-              {{ sale.name }} · {{ shortTime(sale.posting_date + ' ' + sale.posting_time) }}<span v-if="sale.receipt_contact && sale.walk_in_code"> · {{ sale.walk_in_code }}</span><span v-if="sale.owner_name"> · <Icon name="person" /> {{ sale.owner_name }}</span><span v-if="sale.mobile_no && !sale.receipt_contact"> · {{ sale.mobile_no }}</span><span v-if="sale.order_id"> · {{ t('Order') }} {{ sale.order_id }}</span><span v-if="profileFilter || companyFilter"> · {{ sale.pos_profile }}</span><span v-if="session.multiCompany && (profileFilter === '__all__' || companyFilter)"> · {{ sale.company }}</span>
+              {{ sale.name }} · {{ shortTime(sale.posting_date + ' ' + sale.posting_time) }}<span v-if="sale.receipt_contact && sale.walk_in_code"> · {{ sale.walk_in_code }}</span><span v-if="sale.owner_name"> · <Icon name="person" /> {{ sale.owner_name }}</span><span v-if="sale.receipt_contact && sale.receipt_name"> · {{ sale.receipt_contact }}</span><span v-else-if="sale.mobile_no && !sale.receipt_contact"> · {{ sale.mobile_no }}</span><span v-if="sale.order_id"> · {{ t('Order') }} {{ sale.order_id }}</span><span v-if="profileFilter || companyFilter"> · {{ sale.pos_profile }}</span><span v-if="session.multiCompany && (profileFilter === '__all__' || companyFilter)"> · {{ sale.company }}</span>
             </div>
           </div>
         </button>
@@ -369,7 +369,7 @@ async function show(name) {
 function updateReceipt(updated) {
   receipt.value = updated
   const row = sales.value.find((sale) => sale.name === updated.name)
-  if (row) row.receipt_contact = updated.receipt_contact
+  if (row) Object.assign(row, { receipt_contact: updated.receipt_contact, receipt_name: updated.receipt_name })
 }
 
 function startRefund(invoice) {

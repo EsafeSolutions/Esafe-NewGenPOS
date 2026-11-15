@@ -194,6 +194,7 @@ def public_receipt(type_code, invoice, expires, signature):
         "return_against": doc.get("return_against") or "",
         "company": doc.company,
         "customer_name": receipt_customer_name(doc),
+        "receipt_contact": doc.get("esafepos_walk_in_phone") or "",
         "walk_in_code": doc.get("esafepos_walk_in_code"),
         "posting_date": str(doc.get("posting_date") or ""),
         "posting_time": str(doc.get("posting_time") or "").split(".")[0],

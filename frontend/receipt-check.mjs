@@ -232,14 +232,16 @@ try {
     if (method === 'get_receipt') message = sample
     if (method === 'save_walk_in_details') {
       assert.equal(payload.invoice, sample.name)
-      assert.equal(payload.customer_name, undefined)
       const number = payload.mobile_no
-      Object.assign(sample, { customer_name: number, customer_phone: number, receipt_contact: number })
+      const name = payload.customer_name || ''
+      assert.equal(payload.customer_name, sample.receipt_contact ? 'Nimal' : undefined)
+      Object.assign(sample, { customer_name: name || number, customer_phone: number, receipt_contact: number, receipt_name: name })
       message = sample
     }
     await route.fulfill({ json: { message } })
   })
-  for (const [view, number] of [['customers', '0770000001'], ['history', '0770000002']]) {
+  for (const view of ['customers', 'history']) {
+    const number = '0770000001'
     await page.setViewportSize(view === 'customers' ? { width: 1440, height: 900 } : { width: 390, height: 844 })
     await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/receipt-check.html?view=${view}`)
     if (view === 'customers') {
@@ -250,12 +252,19 @@ try {
       await page.getByRole('button', { name: /POS-001/ }).click()
     }
     await page.getByRole('button', { name: 'Change customer name' }).click()
-    await page.getByLabel('Contact number').fill(number)
+    const phone = page.getByLabel('Contact number')
+    if (view === 'history') {
+      assert.equal(await phone.inputValue(), '0770000001')
+      await page.getByRole('button', { name: 'Add name', exact: true }).click()
+      await page.getByLabel('Customer name (optional)').fill('Nimal')
+    } else {
+      await phone.fill(number)
+    }
     if (output) await page.screenshot({ path: path.join(output, `receipt-customer-editor-${view}.png`) })
     await page.getByRole('button', { name: 'Save details' }).click()
-    await page.locator('#receipt-print').getByText(number, { exact: true }).waitFor()
+    await page.locator('#receipt-print').getByText(view === 'history' ? `Nimal · ${number}` : number, { exact: true }).waitFor()
     await page.getByRole('button', { name: 'New Sale' }).click()
-    await page.getByText(number, { exact: true }).waitFor()
+    await page.getByText(view === 'history' ? 'Nimal' : number, { exact: true }).waitFor()
     console.log('PASS invoice customer editor from', view)
   }
   assert.deepEqual(errors, [], 'Receipt must render without browser errors')

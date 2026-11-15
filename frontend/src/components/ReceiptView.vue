@@ -332,8 +332,8 @@ const foreign = computed(
 const tpl = computed(() => (s.value.receipt_template || 'Retail').toLowerCase())
 const retail = computed(() => tpl.value === 'retail' || tpl.value === 'table')
 const customerLabel = computed(() => {
-  const { customer_name: name, customer_phone: phone, walk_in_code: code } = props.receipt
-  return [name !== code ? name : '', (retail.value || code) && phone !== name ? phone : ''].filter(Boolean).join(' · ')
+  const { customer_name: name, customer_phone: phone, walk_in_code: code, receipt_contact: contact } = props.receipt
+  return [name !== code ? name : '', (retail.value || code || contact) && phone !== name ? phone : ''].filter(Boolean).join(' · ')
 })
 const paperWidth = computed(() => (s.value.receipt_paper_width === '58mm' ? '58' : '80'))
 const number = (value) => Number(value) || 0

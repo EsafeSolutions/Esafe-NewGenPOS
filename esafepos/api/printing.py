@@ -132,7 +132,8 @@ def build_receipt_bytes(receipt, open_drawer=0):
         out += _text("Customer code: " + receipt["walk_in_code"]) + b"\n"
     if receipt["customer_name"] != receipt.get("walk_in_code"):
         out += _text(receipt["customer_name"] or "") + b"\n"
-    if receipt.get("walk_in_code") and receipt.get("customer_phone") and receipt["customer_phone"] != receipt["customer_name"]:
+    if ((receipt.get("walk_in_code") or receipt.get("receipt_contact"))
+            and receipt.get("customer_phone") and receipt["customer_phone"] != receipt["customer_name"]):
         out += _text(receipt["customer_phone"]) + b"\n"
     # The selling company's VAT number (its receipt's, else the company's own),
     # when the shop shows it on receipts.

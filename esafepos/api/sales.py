@@ -2073,8 +2073,8 @@ def sms_receipt(invoice: str, mobile: str | None = None):
 
 
 @frappe.whitelist()
-def save_walk_in_details(invoice: str, customer_name: str = "", mobile_no: str = ""):
-    """Use the contact number as the invoice display name. Legacy callers may send a name."""
+def save_walk_in_details(invoice: str, customer_name: str | None = None, mobile_no: str = ""):
+    """Save a receipt contact and use its number as the name when none is entered."""
     doc = frappe.get_doc(_doctype_of(invoice), invoice)
     doc.check_permission("read")
     if not _can_edit_receipt_customer(doc):
@@ -2082,7 +2082,10 @@ def save_walk_in_details(invoice: str, customer_name: str = "", mobile_no: str =
     phone = walk_in.contact_number(mobile_no)
     if not phone:
         frappe.throw(_("Enter a valid contact number."))
-    doc.db_set({"esafepos_walk_in_name": phone, "esafepos_walk_in_phone": phone})
+    name = walk_in.receipt_custom_name(doc) if customer_name is None else customer_name.strip()
+    if len(name) > 140 or any(ord(char) < 32 for char in name):
+        frappe.throw(_("Enter a customer name of up to 140 characters."))
+    doc.db_set({"esafepos_walk_in_name": name or phone, "esafepos_walk_in_phone": phone})
     from esafepos.api import audit
 
     audit.log("Receipt customer updated", reference_doctype=doc.doctype, reference_name=doc.name,
@@ -2266,6 +2269,7 @@ def get_receipt(invoice: str):
         "customer_name": walk_in.receipt_customer_name(doc),
         "customer_phone": customer_phone,
         "receipt_contact": receipt_contact,
+        "receipt_name": walk_in.receipt_custom_name(doc),
         "walk_in_code": walk_in_code,
         "walk_in_name": doc.get("esafepos_walk_in_name") or "",
         "can_edit_walk_in": can_edit_customer,
@@ -2673,6 +2677,11 @@ def _search_sales_in(doctype, f):
         if frappe.db.has_column(doctype, "esafepos_walk_in_phone")
         else "null as receipt_contact"
     )
+    receipt_name_select = (
+        "nullif(pi.esafepos_walk_in_name, pi.esafepos_walk_in_phone) as receipt_name"
+        if all(frappe.db.has_column(doctype, field) for field in ("esafepos_walk_in_name", "esafepos_walk_in_phone"))
+        else "null as receipt_name"
+    )
     pay_modes_select = (
         "(select group_concat(distinct sip.mode_of_payment separator ', ')"
         " from `tabSales Invoice Payment` sip"
@@ -2689,7 +2698,7 @@ def _search_sales_in(doctype, f):
                pi.creation, pi.grand_total, pi.currency, pi.posting_date, pi.posting_time,
                pi.status, pi.docstatus, pi.is_return, pi.owner, u.full_name as owner_name,
                {app_select}, {order_select}, {online_select}, {exchange_select},
-               {pay_modes_select}, {walk_in_select}, {receipt_contact_select}
+               {pay_modes_select}, {walk_in_select}, {receipt_contact_select}, {receipt_name_select}
         from `tab{doctype}` pi
         left join `tabCustomer` c on c.name = pi.customer
         left join `tabUser` u on u.name = pi.owner

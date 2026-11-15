@@ -16,15 +16,19 @@ class ReceiptContactTests(unittest.TestCase):
             with self.subTest(value=value):
                 self.assertEqual(walk_in.contact_number(value), "")
 
-    def test_receipt_prefers_phone_for_named_and_walk_in_invoices(self):
-        doc = {"customer_name": "Customer", "esafepos_walk_in_name": "Earlier name"}
+    def test_receipt_uses_phone_until_someone_saves_a_name(self):
+        doc = {"customer_name": "Customer"}
         self.assertEqual(walk_in.receipt_customer_name(doc), "Customer")
         doc["esafepos_walk_in_code"] = "W-1234"
-        self.assertEqual(walk_in.receipt_customer_name(doc), "Earlier name")
-        doc["esafepos_walk_in_phone"] = "0771234567"
+        self.assertEqual(walk_in.receipt_customer_name(doc), "W-1234")
+        doc.update(esafepos_walk_in_name="0771234567", esafepos_walk_in_phone="0771234567")
         self.assertEqual(walk_in.receipt_customer_name(doc), "0771234567")
+        self.assertEqual(walk_in.receipt_custom_name(doc), "")
+        doc["esafepos_walk_in_name"] = "Customer entered later"
+        self.assertEqual(walk_in.receipt_customer_name(doc), "Customer entered later")
         doc.pop("esafepos_walk_in_code")
-        self.assertEqual(walk_in.receipt_customer_name(doc), "0771234567")
+        self.assertEqual(walk_in.receipt_customer_name(doc), "Customer entered later")
+        self.assertEqual(walk_in.receipt_custom_name(doc), "Customer entered later")
 
 
 class WalkInBillingTests(unittest.TestCase):

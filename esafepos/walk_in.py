@@ -1,5 +1,6 @@
 """Shared ERPNext billing customer for anonymous sales without an outlet default."""
 
+import re
 import secrets
 
 import frappe
@@ -35,6 +36,22 @@ def assign_receipt_code(invoice, selected_customer):
         return
     if invoice.meta.has_field("esafepos_walk_in_code") and enabled():
         invoice.esafepos_walk_in_code = "W-" + secrets.token_hex(8).upper()
+
+
+def contact_number(value):
+    raw = (value or "").strip()
+    number = re.sub(r"[ ()-]", "", raw)
+    return number if len(raw) <= 32 and re.fullmatch(r"\+?[0-9]{7,15}", number) else ""
+
+
+def receipt_customer_name(invoice):
+    return (
+        invoice.get("esafepos_walk_in_phone")
+        or (invoice.get("esafepos_walk_in_name") if invoice.get("esafepos_walk_in_code") else None)
+        or invoice.get("esafepos_walk_in_code")
+        or invoice.get("customer_name")
+        or ""
+    )
 
 
 def ensure_customer():

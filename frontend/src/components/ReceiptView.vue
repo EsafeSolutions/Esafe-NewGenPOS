@@ -32,8 +32,8 @@
         <div v-if="receipt.walk_in_code" class="retail-meta-row">
           <span>{{ t('Customer code') }}</span><span>{{ receipt.walk_in_code }}</span>
         </div>
-        <div v-if="(receipt.customer_name && receipt.customer_name !== receipt.walk_in_code) || receipt.customer_phone" class="retail-meta-row">
-          <span>{{ t('Customer') }}</span><span>{{ [receipt.customer_name !== receipt.walk_in_code ? receipt.customer_name : '', receipt.customer_phone].filter(Boolean).join(' · ') }}</span>
+        <div v-if="customerLabel" class="retail-meta-row">
+          <span>{{ t('Customer') }}</span><span>{{ customerLabel }}</span>
         </div>
         <div v-if="receipt.cashier || receipt.sales_person" class="retail-meta-row">
           <span>{{ t('Cashier') }}</span><span>{{ receipt.cashier || receipt.sales_person }}</span>
@@ -151,7 +151,7 @@
       </div>
       <div class="muted small" v-if="receipt.return_against">{{ t('against') }} {{ receipt.return_against }}</div>
       <div v-if="receipt.walk_in_code" class="muted small">{{ t('Customer code') }} {{ receipt.walk_in_code }}</div>
-      <div v-if="receipt.customer_name !== receipt.walk_in_code || receipt.customer_phone" class="muted small">{{ [receipt.customer_name !== receipt.walk_in_code ? receipt.customer_name : '', receipt.walk_in_code ? receipt.customer_phone : ''].filter(Boolean).join(' · ') }}</div>
+      <div v-if="customerLabel" class="muted small">{{ customerLabel }}</div>
       <div class="muted small" v-if="receipt.sales_person">{{ t('Served by') }} {{ receipt.sales_person }}</div>
       <div class="muted small" v-if="receipt.app_type">
         {{ receipt.app_type }}<span v-if="receipt.order_id"> · {{ t('Order') }} {{ receipt.order_id }}</span>
@@ -331,6 +331,10 @@ const foreign = computed(
 )
 const tpl = computed(() => (s.value.receipt_template || 'Retail').toLowerCase())
 const retail = computed(() => tpl.value === 'retail' || tpl.value === 'table')
+const customerLabel = computed(() => {
+  const { customer_name: name, customer_phone: phone, walk_in_code: code } = props.receipt
+  return [name !== code ? name : '', (retail.value || code) && phone !== name ? phone : ''].filter(Boolean).join(' · ')
+})
 const paperWidth = computed(() => (s.value.receipt_paper_width === '58mm' ? '58' : '80'))
 const number = (value) => Number(value) || 0
 const qty = (value) => String(Number(number(value).toFixed(6)))

@@ -6,6 +6,27 @@ from unittest.mock import Mock, patch
 from esafepos import walk_in
 
 
+class ReceiptContactTests(unittest.TestCase):
+    def test_accepts_formatted_phone_and_preserves_leading_zero_or_country_code(self):
+        self.assertEqual(walk_in.contact_number(" 077-123 4567 "), "0771234567")
+        self.assertEqual(walk_in.contact_number("+94 (77) 123 4567"), "+94771234567")
+
+    def test_rejects_missing_or_invalid_contact_number(self):
+        for value in ("", "07712", "077CALLNOW", "0771234\n567", "0" * 16):
+            with self.subTest(value=value):
+                self.assertEqual(walk_in.contact_number(value), "")
+
+    def test_receipt_prefers_phone_for_named_and_walk_in_invoices(self):
+        doc = {"customer_name": "Customer", "esafepos_walk_in_name": "Earlier name"}
+        self.assertEqual(walk_in.receipt_customer_name(doc), "Customer")
+        doc["esafepos_walk_in_code"] = "W-1234"
+        self.assertEqual(walk_in.receipt_customer_name(doc), "Earlier name")
+        doc["esafepos_walk_in_phone"] = "0771234567"
+        self.assertEqual(walk_in.receipt_customer_name(doc), "0771234567")
+        doc.pop("esafepos_walk_in_code")
+        self.assertEqual(walk_in.receipt_customer_name(doc), "0771234567")
+
+
 class WalkInBillingTests(unittest.TestCase):
     def setUp(self):
         self.profile = SimpleNamespace(customer=None)

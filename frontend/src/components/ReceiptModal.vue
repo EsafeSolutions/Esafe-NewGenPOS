@@ -66,18 +66,16 @@
             {{ t('WhatsApp opens a ready message for confirmation. SMS uses ERPNext SMS Settings.') }}
           </div>
         </div>
-        <form v-if="walkInOpen" class="share-card" @submit.prevent="saveWalkIn">
-          <label class="share-mobile">
-            <span>{{ t('Customer name') }}</span>
-            <input v-model.trim="walkInName" maxlength="140" />
-          </label>
+        <form v-if="customerEditorOpen" class="share-card" @submit.prevent="saveCustomerDetails">
           <label class="share-mobile">
             <span>{{ t('Contact number') }}</span>
-            <input v-model.trim="walkInPhone" type="tel" autocomplete="tel" maxlength="32" />
+            <input ref="customerPhoneInput" v-model.trim="customerPhone" type="tel" inputmode="tel"
+              autocomplete="tel" maxlength="32" required :disabled="customerSaving" />
           </label>
+          <div class="share-help muted small">{{ t('The contact number will appear as the customer name on this invoice.') }}</div>
           <div class="share-actions">
-            <button type="button" class="btn btn-outline" @click="walkInOpen = false">{{ t('Cancel') }}</button>
-            <button class="btn btn-primary" :disabled="walkInSaving">{{ t('Save details') }}</button>
+            <button type="button" class="btn btn-outline" :disabled="customerSaving" @click="customerEditorOpen = false">{{ t('Cancel') }}</button>
+            <button class="btn btn-primary" :disabled="customerSaving">{{ t('Save details') }}</button>
           </div>
         </form>
         <ReceiptView :receipt="receipt" printable />
@@ -118,8 +116,9 @@
         >
           {{ emailing ? t('Sending…') : t('Email receipt') }}
         </button>
-        <button v-if="receipt.can_edit_walk_in && !session.offline && !walkInOpen" class="btn btn-outline" @click="openWalkIn">
-          {{ t('Edit walk-in details') }}
+        <button v-if="(receipt.can_edit_customer_details ?? receipt.can_edit_walk_in) && !session.offline && !receipt.offline"
+          class="btn btn-outline" :aria-expanded="customerEditorOpen" @click="openCustomerDetails">
+          {{ t('Change customer name') }}
         </button>
         <button v-if="!receipt.offline" class="btn btn-outline" @click="toggleShare">
           <Icon name="globe" /> {{ t('Send e-invoice') }}
@@ -165,35 +164,36 @@ const sharing = ref(false)
 const smsing = ref(false)
 const copied = ref(false)
 const shareDetails = ref(null)
-const walkInOpen = ref(false)
-const walkInSaving = ref(false)
-const walkInName = ref('')
-const walkInPhone = ref('')
+const customerEditorOpen = ref(false)
+const customerSaving = ref(false)
+const customerPhone = ref('')
+const customerPhoneInput = ref(null)
 
-function openWalkIn() {
-  walkInName.value = props.receipt.walk_in_name || ''
-  walkInPhone.value = props.receipt.customer_phone || ''
-  walkInOpen.value = true
+async function openCustomerDetails() {
+  if (!customerEditorOpen.value) customerPhone.value = props.receipt.customer_phone || ''
+  shareOpen.value = false
+  customerEditorOpen.value = true
+  await nextTick()
+  customerPhoneInput.value?.focus()
 }
 
-async function saveWalkIn() {
-  if (walkInSaving.value) return
-  walkInSaving.value = true
+async function saveCustomerDetails() {
+  if (customerSaving.value) return
+  customerSaving.value = true
   try {
     const updated = await call('esafepos.api.sales.save_walk_in_details', {
       invoice: props.receipt.name,
-      customer_name: walkInName.value,
-      mobile_no: walkInPhone.value,
+      mobile_no: customerPhone.value,
     })
     shareDetails.value = null
     shareMobile.value = ''
     emit('updated', updated)
-    walkInOpen.value = false
+    customerEditorOpen.value = false
     session.notify(t('Customer details saved'))
   } catch (error) {
     session.notify(error.message, true)
   } finally {
-    walkInSaving.value = false
+    customerSaving.value = false
   }
 }
 

@@ -27,7 +27,10 @@ const html = `<!doctype html><html><head><meta name="viewport" content="width=de
 <div id="app"></div><script type="module">
 import { createApp, h, nextTick, reactive } from 'vue'
 import { createPinia } from 'pinia'
+import { createMemoryHistory, createRouter } from 'vue-router'
 import ReceiptModal from '/src/components/ReceiptModal.vue'
+import CustomersView from '/src/views/CustomersView.vue'
+import HistoryView from '/src/views/HistoryView.vue'
 import { createReceiptPrintFrame } from '/src/receiptPrint.js'
 import { useSessionStore } from '/src/stores/session.js'
 import '/src/styles.css'
@@ -37,15 +40,21 @@ const receipt = reactive({ name: 'ACC-PSINV-2026-00004', company: 'Weerakoon Agr
   items: [{ item_name: 'Test', qty: 2, rate: 1000, price_list_rate: 1000, amount: 2000 }],
   payments: [{ mode_of_payment: 'Cash', amount: 2000 }], receipt_settings: {} })
 const pinia = createPinia()
-createApp({ render: () => h(ReceiptModal, { receipt, onUpdated: (updated) => Object.assign(receipt, updated) }) }).use(pinia).mount('#app')
+const view = new URLSearchParams(location.search).get('view')
 const session = useSessionStore(pinia)
 session.settings = { receipt_template: 'Retail', receipt_show_payments: 1, receipt_show_unit_price: 1 }
-session.offline = true
+session.offline = !view
+session.company = 'Weerakoon Agro'
+session.posProfile = 'Sales-01'
+const router = createRouter({ history: createMemoryHistory(),
+  routes: [{ path: '/', component: CustomersView }, { path: '/history', component: HistoryView }] })
+createApp({ render: () => view === 'customers' ? h(CustomersView) : view === 'history' ? h(HistoryView)
+  : h(ReceiptModal, { receipt, onUpdated: (updated) => Object.assign(receipt, updated) }) }).use(pinia).use(router).mount('#app')
 window.enableWalkIn = () => {
   session.offline = false
   receipt.walk_in_code = 'W-0123456789ABCDEF'
   receipt.customer_name = receipt.walk_in_code
-  receipt.can_edit_walk_in = true
+  receipt.can_edit_customer_details = true
 }
 window.prepare = async ({ width, count, template = 'Retail', currency = 'LKR', dark = false, rtl = false, extras = false, customFooter = '' }) => {
   document.documentElement.dataset.theme = dark ? 'dark' : 'light'
@@ -188,22 +197,67 @@ try {
   await page.evaluate(() => window.enableWalkIn())
   await page.locator('#receipt-print').getByText('W-0123456789ABCDEF').waitFor()
   await page.route('**/api/method/esafepos.api.sales.save_walk_in_details', async (route) => {
-    assert.deepEqual(route.request().postDataJSON().invoice, 'ACC-PSINV-2026-00004')
-    assert.equal(route.request().postDataJSON().mobile_no, '0770000000')
+    const { invoice, mobile_no, customer_name } = route.request().postDataJSON()
+    assert.equal(invoice, 'ACC-PSINV-2026-00004')
+    assert.equal(mobile_no, '0770000000')
+    assert.equal(customer_name, undefined)
     await route.fulfill({ json: { message: {
       walk_in_code: 'W-0123456789ABCDEF',
-      customer_name: 'Sample Customer',
-      walk_in_name: 'Sample Customer',
+      customer_name: '0770000000',
+      receipt_contact: '0770000000',
       customer_phone: '0770000000',
     } } })
   })
-  await page.getByRole('button', { name: 'Edit walk-in details' }).click()
-  await page.getByLabel('Customer name').fill('Sample Customer')
+  await page.getByRole('button', { name: 'Change customer name' }).click()
+  assert.equal(await page.getByLabel('Customer name', { exact: true }).count(), 0)
   await page.getByLabel('Contact number').fill('0770000000')
   await page.getByRole('button', { name: 'Save details' }).click()
-  await page.locator('#receipt-print').getByText(/Sample Customer/).waitFor()
+  await page.locator('#receipt-print').getByText('0770000000', { exact: true }).waitFor()
   await page.locator('#receipt-print').getByText('W-0123456789ABCDEF').waitFor()
-  console.log('PASS receipt code and later optional customer details')
+  console.log('PASS receipt code and phone-only editor after sale')
+  await page.unroute('**/api/method/esafepos.api.sales.save_walk_in_details')
+  const customer = { name: 'ESAFE POS Walk-in', customer_name: 'ESAFE POS Walk-in', customer_type: 'Individual' }
+  const sample = { name: 'POS-001', company: 'Weerakoon Agro', currency: 'LKR', posting_date: '2026-11-16',
+    posting_time: '10:00:00', docstatus: 1, grand_total: 425, customer_name: customer.customer_name,
+    items: [], can_edit_customer_details: true, receipt_contact: '' }
+  await page.route('**/api/method/**', async (route) => {
+    const method = route.request().url().split('.').pop()
+    const payload = route.request().postDataJSON() || {}
+    let message = []
+    if (method === 'search_customers') message = { items: [customer], has_more: false }
+    if (method === 'customer_detail') message = { ...customer, stats: {}, wallet: {} }
+    if (method === 'search_sales') {
+      message = !payload.filters?.search || payload.filters.search === sample.receipt_contact ? [sample] : []
+    }
+    if (method === 'get_receipt') message = sample
+    if (method === 'save_walk_in_details') {
+      assert.equal(payload.invoice, sample.name)
+      assert.equal(payload.customer_name, undefined)
+      const number = payload.mobile_no
+      Object.assign(sample, { customer_name: number, customer_phone: number, receipt_contact: number })
+      message = sample
+    }
+    await route.fulfill({ json: { message } })
+  })
+  for (const [view, number] of [['customers', '0770000001'], ['history', '0770000002']]) {
+    await page.setViewportSize(view === 'customers' ? { width: 1440, height: 900 } : { width: 390, height: 844 })
+    await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/receipt-check.html?view=${view}`)
+    if (view === 'customers') {
+      await page.getByRole('button', { name: /ESAFE POS Walk-in/ }).click()
+      await page.getByRole('button', { name: sample.name, exact: true }).click()
+    } else {
+      await page.getByPlaceholder(/Invoice no, customer/).fill('0770000001')
+      await page.getByRole('button', { name: /POS-001/ }).click()
+    }
+    await page.getByRole('button', { name: 'Change customer name' }).click()
+    await page.getByLabel('Contact number').fill(number)
+    if (output) await page.screenshot({ path: path.join(output, `receipt-customer-editor-${view}.png`) })
+    await page.getByRole('button', { name: 'Save details' }).click()
+    await page.locator('#receipt-print').getByText(number, { exact: true }).waitFor()
+    await page.getByRole('button', { name: 'New Sale' }).click()
+    await page.getByText(number, { exact: true }).waitFor()
+    console.log('PASS invoice customer editor from', view)
+  }
   assert.deepEqual(errors, [], 'Receipt must render without browser errors')
 } finally {
   await browser.close()

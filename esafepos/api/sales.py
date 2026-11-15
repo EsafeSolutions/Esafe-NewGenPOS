@@ -2074,24 +2074,28 @@ def sms_receipt(invoice: str, mobile: str | None = None):
 
 @frappe.whitelist()
 def save_walk_in_details(invoice: str, customer_name: str = "", mobile_no: str = ""):
-    """Save optional receipt details without changing the ERPNext customer."""
+    """Use the contact number as the invoice display name. Legacy callers may send a name."""
     doc = frappe.get_doc(_doctype_of(invoice), invoice)
     doc.check_permission("read")
-    if not _can_edit_walk_in(doc):
-        frappe.throw(_("You are not permitted to edit walk-in customer details."), frappe.PermissionError)
-    name, phone = (customer_name or "").strip(), (mobile_no or "").strip()
-    if len(name) > 140 or len(phone) > 32 or any(ord(char) < 32 for char in name + phone):
-        frappe.throw(_("Enter a name of up to 140 characters and a contact number of up to 32 characters."))
-    doc.db_set({"esafepos_walk_in_name": name, "esafepos_walk_in_phone": phone})
+    if not _can_edit_receipt_customer(doc):
+        frappe.throw(_("You are not permitted to edit this invoice’s customer details."), frappe.PermissionError)
+    phone = walk_in.contact_number(mobile_no)
+    if not phone:
+        frappe.throw(_("Enter a valid contact number."))
+    doc.db_set({"esafepos_walk_in_name": phone, "esafepos_walk_in_phone": phone})
     from esafepos.api import audit
 
-    audit.log("Walk-in details updated", reference_doctype=doc.doctype, reference_name=doc.name,
+    audit.log("Receipt customer updated", reference_doctype=doc.doctype, reference_name=doc.name,
               pos_profile=doc.pos_profile)
     return get_receipt(doc.name)
 
 
-def _can_edit_walk_in(doc):
-    if not doc.get("esafepos_walk_in_code") or doc.docstatus != 1 or doc.is_return:
+def _can_edit_receipt_customer(doc):
+    if doc.docstatus != 1 or doc.is_return or not doc.get("pos_profile"):
+        return False
+    if doc.doctype == "Sales Invoice" and (not doc.get("is_pos") or doc.get("is_consolidated")):
+        return False
+    if not all(doc.meta.has_field(field) for field in ("esafepos_walk_in_name", "esafepos_walk_in_phone")):
         return False
     from esafepos.api.permissions import allowed_companies, can_use_outlet
 
@@ -2226,18 +2230,18 @@ def get_receipt(invoice: str):
             filters={"reference_doctype": doc.doctype, "reference_invoice": doc.name, "entry_type": "Earn"},
             pluck="amount",
         ))
-    customer_phone = (
-        _get_custom(doc, ("contact_mobile", "contact_phone", "mobile_no")) or ""
-    )
-    if not customer_phone and doc.customer:
+    receipt_contact = doc.get("esafepos_walk_in_phone") or ""
+    walk_in_code = doc.get("esafepos_walk_in_code")
+    customer_phone = receipt_contact
+    if not customer_phone and not walk_in_code:
+        customer_phone = _get_custom(doc, ("contact_mobile", "contact_phone", "mobile_no")) or ""
+    if not customer_phone and not walk_in_code and doc.customer:
         try:
             customer_phone = frappe.db.get_value("Customer", doc.customer, "mobile_no") or ""
         except Exception:
             customer_phone = ""
     cashier = frappe.db.get_value("User", doc.owner, "full_name") or doc.owner
-    walk_in_code = doc.get("esafepos_walk_in_code")
-    if walk_in_code:
-        customer_phone = doc.get("esafepos_walk_in_phone") or ""
+    can_edit_customer = _can_edit_receipt_customer(doc)
 
     return {
         "name": doc.name,
@@ -2259,11 +2263,13 @@ def get_receipt(invoice: str):
         "posting_date": str(doc.posting_date),
         "posting_time": str(doc.posting_time),
         "customer": doc.customer,
-        "customer_name": (doc.get("esafepos_walk_in_name") or walk_in_code) if walk_in_code else doc.customer_name,
+        "customer_name": walk_in.receipt_customer_name(doc),
         "customer_phone": customer_phone,
+        "receipt_contact": receipt_contact,
         "walk_in_code": walk_in_code,
         "walk_in_name": doc.get("esafepos_walk_in_name") or "",
-        "can_edit_walk_in": _can_edit_walk_in(doc),
+        "can_edit_walk_in": can_edit_customer,
+        "can_edit_customer_details": can_edit_customer,
         "cashier": cashier,
         "terminal": doc.get("pos_profile") or "",
         "company": doc.company,
@@ -2424,6 +2430,10 @@ def _search_probe_names(doctype, term, order_field=None, cap=SEARCH_PROBE_CAP):
     add(q(f"select name from `{tbl}` where name = %s limit 1", (term,)))
     if term.upper().startswith("W-") and frappe.db.has_column(doctype, "esafepos_walk_in_code"):
         add(q(f"select name from `{tbl}` where esafepos_walk_in_code like %s limit %s", (prefix, remaining())))
+    phone = walk_in.contact_number(term)
+    if phone and frappe.db.has_column(doctype, "esafepos_walk_in_phone"):
+        add(q(f"select name from `{tbl}` where esafepos_walk_in_phone in %s limit %s",
+              (tuple(sorted({term, phone})), remaining())))
     # 2) invoice-number prefix, primary-key range
     add(q(f"select name from `{tbl}` where name like %s limit %s", (prefix, remaining())))
     # 3) customer id prefix, indexed foreign key
@@ -2658,6 +2668,11 @@ def _search_sales_in(doctype, f):
         if frappe.db.has_column(doctype, "esafepos_walk_in_code")
         else "null as walk_in_code"
     )
+    receipt_contact_select = (
+        "pi.esafepos_walk_in_phone as receipt_contact"
+        if frappe.db.has_column(doctype, "esafepos_walk_in_phone")
+        else "null as receipt_contact"
+    )
     pay_modes_select = (
         "(select group_concat(distinct sip.mode_of_payment separator ', ')"
         " from `tabSales Invoice Payment` sip"
@@ -2674,7 +2689,7 @@ def _search_sales_in(doctype, f):
                pi.creation, pi.grand_total, pi.currency, pi.posting_date, pi.posting_time,
                pi.status, pi.docstatus, pi.is_return, pi.owner, u.full_name as owner_name,
                {app_select}, {order_select}, {online_select}, {exchange_select},
-               {pay_modes_select}, {walk_in_select}
+               {pay_modes_select}, {walk_in_select}, {receipt_contact_select}
         from `tab{doctype}` pi
         left join `tabCustomer` c on c.name = pi.customer
         left join `tabUser` u on u.name = pi.owner

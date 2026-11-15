@@ -108,7 +108,10 @@
           </thead>
           <tbody>
             <tr v-for="tx in txns" :key="tx.name" class="txn-row" @click="openReceipt(tx)">
-              <td class="mono">{{ tx.name }}</td>
+              <td>
+                <button class="btn-ghost mono txn-invoice" @click.stop="openReceipt(tx)">{{ tx.name }}</button>
+                <div v-if="tx.receipt_contact" class="small muted">{{ tx.receipt_contact }}</div>
+              </td>
               <td class="muted small">{{ shortTime(tx.posting_date + ' ' + tx.posting_time) }}</td>
               <td>
                 <span v-if="tx.is_return" class="badge red">{{ t('Return') }}</span>
@@ -136,7 +139,7 @@
       reprint
       @open-in-history="openInHistory"
       @close="receipt = null"
-      @updated="receipt = $event"
+      @updated="updateReceipt"
     />
   </div>
 </template>
@@ -311,6 +314,12 @@ async function openReceipt(tx) {
     session.notify(e.message, true)
   }
 }
+
+function updateReceipt(updated) {
+  receipt.value = updated
+  const row = txns.value.find((tx) => tx.name === updated.name)
+  if (row) row.receipt_contact = updated.receipt_contact
+}
 </script>
 
 <style scoped>
@@ -390,6 +399,7 @@ async function openReceipt(tx) {
 .txn-row { cursor: pointer; }
 .txn-row:hover { background: var(--hover-bg, rgba(19, 167, 149,0.06)); }
 .txn-row td { padding: 9px 8px; border-bottom: 1px solid var(--border-subtle); }
+.txn-invoice { padding: 0; text-align: start; }
 .right { text-align: end; }
 .mono { font-family: ui-monospace, monospace; font-size: 12.5px; }
 .small { font-size: 12px; }

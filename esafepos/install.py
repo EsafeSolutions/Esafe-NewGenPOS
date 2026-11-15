@@ -849,7 +849,7 @@ def make_custom_fields():
         ),
         dict(
             fieldname="esafepos_walk_in_name",
-            label="Walk-in Customer Name",
+            label="Receipt Customer Name",
             fieldtype="Data",
             insert_after="esafepos_walk_in_code",
             read_only=1,
@@ -857,11 +857,12 @@ def make_custom_fields():
         ),
         dict(
             fieldname="esafepos_walk_in_phone",
-            label="Walk-in Customer Phone",
+            label="Receipt Customer Contact Number",
             fieldtype="Data",
             insert_after="esafepos_walk_in_name",
             read_only=1,
             no_copy=1,
+            search_index=1,
         ),
         # Sales on account (esafepos.credit_sales, 0.60.0): the Journal Entry
         # that booked this sale's part on account on the customer, or took a

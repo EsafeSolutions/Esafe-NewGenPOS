@@ -26,6 +26,15 @@ class ReceiptPrintingTests(unittest.TestCase):
         self.assertEqual(receipt_footer(custom), "Visit again!\n" + RECEIPT_BRAND)
         self.assertEqual(receipt_footer({}), RECEIPT_BRAND)
 
+    def test_contact_used_as_customer_name_prints_once_with_walk_in_code(self):
+        self.receipt.update(walk_in_code="W-1234", customer_name="0771234567", customer_phone="0771234567")
+        for template in ("Retail", "Standard", "Table"):
+            with self.subTest(template=template):
+                self.receipt["receipt_settings"] = {"receipt_template": template}
+                output = build_receipt_bytes(self.receipt)
+                self.assertIn(b"W-1234", output)
+                self.assertEqual(output.count(b"0771234567"), 1)
+
     def test_thermal_footer_on_all_templates(self):
         for template in ("Retail", "Compact", "Standard", "Detailed", "Table"):
             with self.subTest(template=template):

@@ -21,6 +21,7 @@ import frappe
 from frappe import _
 from frappe.utils import cint, flt, fmt_money, get_url
 from esafepos.receipt_options import receipt_footer
+from esafepos.walk_in import receipt_customer_name
 
 
 LINK_LIFETIME_SECONDS = 365 * 24 * 60 * 60
@@ -77,9 +78,8 @@ def message_for(doc, url):
 
 def share_details(doc):
     url = make_link(doc)
-    if doc.get("esafepos_walk_in_code"):
-        mobile = doc.get("esafepos_walk_in_phone") or ""
-    else:
+    mobile = doc.get("esafepos_walk_in_phone") or ""
+    if not mobile and not doc.get("esafepos_walk_in_code"):
         mobile = doc.get("contact_mobile") or doc.get("contact_phone") or ""
         if not mobile and doc.get("customer"):
             mobile = frappe.db.get_value("Customer", doc.customer, "mobile_no") or ""
@@ -193,7 +193,7 @@ def public_receipt(type_code, invoice, expires, signature):
         "is_return": cint(doc.get("is_return")),
         "return_against": doc.get("return_against") or "",
         "company": doc.company,
-        "customer_name": doc.get("esafepos_walk_in_name") or doc.get("esafepos_walk_in_code") or doc.get("customer_name") or "",
+        "customer_name": receipt_customer_name(doc),
         "walk_in_code": doc.get("esafepos_walk_in_code"),
         "posting_date": str(doc.get("posting_date") or ""),
         "posting_time": str(doc.get("posting_time") or "").split(".")[0],

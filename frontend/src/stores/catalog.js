@@ -6,7 +6,6 @@ import { call, OfflineError } from '../api'
 import {
   saveCatalog,
   searchCatalog,
-  catalogCount,
   saveCustomers,
   patchCatalogStock,
   patchCatalogStockBy,
@@ -32,73 +31,64 @@ export const useCatalogStore = defineStore('catalog', {
     search: '',
     itemGroup: '',
     brand: '',
-    cachedCount: 0,
     hasMore: false,
+    _query: '',
     _searchTimer: null,
     _requestId: 0,
   }),
 
   getters: {
-    brands: (state) => [...new Set(state.items.map((item) => item.brand).filter(Boolean))]
+    brands: (state) => [...new Set([...useSessionStore().itemBrands, ...state.items.map((item) => item.brand).filter(Boolean)])]
       .sort((a, b) => a.localeCompare(b)),
   },
 
   actions: {
-    // LOCAL-FIRST: searches run against the IndexedDB cache (instant, works
-    // offline). The cache is filled on startup and refreshed in the
-    // background, the server is only hit when the cache is empty.
     async fetch(append = false) {
       const session = useSessionStore()
       if (!session.posProfile || (append && (this.loading || !this.hasMore))) return
+      const profile = session.posProfile
+      const filters = { search: this.search, item_group: this.itemGroup, brand: this.brand }
+      const query = JSON.stringify([profile, filters])
+      if (append && query !== this._query) return
+      if (!append) clearTimeout(this._searchTimer)
       const requestId = ++this._requestId
-
-      if (!this.cachedCount) {
-        this.cachedCount = await catalogCount().catch(() => 0)
-      }
-      if (this.cachedCount > 0) {
-        const groups = this.itemGroup
-          ? session.itemGroupMembers?.[this.itemGroup] || [this.itemGroup]
-          : null
-        const items = await searchCatalog(this.search, groups, Infinity, this.brand, scaleBarcodeOptions(session.settings)).catch(() => null)
-        // The newest request clears "Loading…" here too: a cold start's server
-        // request that lost the race to the full catalog download (which then
-        // searched the device) never cleared it, and the grid stayed on
-        // "Loading…" with the products already there.
-        if (items && requestId === this._requestId) {
-          this.items = items
-          this.hasMore = false
-          this.loading = false
-        }
-        if (items || requestId !== this._requestId) return
-      }
-
-      // Cold start: no cache yet, query the server directly
-      this.loading = true
+      const current = () => requestId === this._requestId && profile === session.posProfile
       const start = append ? this.items.length : 0
+      if (!append && query !== this._query) this.items = []
+      this.loading = true
       try {
-        const data = await call('esafepos.api.catalog.get_items', {
-          pos_profile: session.posProfile,
-          search: this.search,
-          item_group: this.itemGroup,
-          brand: this.brand,
-          start,
-          limit: PAGE_SIZE,
-        })
-        if (requestId !== this._requestId) return // stale response
-        this.items = append ? [...this.items, ...data.items] : data.items
-        this.hasMore = data.items.length === PAGE_SIZE
-      } catch (e) {
-        if (e instanceof OfflineError) {
-          session.markOffline()
-          if (requestId === this._requestId) {
-            if (!append) this.items = []
-            this.hasMore = false
+        // The offline catalog can be stock-only or capped. Browse live
+        // pages while connected so a partial cache never ends the list.
+        if (!session.offline) {
+          try {
+            const { items } = await call('esafepos.api.catalog.get_items', {
+              pos_profile: profile, ...filters, start, limit: PAGE_SIZE,
+            })
+            if (!current()) return
+            this.items = append ? [...this.items, ...items] : items
+            this._query = query
+            this.hasMore = items.length === PAGE_SIZE
+            return items
+          } catch (error) {
+            if (!current()) return
+            if (!(error instanceof OfflineError)) {
+              if (!append) this.hasMore = false
+              session.notify(error.message, true)
+              return
+            }
+            session.markOffline()
           }
-        } else {
-          throw e
         }
+        const group = filters.item_group
+        const groups = group ? session.itemGroupMembers?.[group] || [group] : null
+        const items = await searchCatalog(filters.search, groups, Infinity, filters.brand,
+          scaleBarcodeOptions(session.settings)).catch(() => [])
+        if (!current()) return
+        this.items = items
+        this._query = query
+        this.hasMore = false
       } finally {
-        if (requestId === this._requestId) this.loading = false
+        if (current()) this.loading = false
       }
     },
 
@@ -106,13 +96,14 @@ export const useCatalogStore = defineStore('catalog', {
     // POS keeps selling if the connection drops.
     async cacheFullCatalog() {
       const session = useSessionStore()
-      if (!session.posProfile || session.offline) return
+      const profile = session.posProfile
+      if (!profile || session.offline) return
       try {
         const items = await call('esafepos.api.catalog.get_full_catalog', {
-          pos_profile: session.posProfile,
+          pos_profile: profile,
         })
+        if (session.posProfile !== profile) return
         await saveCatalog(items)
-        this.cachedCount = items.length
         // Selling in another currency without a connection: each currency
         // walk-in's own prices (esafepos.currency.offline_prices).
         if (session.multiCurrency?.enabled) {
@@ -124,7 +115,6 @@ export const useCatalogStore = defineStore('catalog', {
             await kvSet('currency_prices', prices).catch(() => {})
           }
         }
-        await this.fetch()
       } catch {
         /* cache refresh is best-effort */
       }
@@ -187,9 +177,10 @@ export const useCatalogStore = defineStore('catalog', {
 
     setSearch(value) {
       this.search = value
+      this._requestId++
+      this.hasMore = false
       clearTimeout(this._searchTimer)
-      // Local search is instant; tiny debounce just coalesces keystrokes
-      this._searchTimer = setTimeout(() => this.fetch(), this.cachedCount ? 60 : 250)
+      this._searchTimer = setTimeout(() => this.fetch(), useSessionStore().offline ? 60 : 250)
     },
 
     setGroup(group) {

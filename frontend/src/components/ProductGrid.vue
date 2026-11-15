@@ -6,6 +6,9 @@
     <div v-if="!visibleItems.length && !catalog.hasMore" class="grid-empty">
       {{ catalog.loading ? t('Loading…') : catalog.items.length ? t('No products in stock') : t('No products found') }}
     </div>
+    <div v-else-if="!visibleItems.length" class="grid-empty">
+      {{ catalog.loading ? t('Loading…') : t('No items to show on this page. Load more items to continue.') }}
+    </div>
     <div v-else class="grid" :class="mode">
       <article v-for="item in visibleItems.slice(0, rendered)" :key="item.item_code" class="tile card">
         <button type="button" class="tile-main" @click="$emit('inspect', item)">

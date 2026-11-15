@@ -113,6 +113,7 @@ def get_bootstrap(pos_profile: str | None = None):
         ),
         "payment_modes": payment_modes,
         "item_groups": item_groups,
+        "item_brands": frappe.get_all("Brand", pluck="name", order_by="name asc"),
         # A chip covers the groups beneath it, on the device too (offline.js).
         "item_group_members": _item_group_members(item_groups),
         "taxes": _profile_taxes(profile),

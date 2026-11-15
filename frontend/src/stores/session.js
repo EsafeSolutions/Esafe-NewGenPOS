@@ -59,6 +59,7 @@ export const useSessionStore = defineStore('session', {
     defaultCustomerName: null,
     paymentModes: [],
     itemGroups: [],
+    itemBrands: [],
     itemGroupMembers: {},
     taxes: [],
     promotions: [],
@@ -359,6 +360,7 @@ export const useSessionStore = defineStore('session', {
       this.defaultCustomerName = data.default_customer_name
       this.paymentModes = data.payment_modes || []
       this.itemGroups = data.item_groups || []
+      this.itemBrands = data.item_brands || []
       this.itemGroupMembers = data.item_group_members || {}
       this.taxes = data.taxes || []
       this.promotions = data.promotions || []
@@ -467,6 +469,7 @@ export const useSessionStore = defineStore('session', {
     // till may still be uploading its own queued sales when this one returns.
     refreshStockAfterOutage() {
       const catalog = useCatalogStore()
+      catalog.fetch()
       catalog.cacheFullCatalog()
       clearTimeout(this._stockRefreshTimer)
       this._stockRefreshTimer = setTimeout(() => {

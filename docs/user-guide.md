@@ -126,6 +126,8 @@ Help for staff**, all on by default.
 
 ## 2. The Sell screen
 
+With **All brands** and **All item groups** selected, Sell shows the current outlet's eligible products. Scroll or use **Load more items** to browse beyond the first page. Products without stock are visible when **Show out-of-stock items in the grid** is enabled under **Settings → General → Register and shifts**. **Cache only in-stock items** affects browsing during an outage. The **Items** editor also has **Load more items** for longer search results.
+
 Turn **Weight-embedded scale barcodes** on or off in **Settings → General → Features**. Configure the prefixes, PLU length and weight decimals to match the scale's labels. The same settings apply when the till searches its cached catalog offline.
 
 To sell the same item loose and in packs, keep one ERPNext Item with **Kg** as its stock unit. Add an alternate **Pack** unit and set its conversion factor in ERPNext. For a 500 g pack, use `0.5`. In POS, open **Items**, find the product by name, item code or barcode, and set separate prices for Kg and Pack on the outlet's selling price list. Tap the product on Sell, choose the selling unit, and enter the quantity. Selling 1.25 kg and two 500 g packs uses 2.25 kg from the same stock. Quick Add and weight barcodes use the stock unit.

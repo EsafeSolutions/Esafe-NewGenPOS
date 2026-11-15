@@ -432,6 +432,14 @@ async function onSearchEnter() {
         return
       }
       if (scale) return
+      const matches = await catalog.fetch()
+      if (!session.offline) {
+        if (catalog.search.trim() === term && matches?.length === 1) {
+          addToCart(matches[0])
+          catalog.clearSearch()
+        }
+        return
+      }
     } catch {
       /* fall back to the grid below */
     }

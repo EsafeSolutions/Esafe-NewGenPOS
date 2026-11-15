@@ -4,7 +4,7 @@
     <div v-else-if="session.offline" class="card items-card">{{ t('Editing items needs a connection.') }}</div>
     <template v-else>
       <div class="card items-card">
-        <form class="item-search" @submit.prevent="searchItems">
+        <form class="item-search" @submit.prevent="searchItems()">
           <input v-model="search" :aria-label="t('Find an item')" :placeholder="t('Item name, code or barcode')" />
           <button class="btn btn-primary" :disabled="loading">{{ t('Search') }}</button>
         </form>
@@ -12,6 +12,9 @@
         <button v-for="item in items" :key="item.name" class="item-result" :disabled="saving" @click="openItem(item.name)">
           <strong>{{ item.item_name }}</strong>
           <small class="muted">{{ item.name }} · {{ item.stock_uom }}</small>
+        </button>
+        <button v-if="hasMore" class="btn btn-outline" :disabled="loading || saving" @click="searchItems(true)">
+          {{ loading ? t('Loading…') : t('Load more items') }}
         </button>
       </div>
       <form v-if="draft" class="card items-card edit-item" @submit.prevent="save">
@@ -49,15 +52,29 @@ const search = ref('')
 const items = ref([])
 const draft = ref(null)
 const loading = ref(false)
+const hasMore = ref(false)
 const saving = ref(false)
+const pageSize = 50
+let activeSearch = ''
 let request = 0
 
-async function searchItems() {
+async function searchItems(append = false) {
+  if (append && (loading.value || !hasMore.value)) return
+  if (!append) {
+    activeSearch = search.value
+    hasMore.value = false
+  }
   loading.value = true
   const id = ++request
   try {
-    const results = await call('esafepos.api.items.search_items', { pos_profile: session.posProfile, search: search.value })
-    if (id === request) items.value = results
+    const results = await call('esafepos.api.items.search_items', {
+      pos_profile: session.posProfile, search: activeSearch,
+      start: append ? items.value.length : 0, limit: pageSize,
+    })
+    if (id === request) {
+      items.value = append ? [...items.value, ...results] : results
+      hasMore.value = results.length === pageSize
+    }
   } catch (error) {
     if (id === request) session.notify(error.message, true)
   } finally {
@@ -105,7 +122,8 @@ async function save() {
         line.catalog_price = unit.active_price
       }
     }
-    await catalog.cacheFullCatalog()
+    await catalog.fetch()
+    catalog.cacheFullCatalog()
     await cart.reprice()
     session.notify(t('Item saved'))
   } catch (error) {
@@ -119,6 +137,7 @@ watch(() => [session.posProfile, session.offline, session.permissions.edit_items
   request++
   draft.value = null
   items.value = []
+  hasMore.value = false
   loading.value = false
   if (profile && !offline && allowed) searchItems()
 }, { immediate: true })

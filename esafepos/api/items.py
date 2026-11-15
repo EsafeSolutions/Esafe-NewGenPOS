@@ -7,7 +7,7 @@ import math
 
 import frappe
 from frappe import _
-from frappe.utils import flt, getdate, nowdate
+from frappe.utils import cint, flt, getdate, nowdate
 
 from esafepos.api.permissions import assert_outlet
 from esafepos.item_units import conversions
@@ -28,7 +28,7 @@ def _profile(pos_profile):
 
 
 @frappe.whitelist()
-def search_items(pos_profile: str, search: str):
+def search_items(pos_profile: str, search: str, start: int | str = 0, limit: int | str = 50):
     _profile(pos_profile)
     term = (search or "").strip()
     item_code = frappe.db.get_value("Item Barcode", {"barcode": term}, "parent") if term else None
@@ -37,7 +37,8 @@ def search_items(pos_profile: str, search: str):
     }) if term else None
     return frappe.get_list("Item", filters={"disabled": 0, "is_sales_item": 1, "has_variants": 0},
                            or_filters=conditions, fields=["name", "item_name", "stock_uom"],
-                           order_by="item_name asc, name asc", limit_page_length=50)
+                           order_by="item_name asc, name asc", limit_start=max(0, cint(start)),
+                           limit_page_length=min(100, max(1, cint(limit))))
 
 
 def _standing_price(item_code, price_list, unit, stock_unit):

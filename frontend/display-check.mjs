@@ -89,7 +89,7 @@ window.checkOfflineScale = async () => {
   const disabled = await searchCatalog(label, null, 5, '', scaleBarcodeOptions({ enable_scale_barcodes: 0 }))
   return [enabled.length, disabled.length]
 }
-Object.assign(window, { ready: true, mode, displayTerminalId, publishCart })
+Object.assign(window, { ready: true, mode, catalog, session, displayTerminalId, publishCart })
 </script></body></html>`
 const server = await createServer({ root, base: '/', server: { port: 0, host: '127.0.0.1', open: false },
   plugins: [{ name: 'display-check', configureServer(server) {
@@ -209,6 +209,28 @@ if (!process.argv.includes('--serve')) {
       await display.setViewportSize({ width: 1024, height: 768 })
       await display.screenshot({ path: path.join(output, 'customer-live-1024.png') })
     }
+    // A stock-only offline cache must not hide later pages from online Sell.
+    await till.route('**/api/method/esafepos.api.catalog.get_items', (route) => {
+      const { start, limit } = route.request().postDataJSON()
+      const items = Array.from({ length: start === 0 ? limit : 1 }, (_, index) => ({
+        item_code: 'LIVE-' + (start + index), item_name: 'Live item ' + (start + index), price: 12,
+      }))
+      return route.fulfill({ json: { message: { items } } })
+    })
+    await till.evaluate(async () => {
+      mode.value = 'list'
+      await catalog.fetch()
+      await catalog.fetch(true)
+    })
+    assert.equal(await till.evaluate(() => catalog.items.length), 81)
+    assert.equal(await till.evaluate(() => catalog.items.at(-1).item_code), 'LIVE-80')
+    assert.equal(await till.evaluate(() => catalog.hasMore), false)
+    await till.evaluate(async () => {
+      session.offline = true
+      await catalog.fetch()
+    })
+    assert.equal(await till.evaluate(() => catalog.items[0].item_code), '01234')
+
     const manager = await context.newPage()
     manager.on('pageerror', (error) => errors.push(error.message))
     const details = { item_code: 'ITEM-0', item_name: 'Roasted coffee', stock_uom: 'Kg',
@@ -217,7 +239,14 @@ if (!process.argv.includes('--serve')) {
     await manager.route('**/api/method/**', async (route) => {
       const method = route.request().url().split('.').pop()
       let message = []
-      if (method === 'search_items') message = [{ name: 'ITEM-0', item_name: details.item_name, stock_uom: 'Kg' }]
+      if (method === 'search_items') {
+        const { start, limit } = route.request().postDataJSON()
+        message = Array.from({ length: start === 0 ? limit : 1 }, (_, index) => ({
+          name: 'ITEM-' + (start + index),
+          item_name: start + index === 0 ? details.item_name : 'Editor item ' + (start + index),
+          stock_uom: 'Kg',
+        }))
+      }
       if (method === 'get_items') message = { items: [] }
       if (method === 'item_details') message = details
       if (method === 'save_item') {
@@ -229,6 +258,8 @@ if (!process.argv.includes('--serve')) {
       await route.fulfill({ json: { message } })
     })
     await manager.goto(url + '#/items')
+    await manager.getByRole('button', { name: 'Load more items' }).click()
+    await manager.getByRole('button', { name: /Editor item 50/ }).waitFor()
     await manager.getByRole('button', { name: /Roasted coffee/ }).click()
     await manager.getByLabel('Item name').fill('Fresh roasted coffee')
     await manager.getByLabel(/Pack/).fill('13')

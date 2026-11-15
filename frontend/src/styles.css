@@ -23,6 +23,9 @@
   --brand-soft: #75d6c9;
   --red: #e0413f;
   --amber: #c9821b;
+  --catalog-price: #8a6100;
+  --catalog-stock: #1556a4;
+  --catalog-stock-empty: #b4232c;
   --promo: #3568d4;
   --radius: 12px;
   --radius-lg: 18px;
@@ -61,6 +64,9 @@
   --brand-soft: #54d3c7;
   --red: #ff6b66;
   --amber: #e0a53c;
+  --catalog-price: #f7ce58;
+  --catalog-stock: #8ec5ff;
+  --catalog-stock-empty: var(--red);
   --promo: #83a8ef;
   --shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
   --shadow-md: 0 12px 32px rgba(0, 0, 0, 0.55);

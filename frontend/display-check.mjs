@@ -32,10 +32,12 @@ const cart = useCartStore(pinia)
 session.permissions = { can_change_price: true, can_edit_price: true, edit_items: true }
 session.posProfile = 'Test Till'
 session.settings.enable_customer_display = 1
+session.settings.show_out_of_stock = 1
 const image = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
 catalog.items = Array.from({ length: 81 }, (_, i) => ({
   item_code: 'ITEM-' + i, item_name: i === 0 ? 'Roasted coffee' : 'Product ' + i,
-  image, price: 20, stock_uom: 'Kg', description: '<p>Full description of the product.</p>',
+  image: i === 1 ? '' : image, price: 20, stock_uom: 'Kg', description: '<p>Full description of the product.</p>',
+  is_stock_item: 1, actual_qty: i === 1 ? 0 : 12,
   selling_units: [{ uom: 'Pack', factor: 0.5, price: 12, whole_qty: true }],
 }))
 const isDisplay = location.hash.startsWith('#/display')
@@ -117,6 +119,28 @@ if (!process.argv.includes('--serve')) {
     till.on('pageerror', (error) => errors.push(error.message))
     await till.goto(url)
     await till.waitForFunction(() => window.ready)
+    const photoLabel = till.locator('.tile-main--photo .tile-copy').first()
+    const colors = {
+      light: ['rgb(138, 97, 0)', 'rgb(21, 86, 164)', 'rgb(180, 35, 44)'],
+      dark: ['rgb(247, 206, 88)', 'rgb(142, 197, 255)', 'rgb(255, 107, 102)'],
+    }
+    for (const theme of ['light', 'dark']) {
+      await till.evaluate((theme) => { document.documentElement.dataset.theme = theme }, theme)
+      assert.deepEqual(await till.evaluate(() =>
+        ['.tile-price', '.tile-stock:not(.tile-stock--empty)', '.tile-stock--empty']
+          .map((selector) => getComputedStyle(document.querySelector(selector)).color)), colors[theme])
+      const label = await photoLabel.evaluate((element) => {
+        const photo = element.previousElementSibling.getBoundingClientRect()
+        const label = element.getBoundingClientRect()
+        return { background: getComputedStyle(element).backgroundColor, photoTop: photo.top,
+          photoBottom: photo.bottom, labelTop: label.top, labelBottom: label.bottom }
+      })
+      assert.notEqual(label.background, 'rgba(0, 0, 0, 0)')
+      assert.match(label.background, /0\.84/)
+      assert.ok(label.labelTop > label.photoTop && label.labelBottom <= label.photoBottom + 1)
+    }
+    await till.evaluate(() => { document.documentElement.dataset.theme = 'light' })
+    assert.equal(await till.locator('.tile-main').nth(1).evaluate((element) => element.classList.contains('tile-main--photo')), false)
     await till.getByRole('button', { name: 'Add Roasted coffee to cart' }).click()
     assert.equal(await till.evaluate(() => window.added), 'ITEM-0')
     await till.getByRole('button', { name: /Roasted coffee ITEM-0/ }).click()
@@ -138,8 +162,10 @@ if (!process.argv.includes('--serve')) {
     await till.evaluate(() => { mode.value = 'list' })
     await till.locator('.grid.list').waitFor()
     assert.equal(await till.locator('.tile img').count(), 0)
+    assert.equal(await till.locator('.tile-main--photo').count(), 0)
     await till.evaluate(() => { mode.value = 'detail' })
     await till.locator('.grid.detail').waitFor()
+    assert.equal(await till.locator('.tile-main--photo').count(), 0)
     assert.equal(await till.locator('.tile-copy p').count(), 12)
     await till.getByRole('button', { name: 'Load more items' }).click()
     assert.equal(await till.locator('.tile-copy p').count(), 24)

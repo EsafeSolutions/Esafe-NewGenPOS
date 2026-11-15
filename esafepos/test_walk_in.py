@@ -1,3 +1,4 @@
+import sqlite3
 import sys
 import unittest
 from types import SimpleNamespace
@@ -43,6 +44,34 @@ class ReceiptContactTests(unittest.TestCase):
         doc.pop("esafepos_walk_in_code")
         self.assertEqual(walk_in.receipt_customer_name(doc), "Customer entered later")
         self.assertEqual(walk_in.receipt_custom_name(doc), "Customer entered later")
+
+
+class ReceiptCustomerAttributionTests(unittest.TestCase):
+    def test_linked_sale_and_refund_move_between_pos_customer_profiles_once(self):
+        with sqlite3.connect(":memory:") as db:
+            db.execute("""create table `tabPOS Invoice` (
+                name text primary key, customer text, esafepos_receipt_customer text,
+                is_return int, return_against text
+            )""")
+            db.executemany("insert into `tabPOS Invoice` values (?, ?, ?, ?, ?)", [
+                ("sale", "Walk-in", "Member", 0, None),
+                ("refund", "Walk-in", None, 1, "sale"),
+                ("anonymous", "Walk-in", "", 0, None),
+                ("named", "Member", None, 0, None),
+            ])
+            with patch.object(walk_in.frappe, "db", Mock()):
+                join, _, predicate = walk_in.customer_attribution_sql("POS Invoice")
+            query = (f"select pi.name from `tabPOS Invoice` pi {join} where {predicate}"
+                     .replace("%(customer)s", ":customer"))
+            self.assertEqual({r[0] for r in db.execute(query, {"customer": "Member"})}, {"sale", "refund", "named"})
+            self.assertEqual({r[0] for r in db.execute(query, {"customer": "Walk-in"})}, {"anonymous"})
+
+    def test_reporting_uses_billing_customer_when_link_field_is_missing(self):
+        db = Mock()
+        db.has_column.return_value = False
+        with patch.object(walk_in.frappe, "db", db):
+            self.assertEqual(walk_in.customer_attribution_sql("Sales Invoice"),
+                             ("", "null", "pi.customer = %(customer)s"))
 
 
 class WalkInBillingTests(unittest.TestCase):

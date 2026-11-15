@@ -318,9 +318,11 @@ async function openReceipt(tx) {
 }
 
 function updateReceipt(updated) {
+  const linkChanged = updated.linked_customer && updated.linked_customer !== receipt.value?.linked_customer
   receipt.value = updated
   const row = txns.value.find((tx) => tx.name === updated.name)
   if (row) Object.assign(row, { receipt_contact: updated.receipt_contact, receipt_name: updated.receipt_name })
+  if (linkChanged && selected.value) select(selected.value)
 }
 </script>
 

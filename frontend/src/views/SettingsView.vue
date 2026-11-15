@@ -1676,6 +1676,13 @@
             </span>
           </label>
           <label class="setting-row">
+            <input type="checkbox" class="setting-toggle" v-model="generalForm.enable_receipt_customer_link" :true-value="1" :false-value="0" />
+            <span class="setting-text">
+              <span class="setting-title">{{ t('Add customers to walk-in receipts') }}</span>
+              <span class="setting-desc">{{ t('Link submitted walk-in sales to customer accounts from the receipt. Linked sales appear in the customer’s POS transactions.') }}</span>
+            </span>
+          </label>
+          <label class="setting-row">
             <input type="checkbox" class="setting-toggle" v-model="generalForm.enable_till_lock" :true-value="1" :false-value="0" />
             <span class="setting-text">
               <span class="setting-title">{{ t('Lock screen (PIN to unlock)') }}</span>
@@ -2798,6 +2805,7 @@ const generalForm = ref({
   enable_email_receipt: 0,
   enable_customer_display: 0,
   enable_walk_in_codes: 0,
+  enable_receipt_customer_link: 0,
   enable_till_lock: 0,
   auto_lock_minutes: 0,
   enable_quick_keys: 0,
@@ -3290,7 +3298,7 @@ const previewReceipt = computed(() => ({
 const AUDIT_ACTIONS = [
   'Sale', 'Return', 'Over-limit discount', 'Price edit', 'Item selling price updated in POS',
   'Register open', 'Register close', 'ERPNext day closed', 'Settings change', 'Email receipt', 'Till unlock',
-  'Customer payment', 'Customer credit', 'Reprint', 'Receipt customer updated',
+  'Customer payment', 'Customer credit', 'Reprint', 'Receipt customer updated', 'Receipt customer linked',
 ]
 const auditLogs = ref([])
 const auditFilter = ref({ action: '', from_date: '', to_date: '' })
@@ -3520,6 +3528,7 @@ async function load() {
     enable_email_receipt: info.enable_email_receipt || 0,
     enable_customer_display: info.enable_customer_display || 0,
     enable_walk_in_codes: info.enable_walk_in_codes || 0,
+    enable_receipt_customer_link: info.enable_receipt_customer_link || 0,
     enable_till_lock: info.enable_till_lock || 0,
     auto_lock_minutes: info.auto_lock_minutes || 0,
     enable_quick_keys: info.enable_quick_keys || 0,

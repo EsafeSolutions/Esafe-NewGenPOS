@@ -2,11 +2,11 @@
      SPDX-License-Identifier: AGPL-3.0-only
      "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md. -->
 <template>
-  <div class="modal-backdrop" @click.self="$emit('close')">
+  <div class="modal-backdrop" @click.self="close">
     <div class="modal">
       <div class="modal-header">
-        {{ creating ? t('New customer') : t('Select customer') }}
-        <button class="btn-ghost" @click="$emit('close')"><Icon name="close" /></button>
+        {{ creating ? t('New customer') : invoiceReceipt ? t('Add customer to invoice') : t('Select customer') }}
+        <button class="btn-ghost" :disabled="linking" @click="close"><Icon name="close" /></button>
       </div>
 
       <div class="modal-body" v-if="!creating">
@@ -22,6 +22,7 @@
             v-for="customer in results"
             :key="customer.name"
             class="result"
+            :disabled="linking"
             @click="select(customer)"
           >
             <div>
@@ -44,7 +45,8 @@
             {{ session.offline ? t('No match in the offline cache, connect to search all customers.') : t('No customers found') }}
           </div>
         </div>
-        <button class="btn btn-outline" style="width: 100%" @click="creating = true">
+        <button v-if="!invoiceReceipt || invoiceReceipt.can_create_receipt_customer" class="btn btn-outline" style="width: 100%"
+          :disabled="linking" @click="creating = true">
           + {{ t('Create new customer') }}
         </button>
       </div>
@@ -70,7 +72,8 @@
           </button>
         </div>
 
-        <input v-model="form.customer_name" :placeholder="form.customer_type === 'Company' ? t('Company name *') : t('Full name *')" />
+        <input v-model="form.customer_name" :placeholder="invoiceReceipt && form.customer_type === 'Individual'
+          ? t('Customer name (optional)') : form.customer_type === 'Company' ? t('Company name *') : t('Full name *')" />
         <!-- The rest is the shop's own form (Settings, General, Customers):
              each field hidden, optional or required per customer type. The
              built-in fields first, then the address, then the shop's own. -->
@@ -124,9 +127,9 @@
       </div>
 
       <div class="modal-footer" v-if="creating">
-        <button class="btn btn-outline" @click="creating = false">{{ t('Back') }}</button>
+        <button class="btn btn-outline" :disabled="linking" @click="creating = false">{{ t('Back') }}</button>
         <button class="btn btn-primary" :disabled="!canCreate" @click="create">
-          {{ t('Create & Select') }}
+          {{ invoiceReceipt ? t('Create and link') : t('Create & Select') }}
         </button>
       </div>
     </div>
@@ -135,26 +138,28 @@
 
 <script setup>
 import Icon from './Icon.vue'
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onBeforeUnmount, onMounted } from 'vue'
 import { call } from '../api'
 import { searchCustomersOffline, savePendingCustomer, putCustomer, newId } from '../offline'
 import { useCartStore } from '../stores/cart'
 import { useSessionStore } from '../stores/session'
 import { t } from '../i18n'
 
-const emit = defineEmits(['close'])
+const props = defineProps({ invoiceReceipt: Object })
+const emit = defineEmits(['close', 'linked'])
 const cart = useCartStore()
 const session = useSessionStore()
 
-const search = ref('')
+const search = ref(props.invoiceReceipt?.receipt_contact || '')
 const results = ref([])
 const searched = ref(false)
 const creating = ref(false)
+const linking = ref(false)
 const searchInput = ref(null)
 const form = ref({
   customer_type: 'Individual',
-  customer_name: '',
-  mobile_no: '',
+  customer_name: props.invoiceReceipt?.receipt_name || '',
+  mobile_no: props.invoiceReceipt?.receipt_contact || '',
   email_id: '',
   tax_id: '',
   building_no: '',
@@ -240,13 +245,18 @@ function loadLinkValues(field) {
 
 const canCreate = computed(() => {
   const f = form.value
-  if (!f.customer_name.trim()) return false
+  if (linking.value || (props.invoiceReceipt && !f.mobile_no.trim())) return false
+  if (!f.customer_name.trim() && (!props.invoiceReceipt || f.customer_type === 'Company')) return false
   return visibleFields.value.every((field) => !required(field) || filled(f[field.fieldname]))
 })
 
 onMounted(async () => {
   searchInput.value?.focus()
   await runSearch()
+})
+onBeforeUnmount(() => {
+  clearTimeout(timer)
+  clearTimeout(linkTimer)
 })
 
 function debouncedSearch() {
@@ -256,18 +266,49 @@ function debouncedSearch() {
 
 async function runSearch() {
   // Offline: search the cached recent-customers subset instead of the server.
-  results.value = session.offline
-    ? await searchCustomersOffline(search.value)
-    : await call('esafepos.api.catalog.search_customers', { search: search.value })
-  searched.value = true
+  const term = search.value
+  try {
+    const matches = session.offline
+      ? await searchCustomersOffline(term)
+      : await call('esafepos.api.catalog.search_customers', {
+        search: term, ...(props.invoiceReceipt ? { for_receipt: 1 } : {}),
+      })
+    if (term === search.value) {
+      results.value = matches
+      searched.value = true
+    }
+  } catch (error) {
+    if (term === search.value) session.notify(error.message, true)
+  }
 }
 
 function select(customer) {
+  if (props.invoiceReceipt) return linkReceipt({ customer: customer.name })
   cart.setCustomer(customer)
   emit('close')
 }
 
+function close() {
+  if (!linking.value) emit('close')
+}
+
+async function linkReceipt(details) {
+  if (linking.value) return
+  linking.value = true
+  try {
+    const receipt = await call('esafepos.api.sales.link_receipt_customer', {
+      invoice: props.invoiceReceipt.name, ...details,
+    })
+    emit('linked', receipt)
+  } catch (error) {
+    session.notify(error.message, true)
+  } finally {
+    linking.value = false
+  }
+}
+
 async function create() {
+  if (props.invoiceReceipt) return linkReceipt({ new_customer: form.value })
   // Offline: save a LOCAL pending customer with a temp id. On reconnect the
   // flush resolves it (match existing by mobile, else create) and remaps the
   // queued sale. See session.flushQueue.

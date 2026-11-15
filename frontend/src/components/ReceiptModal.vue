@@ -127,6 +127,10 @@
           class="btn btn-outline" :aria-expanded="customerEditorOpen" @click="openCustomerDetails">
           {{ t('Change customer name') }}
         </button>
+        <button v-if="receipt.can_link_customer && !session.offline && !receipt.offline"
+          class="btn btn-outline" @click="linkCustomerOpen = true">
+          {{ t('Add customer to invoice') }}
+        </button>
         <button v-if="!receipt.offline" class="btn btn-outline" @click="toggleShare">
           <Icon name="globe" /> {{ t('Send e-invoice') }}
         </button>
@@ -140,11 +144,14 @@
       </div>
     </div>
   </div>
+  <CustomerModal v-if="linkCustomerOpen" :invoice-receipt="receipt"
+    @close="linkCustomerOpen = false" @linked="onCustomerLinked" />
 </template>
 
 <script setup>
 import Icon from './Icon.vue'
 import ReceiptView from './ReceiptView.vue'
+import CustomerModal from './CustomerModal.vue'
 import { computed, nextTick, ref } from 'vue'
 import { call } from '../api'
 import { useSessionStore } from '../stores/session'
@@ -163,6 +170,7 @@ const props = defineProps({
 const emit = defineEmits(['close', 'refund', 'exchange', 'open-in-history', 'updated'])
 
 const session = useSessionStore()
+const linkCustomerOpen = ref(false)
 const printing = ref(false)
 const emailing = ref(false)
 const shareOpen = ref(false)
@@ -178,6 +186,16 @@ const customerPhoneInput = ref(null)
 const customerName = ref('')
 const customerNameOpen = ref(false)
 const customerNameInput = ref(null)
+
+function onCustomerLinked(updated) {
+  linkCustomerOpen.value = false
+  customerEditorOpen.value = false
+  shareOpen.value = false
+  shareDetails.value = null
+  shareMobile.value = ''
+  emit('updated', updated)
+  session.notify(t('Customer linked to invoice'))
+}
 
 async function openCustomerDetails() {
   if (!customerEditorOpen.value) {

@@ -39,6 +39,8 @@ check('Arabic text has no barcode', formatOf('صنف'), null)
 check('an empty code has no barcode', formatOf(''), null)
 check('nothing drawn without a barcode', svg('صنف'), '')
 check('the drawing starts after the quiet zone', svg('LP-PLAIN').includes('<rect x="10"'), true)
+check('numeric invoice IDs can force Code 128', encode('4006381333931', { code128: true }).format, 'CODE128')
+check('forcing Code 128 keeps leading zeros', encode('012345678905', { code128: true }).text, '012345678905')
 
 // Weight-embedded scale barcodes:
 const scale1 = parseScaleBarcode('2001234015006')

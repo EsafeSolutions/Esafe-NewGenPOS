@@ -11,7 +11,8 @@
     </div>
     <div v-else class="grid" :class="mode">
       <article v-for="item in visibleItems.slice(0, rendered)" :key="item.item_code" class="tile card">
-        <button type="button" class="tile-main" @click="$emit('inspect', item)">
+        <button type="button" class="tile-main" :class="{ 'tile-main--photo': mode === 'image' && item.image }"
+          @click="$emit('inspect', item)">
           <div v-if="mode !== 'list'" class="tile-img">
             <img v-if="item.image" :src="item.image" :alt="item.item_name" loading="lazy" />
             <Icon v-else name="image" />
@@ -23,10 +24,12 @@
           </div>
         </button>
         <div class="tile-foot">
-          <div><strong>{{ money(item.price) }}</strong>
-            <small v-if="item.is_stock_item" class="muted">{{ t('{qty} in stock', { qty: item.actual_qty }) }}</small>
+          <div><strong class="tile-price">{{ money(item.price) }}</strong>
+            <small v-if="item.is_stock_item" class="tile-stock" :class="{ 'tile-stock--empty': item.actual_qty <= 0 }">
+              {{ t('{qty} in stock', { qty: item.actual_qty }) }}
+            </small>
           </div>
-          <button type="button" class="btn btn-outline btn-sm" :aria-label="t('Add {item} to cart', { item: item.item_name })" @click="$emit('select', item)">{{ t('Add') }}</button>
+          <button type="button" class="btn btn-sm tile-add" :aria-label="t('Add {item} to cart', { item: item.item_name })" @click="$emit('select', item)">{{ t('Add') }}</button>
         </div>
       </article>
     </div>
@@ -83,9 +86,30 @@ function loadNearEnd(event) {
 .tile-img { display: grid; place-items: center; height: 92px; width: 100%; background: var(--surface-2); color: var(--text-muted); }
 .tile-img img { width: 100%; height: 100%; object-fit: cover; }
 .tile-copy { display: grid; gap: 3px; padding: 9px 10px; overflow-wrap: anywhere; }
-.tile-copy small, .tile-foot small { display: block; color: var(--text-muted); }
+.tile-copy small { display: block; color: var(--text-muted); }
+.tile-main--photo { position: relative; min-height: 150px; }
+.tile-main--photo .tile-img { position: absolute; inset: 0; height: auto; }
+.tile-main--photo .tile-img img { position: absolute; inset: 0; }
+.tile-main--photo .tile-copy {
+  position: relative;
+  align-self: stretch;
+  margin-top: auto;
+  background: var(--card-bg);
+  background: color-mix(in srgb, var(--card-bg) 84%, transparent);
+}
+.tile-main--photo .tile-copy small { color: var(--text); }
 .tile-copy p { margin: 4px 0 0; white-space: pre-wrap; line-height: 1.5; }
 .tile-foot { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 8px 10px; }
+.tile-price { color: var(--catalog-price); }
+.tile-stock { display: block; color: var(--catalog-stock); }
+.tile-stock--empty { color: var(--catalog-stock-empty); }
+.tile-add {
+  color: #fff;
+  background: #b5242a;
+  background: color-mix(in srgb, var(--red) 73%, black);
+}
+.tile-add:hover { background: color-mix(in srgb, var(--red) 65%, black); }
+.tile-add:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
 .list .tile, .detail .tile { flex-direction: row; }
 .list .tile-foot, .detail .tile-foot { gap: 12px; }
 .detail .tile-main { display: grid; grid-template-columns: minmax(60px, 23%) minmax(0, 1fr); align-items: start; }

@@ -8,6 +8,7 @@ from frappe import _
 from frappe.utils import cint
 
 FALLBACK_CUSTOMER = "ESAFE POS Walk-in"
+RECEIPT_CUSTOMER_FIELD = "esafepos_receipt_customer"
 
 
 def enabled():
@@ -66,6 +67,21 @@ def receipt_customer_name(invoice):
 def receipt_custom_name(invoice):
     name = invoice.get("esafepos_walk_in_name") or ""
     return name if name != invoice.get("esafepos_walk_in_phone") else ""
+
+
+def customer_attribution_sql(doctype):
+    """Use the receipt link for POS reporting, including refunds of linked sales."""
+    target = "%(customer)s"
+    if not frappe.db.has_column(doctype, RECEIPT_CUSTOMER_FIELD):
+        return "", "null", f"pi.customer = {target}"
+    # Callers use the two fixed invoice doctypes and the pi alias.
+    join = f"left join `tab{doctype}` original_pi on pi.is_return = 1 and original_pi.name = pi.return_against"
+    linked = "coalesce(nullif(pi.esafepos_receipt_customer, ''), nullif(original_pi.esafepos_receipt_customer, ''))"
+    candidates = (
+        f"(pi.customer = {target} or pi.esafepos_receipt_customer = {target}"
+        f" or pi.return_against in (select name from `tab{doctype}` where esafepos_receipt_customer = {target}))"
+    )
+    return join, linked, f"({candidates} and coalesce({linked}, pi.customer) = {target})"
 
 
 def ensure_customer():

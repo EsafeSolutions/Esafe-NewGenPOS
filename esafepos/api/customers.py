@@ -99,22 +99,26 @@ def customer_detail(customer: str, company: str | None = None):
     # Both invoice kinds: an outlet may post Sales Invoices directly. Not the
     # Sales Invoice ERPNext consolidates a shift into: it carries is_pos too,
     # and its POS Invoices are already counted.
+    from esafepos.walk_in import customer_attribution_sql
+
     stats = frappe._dict(sales_count=0, returns_count=0, total_spent=0, total_refunded=0, last_purchase=None)
     for doctype, extra in (
         ("POS Invoice", ""),
-        ("Sales Invoice", " and is_pos = 1 and ifnull(is_consolidated, 0) = 0"),
+        ("Sales Invoice", " and pi.is_pos = 1 and ifnull(pi.is_consolidated, 0) = 0"),
     ):
+        join, _, customer_matches = customer_attribution_sql(doctype)
         # doctype and extra are fixed strings, the values are bound.
         row = frappe.db.sql(  # nosemgrep
             f"""
             select
-                sum(case when is_return = 0 then 1 else 0 end) as sales_count,
-                sum(case when is_return = 1 then 1 else 0 end) as returns_count,
-                sum(case when is_return = 0 then base_grand_total else 0 end) as total_spent,
-                sum(case when is_return = 1 then abs(base_grand_total) else 0 end) as total_refunded,
-                max(posting_date) as last_purchase
-            from `tab{doctype}`
-            where customer = %(customer)s and company = %(company)s and docstatus = 1{extra}
+                sum(case when pi.is_return = 0 then 1 else 0 end) as sales_count,
+                sum(case when pi.is_return = 1 then 1 else 0 end) as returns_count,
+                sum(case when pi.is_return = 0 then pi.base_grand_total else 0 end) as total_spent,
+                sum(case when pi.is_return = 1 then abs(pi.base_grand_total) else 0 end) as total_refunded,
+                max(pi.posting_date) as last_purchase
+            from `tab{doctype}` pi
+            {join}
+            where {customer_matches} and pi.company = %(company)s and pi.docstatus = 1{extra}
             """,
             {"customer": customer, "company": company},
             as_dict=True,

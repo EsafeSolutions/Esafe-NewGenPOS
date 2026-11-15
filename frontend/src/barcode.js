@@ -102,9 +102,10 @@ function code128Values(text) {
   return values
 }
 
-export function encode(code) {
+export function encode(code, { code128 = false } = {}) {
   const s = String(code || '').trim()
-  const format = formatOf(s)
+  const detected = formatOf(s)
+  const format = code128 && detected ? 'CODE128' : detected
   if (format === 'EAN13') return { format, modules: ean13Modules(s), text: s }
   if (format === 'UPCA') return { format, modules: ean13Modules('0' + s), text: s }
   if (format === 'CODE128') return { format, modules: code128Values(s).map((v) => C128[v]).join(''), text: s }
@@ -114,8 +115,8 @@ export function encode(code) {
 // The bars as SVG, `height` in the SVG's own units, `module` the width of one
 // module. Quiet zones of 10 modules each side. The digits under the bars are the
 // label's business (they need its font), so they are not drawn here.
-export function svg(code, { height = 40, module = 1, color = '#000' } = {}) {
-  const { modules } = encode(code)
+export function svg(code, { height = 40, module = 1, color = '#000', code128 = false } = {}) {
+  const { modules } = encode(code, { code128 })
   if (!modules) return ''
   const quiet = 10
   const width = (modules.length + 2 * quiet) * module

@@ -2111,6 +2111,73 @@ def _can_edit_receipt_customer(doc):
     )
 
 
+def _can_link_receipt_customer(doc):
+    if (not doc.meta.has_field(walk_in.RECEIPT_CUSTOMER_FIELD)
+            or doc.get(walk_in.RECEIPT_CUSTOMER_FIELD)
+            or not cint(frappe.get_cached_doc("EsafePOS Settings").get("enable_receipt_customer_link"))
+            or not frappe.has_permission("Customer", "read")):
+        return False
+    return bool(
+        not doc.customer or doc.customer == walk_in.FALLBACK_CUSTOMER
+        or doc.get("esafepos_walk_in_code")
+        or doc.customer == frappe.get_cached_value("POS Profile", doc.pos_profile, "customer")
+    )
+
+
+@frappe.whitelist(methods=["POST"])
+def link_receipt_customer(invoice: str, customer: str | None = None, new_customer: dict | str | None = None):
+    """Attribute a posted walk-in invoice to a customer in POS."""
+    doc = frappe.get_doc(_doctype_of(invoice), invoice)
+    doc.check_permission("read")
+    if not _can_edit_receipt_customer(doc) or not _can_link_receipt_customer(doc):
+        frappe.throw(_("You cannot add a customer to this receipt."), frappe.PermissionError)
+    # Lock the invoice before creating a customer or writing the link.
+    locked = frappe.db.get_value(
+        doc.doctype, doc.name, [walk_in.RECEIPT_CUSTOMER_FIELD, "docstatus"], as_dict=True, for_update=True,
+    )
+    if not locked or locked.docstatus != 1 or locked.get(walk_in.RECEIPT_CUSTOMER_FIELD):
+        frappe.throw(_("This receipt has changed. Reopen it and try again."))
+    if bool(customer) == bool(new_customer):
+        frappe.throw(_("Select a customer or enter the details for a new customer."))
+
+    from esafepos.api import audit, catalog
+
+    phone = None
+    if new_customer:
+        if not frappe.has_permission("Customer", "create"):
+            frappe.throw(_("You are not permitted to create customers."), frappe.PermissionError)
+        details = json.loads(new_customer) if isinstance(new_customer, str) else new_customer
+        if not isinstance(details, dict):
+            frappe.throw(_("Enter the details for a new customer."))
+        details = dict(details)
+        raw_phone = details.get("mobile_no")
+        phone = walk_in.contact_number(raw_phone)
+        if not phone:
+            frappe.throw(_("Enter a valid contact number."))
+        matches = catalog.customers_matching_phone(raw_phone, phone)
+        if len(matches) > 1:
+            frappe.throw(_("More than one customer matches this number. Select the correct customer."))
+        if matches:
+            customer = matches[0].name
+        else:
+            details["mobile_no"] = phone
+            details["customer_name"] = (details.get("customer_name") or "").strip() or phone
+            customer = catalog.create_customer(details)["name"]
+
+    party = frappe.get_doc("Customer", customer)
+    party.check_permission("read")
+    if cint(party.disabled) or party.name in credit_sales.walk_ins():
+        frappe.throw(_("Select an active customer account for this receipt."))
+    doc.db_set({
+        walk_in.RECEIPT_CUSTOMER_FIELD: party.name,
+        "esafepos_walk_in_name": party.customer_name,
+        "esafepos_walk_in_phone": party.mobile_no or phone or doc.get("esafepos_walk_in_phone") or "",
+    })
+    audit.log("Receipt customer linked", detail=party.name, reference_doctype=doc.doctype,
+              reference_name=doc.name, pos_profile=doc.pos_profile)
+    return get_receipt(doc.name)
+
+
 @frappe.whitelist()
 def get_receipt(invoice: str):
     doc = frappe.get_doc(_doctype_of(invoice), invoice)
@@ -2246,6 +2313,7 @@ def get_receipt(invoice: str):
             customer_phone = ""
     cashier = frappe.db.get_value("User", doc.owner, "full_name") or doc.owner
     can_edit_customer = _can_edit_receipt_customer(doc)
+    can_link_customer = can_edit_customer and _can_link_receipt_customer(doc)
 
     return {
         "name": doc.name,
@@ -2275,6 +2343,9 @@ def get_receipt(invoice: str):
         "walk_in_name": doc.get("esafepos_walk_in_name") or "",
         "can_edit_walk_in": can_edit_customer,
         "can_edit_customer_details": can_edit_customer,
+        "can_link_customer": can_link_customer,
+        "can_create_receipt_customer": can_link_customer and frappe.has_permission("Customer", "create"),
+        "linked_customer": doc.get(walk_in.RECEIPT_CUSTOMER_FIELD),
         "cashier": cashier,
         "terminal": doc.get("pos_profile") or "",
         "company": doc.company,
@@ -2435,6 +2506,8 @@ def _search_probe_names(doctype, term, order_field=None, cap=SEARCH_PROBE_CAP):
     add(q(f"select name from `{tbl}` where name = %s limit 1", (term,)))
     if term.upper().startswith("W-") and frappe.db.has_column(doctype, "esafepos_walk_in_code"):
         add(q(f"select name from `{tbl}` where esafepos_walk_in_code like %s limit %s", (prefix, remaining())))
+    if frappe.db.has_column(doctype, walk_in.RECEIPT_CUSTOMER_FIELD):
+        add(q(f"select name from `{tbl}` where esafepos_receipt_customer like %s limit %s", (prefix, remaining())))
     phone = walk_in.contact_number(term)
     if phone and frappe.db.has_column(doctype, "esafepos_walk_in_phone"):
         add(q(f"select name from `{tbl}` where esafepos_walk_in_phone in %s limit %s",
@@ -2530,6 +2603,7 @@ def _history_doctypes(company=None):
 
 def _search_sales_in(doctype, f):
     """search_sales on one invoice table."""
+    receipt_customer_join, linked_customer, customer_matches = walk_in.customer_attribution_sql(doctype)
     from esafepos.api.permissions import allowed_companies
 
     # kind= makes these resolve by TYPE as well as name: a site whose
@@ -2577,7 +2651,7 @@ def _search_sales_in(doctype, f):
         conds.append("ifnull(pi.is_consolidated, 0) = 0")
 
     if f.get("customer"):
-        conds.append("pi.customer = %(customer)s")
+        conds.append(customer_matches)
         params["customer"] = f.customer
     if f.get("is_return") in ("1", 1, True):
         conds.append("pi.is_return = 1")
@@ -2699,8 +2773,10 @@ def _search_sales_in(doctype, f):
                pi.creation, pi.grand_total, pi.currency, pi.posting_date, pi.posting_time,
                pi.status, pi.docstatus, pi.is_return, pi.owner, u.full_name as owner_name,
                {app_select}, {order_select}, {online_select}, {exchange_select},
-               {pay_modes_select}, {walk_in_select}, {receipt_contact_select}, {receipt_name_select}
+               {pay_modes_select}, {walk_in_select}, {receipt_contact_select}, {receipt_name_select},
+               {linked_customer} as linked_customer
         from `tab{doctype}` pi
+        {receipt_customer_join}
         left join `tabCustomer` c on c.name = pi.customer
         left join `tabUser` u on u.name = pi.owner
         where {where}

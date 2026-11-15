@@ -21,6 +21,7 @@ import frappe
 from frappe import _
 from frappe.utils import cint, flt, fmt_money, get_url
 from esafepos.receipt_options import receipt_footer
+from esafepos.receipt_barcode import invoice_svg_data
 from esafepos.walk_in import receipt_customer_name
 
 
@@ -190,6 +191,7 @@ def public_receipt(type_code, invoice, expires, signature):
 
     return {
         "name": doc.name,
+        "invoice_barcode": invoice_svg_data(doc.name),
         "is_return": cint(doc.get("is_return")),
         "return_against": doc.get("return_against") or "",
         "company": doc.company,

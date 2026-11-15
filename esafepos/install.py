@@ -864,6 +864,17 @@ def make_custom_fields():
             no_copy=1,
             search_index=1,
         ),
+        dict(
+            fieldname="esafepos_receipt_customer",
+            label="POS Receipt Customer",
+            fieldtype="Link",
+            options="Customer",
+            insert_after="esafepos_walk_in_phone",
+            read_only=1,
+            no_copy=1,
+            search_index=1,
+            description="Customer attribution for POS history. ERPNext posts the invoice to its billing customer.",
+        ),
         # Sales on account (esafepos.credit_sales, 0.60.0): the Journal Entry
         # that booked this sale's part on account on the customer, or took a
         # return's off it.

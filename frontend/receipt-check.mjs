@@ -119,6 +119,8 @@ try {
         amounts: cells.map((cell) => cell.textContent),
         counts: receipt.querySelector('.retail-counts')?.textContent,
         footer: receipt.querySelector('footer').innerText,
+        barcode: receipt.querySelector('.receipt-barcode')?.textContent.trim(),
+        barcodeWidth: receipt.querySelector('.receipt-barcode svg')?.getBoundingClientRect().width,
         grid: grid && [getComputedStyle(grid).borderInlineEndStyle, getComputedStyle(grid).borderInlineEndColor],
         logoHeight: receipt.querySelector('img')?.getBoundingClientRect().height,
         mode: document.compatMode,
@@ -128,6 +130,8 @@ try {
     assert.ok(geometry.scrollWidth <= geometry.width + 1, 'Receipt must fit the roll')
     assert.equal(geometry.overflow, 0, 'Price columns must fit without clipping')
     assert.equal(geometry.mode, 'CSS1Compat', 'Table fonts must inherit in standards mode')
+    assert.equal(geometry.barcode, 'ACC-PSINV-2026-00004')
+    assert.ok(geometry.barcodeWidth > 0 && geometry.barcodeWidth < geometry.width)
     assert.equal(geometry.footer.split('\n').filter((line) => line === 'ESAFE ERP+POS - pos.esafe.lk').length, 1)
     if (config.customFooter) assert.match(geometry.footer, /Visit again!/)
     if (config.template === 'Table') assert.deepEqual(geometry.grid, ['solid', 'rgb(181, 181, 181)'])
@@ -220,14 +224,18 @@ try {
   const sample = { name: 'POS-001', company: 'Weerakoon Agro', currency: 'LKR', posting_date: '2026-11-16',
     posting_time: '10:00:00', docstatus: 1, grand_total: 425, customer_name: customer.customer_name,
     items: [], can_edit_customer_details: true, receipt_contact: '' }
+  const member = { name: 'CUSTOMER-1', customer_name: 'Existing member', mobile_no: '0770000001' }
+  let matchingMember = true
   await page.route('**/api/method/**', async (route) => {
     const method = route.request().url().split('.').pop()
     const payload = route.request().postDataJSON() || {}
     let message = []
-    if (method === 'search_customers') message = { items: [customer], has_more: false }
+    if (method === 'search_customers') {
+      message = payload.for_receipt ? matchingMember ? [member] : [] : { items: [customer], has_more: false }
+    }
     if (method === 'customer_detail') message = { ...customer, stats: {}, wallet: {} }
     if (method === 'search_sales') {
-      message = !payload.filters?.search || payload.filters.search === sample.receipt_contact ? [sample] : []
+      message = !payload.filters?.search || [sample.name, sample.receipt_contact].includes(payload.filters.search) ? [sample] : []
     }
     if (method === 'get_receipt') message = sample
     if (method === 'save_walk_in_details') {
@@ -236,6 +244,17 @@ try {
       const name = payload.customer_name || ''
       assert.equal(payload.customer_name, sample.receipt_contact ? 'Nimal' : undefined)
       Object.assign(sample, { customer_name: name || number, customer_phone: number, receipt_contact: number, receipt_name: name })
+      message = sample
+    }
+    if (method === 'link_receipt_customer') {
+      assert.equal(payload.invoice, sample.name)
+      if (matchingMember) assert.equal(payload.customer, member.name)
+      else {
+        assert.equal(payload.new_customer.mobile_no, '0770000001')
+        assert.equal(payload.new_customer.customer_name, '')
+      }
+      Object.assign(sample, { can_link_customer: false, linked_customer: member.name,
+        customer_name: matchingMember ? member.customer_name : sample.receipt_contact })
       message = sample
     }
     await route.fulfill({ json: { message } })
@@ -267,6 +286,26 @@ try {
     await page.getByText(view === 'history' ? 'Nimal' : number, { exact: true }).waitFor()
     console.log('PASS invoice customer editor from', view)
   }
+  Object.assign(sample, { can_link_customer: true, can_create_receipt_customer: true })
+  const historySearch = page.getByRole('textbox', { name: 'Search history or scan a receipt barcode' })
+  await historySearch.fill('')
+  await historySearch.pressSequentially(sample.name)
+  await historySearch.press('Enter')
+  await page.getByRole('img', { name: 'Barcode for invoice ' + sample.name }).waitFor()
+  console.log('PASS receipt scan opens the exact invoice in History')
+  await page.getByRole('button', { name: 'Add customer to invoice' }).click()
+  await page.getByRole('button', { name: /Existing member/ }).click()
+  await page.locator('#receipt-print').getByText(/Existing member/).waitFor()
+  assert.equal(await page.getByRole('button', { name: 'Add customer to invoice' }).count(), 0)
+  await page.getByRole('button', { name: 'New Sale' }).click()
+  Object.assign(sample, { can_link_customer: true, linked_customer: null, receipt_name: '' })
+  matchingMember = false
+  await historySearch.press('Enter')
+  await page.getByRole('button', { name: 'Add customer to invoice' }).click()
+  await page.getByRole('button', { name: /Create new customer/ }).click()
+  await page.getByRole('button', { name: 'Create and link' }).click()
+  await page.locator('#receipt-print').getByText('0770000001', { exact: true }).waitFor()
+  console.log('PASS linking an existing customer and creating a phone-only customer from a receipt')
   assert.deepEqual(errors, [], 'Receipt must render without browser errors')
 } finally {
   await browser.close()

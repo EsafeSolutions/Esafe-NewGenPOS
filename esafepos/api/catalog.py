@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import frappe
 from frappe import _
-from frappe.utils import flt
+from frappe.utils import cint, flt
 
 from esafepos import erpnext_compat
 from esafepos.price_books import effective_prices, resolve_price_list, standard_prices
@@ -884,7 +884,8 @@ def recent_customers(pos_profile: str, limit: int | str = 2000):
 
 
 @frappe.whitelist()
-def search_customers(search: str = ""):
+def search_customers(search: str = "", for_receipt: int | str = 0):
+    for_receipt = bool(cint(for_receipt))
     or_filters = None
     if search:
         or_filters = {
@@ -893,9 +894,22 @@ def search_customers(search: str = ""):
             "mobile_no": ["like", f"%{search}%"],
             "tax_id": ["like", f"%{search}%"],
         }
-    return frappe.get_all(
+    filters = {"disabled": 0}
+    if for_receipt:
+        from esafepos.credit_sales import walk_ins
+        from esafepos.walk_in import contact_number
+
+        excluded = walk_ins()
+        phone = contact_number(search)
+        if phone:
+            matches = [row for row in customers_matching_phone(search, phone) if row.name not in excluded]
+            if matches:
+                return matches
+        filters["name"] = ["not in", sorted(excluded)]
+    get_customers = frappe.get_list if for_receipt else frappe.get_all
+    return get_customers(
         "Customer",
-        filters={"disabled": 0},
+        filters=filters,
         or_filters=or_filters,
         fields=[
             "name", "customer_name", "customer_group", "customer_type",
@@ -944,10 +958,17 @@ def display_customer_lookup(pos_profile: str, mobile: str):
     assert_outlet(pos_profile)
     if not frappe.get_cached_doc("EsafePOS Settings").get("enable_customer_display"):
         frappe.throw(_("The customer display is turned off."))
-    raw = (mobile or "").strip()
-    number = contact_number(raw)
+    number = contact_number(mobile)
     if not number:
         frappe.throw(_("Enter a valid contact number."))
+    matches = customers_matching_phone(mobile, number)
+    if len(matches) > 1:
+        frappe.throw(_("More than one customer matches. Please ask the cashier."))
+    return matches[0] if matches else None
+
+
+def customers_matching_phone(mobile, number):
+    raw = (mobile or "").strip()
     digits = number.lstrip("+")
     candidates = {raw, number}
     local = digits[2:] if digits.startswith("94") and len(digits) == 11 else ""
@@ -955,14 +976,11 @@ def display_customer_lookup(pos_profile: str, mobile: str):
         local = digits[1:]
     if local.startswith("7"):
         candidates.update(("0" + local, "+94" + local, "94" + local))
-    matches = frappe.get_list(
+    return frappe.get_list(
         "Customer", filters={"disabled": 0},
         or_filters={field: ["in", sorted(candidates)] for field in ("mobile_no", *_host_mobile_fields())},
         fields=CUSTOMER_FIELDS, limit_page_length=2,
     )
-    if len(matches) > 1:
-        frappe.throw(_("More than one customer matches. Please ask the cashier."))
-    return matches[0] if matches else None
 
 
 def find_customer_by_mobile(mobile):

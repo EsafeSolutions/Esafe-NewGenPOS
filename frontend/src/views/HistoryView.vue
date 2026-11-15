@@ -8,10 +8,12 @@
         <div class="search-box">
           <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="m21 21-4.3-4.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
           <input
+            ref="historySearch"
             v-model="filters.search"
             :placeholder="t('Invoice no, customer, walk-in code, mobile or order ID…')"
+            :aria-label="t('Search history or scan a receipt barcode')"
             @input="debouncedLoad"
-            @keydown.enter.prevent="load"
+            @keydown.enter.prevent="findInvoice"
           />
         </div>
         <button class="btn btn-outline" :class="{ 'filters-on': activeFilterCount }" @click="showFilters = !showFilters">
@@ -200,7 +202,7 @@
       :can-refund="session.permissions.can_return !== false"
       :can-exchange="session.permissions.can_exchange !== false"
       reprint
-      @close="receipt = null"
+      @close="closeReceipt"
       @updated="updateReceipt"
       @refund="startRefund"
       @exchange="startExchange"
@@ -224,7 +226,7 @@
 
 <script setup>
 import Icon from '../components/Icon.vue'
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, nextTick, onBeforeUnmount, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { call } from '../api'
 import { useSessionStore } from '../stores/session'
@@ -241,6 +243,7 @@ const router = useRouter()
 const sales = ref([])
 const loading = ref(true)
 const receipt = ref(null)
+const historySearch = ref(null)
 const refundInvoice = ref(null)
 const refundMode = ref('refund') // 'refund' | 'exchange'
 const showFilters = ref(false)
@@ -311,8 +314,10 @@ onMounted(async () => {
     if (hit) await show(hit.name)
     return
   }
+  if (!session.offline) historySearch.value?.focus()
   load()
 })
+onBeforeUnmount(() => clearTimeout(timer))
 
 function debouncedLoad() {
   clearTimeout(timer)
@@ -348,6 +353,7 @@ async function load() {
     const rows = await call('esafepos.api.sales.search_sales', { filters: payload })
     if (seq !== searchSeq) return // a newer search already answered
     sales.value = rows
+    return rows
   } catch (e) {
     if (seq === searchSeq) session.notify(e.message, true)
   } finally {
@@ -363,7 +369,27 @@ function clearFilters() {
 }
 
 async function show(name) {
-  receipt.value = await call('esafepos.api.sales.get_receipt', { invoice: name })
+  try {
+    receipt.value = await call('esafepos.api.sales.get_receipt', { invoice: name })
+  } catch (error) {
+    session.notify(error.message, true)
+  }
+}
+
+async function findInvoice() {
+  clearTimeout(timer)
+  const invoice = filters.value.search.trim()
+  const rows = await load()
+  if (invoice && invoice === filters.value.search.trim() && rows?.some((sale) => sale.name === invoice)) {
+    await show(invoice)
+  }
+}
+
+async function closeReceipt() {
+  receipt.value = null
+  await nextTick()
+  historySearch.value?.focus()
+  historySearch.value?.select()
 }
 
 function updateReceipt(updated) {

@@ -25,6 +25,7 @@ from frappe.utils import cint, flt
 
 from esafepos.api.sales import get_receipt
 from esafepos.receipt_options import receipt_footer
+from esafepos.receipt_barcode import invoice_raster
 
 ESC = b"\x1b"
 GS = b"\x1d"
@@ -202,7 +203,7 @@ def build_receipt_bytes(receipt, open_drawer=0):
     if receipt.get("loyalty_points_earned"):
         out += _text(f"Points earned: {receipt['loyalty_points_earned']}") + b"\n"
 
-    out += _receipt_footer_bytes(settings, width)
+    out += _receipt_footer_bytes(settings, width, receipt["name"])
     out += FEED_CUT
     return bytes(out)
 
@@ -323,12 +324,16 @@ def _retail_receipt_body(receipt, width, lined=False):
         out += _line(width) + b"\n"
         for part in str(settings["receipt_terms"]).splitlines() or [settings["receipt_terms"]]:
             out += _text(part[:width]) + b"\n"
-    out += _receipt_footer_bytes(settings, width)
+    out += _receipt_footer_bytes(settings, width, receipt["name"])
     return out
 
 
-def _receipt_footer_bytes(settings, width):
-    out = bytearray(ALIGN_CENTER + b"\nThank you!\n")
+def _receipt_footer_bytes(settings, width, invoice_id):
+    out = bytearray(ALIGN_CENTER + b"\n")
+    barcode = invoice_raster(invoice_id, 384 if width == 32 else 512)
+    if barcode:
+        out += barcode + _text(invoice_id) + b"\n"
+    out += b"Thank you!\n"
     for line in receipt_footer(settings).splitlines():
         for part in wrap(line, width=width):
             out += _text(part) + b"\n"

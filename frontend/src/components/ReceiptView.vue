@@ -274,6 +274,11 @@
 
     </template>
     <footer class="receipt-foot muted small">
+      <div v-if="invoiceBarcode" class="receipt-barcode" role="img"
+        :aria-label="t('Barcode for invoice {invoice}', { invoice: receipt.name })">
+        <div aria-hidden="true" v-html="invoiceBarcode"></div>
+        <div class="mono" dir="ltr">{{ receipt.name }}</div>
+      </div>
       <div>{{ t('Thank you!') }}</div>
       <div class="receipt-extra">{{ footer }}</div>
     </footer>
@@ -285,6 +290,7 @@ import { computed } from 'vue'
 import { t } from '../i18n'
 import { isolate, money, outletCurrency, rateLine } from '../format'
 import { receiptFooter } from '../receiptOptions'
+import { svg as barcodeSvg } from '../barcode'
 import { useSessionStore } from '../stores/session'
 
 const props = defineProps({
@@ -305,6 +311,7 @@ const s = computed(
   () => props.settings || { ...(session.settings || {}), ...(props.receipt.receipt_settings || {}) }
 )
 const footer = computed(() => receiptFooter(s.value.receipt_footer || ''))
+const invoiceBarcode = computed(() => props.receipt.offline ? '' : barcodeSvg(props.receipt.name, { code128: true }))
 
 // Amounts print in the sale's own currency (esafepos.currency). A sale in
 // another currency also shows its local value, the rate, each tender in its own
@@ -457,6 +464,9 @@ const paymentRows = computed(() =>
   white-space: pre-line;
 }
 .receipt-foot { text-align: center; margin-top: 12px; }
+.receipt-barcode { width: min(100%, 320px); margin: 0 auto 8px; padding: 5px 0; color: #000; background: #fff; break-inside: avoid; }
+.receipt-barcode :deep(svg) { display: block; width: 100%; height: 40px; }
+.receipt-barcode .mono { margin-top: 3px; overflow-wrap: anywhere; }
 .receipt-cf-img { max-width: 60%; max-height: 150px; object-fit: contain; margin: 6px auto; display: block; }
 .receipt-cf-foot {
   text-align: center;

@@ -97,6 +97,7 @@
   "enable_email_receipt",
   "enable_customer_display",
   "enable_walk_in_codes",
+  "enable_receipt_customer_link",
   "enable_till_lock",
   "auto_lock_minutes",
   "enable_quick_keys",
@@ -666,6 +667,13 @@
    "fieldtype": "Check",
    "description": "Allow checkout without selecting a customer. Uses the outlet default or the shared ESAFE POS Walk-in customer.",
    "label": "Automatic walk-in customer codes"
+  },
+  {
+   "default": "0",
+   "fieldname": "enable_receipt_customer_link",
+   "fieldtype": "Check",
+   "label": "Add customers to walk-in receipts",
+   "description": "Let staff link a submitted walk-in sale to a customer for POS history and customer totals."
   },
   {
    "default": "0",

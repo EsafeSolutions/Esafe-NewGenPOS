@@ -11,9 +11,9 @@
     <div class="main">
       <header class="topbar">
         <div class="topbar-left">
-          <div class="brand-lockup" aria-label="ESAFE POS">
-            <span class="brand-name">Esafe</span>
-            <span class="brand-product">New Gen POS</span>
+          <div class="brand-lockup">
+            <span class="brand-name">ESAFE POS</span>
+            <bdi v-if="session.company" class="shop-name" :title="session.company">{{ session.company }}</bdi>
           </div>
           <span class="brand-divider" aria-hidden="true"></span>
           <div class="topbar-title">{{ pageTitle }}</div>
@@ -23,55 +23,60 @@
           </span>
         </div>
         <div class="topbar-right">
+          <div v-if="route.path === '/'" id="sell-header-tools" class="topbar-tools"></div>
           <!-- Help for this screen (0.58.0, Settings, General, Help for staff). -->
           <button
             v-if="help.inTill"
-            class="lang-pill help-pill"
+            class="lang-pill topbar-icon"
             data-tour="help-button"
             :title="t('Help for this screen')"
             :aria-label="t('Help for this screen')"
             @click="help.togglePanel()"
           >
-            <Icon name="help" /><span class="help-word">{{ t('Help') }}</span>
+            <Icon name="help" />
           </button>
           <button
             v-if="session.settings.enable_xreport && session.registerOpen"
-            class="lang-pill"
+            class="lang-pill topbar-icon"
             data-tour="xreport"
             :title="t('X-report (mid-shift read)')"
+            :aria-label="t('X-report')"
             :disabled="xreportLoading"
             @click="openXReport"
           >
-            <Icon name="report" /> {{ t('X-report') }}
+            <Icon name="report" />
           </button>
           <button
             v-if="session.settings.enable_till_lock"
-            class="lang-pill"
+            class="lang-pill topbar-icon"
             :title="t('Lock the till')"
+            :aria-label="t('Lock the till')"
             @click="session.lockTill()"
           >
-            <Icon name="shield" /> {{ t('Lock') }}
+            <Icon name="shield" />
           </button>
           <!-- Two languages: one tap swaps them. More: a short list. -->
           <button
             v-if="offeredLanguages.length === 2"
-            class="lang-pill"
+            class="lang-pill topbar-icon"
             data-tour="language"
-            :title="t('Language')"
+            :title="t('Language') + ' · ' + otherLanguage.name"
+            :aria-label="t('Language') + ' · ' + otherLanguage.name"
             :lang="otherLanguage.code"
             @click="setLocale(otherLanguage.code)"
           >
-            {{ otherLanguage.name }}
+            <Icon name="globe" />
           </button>
           <div v-else-if="offeredLanguages.length > 2" ref="langMenu" class="lang-menu" data-tour="language">
             <button
-              class="lang-pill"
-              :title="t('Language')"
+              class="lang-pill topbar-icon"
+              :title="t('Language') + ' · ' + currentLanguage.name"
+              :aria-label="t('Language') + ' · ' + currentLanguage.name"
               aria-haspopup="listbox"
               :aria-expanded="langOpen ? 'true' : 'false'"
               @click="langOpen = !langOpen"
             >
-              <Icon name="globe" /> {{ currentLanguage.name }} ▾
+              <Icon name="globe" />
             </button>
             <div v-if="langOpen" class="lang-list" role="listbox" :aria-label="t('Language')">
               <button
@@ -450,15 +455,20 @@ function setupAutoLock() {
 }
 .brand-lockup {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
-  gap: 2px;
-  white-space: nowrap;
-  flex: 0 0 auto;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+  max-width: 100%;
 }
-.brand-name { font-size: 18px; font-weight: 800; line-height: 1; }
-.brand-product { font-size: 10px; font-weight: 600; line-height: 1.2; letter-spacing: 0.08em; color: var(--brand-soft); }
+.brand-name { font-size: 14px; font-weight: 800; white-space: nowrap; color: var(--brand-soft); }
+.shop-name {
+  font-size: 18px;
+  font-weight: 800;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .brand-divider { width: 1px; height: 24px; background: rgba(255, 255, 255, 0.24); flex: 0 0 auto; }
 .topbar-title {
   font-size: 17px;
@@ -481,10 +491,14 @@ function setupAutoLock() {
 .topbar-right {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 8px;
   flex-wrap: wrap;
   min-width: 0;
 }
+.topbar-tools { display: flex; align-items: center; gap: 6px; }
+.topbar-tools:empty { display: none; }
+.lang-pill.topbar-icon { display: inline-grid; place-items: center; width: 36px; min-height: 36px; padding: 0; }
+.topbar-icon:focus-visible { outline: 2px solid var(--brand-soft); outline-offset: 2px; }
 .topbar-user {
   font-size: 12.5px;
   color: #c5d0df;
@@ -534,17 +548,7 @@ function setupAutoLock() {
   cursor: pointer;
 }
 .lang-pill:hover { background: rgba(255, 255, 255, 0.26); }
-.help-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
 .lang-menu { position: relative; }
-.lang-menu .lang-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
 .lang-list {
   position: absolute;
   top: calc(100% + 8px);
@@ -587,20 +591,14 @@ function setupAutoLock() {
   background: rgba(0, 176, 185, 0.22);
   color: #8fe3e8;
 }
-/* Give actions their own row before they crowd the title and timers.
-   Wrapping also keeps the language popover outside a clipping scroll area. */
-@media (max-width: 1200px) {
-  .topbar-right { flex-basis: 100%; gap: 8px; }
-  .lang-list { inset-inline-start: 0; inset-inline-end: auto; }
-}
 @media (max-width: 700px) {
   .topbar { padding: 8px 10px; gap: 8px; }
   .topbar-title { font-size: 15px; }
+  .shop-name { font-size: 16px; }
   .tb-clock, .tb-shift { display: none; }
-  .help-word { display: none; }
   .topbar-right { position: relative; }
   .lang-menu { position: static; }
-  .lang-list { max-width: 100%; }
+  .lang-list { inset-inline-start: 0; inset-inline-end: auto; max-width: 100%; }
   .outlet-switch { max-width: 150px; }
 }
 .content {

@@ -3,24 +3,28 @@
      "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md. -->
 <template>
   <aside class="cart card">
-    <div class="customer-row" data-tour="cart-customer" role="button" tabindex="0" @click="customerOpen = true" @keydown.enter="customerOpen = true">
-      <div class="avatar">{{ customerInitials }}</div>
-      <div class="customer-meta">
-        <div class="customer-name">{{ cart.customer?.customer_name || cart.receiptContact || t('Add a customer') }}</div>
-        <div v-if="cart.receiptContact" class="muted small">{{ t('Receipt contact') }}</div>
-        <div class="muted small" v-if="cart.customer">
-          <span v-if="cart.saleCurrency.foreign" class="ccy-tag">{{ cart.saleCurrency.currency }}</span>
-          {{ cart.customer.customer_group }}
-          <template v-if="cart.wallet">
-            <span v-if="cart.wallet.loyalty_points > 0"> · <Icon name="star" /> {{ cart.wallet.loyalty_points }} {{ t('pts') }}</span>
-            <span v-if="cart.wallet.store_credit > 0"> · {{ money(cart.wallet.store_credit) }} {{ t('credit') }}</span>
-            <span v-if="cart.wallet.cashback > 0"> · {{ money(cart.wallet.cashback) }} {{ t('cashback') }}</span>
-          </template>
-        </div>
-      </div>
-      <button v-if="cart.customer" class="btn-ghost" @click.stop="cart.setCustomer(null)"><Icon name="close" /></button>
-      <button v-else-if="cart.receiptContact" class="btn-ghost" :aria-label="t('Remove receipt contact')"
-        @click.stop="cart.receiptContact = ''" @keydown.enter.stop><Icon name="close" /></button>
+    <div class="cart-header">
+      <button type="button" class="customer-row" data-tour="cart-customer" @click="customerOpen = true">
+        <span class="avatar">{{ customerInitials }}</span>
+        <span class="customer-meta">
+          <span class="customer-name">{{ cart.customer?.customer_name || cart.receiptContact || t('Add a customer') }}</span>
+          <span v-if="cart.receiptContact" class="muted small">{{ t('Receipt contact') }}</span>
+          <span v-if="cart.customer" class="muted small">
+            <span v-if="cart.saleCurrency.foreign" class="ccy-tag">{{ cart.saleCurrency.currency }}</span>
+            {{ cart.customer.customer_group }}
+            <template v-if="cart.wallet">
+              <span v-if="cart.wallet.loyalty_points > 0"> · <Icon name="star" /> {{ cart.wallet.loyalty_points }} {{ t('pts') }}</span>
+              <span v-if="cart.wallet.store_credit > 0"> · {{ money(cart.wallet.store_credit) }} {{ t('credit') }}</span>
+              <span v-if="cart.wallet.cashback > 0"> · {{ money(cart.wallet.cashback) }} {{ t('cashback') }}</span>
+            </template>
+          </span>
+        </span>
+      </button>
+      <button v-if="cart.customer" type="button" class="btn btn-ghost btn-icon" :aria-label="t('Remove customer')"
+        :title="t('Remove customer')" @click="cart.setCustomer(null)"><Icon name="close" /></button>
+      <button v-else-if="cart.receiptContact" type="button" class="btn btn-ghost btn-icon" :aria-label="t('Remove receipt contact')"
+        :title="t('Remove receipt contact')" @click="cart.receiptContact = ''"><Icon name="close" /></button>
+      <slot name="header-actions" />
     </div>
 
     <!-- The customer is billed in a currency this till can't sell in: say so
@@ -33,7 +37,7 @@
       }}
     </div>
 
-    <div class="channel-row">
+    <div v-if="session.saleCurrencies.length || session.settings.delivery_apps?.length || cart.appType" class="channel-row">
       <!-- Sell in another currency: a walk-in paying in dollars is sold to the
            dollar walk-in customer. A named customer buys in their own. -->
       <select
@@ -52,10 +56,11 @@
           {{ c.currency }}
         </option>
       </select>
-      <select :value="cart.appType || ''" :disabled="cart.saleCurrency.foreign" @change="cart.setChannel($event.target.value || null)">
-        <option value=""><Icon name="store" /> {{ t('Walk-in') }}</option>
+      <select v-if="session.settings.delivery_apps?.length || cart.appType" :aria-label="t('Channel')"
+        :value="cart.appType || ''" :disabled="cart.saleCurrency.foreign" @change="cart.setChannel($event.target.value || null)">
+        <option value="">{{ t('Walk-in') }}</option>
         <option v-for="app in session.settings.delivery_apps" :key="app.app_name" :value="app.app_name">
-          <Icon name="bike" /> {{ app.app_name }}
+          {{ app.app_name }}
         </option>
       </select>
       <input
@@ -95,74 +100,43 @@
       </template>
     </div>
 
-    <div class="lines" data-tour="cart-lines">
-      <div v-if="!cart.lines.length" class="empty">
-        <p>{{ t('Cart is empty') }}</p>
-        <p class="muted small">{{ t('Search or tap a product to add it') }}</p>
-      </div>
-      <CartLine
-        v-for="(line, i) in cart.lines"
-        :key="(line.bundle_key || '') + line.item_code + i"
-        :line="line"
-        :index="i"
-        :promo-discount="evaluation.line_discounts[i]"
-        :promo-titles="evaluation.line_promotions[i]"
-        :bundle-discount="cart.bundleBreakdown.discounts[i]"
-        :suggestions="cart.lineSuggestions[i]"
-        @suggestion="onSuggestion"
-      />
-    </div>
-
-    <!-- Everything under the goods. It takes only the room it needs and
-         scrolls on a short screen, so the lines above always keep theirs. -->
-    <div class="cart-foot">
-      <div v-if="cart.basketSuggestions.length" class="suggestions">
-        <button
-          v-for="(suggestion, i) in cart.basketSuggestions"
-          :key="i"
-          class="suggestion"
-          :title="suggestion.title"
-          @click="onSuggestion(suggestion)"
-        >
-          <span class="bulb"><Icon name="bulb" /></span>
-          <span>{{ suggestion.message }}</span>
-        </button>
-      </div>
-
+    <div class="cart-controls">
       <!-- Coupon, order discount and note: one tap opens the field. A button
            that holds something (a coupon, a discount, a note) stays lit. -->
       <div class="cart-tools" data-tour="cart-tools">
         <button
           type="button"
-          class="tool"
+          class="tool btn-icon"
           :class="{ on: tool === 'coupon' || cart.couponCodes.length }"
+          :title="t('Coupon')" :aria-label="t('Coupon')"
           :aria-expanded="tool === 'coupon' ? 'true' : 'false'"
           @click="toggleTool('coupon')"
         >
-          <Icon name="ticket" /> {{ t('Coupon') }}
+          <Icon name="ticket" />
           <span v-if="cart.couponCodes.length" class="tool-count">{{ cart.couponCodes.length }}</span>
         </button>
         <button
           v-if="session.settings.enable_order_discount"
           type="button"
-          class="tool"
+          class="tool btn-icon"
           :class="{ on: tool === 'discount' || cart.orderDiscountTotal > 0 }"
+          :title="discountLabel" :aria-label="discountLabel"
           :disabled="!cart.lines.length"
           :aria-expanded="tool === 'discount' ? 'true' : 'false'"
           @click="toggleTool('discount')"
         >
           <Icon name="tag" />
-          {{ cart.orderDiscountTotal > 0 ? (cart.orderDiscountMethod === 'amount' ? t('Discount') + ' ' + cart.show(cart.orderDiscountTotal) : t('Discount {pct}%', { pct: cart.orderDiscountPercent })) : t('Discount') }}
+          <span v-if="cart.orderDiscountTotal > 0" class="tool-dot" />
         </button>
         <button
           type="button"
-          class="tool"
+          class="tool btn-icon"
           :class="{ on: tool === 'note' || cart.note }"
-          :title="cart.note || ''"
+          :title="cart.note || t('Note')" :aria-label="t('Note')"
           :aria-expanded="tool === 'note' ? 'true' : 'false'"
           @click="toggleTool('note')"
         >
-          <Icon name="report" /> {{ t('Note') }}
+          <Icon name="report" />
           <span v-if="cart.note" class="tool-dot" />
         </button>
       </div>
@@ -213,6 +187,40 @@
           maxlength="280"
           @keydown.enter="tool = ''"
         />
+      </div>
+    </div>
+
+    <div class="lines" data-tour="cart-lines">
+      <div v-if="!cart.lines.length" class="empty">
+        {{ t('Cart is empty') }}
+      </div>
+      <CartLine
+        v-for="(line, i) in cart.lines"
+        :key="(line.bundle_key || '') + line.item_code + i"
+        :line="line"
+        :index="i"
+        :promo-discount="evaluation.line_discounts[i]"
+        :promo-titles="evaluation.line_promotions[i]"
+        :bundle-discount="cart.bundleBreakdown.discounts[i]"
+        :suggestions="cart.lineSuggestions[i]"
+        @suggestion="onSuggestion"
+      />
+    </div>
+
+    <!-- Everything under the goods. It takes only the room it needs and
+         scrolls on a short screen, so the lines above always keep theirs. -->
+    <div class="cart-foot">
+      <div v-if="cart.basketSuggestions.length" class="suggestions">
+        <button
+          v-for="(suggestion, i) in cart.basketSuggestions"
+          :key="i"
+          class="suggestion"
+          :title="suggestion.title"
+          @click="onSuggestion(suggestion)"
+        >
+          <span class="bulb"><Icon name="bulb" /></span>
+          <span>{{ suggestion.message }}</span>
+        </button>
       </div>
 
       <div class="totals" data-tour="cart-totals">
@@ -274,48 +282,55 @@
     </div>
 
     <div class="actions">
-      <button class="btn btn-outline" data-tour="cart-park" :disabled="!cart.lines.length" @click="$emit('park')">
-        {{ t('Park') }}
+      <button type="button" class="btn btn-outline btn-icon" data-tour="cart-park" :disabled="!cart.lines.length"
+        :title="t('Park')" :aria-label="t('Park')" @click="$emit('park')">
+        <Icon name="pause" />
       </button>
       <!-- Parking keeps a basket for later today. A HOLD keeps the goods for a
            customer who is paying for them over time. -->
       <button
         v-if="session.settings.enable_layaway && session.permissions.can_hold_goods !== false"
-        class="btn btn-outline"
+        type="button" class="btn btn-outline btn-icon"
         :disabled="!cart.lines.length || session.offline || !session.registerOpen"
         :title="t('Hold these goods for a customer paying over time')"
+        :aria-label="t('Hold')"
         @click="$emit('hold')"
       >
-        {{ t('Hold') }}
+        <Icon name="hourglass" />
       </button>
-      <button class="btn btn-outline" :disabled="!cart.lines.length" @click="discard">
-        {{ t('Discard') }}
+      <button type="button" class="btn btn-outline btn-icon" :disabled="!cart.lines.length"
+        :title="t('Discard')" :aria-label="t('Discard')" @click="discard">
+        <Icon name="trash" />
       </button>
       <button
-        class="btn btn-outline"
+        type="button" class="btn btn-outline btn-icon"
         :disabled="session.offline || !session.registerOpen || session.permissions.sell === false || !!session.sellBlockedBy"
         :title="t('Sell a gift card')"
+        :aria-label="t('Sell a gift card')"
         @click="giftCardOpen = true"
       >
         <Icon name="gift" />
       </button>
     </div>
-    <button
-      class="btn btn-primary btn-lg pay"
-      data-tour="cart-pay"
-      :disabled="!cart.lines.length || !session.registerOpen || session.permissions.sell === false || !!session.sellBlockedBy"
-      :title="session.permissions.sell === false ? t('You do not have permission to make sales') : ''"
-      @click="$emit('pay')"
-    >
-      {{ t('Pay') }}&nbsp;&nbsp;{{ cart.show(cart.total) }}
-    </button>
-    <button
-      class="btn btn-outline quotation"
-      :disabled="!cart.lines.length || session.offline || cart.submitting || session.permissions.sell === false || !!session.sellBlockedBy"
-      @click="$emit('quotation')"
-    >
-      {{ t('Create QT') }}
-    </button>
+    <div class="checkout-actions">
+      <button
+        type="button" class="btn btn-primary pay"
+        data-tour="cart-pay"
+        :disabled="!cart.lines.length || !session.registerOpen || session.permissions.sell === false || !!session.sellBlockedBy"
+        :title="session.permissions.sell === false ? t('You do not have permission to make sales') : ''"
+        @click="$emit('pay')"
+      >
+        {{ t('Pay') }}&nbsp;&nbsp;{{ cart.show(cart.total) }}
+      </button>
+      <button
+        type="button" class="btn btn-outline quotation"
+        :title="t('Create QT')" :aria-label="t('Create QT')"
+        :disabled="!cart.lines.length || session.offline || cart.submitting || session.permissions.sell === false || !!session.sellBlockedBy"
+        @click="$emit('quotation')"
+      >
+        {{ t('QT') }}
+      </button>
+    </div>
 
     <CustomerModal v-if="customerOpen" @close="customerOpen = false" />
     <SellGiftCardModal
@@ -347,8 +362,14 @@ const customerOpen = ref(false)
 const couponInput = ref('')
 const giftCardOpen = ref(false)
 
-// One of coupon, discount or note open under the lines, or none.
+// One of coupon, discount or note open above the lines, or none.
 const tool = ref('')
+const discountLabel = computed(() => {
+  if (cart.orderDiscountTotal <= 0) return t('Discount')
+  return cart.orderDiscountMethod === 'amount'
+    ? t('Discount') + ' ' + cart.show(cart.orderDiscountTotal)
+    : t('Discount {pct}%', { pct: cart.orderDiscountPercent })
+})
 const toolInput = ref(null)
 async function toggleTool(name) {
   tool.value = tool.value === name ? '' : name
@@ -483,34 +504,45 @@ function discard() {
 
 <style scoped>
 .cart {
-  width: 380px;
-  margin: 16px 16px 16px 0;
+  width: clamp(276px, 24%, 352px);
+  min-width: 0;
+  margin-block: 10px;
+  margin-inline-end: 10px;
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
   overflow: hidden;
 }
 @media (max-width: 900px) {
-  .cart { width: auto; min-height: 460px; margin: 0 16px 16px; }
+  .cart { width: auto; min-height: 400px; margin: 0 10px 10px; }
   .cart .cart-foot { flex-shrink: 0; }
 }
 @media (max-width: 700px) {
-  .cart { margin: 0 12px 12px; }
+  .cart { margin: 0 8px 8px; }
+}
+.cart-header {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--border);
 }
 .customer-row {
   display: flex;
+  flex: 1 1 auto;
   align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--border);
-  text-align: left;
-  width: 100%;
+  gap: 7px;
+  padding: 4px;
+  min-width: 0;
+  border-radius: 8px;
+  text-align: start;
   cursor: pointer;
 }
+.customer-row:focus-visible { outline: 2px solid var(--brand); }
 .customer-row:hover { background: var(--surface-2); }
 .avatar {
-  width: 38px;
-  height: 38px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   background: var(--brand-soft);
   color: #fff;
@@ -521,13 +553,14 @@ function discard() {
   flex-shrink: 0;
 }
 .customer-meta { flex: 1; min-width: 0; }
-.customer-name { font-weight: 600; }
+.customer-name { display: block; font-size: 13px; font-weight: 700; overflow-wrap: anywhere; }
+.customer-meta > .small { display: block; }
 .small { font-size: 12px; }
 .channel-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 16px;
+  padding: 5px 10px;
   border-bottom: 1px solid var(--border);
 }
 .channel-row select { flex: 1; padding: 6px 10px; font-size: 13px; min-width: 0; }
@@ -551,7 +584,7 @@ function discard() {
   border-bottom: 1px solid var(--border);
 }
 .equiv { font-size: 13px; padding-top: 0; }
-.order-id { width: 110px; padding: 6px 10px; font-size: 13px; }
+.order-id { flex: 1 1 90px; min-width: 0; padding: 6px 10px; font-size: 13px; }
 .exchange-btn {
   font-size: 12px;
   font-weight: 700;
@@ -604,23 +637,24 @@ function discard() {
   overflow-y: auto;
   border-top: 1px solid var(--border);
 }
+.cart-controls { max-height: min(180px, 28vh); overflow: auto; border-bottom: 1px solid var(--border); }
 .cart-tools {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  padding: 8px 16px;
+  padding: 5px 10px;
 }
 .tool {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  justify-content: center;
+  position: relative;
   font-size: 12.5px;
   font-weight: 700;
   color: var(--text-muted);
   background: transparent;
   border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 5px 11px;
+  border-radius: 9px;
   cursor: pointer;
 }
 .tool:hover:not(:disabled) { color: var(--brand); border-color: var(--brand); }
@@ -632,6 +666,9 @@ function discard() {
 }
 html[data-theme='dark'] .tool.on { color: #9fc0ff; background: rgba(47, 123, 255, 0.16); }
 .tool-count {
+  position: absolute;
+  inset-block-start: -3px;
+  inset-inline-end: -4px;
   min-width: 16px;
   height: 16px;
   padding: 0 4px;
@@ -643,7 +680,7 @@ html[data-theme='dark'] .tool.on { color: #9fc0ff; background: rgba(47, 123, 255
   align-items: center;
   justify-content: center;
 }
-.tool-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--brand); }
+.tool-dot { position: absolute; inset-block-start: 4px; inset-inline-end: 4px; width: 6px; height: 6px; border-radius: 50%; background: var(--brand); }
 .tool-panel { padding: 0 16px 8px; }
 .totals-head {
   display: flex;
@@ -720,12 +757,11 @@ html[data-theme='dark'] .suggestion:hover { background: rgba(150, 100, 255, 0.3)
 .coupon-form .btn { padding: 6px 12px; font-size: 12.5px; }
 .empty {
   text-align: center;
-  padding: 60px 20px;
+  padding: 32px 12px;
   color: var(--text-muted);
 }
 .totals {
-  border-top: 1px solid var(--border);
-  padding: 8px 16px 4px;
+  padding: 6px 10px 3px;
 }
 .row {
   display: flex;
@@ -767,12 +803,17 @@ html[data-theme='dark'] .suggestion:hover { background: rgba(150, 100, 255, 0.3)
 .actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  padding: 8px 16px;
+  gap: 5px;
+  padding: 5px 10px;
 }
-.actions .btn { flex: 1 1 auto; }
-.pay {
-  margin: 4px 16px 16px;
-  border-radius: 10px;
+.checkout-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+  padding: 3px 10px 10px;
+}
+.checkout-actions .btn {
+  min-height: 44px;
+  padding: 7px 12px;
 }
 </style>

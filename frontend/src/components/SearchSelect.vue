@@ -54,7 +54,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onOutside))
 .search-select-value { flex:1; min-width:0; overflow:hidden; color:var(--text); font-size:13px; font-weight:600; text-overflow:ellipsis; white-space:nowrap; }
 .search-select-value.placeholder { color:var(--text-muted); font-weight:500; }
 .search-select-chevron { color:var(--text-muted); font-size:17px; line-height:1; }
-.search-select-menu { position:absolute; top:calc(100% + 5px); left:0; z-index:30; width:max(100%, 270px); padding:6px; border:1px solid var(--border); border-radius:10px; background:var(--card-bg); box-shadow:var(--shadow-md); }
+.search-select-menu { position:absolute; top:calc(100% + 5px); inset-inline-start:0; z-index:30; width:max(100%, 270px); padding:6px; border:1px solid var(--border); border-radius:10px; background:var(--card-bg); box-shadow:var(--shadow-md); }
 .search-select-search { display:flex; align-items:center; gap:8px; padding:0 9px; border:1px solid var(--border); border-radius:7px; color:var(--text-muted); }
 .search-select-search input { width:100%; min-width:0; padding:8px 0; border:0; outline:0; background:transparent; box-shadow:none; font-size:13px; }
 .search-select-clear { display:grid; place-items:center; padding:3px; }

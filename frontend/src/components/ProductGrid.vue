@@ -29,7 +29,10 @@
               {{ t('{qty} in stock', { qty: item.actual_qty }) }}
             </small>
           </div>
-          <button type="button" class="btn btn-sm tile-add" :aria-label="t('Add {item} to cart', { item: item.item_name })" @click="$emit('select', item)">{{ t('Add') }}</button>
+          <button type="button" class="btn btn-icon tile-add" :title="t('Add {item} to cart', { item: item.item_name })"
+            :aria-label="t('Add {item} to cart', { item: item.item_name })" @click="$emit('select', item)">
+            <Icon name="plus" />
+          </button>
         </div>
       </article>
     </div>
@@ -76,18 +79,18 @@ function loadNearEnd(event) {
 </script>
 
 <style scoped>
-.grid-wrap { flex: 1; overflow-y: auto; margin-top: 10px; }
-.grid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.grid-wrap { flex: 1; overflow-y: auto; margin-top: 6px; }
+.grid { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(min(150px, 100%), 1fr)); }
 .grid.list, .grid.detail { grid-template-columns: minmax(0, 1fr); }
 .tile { display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
 .tile-main { display: flex; flex-direction: column; flex: 1; width: 100%; min-width: 0; padding: 0; text-align: start; background: transparent; color: inherit; border: 0; }
 .tile-main:hover strong { color: var(--brand-dark); }
 .tile-main:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
-.tile-img { display: grid; place-items: center; height: 92px; width: 100%; background: var(--surface-2); color: var(--text-muted); }
+.tile-img { display: grid; place-items: center; height: 84px; width: 100%; background: var(--surface-2); color: var(--text-muted); }
 .tile-img img { width: 100%; height: 100%; object-fit: cover; }
 .tile-copy { display: grid; gap: 3px; padding: 9px 10px; overflow-wrap: anywhere; }
 .tile-copy small { display: block; color: var(--text-muted); }
-.tile-main--photo { position: relative; min-height: 150px; }
+.tile-main--photo { position: relative; min-height: 140px; }
 .tile-main--photo .tile-img { position: absolute; inset: 0; height: auto; }
 .tile-main--photo .tile-img img { position: absolute; inset: 0; }
 .tile-main--photo .tile-copy {
@@ -99,7 +102,7 @@ function loadNearEnd(event) {
 }
 .tile-main--photo .tile-copy small { color: var(--text); }
 .tile-copy p { margin: 4px 0 0; white-space: pre-wrap; line-height: 1.5; }
-.tile-foot { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 8px 10px; }
+.tile-foot { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 6px 8px; }
 .tile-price { color: var(--catalog-price); }
 .tile-stock { display: block; color: var(--catalog-stock); }
 .tile-stock--empty { color: var(--catalog-stock-empty); }
@@ -118,6 +121,7 @@ function loadNearEnd(event) {
 .grid-empty { padding: 60px 12px; text-align: center; color: var(--text-muted); }
 .load-more { display: block; margin: 12px auto 20px; }
 @media (max-width: 560px) {
+  .grid.image { grid-template-columns: repeat(auto-fill, minmax(min(144px, 100%), 1fr)); }
   .detail .tile { flex-direction: column; }
   .detail .tile-foot { border-top: 1px solid var(--border); }
 }

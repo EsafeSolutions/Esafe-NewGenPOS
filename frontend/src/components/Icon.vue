@@ -21,6 +21,7 @@ const STROKE = new Set([
   'card', 'cash', 'hourglass', 'exchange', 'refresh', 'download', 'upload',
   'ban', 'barcode', 'gift', 'bike', 'plus', 'check', 'warning',
   'search', 'tag', 'report', 'image', 'clock', 'globe', 'help', 'return',
+  'monitor', 'folder-open', 'phone', 'grid', 'list', 'detail', 'pause', 'trash',
 ])
 
 const PATHS = {
@@ -73,6 +74,14 @@ const PATHS = {
   barcode: '<path d="M4 5v14M7 5v14M10 5v14M13 5v14M17 5v14M20 5v14"/>',
   clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 1.8"/>',
   search: '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
+  monitor: '<rect x="3" y="3" width="18" height="13" rx="2"/><path d="M12 16v5M8 21h8"/>',
+  'folder-open': '<path d="M3 19V6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v2M3 19l3-9h16l-3 9z"/>',
+  phone: '<path d="M5 3h4l2 5-3 2a14 14 0 0 0 6 6l2-3 5 2v4a2 2 0 0 1-2 2C9 21 3 15 3 5a2 2 0 0 1 2-2z"/>',
+  grid: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+  list: '<path d="M8 5h13M8 12h13M8 19h13M3 5h.01M3 12h.01M3 19h.01"/>',
+  detail: '<rect x="3" y="4" width="7" height="7" rx="1"/><path d="M14 5h7M14 10h7M3 15h18M3 20h18"/>',
+  pause: '<path d="M9 5v14M15 5v14"/>',
+  trash: '<path d="M3 6h18M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7M14 10v7"/>',
   tag:
     '<path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9z"/><circle cx="7.5" cy="7.5" r="1.4"/>',
   report:

@@ -3,6 +3,26 @@
      "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md. -->
 <template>
   <div class="sell">
+    <Teleport to="#sell-header-tools" defer>
+      <button v-if="session.settings.enable_price_checker" type="button"
+        class="btn btn-icon sell-header-tool" :title="t('Look up a price without selling')"
+        :aria-label="t('Price check')" @click="priceCheckOpen = true">
+        <Icon name="tag" :size="18" />
+      </button>
+      <button v-if="session.settings.enable_customer_display" type="button"
+        class="btn btn-icon sell-header-tool" :title="t('Open the customer-facing display')"
+        :aria-label="t('Display')" @click="openCustomerDisplay">
+        <Icon name="monitor" :size="18" />
+      </button>
+      <label v-if="!showBundles && !showFavourites" class="sell-header-tool catalog-view" :title="t('Item view')">
+        <Icon :name="itemMode === 'image' ? 'grid' : itemMode" :size="18" />
+        <select class="catalog-mode" :aria-label="t('Item view')" v-model="itemMode">
+          <option value="list">{{ t('List') }}</option>
+          <option value="image">{{ t('Images') }}</option>
+          <option value="detail">{{ t('Images and full descriptions') }}</option>
+        </select>
+      </label>
+    </Teleport>
     <!-- "Per cashier" shift scope: the drawer belongs to whoever opened it. -->
     <div v-if="session.sellBlockedBy" class="shift-owner-banner">
       <Icon name="warning" />
@@ -21,7 +41,7 @@
       <button class="btn btn-ghost btn-sm" @click="cart.cancelExchange()">{{ t('Cancel exchange') }}</button>
     </div>
     <section class="catalog">
-      <div class="search-row">
+      <div class="catalog-toolbar">
         <div class="search-box" data-tour="sell-search">
           <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="m21 21-4.3-4.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
           <input
@@ -32,57 +52,30 @@
             @keydown="scanGuard.onKeydown"
             @keydown.enter="onSearchEnter"
           />
-          <button v-if="catalog.search" class="btn-ghost clear" @click="catalog.clearSearch()"><Icon name="close" /></button>
+          <button v-if="catalog.search" class="btn-ghost clear" :aria-label="t('Clear search')" @click="catalog.clearSearch()"><Icon name="close" /></button>
         </div>
-        <button
-          v-if="session.settings.enable_price_checker"
-          class="btn btn-outline"
-          :title="t('Look up a price without selling')"
-          @click="priceCheckOpen = true"
-        >
-          <Icon name="search" /> {{ t('Price check') }}
-        </button>
-        <button
-          v-if="session.settings.enable_customer_display"
-          class="btn btn-outline"
-          :title="t('Open the customer-facing display')"
-          @click="openCustomerDisplay"
-        >
-          <Icon name="store" /> {{ t('Display') }}
-        </button>
-        <button class="btn btn-outline" data-tour="sell-parked" @click="parkedOpen = true">
-          {{ t('Retrieve Sale') }}
-        </button>
-        <button v-if="session.settings.enable_customer_display && !session.offline"
-          class="btn btn-outline" :disabled="paymentOpen || cart.submitting" @click="askForContact">
-          <Icon name="person" /> {{ t('Ask for contact number') }}
-        </button>
-      </div>
-
-      <div class="group-bar" data-tour="sell-groups">
-        <button
-          v-if="session.settings.enable_quick_keys"
-          class="chip chip-fav"
-          :class="{ active: showFavourites }"
-          @click="toggleFavourites"
-        >
-          <Icon name="star" /> {{ t('Favourites') }}
-        </button>
-        <button
-          v-if="session.bundles.length"
-          class="chip chip-bundle"
-          :class="{ active: showBundles }"
-          @click="showBundles = !showBundles; showFavourites = false"
-        >
-          <Icon name="gift" /> {{ t('Bundles') }}
-        </button>
-        <SearchSelect :label="t('Brand')" :model-value="catalog.brand" :options="brandOptions" @change="catalog.setBrand" />
-        <SearchSelect :label="t('Item group')" :model-value="catalog.itemGroup" :options="groupOptions" @change="catalog.setGroup" />
-        <select v-if="!showBundles && !showFavourites" class="catalog-mode" :aria-label="t('Item view')" v-model="itemMode">
-          <option value="list">{{ t('List') }}</option>
-          <option value="image">{{ t('Images') }}</option>
-          <option value="detail">{{ t('Images and full descriptions') }}</option>
-        </select>
+        <div class="group-bar" data-tour="sell-groups">
+          <button
+            v-if="session.settings.enable_quick_keys"
+            class="btn btn-outline btn-icon catalog-filter"
+            :class="{ active: showFavourites }"
+            :aria-pressed="showFavourites" :title="t('Favourites')" :aria-label="t('Favourites')"
+            @click="toggleFavourites"
+          >
+            <Icon name="star" />
+          </button>
+          <button
+            v-if="session.bundles.length"
+            class="btn btn-outline btn-icon catalog-filter"
+            :class="{ active: showBundles }"
+            :aria-pressed="showBundles" :title="t('Bundles')" :aria-label="t('Bundles')"
+            @click="showBundles = !showBundles; showFavourites = false"
+          >
+            <Icon name="gift" />
+          </button>
+          <SearchSelect :label="t('Brand')" :model-value="catalog.brand" :options="brandOptions" @change="catalog.setBrand" />
+          <SearchSelect :label="t('Item group')" :model-value="catalog.itemGroup" :options="groupOptions" @change="catalog.setGroup" />
+        </div>
       </div>
 
       <div v-if="showBundles" class="bundle-grid">
@@ -117,7 +110,19 @@
       <ProductGrid v-else :mode="itemMode" data-tour="sell-products" @select="addToCart" @inspect="inspectItem" />
     </section>
 
-    <CartPanel @pay="onPay" @park="parkOpen = true" @hold="openHold" @quotation="createQuotation" @receipt="receipt = $event" />
+    <CartPanel @pay="onPay" @park="parkOpen = true" @hold="openHold" @quotation="createQuotation" @receipt="receipt = $event">
+      <template #header-actions>
+        <button type="button" class="btn btn-outline btn-icon" data-tour="sell-parked"
+          :title="t('Retrieve Sale')" :aria-label="t('Retrieve Sale')" @click="parkedOpen = true">
+          <Icon name="folder-open" :size="18" />
+        </button>
+        <button v-if="session.settings.enable_customer_display && !session.offline" type="button"
+          class="btn btn-outline btn-icon" :title="t('Ask for contact number')" :aria-label="t('Ask for contact number')"
+          :disabled="paymentOpen || cart.submitting" @click="askForContact">
+          <Icon name="phone" :size="18" />
+        </button>
+      </template>
+    </CartPanel>
 
     <PaymentOverlay v-if="paymentOpen" @close="paymentOpen = false" @done="onSaleDone" />
     <HoldModal v-if="holdOpen" @close="holdOpen = false" @done="onHeld" />
@@ -549,91 +554,87 @@ function onDiscountApproved(result) {
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 16px;
+  padding: 10px;
   min-width: 0;
 }
-.search-row {
+.catalog-toolbar {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  align-items: center;
+  gap: 6px;
 }
 .search-box {
-  flex: 1 1 260px;
+  flex: 1 1 210px;
   min-width: 0;
   position: relative;
   display: flex;
   align-items: center;
 }
-.search-box svg {
+.search-box > svg {
   position: absolute;
-  left: 12px;
+  inset-inline-start: 11px;
   width: 18px;
   height: 18px;
   color: var(--text-muted);
 }
 .search-box input {
   width: 100%;
-  padding: 12px 38px 12px 40px;
-  font-size: 15px;
+  min-height: 38px;
+  padding: 7px 34px 7px 35px;
+  font-size: 14px;
   border-radius: 10px;
 }
 .search-box .clear {
   position: absolute;
-  right: 8px;
+  inset-inline-end: 6px;
   padding: 4px 8px;
 }
 .group-bar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  margin: 12px 0 4px;
-  min-height: 36px;
-}
-.catalog-mode { max-width: 100%; }
-.group-scroll {
-  display: flex;
+  gap: 6px;
+  flex: 0 1 auto;
   min-width: 0;
-  gap: 8px;
-  overflow-x: auto;
-  flex: 1;
-  padding-bottom: 2px;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
 }
-.group-scroll::-webkit-scrollbar { display: none; }
-.chip {
-  flex-shrink: 0;
-  border: 1px solid var(--border);
-  background: var(--card-bg);
-  border-radius: 999px;
-  padding: 7px 16px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-muted);
-  white-space: nowrap;
-  transition: all 0.1s;
-}
-.chip:hover { border-color: var(--brand); color: var(--brand); }
-.chip.active {
+.group-bar :deep(.search-select) { width: 168px; min-width: 0; }
+.group-bar :deep(.search-select-trigger) { min-height: 38px; gap: 5px; padding-inline: 8px; }
+.group-bar :deep(.search-select-menu) { width: clamp(165px, 42vw, 270px); }
+.catalog-filter.active {
   background: var(--brand);
   border-color: var(--brand);
   color: #fff;
 }
-.chip-bundle { font-weight: 700; }
-.chip-fav { font-weight: 700; }
-.chip-fav.active { background: var(--brand); border-color: var(--brand); color: #fff; }
-@media (max-width: 1200px) {
-  .search-box { flex-basis: 100%; }
-  .search-row > .btn { flex: 1 1 auto; }
+.sell-header-tool {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .14);
+  color: inherit;
+}
+.sell-header-tool:hover { background: rgba(255, 255, 255, .24); }
+.catalog-view { position: relative; }
+.catalog-view:focus-within { outline: 2px solid var(--brand-soft); outline-offset: 2px; }
+.catalog-mode {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
 }
 @media (max-width: 900px) {
   .sell { flex-direction: column; overflow-y: auto; }
   .catalog { flex: 0 0 auto; min-height: 320px; max-height: 65vh; max-height: 65dvh; }
 }
 @media (max-width: 700px) {
-  .catalog { padding: 12px; }
-  .group-bar { flex-wrap: wrap; }
+  .catalog { padding: 8px; }
+  .group-bar { flex: 1 1 100%; }
+  .group-bar :deep(.search-select) { flex: 1 1 122px; width: auto; }
+  .group-bar :deep(.search-select:last-child .search-select-menu) { inset-inline-start: auto; inset-inline-end: 0; }
 }
 .fav-grid {
   flex: 1;

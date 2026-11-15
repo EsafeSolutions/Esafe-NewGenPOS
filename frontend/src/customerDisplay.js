@@ -20,6 +20,23 @@ let channel = null
 export const displayTerminalId = newId()
 export const displayPayment = shallowRef(null)
 export const displayReceipt = shallowRef(null)
+export const displayContactRequest = shallowRef(null)
+
+export function requestDisplayContact(mode = 'overlay') {
+  displayContactRequest.value = { id: newId(), mode }
+}
+
+export function connectContactChannel(terminalId, handler) {
+  if (!terminalId || typeof BroadcastChannel === 'undefined') return null
+  const connection = new BroadcastChannel(NAME + '-contact-' + terminalId)
+  connection.onmessage = (event) => handler(event.data)
+  return connection
+}
+
+export function displayCustomerName(name) {
+  const first = String(name || '').trim().split(/\s+/)[0]
+  return /\p{L}/u.test(first) && !/\d/.test(first) ? first : ''
+}
 
 export function customerDisplayUrl() {
   return window.location.href.replace(/#.*$/, '') + '#/display?terminal=' + displayTerminalId
@@ -40,19 +57,20 @@ export function publishCart(snapshot) {
   }
 }
 
-export function receiptSnapshot(receipt, images = {}) {
+export function receiptSnapshot(receipt, images = {}, groups = {}) {
   const show = (value) => money(value, receipt.currency)
   return {
     receipt: receipt.name,
     pending: Boolean(receipt.offline),
     company: receipt.company,
-    customer: receipt.customer_name,
+    customer: displayCustomerName(receipt.customer_name),
     date: receipt.posting_date,
     time: receipt.posting_time?.slice(0, 5),
     terminal: receipt.terminal,
     cashier: receipt.cashier,
     items: (receipt.items || []).map((line) => ({
       name: line.item_name, code: line.item_code, image: images[line.item_code],
+      group: groups[line.item_code],
       qty: line.qty, uom: line.uom, rate: show(line.rate), amount: show(line.amount),
       discount: Number(line.line_discount_amount) > 0 ? show(line.line_discount_amount) : '',
       gross: Number(line.line_discount_amount) > 0 ? show(line.gross_amount) : '',

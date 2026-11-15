@@ -32,7 +32,7 @@ EsafePOS is a browser-based point-of-sale application for ERPNext and Frappe. It
 - Per-profile choice of POS Invoice (normally consolidated at shift close) or Sales Invoice (posted directly); both use standard ERPNext documents.
 - Printable receipts, configurable receipt details, browser printing, ESC/POS network printing, reprints, and cash-drawer kick where configured.
 - Three catalog views with quick Add, progressive loading and a tap-to-open item editor for quantity, stock unit, authorized price edits and discounts.
-- A read-only second-screen customer display with live item prices and savings, payment balance and change, followed by the sale receipt and rewards.
+- A second-screen customer display with an optional membership keypad, latest-item highlight, automatic product icons, pinned totals and a completed receipt with rewards.
 
 ### 2.2 Pricing, promotions, and offers
 
@@ -169,7 +169,7 @@ Typical startup calls `esafepos.api.session.get_bootstrap`, which supplies the s
 | `promotions.js`, `discounts.js` | Client promotion evaluation/suggestions and discount breakdown helpers |
 | `refund.js`, `refundApproval.js` | Return calculations, offline eligibility and approval policy helpers |
 | `barcode.js`, `scanGuard.js`, `labels.js` | Barcode generation/handling, weight-embedded scale barcode parser, scanner input guard, and label layout data |
-| `customerDisplay.js` | Per-till customer display synchronization and receipt snapshots |
+| `customerDisplay.js`, `displayContact.js` | Per-till cart and receipt snapshots, scoped contact prompts and customer lookup lifecycle |
 | `receiptPrint.js` | Browser print and receipt formatting helpers |
 | `format.js` | Currency, date/time, number, and display formatting |
 | `theme.js`, `i18n.js`, `messages.js`, `locales/` | Theme selection, locale/RTL initialization, translations |
@@ -240,6 +240,7 @@ The table below groups the DocTypes present under `esafepos/esafepos/doctype/`. 
 Entries are summarized from the release notes. The [user guide changelog](user-guide.md#19-changelog) contains the full release-by-release wording and should be updated alongside each release.
 
 ### Unreleased
+- **Customer display and membership keypad:** Added a welcome screen and cashier-triggered contact popup for exact customer lookup. The live display highlights the latest item with automatic offline icons and shows pinned totals, savings and rewards.
 - **Shared stock for loose and packed sales:** Checkout uses ERPNext unit conversion and a separate selling price per alternate unit. The POS Items page edits standard item names and outlet price-list entries. Offline scale decoding honors the switch and format configured in General settings.
 - **Walk-in customer codes:** Added an opt-in General setting that assigns a receipt code to each posted sale with no customer selected. Staff with customer create or write access can find the sale in History and add optional receipt contact details. The invoice continues to use the POS Profile's default ERPNext customer.
 - **Catalog views and customer display:** Added List, Images and Images and full descriptions modes, quick Add and a stock-unit-aware item editor. The customer display is read-only and shows live savings, checkout balance, receipt and rewards.
@@ -273,6 +274,7 @@ Entries are summarized from the release notes. The [user guide changelog](user-g
 
 | Date | Change | Impact |
 |---|---|---|
+| 2026-11-15 | Added the customer welcome and refreshed the live display. | `CustomerDisplayView.vue` shows the latest item, basket, loyalty and pinned totals. `DisplayContactPad.vue` runs at the start or in a cashier-triggered popup. The catalog lookup matches existing customers by contact number with POS, outlet and customer permissions. `DisplayProductIcon.vue` bundles Lucide fallbacks. Verified the production build, 177 API endpoint references, 50 Python tests, and Chrome checks for contact lookup, skip, retry, terminal isolation, icons, repeat scans and responsive layout. The browser uses a simulated ERPNext lookup. |
 | 2026-11-15 | Added priced selling units and the Items page. | `item_units.py`, the catalog and sale APIs resolve ERPNext UOM conversions and native Item Prices. The cart keeps a separate line per unit, checkout checks shared stock, and online returns identify loose and packed lines separately. `api/items.py` and `ItemsView.vue` edit display names and standing prices with ERPNext permissions. The existing scale switch and format now drive offline search. Verified the production build, API endpoint resolution, 50 Python tests, barcode and promotion parity checks, and Chrome tests for offline decoding, mixed-unit cart payloads and the item editor. Live ERPNext posting, consolidation and returns remain unverified. |
 | 2026-11-15 | Added optional walk-in codes and later receipt editing. | `sales.py` assigns and searches codes on submitted POS and Sales Invoices. `install.py` adds the code, name, and phone as POS-owned invoice fields. General settings controls new assignments. History and the receipt editor support lookup and optional details, and built-in print and digital receipts show the code. Offline sales get a code when they post. Verified the production build, 173 API endpoints, 50 Python tests, and the Chrome receipt workflow with a simulated save response. Live ERPNext posting and migration remain unverified. |
 | 2026-11-15 | Added three catalog modes, an item editor and a read-only customer display. | `SellView.vue`, `ProductGrid.vue`, `ItemDetailModal.vue` and the catalog store handle progressive loading and permitted cart edits. The catalog API exposes ERPNext stock units and whole-unit rules. `App.vue`, `PaymentOverlay.vue` and the receipt API supply line discounts, payments, tax, savings, change and rewards over the per-till display channel. Removed the contact entry flow. Verified the production build, endpoint resolution, 50 Python tests, and desktop/mobile browser checks for catalog, display, discounts and receipts. Browser checks use fixtures. |

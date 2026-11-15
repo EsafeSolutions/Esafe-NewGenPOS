@@ -9,7 +9,7 @@ import { createServer } from 'vite'
 const root = path.dirname(fileURLToPath(import.meta.url))
 const html = `<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"></head><body>
 <div id="app"></div><script type="module">
-import { createApp, h, ref } from 'vue'
+import { createApp, h, ref, watch } from 'vue'
 import { createPinia } from 'pinia'
 import ProductGrid from '/src/components/ProductGrid.vue'
 import ItemDetailModal from '/src/components/ItemDetailModal.vue'
@@ -19,7 +19,8 @@ import { scaleBarcodeOptions, useCatalogStore } from '/src/stores/catalog.js'
 import { saveCatalog, searchCatalog } from '/src/offline.js'
 import { useCartStore } from '/src/stores/cart.js'
 import { useSessionStore } from '/src/stores/session.js'
-import { publishCart, onDisplayRequest, displayTerminalId, receiptSnapshot } from '/src/customerDisplay.js'
+import { publishCart, onDisplayRequest, displayContactRequest, displayCustomerName, displayTerminalId, receiptSnapshot, requestDisplayContact } from '/src/customerDisplay.js'
+import { connectTillContact } from '/src/displayContact.js'
 import '/src/styles.css'
 
 const pinia = createPinia()
@@ -30,6 +31,7 @@ const session = useSessionStore(pinia)
 const cart = useCartStore(pinia)
 session.permissions = { can_change_price: true, can_edit_price: true, edit_items: true }
 session.posProfile = 'Test Till'
+session.settings.enable_customer_display = 1
 const image = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
 catalog.items = Array.from({ length: 81 }, (_, i) => ({
   item_code: 'ITEM-' + i, item_name: i === 0 ? 'Roasted coffee' : 'Product ' + i,
@@ -55,7 +57,25 @@ window.showReceipt = () => {
   }, { 'ITEM-0': image })
   publishCart(snapshot)
 }
-if (!isDisplay) onDisplayRequest(() => publishCart(snapshot))
+if (!isDisplay && !isItems) {
+  const sync = () => publishCart({ ...snapshot, customer: displayCustomerName(cart.customer?.customer_name), contact: displayContactRequest.value })
+  onDisplayRequest(sync)
+  connectTillContact(cart, session, { path: '/' })
+  watch(() => [displayContactRequest.value, cart.customer], sync)
+  window.showContact = (mode) => {
+    if (mode === 'welcome') snapshot = { company: 'ESAFE POS', items: [] }
+    else {
+      snapshot = { company: 'ESAFE POS', items: [{ code: 'rice', name: 'Red rice', qty: 1, rate: '15', amount: '15' }], total: '15' }
+    }
+    requestDisplayContact(mode)
+  }
+  window.bumpEarlierItem = () => {
+    const rice = { code: 'rice', name: 'Red rice', qty: 2, uom: 'Kg', rate: '15', amount: '30' }
+    const milk = { code: 'milk', name: 'Milk', qty: 1, rate: '20', amount: '20' }
+    publishCart({ items: [{ ...rice, qty: 1 }, milk], total: '35' })
+    publishCart({ items: [rice, milk], total: '50' })
+  }
+}
 window.checkUnits = () => {
   const product = catalog.items[0]
   cart.addItem(product, null, 1.25)
@@ -128,10 +148,10 @@ if (!process.argv.includes('--serve')) {
     const display = await context.newPage()
     display.on('pageerror', (error) => errors.push(error.message))
     await display.goto(url + '#/display?terminal=' + terminal)
-    await display.getByText('Roasted coffee').waitFor()
+    await display.locator('.cd-latest').getByText('Roasted coffee').waitFor()
     await display.getByText('Balance due').waitFor()
     assert.equal(await display.locator('input').count(), 0)
-    assert.equal(await display.locator('del').textContent(), '40.00')
+    assert.equal(await display.locator('.cd-item del').textContent(), '40.00')
     const otherTill = await context.newPage()
     await otherTill.goto(url)
     await otherTill.waitForFunction(() => window.ready)
@@ -150,6 +170,44 @@ if (!process.argv.includes('--serve')) {
         await till.setViewportSize({ width, height: 900 })
         await till.screenshot({ path: path.join(output, `catalog-detail-${width}.png`), fullPage: false })
       }
+    }
+    await till.route('**/api/method/esafepos.api.catalog.display_customer_lookup', async (route) => {
+      const { mobile } = route.request().postDataJSON()
+      await route.fulfill({ json: { message: mobile === '0771234567'
+        ? { name: 'CUSTOMER-1', customer_name: 'Maya Silva', mobile_no: mobile } : null } })
+    })
+    await till.route('**/api/method/esafepos.api.loyalty.get_wallet', (route) => route.fulfill({ json: { message: {} } }))
+    await till.route('**/api/method/esafepos.api.catalog.get_prices', (route) => route.fulfill({ json: { message: { prices: {} } } }))
+    await till.evaluate(() => showContact('welcome'))
+    await display.locator('.cd-welcome').waitFor()
+    for (const width of [1024, 390]) {
+      await display.setViewportSize({ width, height: 768 })
+      if (output) await display.screenshot({ path: path.join(output, `membership-welcome-${width}.png`) })
+    }
+    await display.getByRole('button', { name: 'Skip' }).click()
+    await display.locator('.cd-welcome').waitFor({ state: 'hidden' })
+    await till.evaluate(() => showContact('overlay'))
+    const dialog = display.getByRole('dialog')
+    await dialog.waitFor()
+    if (output) {
+      await display.setViewportSize({ width: 1024, height: 768 })
+      await display.screenshot({ path: path.join(output, 'membership-popup-1024.png') })
+    }
+    await dialog.getByLabel('Contact number').fill('0770000000')
+    await dialog.getByRole('button', { name: 'Continue' }).click()
+    await dialog.getByRole('alert').getByText(/No customer found/).waitFor()
+    await dialog.getByLabel('Contact number').fill('0771234567')
+    await dialog.getByRole('button', { name: 'Continue' }).click()
+    await dialog.waitFor({ state: 'hidden' })
+    await display.getByText('Maya', { exact: true }).waitFor()
+    assert.equal(await display.getByText('0771234567').count(), 0)
+    assert.equal(await display.locator('.cd-item .grains svg').count(), 1)
+    await till.evaluate(() => bumpEarlierItem())
+    await display.locator('.cd-latest').getByText('Red rice').waitFor()
+    await display.locator('.cd-latest').getByText('2 Kg × 15').waitFor()
+    if (output) {
+      await display.setViewportSize({ width: 1024, height: 768 })
+      await display.screenshot({ path: path.join(output, 'customer-live-1024.png') })
     }
     const manager = await context.newPage()
     manager.on('pageerror', (error) => errors.push(error.message))
@@ -184,7 +242,7 @@ if (!process.argv.includes('--serve')) {
       }
     }
     assert.deepEqual(errors, [])
-    console.log('PASS catalog modes, pack and loose cart lines, selling-price editor, customer display and responsive layout')
+    console.log('PASS catalog and editor, display receipt, contact lookup and skip, product icons, repeat scan and responsive layout')
   } finally {
     await browser.close()
     await server.close()

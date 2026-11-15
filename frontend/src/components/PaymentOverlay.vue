@@ -789,6 +789,7 @@ async function complete() {
   }
   try {
     const itemImages = Object.fromEntries(cart.lines.map((line) => [line.item_code, line.image]))
+    const itemGroups = Object.fromEntries(cart.lines.map((line) => [line.item_code, line.item_group]))
     const giftCards = payments.value
       .filter((p) => p.card_no)
       .map((p) => ({ card_no: p.card_no, amount: p.amount }))
@@ -801,14 +802,14 @@ async function complete() {
       )
       session.notify(t('Exchange completed'))
       if (result.sale && session.settings?.enable_customer_display) {
-        displayReceipt.value = receiptSnapshot(result.sale, itemImages)
+        displayReceipt.value = receiptSnapshot(result.sale, itemImages, itemGroups)
       }
       emit('done', result.sale)
       return
     }
     const receipt = await cart.submit(payments.value, redeemPoints.value, giftCards)
     session.notify(receipt.offline ? t('Sale queued (offline)') : t('Sale completed'))
-    if (session.settings?.enable_customer_display) displayReceipt.value = receiptSnapshot(receipt, itemImages)
+    if (session.settings?.enable_customer_display) displayReceipt.value = receiptSnapshot(receipt, itemImages, itemGroups)
     emit('done', receipt)
   } catch (e) {
     session.notify(e.message, true)

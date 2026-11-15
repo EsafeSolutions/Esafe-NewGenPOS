@@ -644,10 +644,11 @@ export const useCartStore = defineStore('cart', {
       const session = useSessionStore()
       if (session.offline) return // wallet needs the server
       try {
-        this.wallet = await call('esafepos.api.loyalty.get_wallet', {
+        const wallet = await call('esafepos.api.loyalty.get_wallet', {
           customer: customer.name,
           company: session.company,
         })
+        if (this.customer?.name === customer.name) this.wallet = wallet
       } catch {
         /* wallet display is optional */
       }

@@ -53,6 +53,10 @@
         <button class="btn btn-outline" data-tour="sell-parked" @click="parkedOpen = true">
           {{ t('Retrieve Sale') }}
         </button>
+        <button v-if="session.settings.enable_customer_display && !session.offline"
+          class="btn btn-outline" :disabled="paymentOpen || cart.submitting" @click="askForContact">
+          <Icon name="person" /> {{ t('Ask for contact number') }}
+        </button>
       </div>
 
       <div class="group-bar" data-tour="sell-groups">
@@ -156,7 +160,7 @@ import { computed, ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { t } from '../i18n'
 import { call } from '../api'
-import { customerDisplayUrl } from '../customerDisplay'
+import { customerDisplayUrl, displayContactRequest, displayReceipt, requestDisplayContact } from '../customerDisplay'
 import { money } from '../format'
 import { useSessionStore } from '../stores/session'
 import { scaleBarcodeOptions, useCatalogStore } from '../stores/catalog'
@@ -361,6 +365,11 @@ function openCustomerDisplay() {
   window.open(url, 'esafepos-customer-display', 'width=1024,height=720')
 }
 
+function askForContact() {
+  if (!cart.lines.length) displayReceipt.value = null
+  requestDisplayContact(cart.lines.length ? 'overlay' : 'welcome')
+}
+
 async function loadFavourites() {
   favLoading.value = true
   try {
@@ -485,6 +494,7 @@ function onPay() {
     passcodeOpen.value = true
     return
   }
+  displayContactRequest.value = null
   paymentOpen.value = true
 }
 
@@ -494,6 +504,7 @@ function onDiscountApproved(result) {
   if (result.passcode) cart.discountPasscode = result.passcode
   if (result.request) cart.discountRequest = result.request
   passcodeOpen.value = false
+  displayContactRequest.value = null
   paymentOpen.value = true
 }
 </script>

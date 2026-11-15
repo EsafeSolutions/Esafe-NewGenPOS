@@ -178,7 +178,8 @@ import { useSessionStore } from './stores/session'
 import { useCatalogStore } from './stores/catalog'
 import { useCartStore } from './stores/cart'
 import { money, shiftClock, isolate } from './format'
-import { displayPayment, displayReceipt, publishCart, onDisplayRequest } from './customerDisplay'
+import { displayContactRequest, displayCustomerName, displayPayment, displayReceipt, publishCart, onDisplayRequest, requestDisplayContact } from './customerDisplay'
+import { connectTillContact } from './displayContact'
 import { ensurePersistentStorage } from './offline'
 import { t, locale, setLocale, offeredLanguages, LANGUAGES } from './i18n'
 import Icon from './components/Icon.vue'
@@ -296,8 +297,9 @@ function publishDisplaySnapshot() {
     publishCart({ items: [] })
     return
   }
+  const contact = route.path === '/' ? displayContactRequest.value : null
   if (!cart.lines.length && displayReceipt.value) {
-    publishCart({ logo: session.settings?.receipt_logo || '', ...displayReceipt.value })
+    publishCart({ logo: session.settings?.receipt_logo || '', ...displayReceipt.value, contact, canStart: route.path === '/' })
     return
   }
   const saved = cart.promoSavings + cart.bundleSavings + cart.manualDiscountTotal + cart.orderDiscountTotal
@@ -312,11 +314,14 @@ function publishDisplaySnapshot() {
   publishCart({
     company: session.company,
     logo: session.settings?.receipt_logo || '',
-    customer: cart.customer?.customer_name || '',
+    customer: displayCustomerName(cart.customer?.customer_name),
+    pointsBalance: cart.wallet?.loyalty_points,
+    contact,
     items: cart.lines.map((l, index) => ({
       name: l.item_name,
       code: l.item_code,
       image: l.image,
+      group: l.item_group,
       qty: l.qty,
       uom: l.selling_uom || l.uom,
       rate: cart.show(l.price),
@@ -375,7 +380,17 @@ onMounted(async () => {
       publishDisplaySnapshot()
     }))
     displayCleanup.push(onDisplayRequest(publishDisplaySnapshot))
-    displayCleanup.push(watch(() => [session.settings?.enable_customer_display, session.locked, displayPayment.value, displayReceipt.value], publishDisplaySnapshot))
+    displayCleanup.push(connectTillContact(cart, session, route))
+    displayCleanup.push(watch(() => [
+      route.path, session.settings?.enable_customer_display, session.posProfile, session.locked,
+      session.offline, cart.lines.length, cart.customer, Boolean(displayReceipt.value),
+    ], () => {
+      if (route.path === '/' && session.settings?.enable_customer_display && session.posProfile &&
+          !session.locked && !session.offline && !cart.submitting && !cart.lines.length && !cart.customer &&
+          !displayReceipt.value && !displayContactRequest.value) requestDisplayContact('welcome')
+    }, { immediate: true, flush: 'post' }))
+    displayCleanup.push(watch(() => [route.path, session.settings?.enable_customer_display, session.locked,
+      displayPayment.value, displayReceipt.value, displayContactRequest.value], publishDisplaySnapshot))
     publishDisplaySnapshot()
     setupAutoLock()
     // Who sees the welcome, or what is new since their last visit.

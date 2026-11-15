@@ -44,6 +44,15 @@ def contact_number(value):
     return number if len(raw) <= 32 and re.fullmatch(r"\+?[0-9]{7,15}", number) else ""
 
 
+def apply_sale_contact(invoice, selected_customer, mobile):
+    if not mobile or selected_customer:
+        return
+    phone = contact_number(mobile)
+    if not phone:
+        frappe.throw(_("Enter a valid contact number."))
+    invoice.update({"esafepos_walk_in_name": phone, "esafepos_walk_in_phone": phone})
+
+
 def receipt_customer_name(invoice):
     return (
         invoice.get("esafepos_walk_in_name")

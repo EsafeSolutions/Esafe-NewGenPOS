@@ -936,9 +936,8 @@ def _host_mobile_fields():
 @frappe.whitelist()
 def display_customer_lookup(pos_profile: str, mobile: str):
     """Match an existing customer by exact contact number from the till."""
-    import re
-
     from esafepos.api.permissions import assert_outlet
+    from esafepos.walk_in import contact_number
     if (not pos_profile or not frappe.has_permission("POS Invoice", "read")
             or not frappe.has_permission("Customer", "read")):
         frappe.throw(_("You are not permitted to look up customers."), frappe.PermissionError)
@@ -946,10 +945,10 @@ def display_customer_lookup(pos_profile: str, mobile: str):
     if not frappe.get_cached_doc("EsafePOS Settings").get("enable_customer_display"):
         frappe.throw(_("The customer display is turned off."))
     raw = (mobile or "").strip()
-    number = re.sub(r"[ ()-]", "", raw)
-    digits = number.lstrip("+")
-    if not re.fullmatch(r"\+?[0-9]{7,15}", number) or len(raw) > 32:
+    number = contact_number(raw)
+    if not number:
         frappe.throw(_("Enter a valid contact number."))
+    digits = number.lstrip("+")
     candidates = {raw, number}
     local = digits[2:] if digits.startswith("94") and len(digits) == 11 else ""
     if len(digits) == 10 and digits.startswith("07"):

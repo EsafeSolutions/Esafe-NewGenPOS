@@ -38,7 +38,17 @@ export function connectTillContact(cart, session, route) {
       })
       if (!current()) return
       if (!customer) {
-        result(t('No customer found. Check the number or ask the cashier.'))
+        if (cart.customer) {
+          result(t('A customer is already selected. Ask the cashier to change it.'))
+          return
+        }
+        if (!/^\+?[0-9]{7,15}$/.test(message.mobile)) {
+          result(t('Enter a valid contact number.'))
+          return
+        }
+        cart.receiptContact = message.mobile
+        clear()
+        session.notify(t('Contact number added to this sale'))
         return
       }
       clear()

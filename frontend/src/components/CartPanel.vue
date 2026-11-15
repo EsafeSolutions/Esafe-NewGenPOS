@@ -6,7 +6,8 @@
     <div class="customer-row" data-tour="cart-customer" role="button" tabindex="0" @click="customerOpen = true" @keydown.enter="customerOpen = true">
       <div class="avatar">{{ customerInitials }}</div>
       <div class="customer-meta">
-        <div class="customer-name">{{ cart.customer?.customer_name || t('Add a customer') }}</div>
+        <div class="customer-name">{{ cart.customer?.customer_name || cart.receiptContact || t('Add a customer') }}</div>
+        <div v-if="cart.receiptContact" class="muted small">{{ t('Receipt contact') }}</div>
         <div class="muted small" v-if="cart.customer">
           <span v-if="cart.saleCurrency.foreign" class="ccy-tag">{{ cart.saleCurrency.currency }}</span>
           {{ cart.customer.customer_group }}
@@ -18,6 +19,8 @@
         </div>
       </div>
       <button v-if="cart.customer" class="btn-ghost" @click.stop="cart.setCustomer(null)"><Icon name="close" /></button>
+      <button v-else-if="cart.receiptContact" class="btn-ghost" :aria-label="t('Remove receipt contact')"
+        @click.stop="cart.receiptContact = ''" @keydown.enter.stop><Icon name="close" /></button>
     </div>
 
     <!-- The customer is billed in a currency this till can't sell in: say so

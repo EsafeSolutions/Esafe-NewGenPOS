@@ -7,6 +7,20 @@ from esafepos import walk_in
 
 
 class ReceiptContactTests(unittest.TestCase):
+    def test_sale_contact_sets_phone_and_display_name_for_walk_in(self):
+        invoice = {"customer": walk_in.FALLBACK_CUSTOMER}
+        walk_in.apply_sale_contact(invoice, None, "077-123 4567")
+        self.assertEqual(invoice, {
+            "customer": walk_in.FALLBACK_CUSTOMER,
+            "esafepos_walk_in_name": "0771234567",
+            "esafepos_walk_in_phone": "0771234567",
+        })
+
+    def test_sale_contact_does_not_override_selected_customer(self):
+        invoice = {"customer": "Example Customer"}
+        walk_in.apply_sale_contact(invoice, "Example Customer", "0771234567")
+        self.assertEqual(invoice, {"customer": "Example Customer"})
+
     def test_accepts_formatted_phone_and_preserves_leading_zero_or_country_code(self):
         self.assertEqual(walk_in.contact_number(" 077-123 4567 "), "0771234567")
         self.assertEqual(walk_in.contact_number("+94 (77) 123 4567"), "+94771234567")

@@ -3,7 +3,7 @@
     <header>
       <Icon name="person" :size="29" />
       <h2 id="display-contact-title">{{ t('Membership') }}</h2>
-      <p>{{ t('Enter your contact number to find your account.') }}</p>
+      <p>{{ t('Enter your number to find your account or add it to this receipt.') }}</p>
     </header>
     <input v-model="mobile" type="tel" inputmode="none" autocomplete="off"
       :aria-label="t('Contact number')" :placeholder="t('Contact number')" :disabled="busy" />

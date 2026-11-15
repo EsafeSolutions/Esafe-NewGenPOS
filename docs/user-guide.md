@@ -140,6 +140,8 @@ With **Settings → General → Features → Automatic walk-in customer codes** 
 
 To add or correct the contact after checkout, open a submitted invoice from **Sales History** or **Customers → Transactions** and choose **Change customer name**. Enter the contact number and save. The number becomes the customer name shown on the POS invoice and digital receipt. If you learn the name later, reopen the invoice, choose **Add name**, and save it with the existing number. The ERPNext customer account still holds the sale. You can find the invoice by its saved contact number or walk-in code in **Sales History**.
 
+On the customer display, enter a number and choose **Continue**. A matching number selects the existing customer. If there is no match and the sale has no selected customer, the number is saved on the walk-in receipt and used as its displayed customer name. The cashier can see or remove the receipt contact from the cart. Choose **Skip** to continue without entering a number.
+
 Use **Item view** to switch between **List**, **Images**, and **Images and full descriptions**. The till remembers your choice on that browser. Scroll or select **Load more items** to continue through the catalog. Each item has an **Add** button for quick entry. Tap the item itself to enlarge its image, read its description, and edit the quantity, price or discount. Quantity uses the item's configured ERPNext stock unit. Price and discount edits follow the till's existing permissions and approval limits.
 
 Select **Display** to open the [customer screen](customer-display.md). It follows the basket and payment, highlights savings, and shows the completed receipt and rewards.

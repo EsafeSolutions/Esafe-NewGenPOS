@@ -89,7 +89,7 @@ window.checkOfflineScale = async () => {
   const disabled = await searchCatalog(label, null, 5, '', scaleBarcodeOptions({ enable_scale_barcodes: 0 }))
   return [enabled.length, disabled.length]
 }
-Object.assign(window, { ready: true, mode, catalog, session, displayTerminalId, publishCart })
+Object.assign(window, { ready: true, mode, catalog, cart, session, displayTerminalId, publishCart })
 </script></body></html>`
 const server = await createServer({ root, base: '/', server: { port: 0, host: '127.0.0.1', open: false },
   plugins: [{ name: 'display-check', configureServer(server) {
@@ -187,6 +187,23 @@ if (!process.argv.includes('--serve')) {
     }
     await display.getByRole('button', { name: 'Skip' }).click()
     await display.locator('.cd-welcome').waitFor({ state: 'hidden' })
+    await till.route('**/api/method/esafepos.api.sales.submit_sale', async (route) => {
+      const { payload } = route.request().postDataJSON()
+      assert.equal(payload.customer, null)
+      assert.equal(payload.receipt_contact, '0770000000')
+      await route.fulfill({ json: { message: { name: 'POS-0002', receipt_contact: payload.receipt_contact } } })
+    })
+    await till.evaluate(() => { cart.clear(); showContact('welcome') })
+    await display.getByLabel('Contact number').fill('0770000000')
+    await display.getByRole('button', { name: 'Continue' }).click()
+    await display.locator('.cd-welcome').waitFor({ state: 'hidden' })
+    assert.equal(await display.getByText('0770000000').count(), 0)
+    const submitted = await till.evaluate(() => {
+      cart.addItem(catalog.items[0])
+      return cart.submit([{ mode_of_payment: 'Cash', amount: 20 }])
+    })
+    assert.equal(submitted.receipt_contact, '0770000000')
+    assert.equal(await till.evaluate(() => cart.receiptContact), '')
     await till.evaluate(() => showContact('overlay'))
     const dialog = display.getByRole('dialog')
     await dialog.waitFor()
@@ -196,11 +213,14 @@ if (!process.argv.includes('--serve')) {
     }
     await dialog.getByLabel('Contact number').fill('0770000000')
     await dialog.getByRole('button', { name: 'Continue' }).click()
-    await dialog.getByRole('alert').getByText(/No customer found/).waitFor()
+    await dialog.waitFor({ state: 'hidden' })
+    assert.equal(await till.evaluate(() => cart.receiptContact), '0770000000')
+    await till.evaluate(() => showContact('overlay'))
     await dialog.getByLabel('Contact number').fill('0771234567')
     await dialog.getByRole('button', { name: 'Continue' }).click()
     await dialog.waitFor({ state: 'hidden' })
     await display.getByText('Maya', { exact: true }).waitFor()
+    assert.equal(await till.evaluate(() => cart.receiptContact), '')
     assert.equal(await display.getByText('0771234567').count(), 0)
     assert.equal(await display.locator('.cd-item .grains svg').count(), 1)
     await till.evaluate(() => bumpEarlierItem())

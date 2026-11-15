@@ -745,6 +745,7 @@ def submit_sale(payload: dict | str):
     if key:
         _set_custom(invoice, ("esafepos_idempotency_key",), key)
     walk_in.assign_receipt_code(invoice, payload.get("customer"))
+    walk_in.apply_sale_contact(invoice, payload.get("customer"), payload.get("receipt_contact"))
 
     # Tenders ERPNext will accept for this sale at the close, and the wallets
     # that hold one currency only (their ledgers are in the outlet's).

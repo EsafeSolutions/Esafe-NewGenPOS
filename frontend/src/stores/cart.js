@@ -29,6 +29,7 @@ export const useCartStore = defineStore('cart', {
   state: () => ({
     lines: [], // {item_code, item_name, item_group, brand, qty, price, manual_discount_percent}
     customer: null, // {name, customer_name, customer_group}
+    receiptContact: '',
     wallet: null, // {loyalty_points, conversion_factor, store_credit}
     couponCodes: [],
     salesPerson: null, // persists across sales (shift-based)
@@ -628,6 +629,7 @@ export const useCartStore = defineStore('cart', {
       // A typed price is in the sale's currency: a customer who buys in
       // another one takes the lines back to their list prices first.
       const before = this.saleCurrency.currency
+      this.receiptContact = ''
       this.customer = customer
       if (this.saleCurrency.currency !== before) {
         for (const line of this.lines) {
@@ -657,6 +659,7 @@ export const useCartStore = defineStore('cart', {
     clear() {
       this.lines = []
       this.customer = null
+      this.receiptContact = ''
       this.wallet = null
       this.couponCodes = []
       this.appType = null
@@ -759,6 +762,7 @@ export const useCartStore = defineStore('cart', {
       return {
         pos_profile: session.posProfile,
         customer: this.customer?.name || null,
+        ...(!this.customer && this.receiptContact ? { receipt_contact: this.receiptContact } : {}),
         items: this.lines.map((l) => ({
           item_code: l.item_code,
           qty: l.qty,
@@ -994,7 +998,7 @@ export const useCartStore = defineStore('cart', {
         key: payload.idempotency_key,
         queued_at: new Date().toISOString(),
         customer_name:
-          this.customer?.customer_name || session.defaultCustomerName || 'Walk-in',
+          this.customer?.customer_name || payload.receipt_contact || session.defaultCustomerName || 'Walk-in',
         item_count: this.lines.length,
         total: saleTotal,
         currency: sale.foreign ? sale.currency : session.currency,
@@ -1005,7 +1009,9 @@ export const useCartStore = defineStore('cart', {
         offline: true,
         name: `QUEUED-${new Date().toISOString().replace(/\D/g, '').slice(0, 14)}`,
         company: session.company,
-        customer_name: this.customer?.customer_name || session.defaultCustomerName || 'Walk-in',
+        customer_name: this.customer?.customer_name || payload.receipt_contact || session.defaultCustomerName || 'Walk-in',
+        receipt_contact: payload.receipt_contact || '',
+        customer_phone: payload.receipt_contact || '',
         posting_date: new Date().toISOString().slice(0, 10),
         posting_time: new Date().toTimeString().slice(0, 8),
         currency: sale.foreign ? sale.currency : session.currency,
@@ -1118,7 +1124,7 @@ export const useCartStore = defineStore('cart', {
         customer: this.customer?.name || null,
         customer_name: this.customer?.customer_name || null,
         note: note || null,
-        cart: { lines: this.lines, note: this.note,
+        cart: { lines: this.lines, note: this.note, receiptContact: this.receiptContact,
           orderDiscountMethod: this.orderDiscountMethod,
           orderDiscountAmount: this.orderDiscountAmount,
           orderDiscountPercent: this.orderDiscountPercent },
@@ -1137,6 +1143,7 @@ export const useCartStore = defineStore('cart', {
       }
       this.lines = data.cart.lines || []
       this.note = data.cart.note || ''
+      this.receiptContact = data.customer ? '' : data.cart.receiptContact || ''
       this.orderDiscountMethod = data.cart.orderDiscountMethod || 'percent'
       this.orderDiscountAmount = data.cart.orderDiscountAmount || 0
       this.orderDiscountPercent = data.cart.orderDiscountPercent || 0

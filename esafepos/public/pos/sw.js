@@ -17,8 +17,8 @@
    Scope: it is served from the site root so it can control /pos, but it only
    ever answers requests for /pos and the POS assets. The desk is untouched.
 
-   Versioning: the page registers it as /sw.js?v=<app version>, so a new
-   release is a new worker and a new cache, and the old cache is dropped on
+   Versioning: the page registers it as /sw.js?v=<shell revision>, so a new
+   build is a new worker and a new cache, and the old cache is dropped on
    activate. Nothing is version-stamped by hand.
 
    Since 0.56.0 it also SENDS the queue in the background (see the end of the

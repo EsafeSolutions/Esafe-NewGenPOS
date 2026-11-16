@@ -12,7 +12,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="ESAFE POS">
   <link rel="apple-touch-icon" href="/assets/esafepos/pos/pos-icon-192.png">
-  <link rel="stylesheet" href="/assets/esafepos/pos/pos.css?v={{ esafepos_version }}">
+  <link rel="stylesheet" href="/assets/esafepos/pos/pos.css?v={{ pos_shell_revision }}">
 </head>
 <body>
   <div id="app"></div>
@@ -21,17 +21,17 @@
     window.esafepos_version = "{{ esafepos_version }}";
     // Keep the shell on the device so the till opens with no connection at
     // all, and so a reload during an outage is not the end of the shift.
-    // Registered with the version, a release is a new worker and a new cache.
+    // Each shell build gets a new worker and cache.
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", function () {
         navigator.serviceWorker
-          .register("/sw.js?v={{ esafepos_version }}", { scope: "/pos" })
+          .register("/sw.js?v={{ pos_shell_revision }}", { scope: "/pos" })
           .catch(function () {
             /* no service worker (old browser, plain http): the till still works online */
           });
       });
     }
   </script>
-  <script type="module" src="/assets/esafepos/pos/pos.js?v={{ esafepos_version }}"></script>
+  <script type="module" src="/assets/esafepos/pos/pos.js?v={{ pos_shell_revision }}"></script>
 </body>
 </html>

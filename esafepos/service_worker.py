@@ -47,7 +47,7 @@ class ServiceWorkerPage:
         # Registered from the root so it can take charge of /pos, and told to
         # stay there: it must never answer for the desk.
         response.headers["Service-Worker-Allowed"] = "/pos"
-        # The worker carries the app version in its URL, so the browser asks
-        # for a new one on every release. Nothing gains from caching this.
+        # The worker carries the shell revision in its URL, so the browser
+        # asks for a new one on every changed build.
         response.headers["Cache-Control"] = "no-cache, must-revalidate"
         return response

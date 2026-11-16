@@ -279,6 +279,7 @@ Entries are summarized from the release notes. The [user guide changelog](user-g
 
 | Date | Change | Impact |
 |---|---|---|
+| 2026-11-16 | Adopted the teal P and sparkle as the POS app icon. | The shared SVG is used in the POS navigation, browser tab, and Frappe app launcher. The install manifest includes the SVG and matching 192 px and 512 px PNGs, with a PNG for Apple home screens. The offline shell preloads the new assets. Verified Chrome rendering, the production build, and icon references. |
 | 2026-11-16 | Stabilized cart overflow and checkout actions. | `CartPanel.vue` gives the cart a bounded height, keeps item rows in their own scroll region, limits the details and totals section, and reserves separated space for action and checkout buttons. Verified the production build and narrow-cart layout. |
 | 2026-11-16 | Centered the shop name in a modern curved header badge. | `App.vue` keeps the company name visually centered across the desktop header with a softly bordered pill, while retaining a compact inline version on phones. Verified the production build and desktop and mobile Settings layouts. |
 | 2026-11-16 | Moved the ESAFE logo to the top of the desktop navigation rail. | `NavRail.vue` and `App.vue` share `PosBrandMark.vue`. The mark stays beside the wordmark on phones, where navigation opens from a drawer. Verified the production build and Chrome checks for logo placement and navigation at desktop and phone widths. |

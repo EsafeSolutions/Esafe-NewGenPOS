@@ -17,7 +17,7 @@ required_apps = ["erpnext"]
 add_to_apps_screen = [
     {
         "name": app_name,
-        "logo": "/assets/esafepos/pos/icon-192.png",
+        "logo": "/assets/esafepos/pos/pos-icon.svg",
         "title": app_title,
         "route": "/pos",
         "has_permission": "esafepos.api.session.can_open_till",

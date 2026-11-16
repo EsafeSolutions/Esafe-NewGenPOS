@@ -505,6 +505,8 @@ function discard() {
 <style scoped>
 .cart {
   width: clamp(276px, 28%, 432px);
+  height: calc(100% - 20px);
+  max-height: calc(100% - 20px);
   min-width: 0;
   margin-block: 10px;
   margin-inline-end: 10px;
@@ -516,7 +518,13 @@ function discard() {
   overflow: hidden;
 }
 @media (max-width: 900px) {
-  .cart { width: auto; min-height: 400px; margin: 0 10px 10px; }
+  .cart {
+    width: auto;
+    height: auto;
+    max-height: calc(100dvh - 72px);
+    min-height: 400px;
+    margin: 0 10px 10px;
+  }
   .cart .cart-foot { flex-shrink: 0; }
 }
 @media (max-width: 700px) {
@@ -629,17 +637,21 @@ function discard() {
 .lines {
   flex: 1 1 auto;
   overflow-y: auto;
-  /* The goods never shrink below three lines: what sits under them scrolls
-     first (.cart-foot). */
-  min-height: 180px;
+  min-height: 0;
 }
 .cart-foot {
-  flex: 0 1 auto;
+  flex: 0 0 auto;
+  max-height: 34%;
   min-height: 0;
   overflow-y: auto;
   border-top: 1px solid var(--border);
 }
 .cart-controls { max-height: min(180px, 28vh); overflow: auto; border-bottom: 1px solid var(--border); }
+.actions,
+.checkout-actions {
+  flex-shrink: 0;
+  border-top: 1px solid var(--border);
+}
 .cart-tools {
   display: flex;
   flex-wrap: wrap;

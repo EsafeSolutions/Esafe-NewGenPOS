@@ -46,7 +46,7 @@ function submit() {
 
 <style scoped>
 .contact-pad { background: var(--card-bg); display: grid; gap: 12px; padding: clamp(12px, 2vw, 24px); }
-header { background: #dff3ff; border-radius: 12px; color: #133d72; padding: 12px; text-align: center; }
+header { background: var(--surface-2); border-radius: 12px; color: var(--text); padding: 12px; text-align: center; }
 header h2, header p { margin: 3px 0; }
 .contact-pad input { width: 100%; text-align: center; font-size: clamp(20px, 4vw, 30px); letter-spacing: .1em; min-height: 50px; }
 .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }

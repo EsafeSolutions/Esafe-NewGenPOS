@@ -2,10 +2,7 @@
      SPDX-License-Identifier: AGPL-3.0-only
      "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md. -->
 <template>
-  <nav class="rail" data-tour="nav-rail">
-    <div class="logo">
-      <img :src="esafeMark" alt="ESAFE POS" />
-    </div>
+  <nav id="pos-navigation" class="rail" :class="{ 'rail-open': mobileOpen }" data-tour="nav-rail" @click="onNavClick">
     <!-- The reports alone (0.65.0): Insights, the theme and the way back to ERPNext. -->
     <router-link v-if="!session.reportsOnly" to="/" class="rail-item" exact-active-class="active">
       <svg viewBox="0 0 24 24"><path d="M7 18a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm10 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM3 2h2.5l3.1 11.6A2 2 0 0 0 10.5 15h8.2a2 2 0 0 0 1.9-1.4L23 6H6.1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -81,7 +78,13 @@ import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useSessionStore } from '../stores/session'
 import { call } from '../api'
 import { t } from '../i18n'
-import esafeMark from '../assets/esafe-solutions-favicon.png'
+
+defineProps({ mobileOpen: Boolean })
+const emit = defineEmits(['navigate'])
+
+function onNavClick(event) {
+  if (event.target.closest('a')) emit('navigate')
+}
 
 // A label longer than the rail is wide (Configuración, Einstellungen) takes a
 // smaller size rather than breaking in the middle of the word.
@@ -145,20 +148,23 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  padding-bottom: 10px;
+  padding-block: 52px 10px;
   flex-shrink: 0;
   min-height: 0;
   overflow-y: auto;
   scrollbar-width: thin;
 }
-.logo {
-  height: 52px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+@media (max-width: 700px) {
+  .rail {
+    display: none;
+    position: absolute;
+    inset-block: 52px 0;
+    inset-inline-start: 0;
+    padding-block-start: 0;
+    z-index: 42;
+  }
+  .rail-open { display: flex; }
 }
-.logo img { display: block; width: 34px; height: 38px; object-fit: contain; }
 .rail-item {
   flex-shrink: 0;
   display: flex;

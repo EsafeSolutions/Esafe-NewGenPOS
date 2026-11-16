@@ -37,6 +37,6 @@ const category = computed(() => {
 .product-art img { width: 100%; height: 100%; object-fit: contain; }
 .produce { background: #e5f5df; color: #376038; }
 .grains, .kitchen { background: #ffedd4; color: #80500d; }
-.dairy { background: #e8efff; color: #2853a0; }
+.dairy { background: var(--surface-2); color: var(--text); }
 .meat { background: #fbe8e9; color: #853948; }
 </style>

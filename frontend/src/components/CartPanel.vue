@@ -504,10 +504,12 @@ function discard() {
 
 <style scoped>
 .cart {
-  width: clamp(276px, 24%, 352px);
+  width: clamp(276px, 28%, 432px);
   min-width: 0;
   margin-block: 10px;
   margin-inline-end: 10px;
+  background: color-mix(in srgb, var(--card-bg) 85%, var(--brand));
+  border-color: color-mix(in srgb, var(--border) 74%, var(--brand));
   display: flex;
   flex-direction: column;
   flex-shrink: 0;

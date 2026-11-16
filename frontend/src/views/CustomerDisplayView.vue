@@ -13,7 +13,6 @@
     </section>
     <template v-else>
     <header class="cd-head">
-      <img v-if="snap.logo" :src="snap.logo" class="cd-logo" alt="" />
       <div><h1>{{ snap.company || t('Welcome') }}</h1></div>
       <div v-if="snap.receipt" class="cd-receipt">
         <strong>{{ snap.pending ? t('Sale queued (offline)') : t('Sale completed') }}</strong>
@@ -25,13 +24,20 @@
       <aside class="cd-sidebar">
         <div class="cd-greeting">
           <Icon name="person" :size="25" />
-          <div><span>{{ snap.customer ? t('Welcome back') : t('Welcome') }}</span><strong v-if="snap.customer">{{ snap.customer }}</strong></div>
+          <div>
+            <span>{{ snap.customer ? t('Welcome back') : t('Welcome') }}</span>
+            <strong v-if="snap.customer">{{ snap.customer }}</strong>
+          </div>
         </div>
-        <div v-for="row in rewards" :key="row.label" class="cd-row cd-reward"><span>{{ row.label }}</span><strong>{{ row.amount }}</strong></div>
-        <div v-for="(row, index) in costs" :key="'c' + index" class="cd-row"><span>{{ row.label }}</span><span>{{ row.amount }}</span></div>
-        <div v-for="(row, index) in tenders" :key="'p' + index" class="cd-row"><span>{{ row.label }}</span><span>{{ row.amount }}</span></div>
-        <div v-if="snap.equivalent" class="cd-equivalent muted">{{ snap.equivalent }}</div>
-        <button v-if="snap.canStart" class="btn btn-outline cd-next" @click="channel?.postMessage({ kind: 'next' })">{{ t('Start next sale') }}</button>
+        <div v-if="rewards.length || costs.length || tenders.length || snap.paid || snap.equivalent || snap.canStart"
+          class="cd-details">
+          <div v-for="row in rewards" :key="row.label" class="cd-row cd-reward"><span>{{ row.label }}</span><strong>{{ row.amount }}</strong></div>
+          <div v-for="(row, index) in costs" :key="'c' + index" class="cd-row"><span>{{ row.label }}</span><span>{{ row.amount }}</span></div>
+          <div v-for="(row, index) in tenders" :key="'p' + index" class="cd-row"><span>{{ row.label }}</span><span>{{ row.amount }}</span></div>
+          <div v-if="snap.paid" class="cd-row cd-paid"><span>{{ t('Total paid') }}</span><strong>{{ snap.paid }}</strong></div>
+          <div v-if="snap.equivalent" class="cd-equivalent muted">{{ snap.equivalent }}</div>
+          <button v-if="snap.canStart" class="btn btn-outline cd-next" @click="channel?.postMessage({ kind: 'next' })">{{ t('Start next sale') }}</button>
+        </div>
       </aside>
       <section class="cd-cart" :aria-label="t('Items')">
         <article v-if="latest && !snap.receipt" class="cd-latest" aria-live="polite">
@@ -131,7 +137,6 @@ const costs = computed(() => [
 ].filter((row) => row.amount))
 const tenders = computed(() => [
   ...(snap.value.payments || []),
-  { label: t('Paid'), amount: snap.value.paid },
   { label: t('Loyalty redeemed'), amount: snap.value.redeemed },
   { label: t('Exchange credit'), amount: snap.value.exchangeCredit },
 ].filter((row) => row.amount))
@@ -142,12 +147,19 @@ const rewards = computed(() => [
 ].filter((row) => row.amount != null && row.amount !== ''))
 
 watch(() => snap.value.contact?.id, clearContactResult)
-watch(latestIndex, async () => {
-  if (snap.value.receipt) return
+watch([latestIndex, () => snap.value.receipt], async () => {
   await nextTick()
   const list = itemList.value
-  const item = list?.children[latestIndex.value]
-  if (item && list.scrollHeight > list.clientHeight) list.scrollTop = item.offsetTop
+  if (!list) return
+  if (snap.value.receipt) {
+    list.scrollTop = 0
+    return
+  }
+  const item = list.children[latestIndex.value]
+  if (!item) return
+  const bottom = item.offsetTop + item.offsetHeight
+  if (item.offsetTop < list.scrollTop) list.scrollTop = item.offsetTop
+  else if (bottom > list.scrollTop + list.clientHeight) list.scrollTop = bottom - list.clientHeight
 })
 
 onMounted(() => {
@@ -177,56 +189,69 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.cdisplay { height: 100dvh; display: flex; flex-direction: column; padding: clamp(12px, 2vw, 28px); background: #f2f6fc; color: #142e53; }
-.cd-head, .cd-content, .cd-totals { width: 100%; max-width: 1440px; margin-inline: auto; }
-.cd-head { min-height: 52px; display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
-.cd-head h1 { margin: 0; font-size: clamp(18px, 2.4vw, 28px); }
-.cd-logo { width: 45px; height: 45px; object-fit: contain; }
-.cd-receipt { margin-inline-start: auto; text-align: end; color: var(--text-muted); font-size: .88rem; }
+.cdisplay { height: 100dvh; display: flex; flex-direction: column; padding: clamp(12px, 2vw, 38px) clamp(12px, 2.8vw, 54px) clamp(12px, 1.5vw, 28px); background: #f2f6fc; color: #142e53; font-size: clamp(14px, .94vw, 18px); }
+.cd-head { min-height: clamp(44px, 3.5vw, 66px); display: flex; align-items: center; gap: 10px; margin-bottom: clamp(10px, .9vw, 17px); }
+.cd-head h1 { margin: 0; font-size: clamp(18px, 1.85vw, 36px); overflow-wrap: anywhere; }
+.cd-head > div { min-width: 0; }
+.cd-receipt { margin-inline-start: auto; text-align: end; color: var(--text-muted); font-size: .88rem; overflow-wrap: anywhere; }
 .cd-receipt strong { color: var(--text); }
-.cd-content { display: grid; flex: 1; min-height: 0; grid-template-columns: minmax(160px, .68fr) minmax(0, 2fr); gap: 14px; }
-.cd-sidebar { overflow: auto; min-height: 0; }
+.cd-content { display: grid; grid-template-columns: minmax(160px, 1fr) minmax(0, 2.95fr); flex: 1; min-height: 0; gap: clamp(10px, .95vw, 18px); }
+.cd-sidebar {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
+.cd-greeting, .cd-details { background: var(--card-bg); border-radius: var(--radius); }
+.cd-greeting { padding: clamp(10px, 1.1vw, 21px); }
+.cd-details { padding: 6px 10px 10px; }
 .cd-greeting, .cd-row, .cd-list-heading { display: flex; align-items: center; gap: 10px; }
-.cd-greeting { background: white; border-radius: 12px; padding: 14px; margin-bottom: 8px; }
-.cd-greeting strong { display: block; font-size: 20px; }
-.cd-row, .cd-list-heading { justify-content: space-between; padding: 7px 8px; }
-.cd-row span { overflow-wrap: anywhere; }
-.cd-cart { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
-.cd-latest { --product-art-size: clamp(56px, 9vw, 110px); display: flex; align-items: center; gap: clamp(9px, 2vw, 20px); padding: clamp(12px, 2vw, 24px); border-radius: 16px; background: #1658ba; color: white; }
+.cd-row { min-width: 0; padding: 6px 4px; justify-content: space-between; border-top: 1px solid var(--border-subtle); }
+.cd-row > :last-child { text-align: end; }
+.cd-paid { padding: 8px; border-radius: 8px; border-top: 0; background: var(--surface-2); color: var(--topbar-bg); }
+.cd-greeting strong { display: block; overflow-wrap: anywhere; }
+.cd-list-heading { justify-content: space-between; padding: 8px 10px; }
+.cd-row > * { overflow-wrap: anywhere; }
+.cd-cart { display: flex; flex-direction: column; flex: 1; min-height: 0; min-width: 0; }
+.cd-latest { --product-art-size: clamp(60px, 7.2vw, 136px); display: flex; align-items: center; gap: clamp(10px, 1.35vw, 26px); padding: clamp(12px, 1.6vw, 30px); border-radius: var(--radius-lg); background: #1658ba; color: white; }
 .cd-latest-copy, .cd-latest-price { display: grid; gap: 4px; }
 .cd-latest-copy { flex: 1; min-width: 0; }
-.cd-latest-copy strong { font-size: clamp(18px, 3vw, 34px); line-height: 1.15; overflow-wrap: anywhere; }
+.cd-latest-copy strong { font-size: clamp(18px, 2.25vw, 43px); line-height: 1.15; overflow-wrap: anywhere; }
 .cd-latest-price { text-align: end; }
-.cd-latest-price strong { border-radius: 8px; color: #123c7a; background: white; padding: 5px 9px; font-size: clamp(17px, 3vw, 31px); }
-.cd-items { display: grid; position: relative; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; overflow: auto; gap: 7px; }
-.cd-item { display: flex; align-items: center; gap: 8px; min-width: 0; border-radius: 10px; padding: 10px; background: white; }
+.cd-latest-price strong { border-radius: 8px; color: #123c7a; background: var(--card-bg); padding: 5px 10px; font-size: clamp(17px, 2.05vw, 39px); }
+.cd-items { display: grid; position: relative; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; overflow: auto; gap: 8px; }
+.cd-item { --product-art-size: clamp(42px, 3.15vw, 60px); display: flex; align-items: center; gap: 10px; min-width: 0; border-radius: 10px; padding: clamp(8px, .73vw, 14px) 12px; background: var(--card-bg); }
 .cd-item-main { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .cd-prices { display: grid; justify-items: end; text-align: end; font-size: .94em; }
-.cd-totals { display: grid; grid-auto-columns: minmax(0, 1fr); grid-auto-flow: column; gap: 7px; margin-top: 12px; }
-.cd-totals > div { display: grid; gap: 3px; padding: 10px 12px; background: white; border-radius: 10px; }
-.cd-totals strong { font-size: clamp(18px, 3vw, 32px); overflow-wrap: anywhere; }
+.cd-totals { display: grid; grid-auto-columns: minmax(0, 1fr); grid-auto-flow: column; gap: 8px; margin-top: clamp(8px, .8vw, 15px); }
+.cd-totals > div { display: grid; gap: 4px; padding: clamp(8px, .8vw, 15px); background: var(--card-bg); border-radius: 12px; }
+.cd-totals strong { font-size: clamp(18px, 2.14vw, 41px); overflow-wrap: anywhere; }
 .cd-saving, .cd-reward { color: #21624d; font-weight: 700; }
 .cd-totals .cd-saving { background: #e3f4ed; }
 .cd-totals .cd-grand { background: #174f9b; color: white; }
 .cd-totals .cd-balance { background: #d9eafe; }
 .cd-receipt-brand { display: block; text-align: center; margin-top: 6px; }
 .cd-equivalent { text-align: end; }
-.cd-next { margin-top: 12px; }
+.cd-next { width: 100%; margin-top: 8px; }
 .cd-empty { margin: 12vh auto; text-align: center; color: var(--text-muted); font-size: 1.25rem; }
 .cd-welcome { width: min(1160px, 100%); flex: 1; min-height: 0; overflow: auto; align-self: center; display: grid; grid-template-columns: 1fr 1fr; align-content: center; }
-.cd-welcome-brand { background: linear-gradient(150deg, #123e83, #176ed4); color: #fff; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; padding: clamp(18px, 5vw, 62px); border-radius: 16px 0 0 16px; }
+.cd-welcome-brand { background: var(--topbar-bg); color: #fff; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; padding: clamp(18px, 5vw, 62px); border-radius: 16px 0 0 16px; }
 .cd-welcome-brand img { width: 65px; height: 65px; object-fit: contain; background: white; padding: 7px; border-radius: 12px; }
 .cd-welcome-brand p { margin: 26px 0 0; font-size: clamp(18px, 3vw, 34px); }
 .cd-welcome-brand h1 { margin: 0; font-size: clamp(27px, 5vw, 68px); line-height: 1.02; overflow-wrap: anywhere; }
 .cd-welcome :deep(.contact-pad) { border-radius: 0 16px 16px 0; }
-.cd-overlay { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 10px; background: #0a234a99; }
+.cd-overlay { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 10px; background: color-mix(in srgb, var(--topbar-bg) 60%, transparent); }
 .cd-dialog { width: min(440px, 100%); max-height: 100%; overflow: auto; border-radius: 16px; }
 @media (max-width: 900px) {
   .cd-items { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 600px) {
-  .cd-content { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  .cd-content { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); gap: 8px; }
   .cd-sidebar { max-height: 22dvh; }
+  .cd-latest { display: grid; grid-template-columns: auto minmax(0, 1fr); }
+  .cd-latest-price { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; grid-column: 1 / -1; }
   .cd-totals { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .cd-welcome { grid-template-columns: minmax(0, 1fr); align-content: start; }
   .cd-welcome-brand { border-radius: 14px 14px 0 0; }

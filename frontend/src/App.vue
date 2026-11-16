@@ -6,13 +6,24 @@
        no bootstrap, it exchanges cart/customer details over BroadcastChannel. -->
   <router-view v-if="isDisplay" />
 
-  <div class="shell" v-else-if="session.loaded && !session.error">
-    <NavRail />
+  <div class="shell" v-else-if="session.loaded && !session.error" @keydown.esc="closeNavigation">
+    <NavRail :mobile-open="navOpen" @navigate="closeNavigation" />
+    <div v-if="navOpen" class="nav-backdrop" aria-hidden="true" @click="closeNavigation"></div>
     <div class="main">
       <header class="topbar">
         <div class="topbar-left">
+          <button ref="navToggle" type="button" class="lang-pill topbar-icon nav-toggle" data-tour="nav-rail"
+            aria-controls="pos-navigation" :aria-expanded="navOpen"
+            :aria-label="navOpen ? t('Close menu') : t('Open menu')" @click="toggleNavigation">
+            <Icon :name="navOpen ? 'close' : 'menu'" :size="20" />
+          </button>
           <div class="brand-lockup">
-            <span class="brand-name">ESAFE POS</span>
+            <span class="brand-identity">
+              <span class="brand-badge">
+                <img :src="esafeMark" alt="" width="26" height="20" />
+              </span>
+              <span class="brand-wordmark">ESAFE ERP POS</span>
+            </span>
             <bdi v-if="session.company" class="shop-name" :title="session.company">{{ session.company }}</bdi>
           </div>
           <span class="brand-divider" aria-hidden="true"></span>
@@ -22,7 +33,7 @@
             <Icon name="check" /> {{ t('Shift Open:') }} <b>{{ shiftText }}</b>
           </span>
         </div>
-        <div class="topbar-right">
+        <div class="topbar-right" :inert="navOpen">
           <div v-if="route.path === '/'" id="sell-header-tools" class="topbar-tools"></div>
           <!-- Help for this screen (0.58.0, Settings, General, Help for staff). -->
           <button
@@ -141,7 +152,7 @@
         </div>
       </header>
       <StorageWarning v-if="!session.reportsOnly" />
-      <main class="content">
+      <main class="content" :inert="navOpen">
         <!-- The reports alone: no other screen mounts, not even for the moment
              before the move to Insights (the Sell screen would ask for products). -->
         <router-view v-if="!session.reportsOnly || route.path === '/insights'" :key="session.posProfile" />
@@ -176,7 +187,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { call } from './api'
 import { useSessionStore } from './stores/session'
@@ -187,6 +198,7 @@ import { displayContactRequest, displayCustomerName, displayPayment, displayRece
 import { connectTillContact } from './displayContact'
 import { ensurePersistentStorage } from './offline'
 import { t, locale, setLocale, offeredLanguages, LANGUAGES } from './i18n'
+import esafeMark from './assets/esafe-solutions-favicon.png'
 import Icon from './components/Icon.vue'
 import NavRail from './components/NavRail.vue'
 import OpenRegisterOverlay from './components/OpenRegisterOverlay.vue'
@@ -223,6 +235,33 @@ async function switchOutlet(event) {
 const route = useRoute()
 const router = useRouter()
 const isDisplay = computed(() => route.path === '/display')
+const navOpen = ref(false)
+const navToggle = ref(null)
+
+async function toggleNavigation() {
+  if (navOpen.value) {
+    closeNavigation()
+    return
+  }
+  navOpen.value = true
+  await nextTick()
+  document.querySelector('#pos-navigation a')?.focus()
+}
+
+function closeNavigation() {
+  if (!navOpen.value) return
+  navOpen.value = false
+  navToggle.value?.focus()
+}
+
+const mobileNavQuery = window.matchMedia('(max-width: 700px)')
+function resetNavigationOnDesktop(event) {
+  if (!event.matches) navOpen.value = false
+}
+watch(() => route.path, closeNavigation)
+onMounted(() => mobileNavQuery.addEventListener('change', resetNavigationOnDesktop))
+onBeforeUnmount(() => mobileNavQuery.removeEventListener('change', resetNavigationOnDesktop))
+
 // The reports alone (0.65.0): Insights is the only screen there is.
 watch(
   () => [session.reportsOnly, route.path],
@@ -455,12 +494,36 @@ function setupAutoLock() {
 }
 .brand-lockup {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 10px;
   min-width: 0;
   max-width: 100%;
 }
-.brand-name { font-size: 14px; font-weight: 800; white-space: nowrap; color: var(--brand-soft); }
+.brand-identity {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+}
+.brand-badge {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid color-mix(in srgb, var(--brand-soft) 52%, transparent);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--topbar-bg) 75%, black);
+}
+.brand-badge img {
+  object-fit: cover;
+  object-position: center top;
+}
+.brand-wordmark {
+  color: #fff;
+  font: 800 14px/1.2 "Plus Jakarta Sans", var(--font);
+  letter-spacing: .035em;
+  white-space: nowrap;
+}
 .shop-name {
   font-size: 18px;
   font-weight: 800;
@@ -499,6 +562,7 @@ function setupAutoLock() {
 .topbar-tools:empty { display: none; }
 .lang-pill.topbar-icon { display: inline-grid; place-items: center; width: 36px; min-height: 36px; padding: 0; }
 .topbar-icon:focus-visible { outline: 2px solid var(--brand-soft); outline-offset: 2px; }
+.lang-pill.nav-toggle, .nav-backdrop { display: none; }
 .topbar-user {
   font-size: 12.5px;
   color: #c5d0df;
@@ -592,7 +656,25 @@ function setupAutoLock() {
   color: #8fe3e8;
 }
 @media (max-width: 700px) {
+  .shell { position: relative; }
+  .nav-backdrop {
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: 41;
+    background: rgba(0, 0, 0, .42);
+  }
+  .lang-pill.nav-toggle {
+    display: inline-grid;
+    flex: none;
+    position: relative;
+    z-index: 42;
+  }
   .topbar { padding: 8px 10px; gap: 8px; }
+  .topbar-left { gap: 8px; }
+  .brand-identity { gap: 6px; }
+  .brand-wordmark { font-size: 12px; }
+  .brand-divider { display: none; }
   .topbar-title { font-size: 15px; }
   .shop-name { font-size: 16px; }
   .tb-clock, .tb-shift { display: none; }

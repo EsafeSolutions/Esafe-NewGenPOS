@@ -19,9 +19,7 @@
           </button>
           <div class="brand-lockup">
             <span class="brand-identity">
-              <span class="brand-badge">
-                <img :src="esafeMark" alt="" width="26" height="20" />
-              </span>
+              <PosBrandMark class="mobile-brand" />
               <span class="brand-wordmark">ESAFE ERP POS</span>
             </span>
             <bdi v-if="session.company" class="shop-name" :title="session.company">{{ session.company }}</bdi>
@@ -35,6 +33,9 @@
         </div>
         <div class="topbar-right" :inert="navOpen">
           <div v-if="route.path === '/'" id="sell-header-tools" class="topbar-tools"></div>
+          <button type="button" class="lang-pill topbar-icon" :title="themeAction" :aria-label="themeAction" @click="toggleTheme">
+            <Icon :name="theme === 'dark' ? 'sun' : 'moon'" />
+          </button>
           <!-- Help for this screen (0.58.0, Settings, General, Help for staff). -->
           <button
             v-if="help.inTill"
@@ -149,6 +150,9 @@
             </select>
             <template v-else>{{ session.outletLabel(session.posProfile) }}</template>
           </span>
+          <a href="/app" class="lang-pill topbar-icon erp-link" :title="t('Back to ERPNext')" :aria-label="t('Back to ERPNext')">
+            <Icon name="logout" />
+          </a>
         </div>
       </header>
       <StorageWarning v-if="!session.reportsOnly" />
@@ -198,7 +202,8 @@ import { displayContactRequest, displayCustomerName, displayPayment, displayRece
 import { connectTillContact } from './displayContact'
 import { ensurePersistentStorage } from './offline'
 import { t, locale, setLocale, offeredLanguages, LANGUAGES } from './i18n'
-import esafeMark from './assets/esafe-solutions-favicon.png'
+import { theme, toggleTheme } from './theme'
+import PosBrandMark from './components/PosBrandMark.vue'
 import Icon from './components/Icon.vue'
 import NavRail from './components/NavRail.vue'
 import OpenRegisterOverlay from './components/OpenRegisterOverlay.vue'
@@ -215,6 +220,7 @@ const session = useSessionStore()
 const help = useHelpStore()
 const catalog = useCatalogStore()
 const cart = useCartStore()
+const themeAction = computed(() => theme.value === 'dark' ? t('Switch to light mode') : t('Switch to dark mode'))
 
 // Switch the outlet this screen works on. The other outlet's shift stays as it
 // is; a sale half rung up here is cleared first, with the cashier's say-so.
@@ -474,6 +480,7 @@ function setupAutoLock() {
   min-width: 0;
 }
 .topbar {
+  position: relative;
   min-height: 52px;
   background: var(--topbar-bg);
   color: #fff;
@@ -505,19 +512,7 @@ function setupAutoLock() {
   align-items: center;
   gap: 8px;
 }
-.brand-badge {
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border: 1px solid color-mix(in srgb, var(--brand-soft) 52%, transparent);
-  border-radius: var(--radius);
-  background: color-mix(in srgb, var(--topbar-bg) 75%, black);
-}
-.brand-badge img {
-  object-fit: cover;
-  object-position: center top;
-}
+.brand-identity .mobile-brand { display: none; }
 .brand-wordmark {
   color: #fff;
   font: 800 14px/1.2 "Plus Jakarta Sans", var(--font);
@@ -525,6 +520,18 @@ function setupAutoLock() {
   white-space: nowrap;
 }
 .shop-name {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  max-width: min(38vw, 460px);
+  padding: 7px 24px 8px;
+  border: 1px solid rgba(255, 255, 255, .24);
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, .18), rgba(255, 255, 255, .08));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .18), 0 6px 18px rgba(8, 51, 113, .16);
+  text-align: center;
+  letter-spacing: .01em;
   font-size: 18px;
   font-weight: 800;
   min-width: 0;
@@ -548,8 +555,8 @@ function setupAutoLock() {
   border-radius: 999px;
   white-space: nowrap;
 }
-.tb-clock { background: rgba(19, 167, 149, 0.2); color: #b8f0e8; }
-.tb-shift { background: rgba(34, 197, 94, 0.18); color: #b3f0cb; }
+.tb-clock { background: rgba(7, 57, 59, .42); color: #b8f0e8; }
+.tb-shift { background: rgba(7, 57, 59, .42); color: #b3f0cb; }
 .tb-shift b { color: #fff; font-weight: 800; }
 .topbar-right {
   display: flex;
@@ -561,11 +568,12 @@ function setupAutoLock() {
 .topbar-tools { display: flex; align-items: center; gap: 6px; }
 .topbar-tools:empty { display: none; }
 .lang-pill.topbar-icon { display: inline-grid; place-items: center; width: 36px; min-height: 36px; padding: 0; }
+.erp-link { text-decoration: none; }
 .topbar-icon:focus-visible { outline: 2px solid var(--brand-soft); outline-offset: 2px; }
 .lang-pill.nav-toggle, .nav-backdrop { display: none; }
 .topbar-user {
   font-size: 12.5px;
-  color: #c5d0df;
+  color: var(--on-pos-blue-muted);
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -593,13 +601,13 @@ function setupAutoLock() {
   font-weight: 700;
   padding: 3px 11px;
   border-radius: 999px;
-  background: rgba(226, 48, 48, 0.25);
-  color: #ffb3b3;
+  background: rgba(60, 19, 47, .42);
+  color: #ffd4d4;
   cursor: pointer;
 }
 .register-pill:hover { filter: brightness(1.2); }
 .register-pill.open {
-  background: rgba(19, 167, 149, 0.28);
+  background: rgba(7, 57, 59, .42);
   color: #afe9e1;
 }
 .lang-pill {
@@ -647,12 +655,12 @@ function setupAutoLock() {
   font-weight: 700;
   padding: 3px 11px;
   border-radius: 999px;
-  background: rgba(245, 166, 35, 0.25);
+  background: rgba(52, 38, 10, .42);
   color: #ffd591;
   cursor: pointer;
 }
 .offline-pill.syncing {
-  background: rgba(0, 176, 185, 0.22);
+  background: rgba(7, 57, 59, .42);
   color: #8fe3e8;
 }
 @media (max-width: 700px) {
@@ -673,10 +681,17 @@ function setupAutoLock() {
   .topbar { padding: 8px 10px; gap: 8px; }
   .topbar-left { gap: 8px; }
   .brand-identity { gap: 6px; }
+  .brand-identity .mobile-brand { display: grid; }
   .brand-wordmark { font-size: 12px; }
   .brand-divider { display: none; }
   .topbar-title { font-size: 15px; }
-  .shop-name { font-size: 16px; }
+  .shop-name {
+    position: static;
+    transform: none;
+    max-width: min(42vw, 190px);
+    padding: 5px 12px 6px;
+    font-size: 16px;
+  }
   .tb-clock, .tb-shift { display: none; }
   .topbar-right { position: relative; }
   .lang-menu { position: static; }

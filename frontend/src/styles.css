@@ -4,11 +4,12 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Vazirmatn:wght@400;500;600;700&display=swap');
 
 /* EsafePOS design tokens, aligned with esafe.lk.
-   Deep navy #10254B and teal #13A795; type: Inter. */
+   Customer display blue and teal #13A795. */
 :root {
-  --nav-bg: #10254b;
-  --nav-active: #173b68;
-  --topbar-bg: #10254b;
+  --pos-blue: #1658ba;
+  --nav-bg: var(--pos-blue);
+  --topbar-bg: var(--pos-blue);
+  --on-pos-blue-muted: #eaf3ff;
   --page-bg: #f5f7fa;
   --card-bg: #ffffff;
   --surface-2: #edf4f4;
@@ -48,9 +49,6 @@
 
 /* Dark theme, toggled by adding data-theme="dark" on <html>. */
 :root[data-theme='dark'] {
-  --nav-bg: #0b1933;
-  --nav-active: #174868;
-  --topbar-bg: #0b1933;
   --page-bg: #091426;
   --card-bg: #10213a;
   --surface-2: #162b47;
@@ -221,6 +219,63 @@ h1, h2, h3, h4 { font-weight: 800; letter-spacing: -0.02em; line-height: 1.14; }
   font-weight: 600;
 }
 .toast.error { background: var(--red); }
+
+.workspace-layout {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+.workspace-sidebar {
+  flex: 0 0 224px;
+  min-width: 0;
+  overflow-y: auto;
+  padding: 12px 8px;
+  background: color-mix(in srgb, var(--card-bg) 68%, var(--page-bg));
+  border-inline-end: 1px solid var(--border);
+}
+.workspace-content {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  padding: clamp(12px, 1.4vw, 24px);
+}
+.workspace-nav-title { padding: 4px 9px 10px; font-weight: 750; }
+.workspace-nav-item, .workspace-nav-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 34px;
+  padding: 5px 8px;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  text-align: start;
+  font-size: 13px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.workspace-nav-item:hover, .workspace-nav-item.is-current { background: var(--surface-2); }
+.workspace-nav-item[aria-current='page'] {
+  background: var(--card-bg);
+  border-color: var(--border);
+  box-shadow: var(--shadow);
+  font-weight: 700;
+}
+.workspace-nav-item:focus-visible, .workspace-nav-toggle:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+.workspace-nav-chevron { margin-inline-start: auto; }
+.workspace-nav-children { margin-inline-start: 14px; padding-inline-start: 6px; border-inline-start: 1px solid var(--border); }
+.workspace-nav-toggle { display: none; }
+@media (max-width: 700px) {
+  .workspace-layout { flex-direction: column; }
+  .workspace-sidebar { flex: none; padding: 6px 10px; border-inline-end: 0; border-bottom: 1px solid var(--border); }
+  .workspace-nav-toggle { display: flex; background: var(--card-bg); border-color: var(--border); font-weight: 700; }
+  .workspace-nav { display: none; }
+  .workspace-nav.is-open { display: block; max-height: 44dvh; overflow-y: auto; padding-top: 4px; }
+  .workspace-nav-title { display: none; }
+}
 
 /* Promo badge */
 .promo-badge {

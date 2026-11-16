@@ -2,82 +2,75 @@
      SPDX-License-Identifier: AGPL-3.0-only
      "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md. -->
 <template>
-  <nav id="pos-navigation" class="rail" :class="{ 'rail-open': mobileOpen }" data-tour="nav-rail" @click="onNavClick">
-    <!-- The reports alone (0.65.0): Insights, the theme and the way back to ERPNext. -->
-    <router-link v-if="!session.reportsOnly" to="/" class="rail-item" exact-active-class="active">
+  <nav id="pos-navigation" class="rail" :class="{ 'rail-open': mobileOpen }" :aria-label="t('POS navigation')"
+    data-tour="nav-rail" @click="onNavClick">
+    <PosBrandMark class="rail-brand" />
+    <router-link v-if="!session.reportsOnly" to="/" class="rail-item" :title="t('Sell')" exact-active-class="active">
       <svg viewBox="0 0 24 24"><path d="M7 18a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm10 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM3 2h2.5l3.1 11.6A2 2 0 0 0 10.5 15h8.2a2 2 0 0 0 1.9-1.4L23 6H6.1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      <span :class="fit(t('Sell'))">{{ t('Sell') }}</span>
+      <span class="rail-label">{{ t('Sell') }}</span>
     </router-link>
-    <router-link v-if="!session.reportsOnly && session.permissions.view_history !== false" to="/history" class="rail-item" active-class="active">
+    <router-link v-if="!session.reportsOnly && session.permissions.view_history !== false" to="/history" class="rail-item" :title="t('History')" active-class="active">
       <svg viewBox="0 0 24 24"><path d="M12 8v5l3.5 2M21 12a9 9 0 1 1-9-9 9 9 0 0 1 9 9z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      <span :class="fit(t('History'))">{{ t('History') }}</span>
+      <span class="rail-label">{{ t('History') }}</span>
     </router-link>
-    <router-link v-if="session.permissions.customers" to="/customers" class="rail-item" active-class="active">
+    <router-link v-if="session.permissions.customers" to="/customers" class="rail-item" :title="t('Customers')" active-class="active">
       <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      <span :class="fit(t('Customers'))">{{ t('Customers') }}</span>
+      <span class="rail-label">{{ t('Customers') }}</span>
     </router-link>
-    <router-link v-if="holdsVisible" to="/holds" class="rail-item" active-class="active">
+    <router-link v-if="holdsVisible" to="/holds" class="rail-item" :title="t('Holds')" active-class="active">
       <svg viewBox="0 0 24 24"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
-      <span :class="fit(t('Holds'))">{{ t('Holds') }}</span>
+      <span class="rail-label">{{ t('Holds') }}</span>
     </router-link>
-    <router-link v-if="!session.reportsOnly" to="/register" class="rail-item" active-class="active">
+    <router-link v-if="!session.reportsOnly" to="/register" class="rail-item" :title="t('Register')" active-class="active">
       <svg viewBox="0 0 24 24"><path d="M3 9h18v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9zm3-5h12l2 5H4l2-5zm5 9h2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      <span :class="fit(t('Register'))">{{ t('Register') }}</span>
+      <span class="rail-label">{{ t('Register') }}</span>
     </router-link>
-    <router-link v-if="session.permissions.insights || salespeopleVisible || session.permissions.sales_reports || session.permissions.cashier_report || session.permissions.profit_report" to="/insights" class="rail-item" active-class="active">
+    <router-link v-if="session.permissions.insights || salespeopleVisible || session.permissions.sales_reports || session.permissions.cashier_report || session.permissions.profit_report" to="/insights" class="rail-item" :title="t('Insights')" active-class="active">
       <svg viewBox="0 0 24 24"><path d="M3 3v18h18M8 17v-6m5 6V7m5 10v-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      <span :class="fit(t('Insights'))">{{ t('Insights') }}</span>
+      <span class="rail-label">{{ t('Insights') }}</span>
     </router-link>
-    <router-link v-if="!session.reportsOnly && session.permissions.edit_items" to="/items" class="rail-item" active-class="active">
+    <router-link v-if="!session.reportsOnly && session.permissions.edit_items" to="/items" class="rail-item" :title="t('Items')" active-class="active">
       <svg viewBox="0 0 24 24"><path d="m3 7 9-4 9 4v10l-9 4-9-4zM3 7l9 4 9-4m-9 4v10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
-      <span :class="fit(t('Items'))">{{ t('Items') }}</span>
+      <span class="rail-label">{{ t('Items') }}</span>
     </router-link>
     <!-- Barcode and price labels (0.67.0): the shop's switch and the person's permission. -->
-    <router-link v-if="!session.reportsOnly && session.settings.enable_labels && session.permissions.print_labels" to="/labels" class="rail-item" active-class="active" data-tour="labels-rail">
+    <router-link v-if="!session.reportsOnly && session.settings.enable_labels && session.permissions.print_labels" to="/labels" class="rail-item" :title="t('Labels')" active-class="active" data-tour="labels-rail">
       <svg viewBox="0 0 24 24"><path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9-9-9zM7.5 7.5h.01" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      <span :class="fit(t('Labels'))">{{ t('Labels') }}</span>
+      <span class="rail-label">{{ t('Labels') }}</span>
     </router-link>
     <!-- Stock count (0.69.0): the switches, the capability and ERPNext create on Stock Reconciliation. -->
-    <router-link v-if="!session.reportsOnly && session.permissions.stock_count" to="/count" class="rail-item" active-class="active" data-tour="count-rail">
+    <router-link v-if="!session.reportsOnly && session.permissions.stock_count" to="/count" class="rail-item" :title="t('Stock count')" active-class="active" data-tour="count-rail">
       <svg viewBox="0 0 24 24"><path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2M8 8v8M11 8v8M14 8v8M17 8v8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      <span :class="fit(t('Stock count'))">{{ t('Stock count') }}</span>
+      <span class="rail-label">{{ t('Stock count') }}</span>
     </router-link>
     <button
       v-if="session.canApprove"
       type="button"
       class="rail-item"
       :class="{ active: approvalsOpen }"
+      :title="t('Approvals')"
       @click="approvalsOpen = true"
     >
       <span class="icon-wrap">
         <svg viewBox="0 0 24 24"><path d="M9 12l2 2 4-4M21 12a9 9 0 1 1-9-9 9 9 0 0 1 9 9z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <span v-if="pendingCount" class="badge">{{ pendingCount }}</span>
       </span>
-      <span :class="fit(t('Approvals'))">{{ t('Approvals') }}</span>
+      <span class="rail-label">{{ t('Approvals') }}</span>
     </button>
-    <router-link v-if="session.canManageAny" to="/settings" class="rail-item" active-class="active">
+    <router-link v-if="session.canManageAny" to="/settings" class="rail-item" :title="t('Settings')" active-class="active">
       <svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      <span :class="fit(t('Settings'))">{{ t('Settings') }}</span>
+      <span class="rail-label">{{ t('Settings') }}</span>
     </router-link>
-    <button class="rail-item rail-bottom" type="button" @click="toggleTheme" :title="theme === 'dark' ? t('Switch to light mode') : t('Switch to dark mode')">
-      <svg v-if="theme === 'dark'" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-      <svg v-else viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
-      <span :class="fit(theme === 'dark' ? t('Light') : t('Dark'))">{{ theme === 'dark' ? t('Light') : t('Dark') }}</span>
-    </button>
-    <a class="rail-item" href="/app" :title="t('Back to ERPNext')">
-      <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      <span :class="fit(t('ERP'))">{{ t('ERP') }}</span>
-    </a>
   </nav>
   <ApprovalsModal v-if="approvalsOpen" @close="onApprovalsClose" @changed="refreshPending" />
 </template>
 
 <script setup>
-import { theme, toggleTheme } from '../theme'
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useSessionStore } from '../stores/session'
 import { call } from '../api'
 import { t } from '../i18n'
+import PosBrandMark from './PosBrandMark.vue'
 
 defineProps({ mobileOpen: Boolean })
 const emit = defineEmits(['navigate'])
@@ -86,9 +79,6 @@ function onNavClick(event) {
   if (event.target.closest('a')) emit('navigate')
 }
 
-// A label longer than the rail is wide (Configuración, Einstellungen) takes a
-// smaller size rather than breaking in the middle of the word.
-const fit = (label) => (String(label || '').length > 11 ? 'tight' : '')
 import ApprovalsModal from './ApprovalsModal.vue'
 
 const session = useSessionStore()
@@ -143,61 +133,66 @@ onUnmounted(() => {
 
 <style scoped>
 .rail {
-  width: 76px;
-  background: var(--nav-bg);
+  width: 56px;
+  background: var(--card-bg);
+  border-inline-end: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  padding-block: 52px 10px;
+  gap: 4px;
+  padding: 8px 6px 10px;
   flex-shrink: 0;
   min-height: 0;
   overflow-y: auto;
   scrollbar-width: thin;
 }
+.rail-brand { align-self: center; margin-bottom: 8px; }
+.rail-item {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 39px;
+  padding: 6px;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  border-radius: 8px;
+}
+.rail-item svg {
+  width: 19px;
+  height: 19px;
+  flex: none;
+}
+.rail-item:hover { color: var(--text); background: var(--surface-2); }
+.rail-item:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+.rail-item.active {
+  color: var(--text);
+  background: var(--surface-2);
+  border-color: var(--border);
+  box-shadow: var(--shadow);
+}
+@media (min-width: 701px) {
+  .rail-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
 @media (max-width: 700px) {
   .rail {
     display: none;
     position: absolute;
+    width: min(192px, 75vw);
     inset-block: 52px 0;
     inset-inline-start: 0;
-    padding-block-start: 0;
+    padding: 8px;
     z-index: 42;
   }
   .rail-open { display: flex; }
+  .rail .rail-brand { display: none; }
+  .rail-item { justify-content: flex-start; padding-inline: 10px; text-align: start; }
+  .rail-label { overflow-wrap: anywhere; }
 }
-.rail-item {
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 5px;
-  padding: 14px 0;
-  color: #98a1b3;
-  text-decoration: none;
-  font-size: 11px;
-  font-weight: 600;
-  border-left: 3px solid transparent;
-}
-.rail-item svg {
-  width: 22px;
-  height: 22px;
-}
-/* A long label (see fit() in the script) is set smaller, and only a word
-   that still cannot fit breaks, so nothing runs out under the page. */
-.rail-item > span:last-child {
-  max-width: 70px;
-  text-align: center;
-  line-height: 1.2;
-  overflow-wrap: anywhere;
-}
-.rail-item > span.tight { font-size: 9.5px; letter-spacing: -0.1px; }
-.rail-item:hover { color: #fff; }
-.rail-item.active {
-  color: #fff;
-  background: var(--nav-active);
-  border-left-color: var(--brand);
-}
-.rail-bottom { margin-top: auto; }
 .icon-wrap { position: relative; display: inline-flex; }
 .badge {
   position: absolute;

@@ -2,22 +2,22 @@
      SPDX-License-Identifier: AGPL-3.0-only
      "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md. -->
 <template>
-  <div class="insights">
-    <!-- A tab for each report the person may see: the sales summary and the
-         cashiers (0.62.0), the EsafePOS Reports dashboard (managers) and the
-         salesperson report. One of them alone shows without a tab bar. -->
-    <div v-if="tabs.length > 1" class="ins-tabs">
-      <button
-        v-for="tab in tabs"
-        :key="tab.key"
-        type="button"
-        class="ins-tab"
-        :class="{ on: active === tab.key }"
-        @click="pick(tab.key)"
-      >
-        {{ t(tab.label) }}
+  <div class="workspace-layout">
+    <div v-if="tabs.length > 1" class="workspace-sidebar">
+      <button ref="sectionMenuToggle" type="button" class="workspace-nav-toggle" :aria-expanded="sectionMenuOpen"
+        aria-controls="insights-sections" @click="sectionMenuOpen = !sectionMenuOpen">
+        <Icon name="menu" /> {{ t(activeLabel) }}
+        <Icon name="chevron-down" class="workspace-nav-chevron" />
       </button>
+      <nav id="insights-sections" class="workspace-nav" :class="{ 'is-open': sectionMenuOpen }" :aria-label="t('Insights')">
+        <div class="workspace-nav-title">{{ t('Insights') }}</div>
+        <button v-for="tab in tabs" :key="tab.key" type="button" class="workspace-nav-item"
+          :aria-current="active === tab.key ? 'page' : undefined" @click="pick(tab.key)">
+          <Icon name="report" /> {{ t(tab.label) }}
+        </button>
+      </nav>
     </div>
+    <div class="workspace-content insights">
 
     <SummaryPanel v-if="active === 'summary'" />
     <ProductsPanel v-else-if="active === 'products'" />
@@ -64,6 +64,7 @@
       </button>
       <button v-else-if="view.refresh" class="btn" @click="load">{{ t('Refresh') }}</button>
     </div>
+    </div>
   </div>
 </template>
 
@@ -72,6 +73,7 @@ import { computed, h, onMounted, ref } from 'vue'
 import { call } from '../api'
 import { t, locale } from '../i18n'
 import { theme } from '../theme'
+import Icon from '../components/Icon.vue'
 import { useSessionStore } from '../stores/session'
 import SalespeoplePanel from '../components/SalespeoplePanel.vue'
 import SummaryPanel from '../components/SummaryPanel.vue'
@@ -99,10 +101,15 @@ const tabs = computed(() =>
 // The tab last opened on this device, a convenience only.
 const TAB_KEY = 'esafepos-insights-tab'
 const active = ref(null)
+const sectionMenuOpen = ref(false)
+const sectionMenuToggle = ref(null)
+const activeLabel = computed(() => tabs.value.find(tab => tab.key === active.value)?.label || 'Insights')
 let dashboardLoaded = false
 
 function pick(key) {
   active.value = key
+  if (sectionMenuOpen.value) sectionMenuToggle.value?.focus()
+  sectionMenuOpen.value = false
   try {
     localStorage.setItem(TAB_KEY, key)
   } catch {
@@ -268,40 +275,10 @@ onMounted(() => {
 
 <style scoped>
 .insights {
-  /* .content is a flex row: without flex 1 this page shrank to its content, and an
-     iframe's default 300px width made the dashboard fall into its phone layout */
-  flex: 1;
-  min-width: 0;
-  height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 16px;
   overflow: hidden;
 }
-.ins-tabs {
-  display: inline-flex;
-  flex-wrap: wrap;
-  max-width: 100%;
-  align-self: flex-start;
-  gap: 4px;
-  padding: 4px;
-  margin-bottom: 12px;
-  border: 1px solid var(--border);
-  border-radius: 11px;
-  background: var(--card-bg);
-}
-.ins-tab {
-  background: transparent;
-  border: 0;
-  border-radius: 8px;
-  padding: 7px 14px;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-muted);
-  cursor: pointer;
-}
-.ins-tab.on { background: var(--brand); color: #fff; }
 .state-card {
   margin: auto;
   max-width: 460px;

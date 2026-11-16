@@ -851,7 +851,7 @@ function round2(n) {
   align-items: center;
   padding: 0 18px;
 }
-.back { color: #cdd3df; font-size: 14px; justify-self: start; }
+.back { color: var(--on-pos-blue-muted); font-size: 14px; justify-self: start; }
 .back:hover { color: #fff; }
 .pay-title { font-weight: 700; font-size: 16px; }
 .pay-body {

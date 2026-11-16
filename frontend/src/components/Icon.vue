@@ -22,11 +22,18 @@ const STROKE = new Set([
   'ban', 'barcode', 'gift', 'bike', 'plus', 'check', 'warning',
   'search', 'tag', 'report', 'image', 'clock', 'globe', 'help', 'return',
   'monitor', 'folder-open', 'phone', 'grid', 'list', 'detail', 'pause', 'trash',
+  'settings', 'chevron-down', 'chevron-right', 'moon', 'sun', 'logout',
 ])
 
 const PATHS = {
   close: '<path d="M6 6 18 18M18 6 6 18"/>',
   menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
+  settings: '<path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="2" fill="currentColor"/><circle cx="15" cy="17" r="2" fill="currentColor"/>',
+  'chevron-down': '<path d="m6 9 6 6 6-6"/>',
+  'chevron-right': '<path d="m9 6 6 6-6 6"/>',
+  moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
+  sun: '<circle cx="12" cy="12" r="5"/><path d="M12 1v2m0 18v2M1 12h2m18 0h2M4 4l2 2m12 12 2 2M4 20l2-2M18 6l2-2"/>',
+  logout: '<path d="M10 4H4v16h6m-2-8h13m-5-5 5 5-5 5"/>',
   help: '<circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.9.7c0 1.7-2.5 2.1-2.5 3.8"/><path d="M12 17.2h.01"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
   globe:

@@ -2,19 +2,37 @@
      SPDX-License-Identifier: AGPL-3.0-only
      "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md. -->
 <template>
-  <div class="settings">
-    <!-- Segmented pill tab bar -->
-    <nav class="tabs">
-      <button
-        v-for="tab in tabs"
-        :key="tab"
-        class="tab"
-        :class="{ active: activeTab === tab }"
-        @click="activeTab = tab"
-      >
-        {{ t(tab) }}
+  <div class="workspace-layout">
+    <div class="workspace-sidebar">
+      <button ref="sectionMenuToggle" type="button" class="workspace-nav-toggle" :aria-expanded="sectionMenuOpen"
+        aria-controls="settings-sections" @click="sectionMenuOpen = !sectionMenuOpen">
+        <Icon name="menu" /> {{ t(activeTab === 'General' ? activeGeneralLabel : activeTab) }}
+        <Icon name="chevron-down" class="workspace-nav-chevron" />
       </button>
-    </nav>
+      <nav id="settings-sections" class="workspace-nav" :class="{ 'is-open': sectionMenuOpen }" :aria-label="t('Settings')">
+        <div class="workspace-nav-title">{{ t('Settings') }}</div>
+        <template v-for="tab in tabs" :key="tab">
+          <button v-if="tab === 'General'" type="button" class="workspace-nav-item"
+            :class="{ 'is-current': activeTab === tab }" :aria-expanded="generalOpen"
+            aria-controls="general-sections" @click="openGeneral">
+            <Icon :name="tabIcons[tab]" /> {{ t(tab) }}
+            <Icon :name="generalOpen ? 'chevron-down' : 'chevron-right'" class="workspace-nav-chevron" />
+          </button>
+          <div v-if="tab === 'General'" v-show="generalOpen" id="general-sections" class="workspace-nav-children">
+            <button v-for="group in generalSections" :key="group.key" type="button" class="workspace-nav-item"
+              :aria-current="activeTab === 'General' && generalSection === group.key ? 'page' : undefined"
+              @click="pickSettingsTab('General', group.key)">
+              <Icon :name="group.icon" /> {{ t(group.label) }}
+            </button>
+          </div>
+          <button v-if="tab !== 'General'" type="button" class="workspace-nav-item"
+            :aria-current="activeTab === tab ? 'page' : undefined" @click="pickSettingsTab(tab)">
+            <Icon :name="tabIcons[tab]" /> {{ t(tab) }}
+          </button>
+        </template>
+      </nav>
+    </div>
+    <div ref="settingsContent" class="workspace-content settings">
 
     <!-- ============ PROMOTIONS ============ -->
     <section v-if="activeTab === 'Promotions'" class="tab-body">
@@ -1012,20 +1030,6 @@
 
     <!-- ============ CHANNELS & GENERAL ============ -->
     <section v-if="activeTab === 'General'" class="tab-body">
-      <!-- General holds every shop-wide setting, so it is split into groups the
-           same way the tabs on the left split the rest. One group shows at a
-           time; the Save button at the bottom saves them all. -->
-      <div class="gen-nav">
-        <button
-          v-for="group in generalSections"
-          :key="group.key"
-          class="gen-nav-btn"
-          :class="{ active: generalSection === group.key }"
-          @click="generalSection = group.key"
-        >
-          <Icon :name="group.icon" /> {{ t(group.label) }}
-        </button>
-      </div>
       <!-- Holds and deposits -->
       <div class="sec-card" v-show="generalSection === 'holds'">
         <div class="sec-title"><Icon name="bookmark" /> {{ t('Holds and deposits') }}</div>
@@ -2568,6 +2572,7 @@
     </section>
 
     <OfflineLogModal v-if="offlineLogOpen" @close="offlineLogOpen = false" />
+    </div>
   </div>
 </template>
 
@@ -2609,6 +2614,39 @@ function tabAllowed(tab) {
 }
 const tabs = computed(() => ALL_TABS.filter(tabAllowed))
 const activeTab = ref('Status')
+const settingsContent = ref(null)
+const generalOpen = ref(false)
+const sectionMenuOpen = ref(false)
+const sectionMenuToggle = ref(null)
+const tabIcons = {
+  Promotions: 'tag',
+  Cashback: 'cash',
+  Bundles: 'store',
+  'Price Books': 'report',
+  'Loyalty & Gift Cards': 'gift',
+  General: 'settings',
+  'Audit Log': 'list',
+  'System check': 'shield',
+  Status: 'detail',
+}
+
+function pickSettingsTab(tab, section) {
+  if (section) generalSection.value = section
+  activeTab.value = tab
+  if (sectionMenuOpen.value) sectionMenuToggle.value?.focus()
+  sectionMenuOpen.value = false
+  settingsContent.value?.scrollTo(0, 0)
+}
+
+function openGeneral() {
+  if (activeTab.value === 'General') {
+    generalOpen.value = !generalOpen.value
+    return
+  }
+  activeTab.value = 'General'
+  generalOpen.value = true
+  settingsContent.value?.scrollTo(0, 0)
+}
 // Settings-area manager (the General tab). Section-specific powers use perms.*
 const canManage = computed(() => Boolean(perms.value.settings))
 const saving = ref(false)
@@ -2875,6 +2913,7 @@ const generalSections = [
   { key: 'approvals', label: 'Approvals and access', icon: 'shield' },
 ]
 const generalSection = ref('features')
+const activeGeneralLabel = computed(() => generalSections.find(group => group.key === generalSection.value)?.label || 'General')
 
 // ---- languages at the till (esafepos.languages) ----
 // till_languages [] means every language, so one a later update adds shows up
@@ -3418,6 +3457,7 @@ const modeHint = computed(() => {
 
 onMounted(() => {
   activeTab.value = tabs.value.includes('Promotions') ? 'Promotions' : tabs.value[0] || 'Status'
+  generalOpen.value = activeTab.value === 'General'
   load()
 })
 
@@ -4398,13 +4438,9 @@ const filteredBooks = computed(() => {
 
 <style scoped>
 .settings {
-  flex: 1;
-  padding: 16px;
-  overflow-y: auto;
-  max-width: 920px;
-  margin: 0 auto;
-  width: 100%;
+  overflow: auto;
 }
+.settings .tab-body { max-width: 1160px; }
 .logo-preview {
   margin-top: 12px;
   display: flex;
@@ -4564,58 +4600,7 @@ const filteredBooks = computed(() => {
   white-space: nowrap;
 }
 
-/* ---- Segmented pill tab bar ---- */
-.tabs {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
-  background: var(--card-bg);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 5px;
-}
-.tab {
-  border: 1px solid transparent;
-  background: transparent;
-  border-radius: 999px;
-  padding: 8px 18px;
-  font-weight: 500;
-  font-size: 13px;
-  color: var(--text-muted);
-  transition: background 0.12s ease, color 0.12s ease;
-}
-.tab:hover { color: var(--text); }
-.tab.active { background: var(--brand); color: #fff; }
-
 .tab-body { display: flex; flex-direction: column; gap: 14px; }
-
-/* ---- General, split into groups ---- */
-.gen-nav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  background: var(--card-bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 6px;
-}
-.gen-nav-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  border: 1px solid transparent;
-  background: transparent;
-  border-radius: 999px;
-  padding: 7px 14px;
-  font-weight: 500;
-  font-size: 12.5px;
-  color: var(--text-muted);
-  transition: background 0.12s ease, color 0.12s ease;
-}
-.gen-nav-btn:hover { color: var(--text); }
-.gen-nav-btn.active { background: var(--brand); color: #fff; }
-.gen-nav-btn.active .icon { color: #fff; }
 /* One line under a card title saying what the card is for. */
 .sec-note {
   margin: -6px 0 16px;

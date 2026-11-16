@@ -215,7 +215,7 @@ onBeforeUnmount(() => {
 .cd-list-heading { justify-content: space-between; padding: 8px 10px; }
 .cd-row > * { overflow-wrap: anywhere; }
 .cd-cart { display: flex; flex-direction: column; flex: 1; min-height: 0; min-width: 0; }
-.cd-latest { --product-art-size: clamp(60px, 7.2vw, 136px); display: flex; align-items: center; gap: clamp(10px, 1.35vw, 26px); padding: clamp(12px, 1.6vw, 30px); border-radius: var(--radius-lg); background: #1658ba; color: white; }
+.cd-latest { --product-art-size: clamp(60px, 7.2vw, 136px); display: flex; align-items: center; gap: clamp(10px, 1.35vw, 26px); padding: clamp(12px, 1.6vw, 30px); border-radius: var(--radius-lg); background: var(--pos-blue); color: white; }
 .cd-latest-copy, .cd-latest-price { display: grid; gap: 4px; }
 .cd-latest-copy { flex: 1; min-width: 0; }
 .cd-latest-copy strong { font-size: clamp(18px, 2.25vw, 43px); line-height: 1.15; overflow-wrap: anywhere; }

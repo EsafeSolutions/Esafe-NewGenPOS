@@ -156,9 +156,28 @@
   "credit_sales_section",
   "credit_sales_enabled",
   "credit_customers",
-  "credit_default_limit"
+  "credit_default_limit",
+  "item_image_search_section",
+  "item_image_gemini_enabled",
+  "item_image_gemini_key"
  ],
  "fields": [
+  {
+   "fieldname": "item_image_search_section",
+   "fieldtype": "Section Break",
+   "label": "Product image search"
+  },
+  {
+   "default": "0",
+   "fieldname": "item_image_gemini_enabled",
+   "fieldtype": "Check",
+   "label": "Enable Gemini image search assistance"
+  },
+  {
+   "fieldname": "item_image_gemini_key",
+   "fieldtype": "Password",
+   "label": "Gemini API key"
+  },
   {
    "fieldname": "register_section",
    "fieldtype": "Section Break",

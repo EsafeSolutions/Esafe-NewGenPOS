@@ -1030,6 +1030,10 @@
 
     <!-- ============ CHANNELS & GENERAL ============ -->
     <section v-if="activeTab === 'General'" class="tab-body">
+      <div v-if="generalSection === 'image-search'" class="sec-card">
+        <div class="sec-title"><Icon name="image" /> {{ t('Product image search') }}</div>
+        <ItemImageSearchSettings v-if="canManage" />
+      </div>
       <!-- Holds and deposits -->
       <div class="sec-card" v-show="generalSection === 'holds'">
         <div class="sec-title"><Icon name="bookmark" /> {{ t('Holds and deposits') }}</div>
@@ -2409,7 +2413,7 @@
       </div>
 
       <!-- Sticky footer -->
-      <div class="editor-footer">
+      <div v-if="generalSection !== 'image-search'" class="editor-footer">
         <span style="flex: 1" />
         <button class="btn btn-primary" :disabled="saving || !canManage" @click="saveGeneral">
           {{ saving ? t('Saving…') : t('Save Settings') }}
@@ -2590,6 +2594,7 @@ import LinkPicker from '../components/LinkPicker.vue'
 import ScopePicker from '../components/ScopePicker.vue'
 import PriceListEditor from '../components/PriceListEditor.vue'
 import ReceiptView from '../components/ReceiptView.vue'
+import ItemImageSearchSettings from '../components/ItemImageSearchSettings.vue'
 import { t, LANGUAGES } from '../i18n'
 
 const session = useSessionStore()
@@ -2907,6 +2912,7 @@ const generalSections = [
   { key: 'holds', label: 'Holds and deposits', icon: 'bookmark' },
   { key: 'credit', label: 'Sales on account', icon: 'clock' },
   { key: 'receipt', label: 'Receipt', icon: 'image' },
+  { key: 'image-search', label: 'Product image search', icon: 'image' },
   { key: 'languages', label: 'Languages', icon: 'globe' },
   { key: 'help', label: 'Help for staff', icon: 'help' },
   { key: 'money', label: 'Accounts and gift cards', icon: 'bank' },

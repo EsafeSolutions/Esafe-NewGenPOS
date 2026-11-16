@@ -7,6 +7,7 @@ import binascii
 import json
 import math
 from io import BytesIO
+from urllib.parse import urlsplit
 
 import frappe
 from frappe import _
@@ -42,11 +43,13 @@ def _profile(pos_profile):
 @frappe.whitelist()
 def editor_options(pos_profile: str):
     profile = _profile(pos_profile)
+    settings = frappe.get_cached_doc("EsafePOS Settings")
     return {
         "item_groups": _filter_names("Item Group"),
         "brands": _filter_names("Brand"),
         "price_lists": _selling_lists() if _can_edit_prices() else [],
         "default_price_list": profile.selling_price_list,
+        "gemini_image_search": bool(settings.get("item_image_gemini_enabled")),
     }
 
 
@@ -148,6 +151,7 @@ def item_details(pos_profile: str, item_code: str, price_list: str | None = None
     return {
         "item_code": item.name, "item_name": item.item_name, "stock_uom": stock_unit,
         "item_group": item.item_group, "brand": item.brand, "image": item.image,
+        "barcode": item.barcodes[0].barcode if item.barcodes else "",
         "can_edit_item": bool(item.has_permission("write")), "can_edit_prices": can_edit_prices,
         "price_list": price_list, "currency": selected_list.currency if selected_list else None,
         "units": [
@@ -187,9 +191,26 @@ def _read_image(encoded):
         frappe.throw(_("Choose a valid JPEG, PNG or WebP product image."))
 
 
+def _image_link(value):
+    error = _("Enter a valid HTTPS image link.")
+    if not isinstance(value, str):
+        frappe.throw(error)
+    value = value.strip()
+    if len(value) > 2048 or any(c.isspace() or ord(c) < 32 or c in '\\<>"' for c in value):
+        frappe.throw(error)
+    try:
+        url = urlsplit(value)
+        valid = url.scheme == "https" and url.hostname and url.username is None and url.port != 0
+    except ValueError:
+        valid = False
+    if not valid:
+        frappe.throw(error)
+    return value
+
+
 @frappe.whitelist()
 def save_item(pos_profile: str, item_code: str, item_name: str | None = None, prices: list | str | None = None,
-              price_list: str | None = None, image_content: str | None = None):
+              price_list: str | None = None, image_content: str | None = None, image_url: str | None = None):
     profile = _profile(pos_profile)
     item = frappe.get_doc("Item", item_code)
     item.check_permission("read")
@@ -208,10 +229,13 @@ def save_item(pos_profile: str, item_code: str, item_name: str | None = None, pr
         frappe.throw(_("Choose an enabled selling price list."))
 
     name = item.item_name if item_name is None else item_name.strip()
-    if name != item.item_name or image_content:
+    if name != item.item_name or image_content or image_url is not None:
         item.check_permission("write")
         if not name or len(name) > 140:
             frappe.throw(_("Enter an item name of 1 to 140 characters."))
+    if image_content and image_url is not None:
+        frappe.throw(_("Choose either a device image or an image link."))
+    link = _image_link(image_url) if image_url is not None else None
     image = _read_image(image_content) if image_content else None
     allowed_units = {item.stock_uom}
     if not item.has_serial_no:
@@ -237,8 +261,12 @@ def save_item(pos_profile: str, item_code: str, item_name: str | None = None, pr
         extension, content = image
         attachment = save_file("product-image." + extension, content, "Item", item.name, df="image")
         item.image = attachment.file_url
-    identity_changed = item.item_name != name or image is not None
+    identity_changed = item.item_name != name or image is not None or (link is not None and link != item.image)
     if identity_changed:
+        if link is not None:
+            # ERPNext and POS use the same image field. Keep the URL as a reference
+            # so saving an item never needs to fetch external content on the server.
+            item.image = link
         item.item_name = name
         item.save()
     from esafepos.api import audit

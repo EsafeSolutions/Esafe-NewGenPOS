@@ -22,7 +22,6 @@
               <PosBrandMark class="mobile-brand" />
               <span class="brand-wordmark">ESAFE ERP POS</span>
             </span>
-            <bdi v-if="session.company" class="shop-name" :title="session.company">{{ session.company }}</bdi>
           </div>
           <span class="brand-divider" aria-hidden="true"></span>
           <div class="topbar-title">{{ pageTitle }}</div>
@@ -30,6 +29,9 @@
           <span v-if="session.registerOpen && shiftText" class="tb-pill tb-shift">
             <Icon name="check" /> {{ t('Shift Open:') }} <b>{{ shiftText }}</b>
           </span>
+        </div>
+        <div v-if="session.company" class="topbar-shop">
+          <bdi class="shop-name" :title="session.company">{{ session.company }}</bdi>
         </div>
         <div class="topbar-right" :inert="navOpen">
           <div v-if="route.path === '/'" id="sell-header-tools" class="topbar-tools"></div>
@@ -480,7 +482,6 @@ function setupAutoLock() {
   min-width: 0;
 }
 .topbar {
-  position: relative;
   min-height: 52px;
   background: var(--topbar-bg);
   color: #fff;
@@ -489,14 +490,15 @@ function setupAutoLock() {
   justify-content: space-between;
   padding: 8px 16px;
   gap: 12px 20px;
-  flex-wrap: wrap;
   flex-shrink: 0;
 }
 .topbar-left {
   display: flex;
   align-items: center;
+  flex: 0 0 auto;
   gap: 12px;
   min-width: 0;
+  max-width: 42%;
   flex-wrap: wrap;
 }
 .brand-lockup {
@@ -519,13 +521,15 @@ function setupAutoLock() {
   letter-spacing: .035em;
   white-space: nowrap;
 }
+.topbar-shop {
+  flex: 1 0 14rem;
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+}
 .shop-name {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  max-width: min(38vw, 460px);
-  padding: 7px 24px 8px;
+  max-width: min(100%, 460px);
+  padding: 7px clamp(10px, 1.2vw, 24px) 8px;
   border: 1px solid rgba(255, 255, 255, .24);
   border-radius: 999px;
   background: linear-gradient(135deg, rgba(255, 255, 255, .18), rgba(255, 255, 255, .08));
@@ -561,6 +565,7 @@ function setupAutoLock() {
 .topbar-right {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 8px;
   flex-wrap: wrap;
   min-width: 0;
@@ -663,6 +668,12 @@ function setupAutoLock() {
   background: rgba(7, 57, 59, .42);
   color: #8fe3e8;
 }
+@media (max-width: 1200px) {
+  .topbar { flex-wrap: wrap; }
+  .topbar-left { flex-shrink: 1; max-width: 70%; }
+  .topbar-shop { flex: 1 1 0; }
+  .topbar-right { flex-basis: 100%; }
+}
 @media (max-width: 700px) {
   .shell { position: relative; }
   .nav-backdrop {
@@ -686,14 +697,11 @@ function setupAutoLock() {
   .brand-divider { display: none; }
   .topbar-title { font-size: 15px; }
   .shop-name {
-    position: static;
-    transform: none;
-    max-width: min(42vw, 190px);
     padding: 5px 12px 6px;
     font-size: 16px;
   }
   .tb-clock, .tb-shift { display: none; }
-  .topbar-right { position: relative; }
+  .topbar-right { position: relative; justify-content: flex-start; }
   .lang-menu { position: static; }
   .lang-list { inset-inline-start: 0; inset-inline-end: auto; max-width: 100%; }
   .outlet-switch { max-width: 150px; }

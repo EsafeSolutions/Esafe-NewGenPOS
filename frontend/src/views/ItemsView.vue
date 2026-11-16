@@ -37,16 +37,43 @@
           </header>
           <div class="item-identity">
             <div class="image-preview">
-              <img v-if="preview || draft.image" :src="preview || draft.image" :alt="draft.item_name" />
+              <img v-if="imagePreview && !previewFailed" :src="imagePreview" :alt="draft.item_name"
+                referrerpolicy="no-referrer" @error="previewFailed = true" />
               <Icon v-else name="image" :size="32" />
             </div>
             <div class="identity-fields">
               <label>{{ t('Item name') }}<input v-model.trim="draft.item_name" :readonly="!draft.can_edit_item" required maxlength="140" /></label>
-              <label v-if="draft.can_edit_item">{{ t('Product image') }}
-                <input :key="draft.item_code + imageReset" type="file" accept="image/jpeg,image/png,image/webp" @change="chooseImage" />
-                <small class="muted">{{ t('JPEG, PNG or WebP, up to 5 MB. Product images are stored in ERPNext.') }}</small>
-              </label>
-              <button v-if="imageFile" type="button" class="btn btn-outline" @click="clearImage">{{ t('Discard selected image') }}</button>
+              <div v-if="draft.can_edit_item" class="image-attachment">
+                <div>{{ t('Product image') }}</div>
+                <div class="image-sources" role="group" :aria-label="t('Product image source')">
+                  <button type="button" class="btn btn-outline" :class="{ 'source-active': imageSource === 'device' }"
+                    :aria-pressed="imageSource === 'device'" @click="selectImageSource('device')">{{ t('My device') }}</button>
+                  <button type="button" class="btn btn-outline" :class="{ 'source-active': imageSource === 'link' }"
+                    :aria-pressed="imageSource === 'link'" @click="selectImageSource('link')">{{ t('Link') }}</button>
+                  <a class="btn btn-outline" :href="onlineImageSearch" target="_blank" rel="noopener noreferrer">
+                    {{ t('Find online') }}
+                  </a>
+                </div>
+                <button v-if="options.gemini_image_search" type="button" class="btn btn-outline"
+                  :disabled="refiningSearch" @click="refineImageSearch">
+                  {{ refiningSearch ? t('Asking Gemini…') : t('Refine search with Gemini') }}
+                </button>
+                <small v-if="refinedSearch" class="muted" role="status">
+                  {{ t('Gemini search terms: {query}', { query: refinedSearch }) }}
+                </small>
+                <label v-if="imageSource === 'device'">
+                  <input :key="draft.item_code + imageReset" type="file" :aria-label="t('Choose product image')"
+                    accept="image/jpeg,image/png,image/webp" @change="chooseImage" />
+                  <small class="muted">{{ t('JPEG, PNG or WebP, up to 5 MB. Product images are stored in ERPNext.') }}</small>
+                </label>
+                <label v-else>{{ t('Image URL') }}
+                  <input v-model.trim="imageLink" type="url" inputmode="url" placeholder="https://…"
+                    maxlength="2048" pattern="[hH][tT][tT][pP][sS]://.+" @change="previewLink = imageLink" />
+                  <small class="muted">{{ t('Paste a direct HTTPS image link. Use an image you have permission to use.') }}</small>
+                  <small v-if="imageLink && previewFailed" class="muted" role="status">{{ t('Image preview unavailable. Check that the link opens the image and is publicly accessible.') }}</small>
+                </label>
+                <button v-if="imageFile || imageLink" type="button" class="btn btn-outline" @click="clearImage">{{ t('Discard selected image') }}</button>
+              </div>
             </div>
           </div>
           <label v-if="draft.price_list">{{ t('Selling price list') }}
@@ -108,6 +135,27 @@ const opening = ref(false)
 const imageFile = ref(null)
 const preview = ref('')
 const imageReset = ref(0)
+const imageSource = ref('device')
+const imageLink = ref('')
+const previewLink = ref('')
+const previewFailed = ref(false)
+const refinedSearch = ref('')
+const refiningSearch = ref(false)
+const onlineImageSearch = computed(() => {
+  const item = draft.value
+  const terms = refinedSearch.value || [item?.brand, item?.item_name, item?.barcode].filter(Boolean).join(' ')
+  return 'https://www.google.com/search?' + new URLSearchParams({ tbm: 'isch', q: terms })
+})
+const imagePreview = computed(() => {
+  if (!previewLink.value) return preview.value || draft.value?.image
+  try {
+    const url = new URL(previewLink.value)
+    return url.protocol === 'https:' && !url.username && !url.password ? url.href : ''
+  } catch {
+    return ''
+  }
+})
+watch(imagePreview, () => { previewFailed.value = false })
 const pageSize = 50
 let activeFilters = {}
 let request = 0
@@ -146,7 +194,34 @@ function clearImage() {
   if (preview.value) URL.revokeObjectURL(preview.value)
   preview.value = ''
   imageFile.value = null
+  imageLink.value = ''
+  previewLink.value = ''
   imageReset.value++
+}
+
+function selectImageSource(source) {
+  if (source === imageSource.value) return
+  clearImage()
+  imageSource.value = source
+}
+
+async function refineImageSearch() {
+  const itemCode = draft.value?.item_code
+  const profile = session.posProfile
+  if (!itemCode || refiningSearch.value) return
+  refiningSearch.value = true
+  try {
+    const result = await call('esafepos.api.item_image_search.refine_search', {
+      pos_profile: profile, item_code: itemCode,
+    })
+    if (session.posProfile === profile && draft.value?.item_code === itemCode) {
+      refinedSearch.value = result.query
+    }
+  } catch (error) {
+    if (session.posProfile === profile && draft.value?.item_code === itemCode) session.notify(error.message, true)
+  } finally {
+    refiningSearch.value = false
+  }
 }
 
 function chooseImage(event) {
@@ -180,7 +255,11 @@ async function openItem(itemCode, priceList, keepIdentity = false) {
       pos_profile: session.posProfile, item_code: itemCode, price_list: priceList || null,
     })
     if (id !== detailRequest) return
-    if (!keepIdentity) clearImage()
+    if (!keepIdentity) {
+      clearImage()
+      refinedSearch.value = ''
+      imageSource.value = /^https:\/\//i.test(result.image || '') ? 'link' : 'device'
+    }
     setDraft(result)
     if (name !== null && result.can_edit_item) draft.value.item_name = name
     selectedPriceList.value = result.price_list
@@ -211,6 +290,7 @@ async function save() {
       ...(item.can_edit_item && item.item_name !== item.originalName ? { item_name: item.item_name } : {}),
       price_list: item.price_list,
       ...(image ? { image_content: image } : {}),
+      ...(item.can_edit_item && imageLink.value ? { image_url: imageLink.value } : {}),
       prices: item.units.filter((unit) => unit.editable && unit.price !== '' && unit.price != null && unit.price !== unit.original)
         .map(({ uom, price }) => ({ uom, price })),
     })
@@ -246,6 +326,7 @@ watch(() => [session.posProfile, session.offline, session.permissions.edit_items
   detailRequest++
   request++
   draft.value = null
+  refinedSearch.value = ''
   opening.value = false
   clearImage()
   items.value = []
@@ -299,6 +380,10 @@ onBeforeUnmount(() => {
 .image-preview { width: 112px; height: 112px; }
 .identity-fields { display: grid; gap: 10px; justify-items: start; }
 .identity-fields label { width: 100%; }
+.image-attachment { display: grid; gap: 8px; width: 100%; justify-items: start; min-width: 0; }
+.image-sources { display: flex; flex-wrap: wrap; gap: 6px; }
+.image-sources a { text-decoration: none; }
+.source-active { border-color: var(--brand); background: var(--surface-2); color: var(--brand-dark); }
 .unit-prices { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr)); gap: 12px; }
 @media (max-width: 720px) {
   .items-page { grid-template-columns: minmax(0, 1fr); align-content: start; }

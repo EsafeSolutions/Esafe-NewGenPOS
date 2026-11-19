@@ -26,6 +26,9 @@ MANAGER_ROLES = {"System Manager", "EsafePOS Manager"}
 # the legacy single-role field it replaced.
 PRICE_EDIT = "Edit price / discount"
 ITEM_PRICE_EDIT = "Edit item selling prices"
+ITEM_CREATE = "Create items"
+ITEM_STOCK_VIEW = "View warehouse stock"
+ITEM_STOCK_ADJUST = "Adjust warehouse stock"
 RETURN = "Make returns"
 RETURN_EXCEED = "Return past the window"
 EXCHANGE = "Exchange goods"
@@ -69,7 +72,7 @@ LEGACY_FIELD = {
 # reports of 0.62.0: the shop's takings and each cashier's record.
 CLOSED_BY_DEFAULT = {
     RETURN_EXCEED, SALES_BY_PERSON, SYSTEM_CHECK, SELL_ON_ACCOUNT, TAKE_PAYMENTS, SET_CREDIT,
-    SALES_REPORTS, CASHIER_REPORT, PROFIT, ITEM_PRICE_EDIT,
+    SALES_REPORTS, CASHIER_REPORT, PROFIT, ITEM_PRICE_EDIT, ITEM_CREATE, ITEM_STOCK_VIEW, ITEM_STOCK_ADJUST,
 }
 # The reports a holder of the EsafePOS Reports role sees while a shop names
 # nobody for them (esafepos.reports_access, 0.65.0): that role exists to read

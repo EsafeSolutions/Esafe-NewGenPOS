@@ -23,6 +23,11 @@ EsafePOS is a browser-based point-of-sale application for ERPNext and Frappe. It
 
 ## 2. Product features
 
+### Unreleased
+
+- Receipt branding: removed the currency code from directly below the shop name, added a configurable shop contact number above the address for the live preview, browser and network-printer receipts, and appended ESAFE's default contact number beside `pos.esafe.lk` in the standard footer. Settings persist globally and per POS Profile.
+- Affected modules: `frontend/src/components/ReceiptView.vue`, `frontend/src/views/SettingsView.vue`, session/settings APIs, ESC/POS receipt rendering, and the `EsafePOS Settings` DocType. Verification: `cd frontend && npm run build` passed; no tests run.
+
 ### 2.1 Till and checkout
 
 - Product browsing by category and search, with barcode, weight-embedded scale barcode, and serial-number scanning.

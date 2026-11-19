@@ -11,8 +11,8 @@
       <div class="retail-head">
         <img v-if="s.receipt_logo" :src="s.receipt_logo" class="receipt-logo" alt="" />
         <div class="receipt-company">{{ receipt.company }}</div>
-        <div class="small">{{ receipt.currency || outletCurrency() }}</div>
         <div v-if="s.receipt_header" class="muted small receipt-extra">{{ s.receipt_header }}</div>
+        <div v-if="s.receipt_shop_phone" class="muted small receipt-extra">{{ s.receipt_shop_phone }}</div>
         <div v-if="s.receipt_show_address && s.receipt_address" class="muted small receipt-extra">
           {{ s.receipt_address }}
         </div>
@@ -139,6 +139,7 @@
       <img v-if="s.receipt_logo" :src="s.receipt_logo" class="receipt-logo" alt="" />
       <div class="receipt-company">{{ receipt.company }}</div>
       <div v-if="s.receipt_header" class="muted small receipt-extra">{{ s.receipt_header }}</div>
+      <div v-if="s.receipt_shop_phone" class="muted small receipt-extra">{{ s.receipt_shop_phone }}</div>
       <div v-if="s.receipt_show_address && s.receipt_address" class="muted small receipt-extra">
         {{ s.receipt_address }}
       </div>

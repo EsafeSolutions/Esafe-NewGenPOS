@@ -1899,6 +1899,10 @@
                 <input v-model="receiptForm.receipt_header" :placeholder="t('e.g. Main Branch · 0500000000')" />
               </label>
               <label class="field span-2">
+                <span>{{ t('Shop contact number (above address)') }}</span>
+                <input v-model="receiptForm.receipt_shop_phone" :placeholder="t('e.g. +94 11 234 5678')" />
+              </label>
+              <label class="field span-2">
                 <span>{{ t('Custom footer line') }}</span>
                 <input v-model="receiptForm.receipt_footer" :placeholder="t('e.g. Thank you for shopping with us')" />
               </label>
@@ -2410,6 +2414,9 @@
         <p class="muted hint-row">
           {{ t('Edit item selling prices controls saved ERPNext prices. Managers have POS access by default. Add a rule to grant access to another role or person. ERPNext permissions also apply.') }}
         </p>
+        <p class="muted hint-row">
+          {{ t('Create items, View warehouse stock and Adjust warehouse stock are separate manager-default permissions. Grant each to a role or person as needed. Adjusting stock also requires View warehouse stock and ERPNext Stock Reconciliation create and submit permissions.') }}
+        </p>
       </div>
 
       <!-- Sticky footer -->
@@ -2723,6 +2730,9 @@ let cardTimer = null
 const capabilityOptions = [
   'Edit price / discount',
   'Edit item selling prices',
+  'Create items',
+  'View warehouse stock',
+  'Adjust warehouse stock',
   'Make returns',
   'Return past the window',
   'Exchange goods',
@@ -2857,6 +2867,7 @@ const generalForm = ref({
   receipt_paper_width: '80mm',
   receipt_logo: '',
   receipt_header: '',
+  receipt_shop_phone: '',
   receipt_footer: '',
   receipt_show_item_code: 0,
   receipt_show_barcode: 0,
@@ -3210,7 +3221,7 @@ const sampleReceipt = {
 
 // ---- per-outlet receipt overrides ----
 const RECEIPT_KEYS = [
-  'receipt_template', 'receipt_paper_width', 'receipt_logo', 'receipt_header', 'receipt_footer',
+  'receipt_template', 'receipt_paper_width', 'receipt_logo', 'receipt_header', 'receipt_shop_phone', 'receipt_footer',
   'receipt_show_item_code', 'receipt_show_barcode', 'receipt_show_serial',
   'receipt_show_unit_price', 'receipt_show_payments', 'receipt_show_note',
   'receipt_show_tax_id', 'receipt_tax_id', 'receipt_show_address',
@@ -3583,6 +3594,7 @@ async function load() {
     receipt_paper_width: info.receipt_paper_width || '80mm',
     receipt_logo: info.receipt_logo || '',
     receipt_header: info.receipt_header || '',
+    receipt_shop_phone: info.receipt_shop_phone || '',
     receipt_footer: info.receipt_footer || '',
     receipt_show_item_code: info.receipt_show_item_code || 0,
     receipt_show_barcode: info.receipt_show_barcode || 0,

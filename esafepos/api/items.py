@@ -13,11 +13,138 @@ import frappe
 from frappe import _
 from frappe.utils import cint, flt, getdate, nowdate
 
-from esafepos.api.permissions import ITEM_PRICE_EDIT, allowed, assert_outlet
+from esafepos.api.permissions import ITEM_PRICE_EDIT, ITEM_CREATE, ITEM_STOCK_VIEW, ITEM_STOCK_ADJUST, allowed, assert_outlet
 from esafepos.item_units import conversions
 from esafepos.price_books import get_price_map
 
 MAX_IMAGE_BYTES = 5 * 1024 * 1024
+
+
+def _require(granted):
+    if not granted:
+        frappe.throw(_("Your account does not have access to this action."), frappe.PermissionError)
+
+
+def _stock_item(item_code):
+    item = frappe.get_doc("Item", item_code)
+    item.check_permission("read")
+    if item.disabled or not item.is_stock_item or item.has_variants:
+        frappe.throw(_("Choose an enabled stock item without variants."))
+    return item
+
+
+def _warehouses(profile):
+    return frappe.get_list("Warehouse", filters={"company": profile.company, "is_group": 0, "disabled": 0},
+                           pluck="name", order_by="name asc", limit_page_length=0)
+
+
+@frappe.whitelist()
+def warehouse_stock(pos_profile, item_code):
+    profile = _profile(pos_profile)
+    _require(_can_view_stock())
+    item = _stock_item(item_code)
+    warehouses = _warehouses(profile)
+    bins = frappe.get_list("Bin", filters={"item_code": item_code, "warehouse": ["in", warehouses]},
+                           fields=["warehouse", "actual_qty", "reserved_qty"], limit_page_length=0) if warehouses else []
+    by_warehouse = {row.warehouse: row for row in bins}
+    from esafepos.api.catalog import pos_reserved_map
+
+    rows = []
+    for warehouse in warehouses:
+        row = by_warehouse.get(warehouse)
+        actual = flt(row.actual_qty) if row else 0
+        reserved = flt(row.reserved_qty) if row else 0
+        held = pos_reserved_map(warehouse).get(item_code, 0)
+        rows.append({"warehouse": warehouse, "actual_qty": actual,
+                     "reserved_qty": reserved + max(held, 0), "available_qty": actual - reserved - held})
+    return {"stock_uom": item.stock_uom, "rows": rows,
+            "can_adjust": bool(_can_adjust_stock() and not item.has_serial_no and not item.has_batch_no)}
+
+
+def _number(value, message, allow_negative=False):
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        frappe.throw(_(message))
+    if not math.isfinite(number) or (number < 0 and not allow_negative):
+        frappe.throw(_(message))
+    return number
+
+
+@frappe.whitelist(methods=["POST"])
+def adjust_stock(pos_profile, item_code, warehouse, qty, expected_qty, reason, valuation_rate=None):
+    profile = _profile(pos_profile)
+    _require(_can_adjust_stock())
+    item = _stock_item(item_code)
+    if item.has_serial_no or item.has_batch_no:
+        frappe.throw(_("Use ERPNext to adjust serial or batch tracked items."))
+    if warehouse not in _warehouses(profile):
+        frappe.throw(_("Choose an accessible warehouse in this outlet's company."), frappe.PermissionError)
+    frappe.get_doc("Warehouse", warehouse).check_permission("read")
+    qty = _number(qty, "Enter a non-negative stock quantity.")
+    expected = _number(expected_qty, "Refresh warehouse stock before adjusting it.", allow_negative=True)
+    if not isinstance(reason, str) or not reason.strip() or len(reason) > 500:
+        frappe.throw(_("Enter a reason of 1 to 500 characters."))
+    # Lock an existing bin until the reconciliation is submitted in this transaction.
+    current = frappe.db.sql("select actual_qty from `tabBin` where item_code=%s and warehouse=%s for update",
+                            (item_code, warehouse))
+    actual = flt(current[0][0]) if current else 0
+    if abs(actual - expected) > 0.000001:
+        frappe.throw(_("Stock changed. Refresh warehouse stock and try again."))
+    if abs(qty - actual) < 0.000001:
+        frappe.throw(_("The new quantity matches current stock."))
+    from esafepos.api.stock_app import _has_workflow, _refuse_unposted, _unposted
+
+    if _has_workflow("Stock Reconciliation"):
+        frappe.throw(_("This site requires stock approval. Create the reconciliation in ERPNext."))
+    row = {"item_code": item_code, "warehouse": warehouse, "qty": qty}
+    if valuation_rate not in (None, ""):
+        rate = _number(valuation_rate, "Enter a valuation rate greater than zero.")
+        if rate <= 0:
+            frappe.throw(_("Enter a valuation rate greater than zero."))
+        row["valuation_rate"] = rate
+    doc = frappe.get_doc({"doctype": "Stock Reconciliation", "company": profile.company,
+                          "purpose": "Stock Reconciliation", "items": [row]})
+    doc.check_permission("create")
+    doc.check_permission("submit")
+    _refuse_unposted(_unposted(doc))
+    doc.insert()
+    doc.add_comment("Comment", reason.strip())
+    doc.submit()
+    from esafepos.api import audit
+
+    audit.log("Warehouse stock adjusted in POS", detail="{}: {} → {}. {}".format(warehouse, actual, qty, reason.strip()),
+              reference_doctype=doc.doctype, reference_name=doc.name, pos_profile=profile.name)
+    return {"name": doc.name}
+
+
+@frappe.whitelist(methods=["POST"])
+def create_item(pos_profile, item_code, item_name, item_group, stock_uom, barcode="", brand=""):
+    profile = _profile(pos_profile)
+    _require(_can_create())
+    for value in (item_code, item_name):
+        if not isinstance(value, str) or not value.strip() or len(value) > 140:
+            frappe.throw(_("Enter an item code and name of 1 to 140 characters."))
+    for doctype, value in (("Item Group", item_group), ("UOM", stock_uom), ("Brand", brand)):
+        if doctype == "Brand" and not value:
+            continue
+        linked = frappe.get_doc(doctype, value)
+        linked.check_permission("read")
+        if doctype == "Item Group" and linked.is_group:
+            frappe.throw(_("Choose a leaf item category."))
+    if barcode and (not isinstance(barcode, str) or len(barcode) > 140):
+        frappe.throw(_("Enter a barcode up to 140 characters."))
+    doc = frappe.get_doc({"doctype": "Item", "item_code": item_code.strip(), "item_name": item_name.strip(),
+                          "item_group": item_group, "stock_uom": stock_uom, "brand": brand or None,
+                          "is_stock_item": 1, "is_sales_item": 1,
+                          "barcodes": [{"barcode": barcode.strip()}] if barcode and barcode.strip() else []})
+    doc.check_permission("create")
+    doc.insert()
+    from esafepos.api import audit
+
+    audit.log("Item created in POS", detail=doc.name, reference_doctype="Item",
+              reference_name=doc.name, pos_profile=profile.name)
+    return {"item_code": doc.name}
 
 
 def _can_edit_prices():
@@ -30,7 +157,24 @@ def _can_edit_prices():
 
 
 def can_edit():
-    return frappe.has_permission("Item", "read") and (frappe.has_permission("Item", "write") or _can_edit_prices())
+    return frappe.has_permission("Item", "read") and (
+        frappe.has_permission("Item", "write") or _can_edit_prices()
+        or _can_create() or _can_view_stock())
+
+
+def _can_create():
+    return allowed(ITEM_CREATE) and frappe.has_permission("Item", "create")
+
+
+def _can_view_stock():
+    return (allowed(ITEM_STOCK_VIEW) and frappe.has_permission("Warehouse", "read")
+            and frappe.has_permission("Bin", "read"))
+
+
+def _can_adjust_stock():
+    return (_can_view_stock() and allowed(ITEM_STOCK_ADJUST)
+            and frappe.has_permission("Stock Reconciliation", "create")
+            and frappe.has_permission("Stock Reconciliation", "submit"))
 
 
 def _profile(pos_profile):
@@ -50,6 +194,10 @@ def editor_options(pos_profile: str):
         "price_lists": _selling_lists() if _can_edit_prices() else [],
         "default_price_list": profile.selling_price_list,
         "gemini_image_search": bool(settings.get("item_image_gemini_enabled")),
+        "can_create_items": bool(_can_create()),
+        "can_view_stock": bool(_can_view_stock()),
+        "can_adjust_stock": bool(_can_adjust_stock()),
+        "stock_uoms": _filter_names("UOM") if _can_create() else [],
     }
 
 

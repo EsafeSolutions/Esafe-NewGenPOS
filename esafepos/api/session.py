@@ -519,6 +519,7 @@ def _client_settings(profile_name=None):
         "receipt_paper_width": doc.get("receipt_paper_width") or "80mm",
         "receipt_logo": doc.get("receipt_logo") or "",
         "receipt_header": doc.get("receipt_header") or "",
+        "receipt_shop_phone": doc.get("receipt_shop_phone") or "",
         "receipt_footer": doc.get("receipt_footer") or "",
         "receipt_show_item_code": 1 if doc.get("receipt_show_item_code") else 0,
         "receipt_show_barcode": 1 if doc.get("receipt_show_barcode") else 0,

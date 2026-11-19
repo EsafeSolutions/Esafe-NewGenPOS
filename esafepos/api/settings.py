@@ -172,6 +172,7 @@ def get_settings():
         "receipt_paper_width": doc.get("receipt_paper_width") or "80mm",
         "receipt_logo": doc.get("receipt_logo") or "",
         "receipt_header": doc.get("receipt_header") or "",
+        "receipt_shop_phone": doc.get("receipt_shop_phone") or "",
         "receipt_footer": doc.get("receipt_footer") or "",
         "receipt_show_item_code": 1 if doc.get("receipt_show_item_code") else 0,
         "receipt_show_barcode": 1 if doc.get("receipt_show_barcode") else 0,
@@ -438,6 +439,7 @@ def save_settings(payload: dict | str):
     )
     doc.receipt_logo = payload.get("receipt_logo") or None
     doc.receipt_header = payload.get("receipt_header") or None
+    doc.receipt_shop_phone = payload.get("receipt_shop_phone") or None
     doc.receipt_footer = payload.get("receipt_footer") or None
     doc.receipt_show_item_code = 1 if payload.get("receipt_show_item_code") else 0
     doc.receipt_show_barcode = 1 if payload.get("receipt_show_barcode") else 0
@@ -808,7 +810,7 @@ def company_setting(company, field):
 # ---------------------------------------------------------------------------
 
 RECEIPT_FIELDS = [
-    "receipt_template", "receipt_paper_width", "receipt_logo", "receipt_header", "receipt_footer",
+    "receipt_template", "receipt_paper_width", "receipt_logo", "receipt_header", "receipt_shop_phone", "receipt_footer",
     "receipt_show_item_code", "receipt_show_barcode", "receipt_show_serial",
     "receipt_show_unit_price", "receipt_show_payments", "receipt_show_note",
     "receipt_show_tax_id", "receipt_tax_id", "receipt_show_address",

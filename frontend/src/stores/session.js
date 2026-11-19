@@ -111,6 +111,7 @@ export const useSessionStore = defineStore('session', {
       receipt_paper_width: '80mm',
       receipt_logo: '',
       receipt_header: '',
+      receipt_shop_phone: '',
       receipt_footer: '',
       receipt_show_item_code: 0,
       receipt_show_barcode: 0,

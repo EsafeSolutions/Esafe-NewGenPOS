@@ -4,6 +4,7 @@
     <div v-else-if="session.offline" class="card items-card">{{ t('Editing items needs a connection.') }}</div>
     <template v-else>
       <div class="card items-card item-browser">
+        <button v-if="options.can_create_items" type="button" class="btn btn-primary" :disabled="saving || opening" @click="startCreate">{{ t('Add item') }}</button>
         <form class="item-search" @submit.prevent="searchItems()">
           <input v-model="search" :aria-label="t('Find an item')" :placeholder="t('Item name, code or barcode')" />
           <button class="btn btn-primary" :disabled="loading">{{ t('Search') }}</button>
@@ -29,7 +30,9 @@
           </button>
         </div>
       </div>
-      <form v-if="draft" class="card items-card edit-item" @submit.prevent="save">
+      <ItemCreateForm v-if="creating" :options="options" @busy="saving = $event" @cancel="creating = false" @created="itemCreated" />
+      <div v-else-if="draft" class="card items-card edit-item">
+        <form @submit.prevent="save">
         <fieldset :disabled="saving || opening">
           <header>
             <h2>{{ draft.item_name }}</h2>
@@ -96,7 +99,9 @@
             {{ saving ? t('Saving…') : t('Save changes') }}
           </button>
         </fieldset>
-      </form>
+        </form>
+        <ItemWarehouseStock v-if="options.can_view_stock && !opening" :key="draft.item_code" :item-code="draft.item_code" :disabled="saving" @busy="saving = $event" @updated="refreshCatalog" />
+      </div>
       <div v-else class="card items-card muted">{{ opening ? t('Loading…') : t('Select an item to manage its details.') }}</div>
     </template>
   </section>
@@ -107,6 +112,8 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { call } from '../api'
 import Icon from '../components/Icon.vue'
 import SearchSelect from '../components/SearchSelect.vue'
+import ItemCreateForm from '../components/ItemCreateForm.vue'
+import ItemWarehouseStock from '../components/ItemWarehouseStock.vue'
 import { money } from '../format'
 import { t } from '../i18n'
 import { useCatalogStore } from '../stores/catalog'
@@ -128,6 +135,7 @@ const brandOptions = computed(() => [{ value: '', label: t('All brands') },
   ...(options.value.brands || []).map((value) => ({ value, label: value }))])
 const items = ref([])
 const draft = ref(null)
+const creating = ref(false)
 const loading = ref(false)
 const hasMore = ref(false)
 const saving = ref(false)
@@ -247,6 +255,7 @@ function readImage(file) {
 }
 
 async function openItem(itemCode, priceList, keepIdentity = false) {
+  creating.value = false
   const id = ++detailRequest
   const name = keepIdentity && draft.value.item_name !== draft.value.originalName ? draft.value.item_name : null
   opening.value = true
@@ -268,6 +277,29 @@ async function openItem(itemCode, priceList, keepIdentity = false) {
   } finally {
     if (id === detailRequest) opening.value = false
   }
+}
+
+function startCreate() {
+  detailRequest++
+  creating.value = true
+  draft.value = null
+  clearImage()
+}
+
+async function refreshCatalog() {
+  try {
+    await catalog.fetch()
+    catalog.cacheFullCatalog()
+  } catch (error) {
+    session.notify(error.message, true)
+  }
+}
+
+async function itemCreated(itemCode) {
+  creating.value = false
+  searchItems()
+  await openItem(itemCode, selectedPriceList.value)
+  await refreshCatalog()
 }
 
 function changePriceList(event) {
@@ -326,6 +358,7 @@ watch(() => [session.posProfile, session.offline, session.permissions.edit_items
   detailRequest++
   request++
   draft.value = null
+  creating.value = false
   refinedSearch.value = ''
   opening.value = false
   clearImage()
@@ -358,7 +391,7 @@ onBeforeUnmount(() => {
 <style scoped>
 .items-page { flex: 1; min-height: 0; width: 100%; padding: 16px; display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); align-items: start; gap: 16px; overflow: auto; }
 .items-card { min-width: 0; padding: 16px; display: grid; gap: 12px; }
-.item-browser { max-height: 100%; grid-template-rows: auto auto minmax(0, 1fr); }
+.item-browser { max-height: 100%; }
 .item-search { display: flex; gap: 8px; }
 .item-search input { min-width: 0; flex: 1; }
 .item-filters { display: flex; flex-wrap: wrap; gap: 8px; }

@@ -121,6 +121,7 @@
   "receipt_paper_width",
   "receipt_logo",
   "receipt_header",
+  "receipt_shop_phone",
   "receipt_footer",
   "receipt_fields_section",
   "receipt_show_item_code",
@@ -845,6 +846,12 @@
    "fieldname": "receipt_header",
    "fieldtype": "Small Text",
    "label": "Receipt header"
+  },
+  {
+   "description": "Shop phone number shown below the receipt header and above the address.",
+   "fieldname": "receipt_shop_phone",
+   "fieldtype": "Data",
+   "label": "Shop contact number"
   },
   {
    "description": "Footer line (e.g. thank-you, social).",

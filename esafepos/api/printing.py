@@ -223,6 +223,7 @@ def _retail_receipt_body(receipt, width, lined=False):
     out += NORMAL_SIZE + BOLD_OFF
     for line in (
         settings.get("receipt_header") if settings.get("receipt_header") else None,
+        settings.get("receipt_shop_phone") if settings.get("receipt_shop_phone") else None,
         settings.get("receipt_address")
         if settings.get("receipt_show_address") and settings.get("receipt_address")
         else None,

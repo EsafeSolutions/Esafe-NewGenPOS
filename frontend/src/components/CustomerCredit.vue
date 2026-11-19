@@ -2,13 +2,11 @@
      SPDX-License-Identifier: AGPL-3.0-only
      "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md. -->
 <template>
-  <!-- A customer's account (esafepos.api.credit, 0.60.0): what they owe sale by
-       sale, a payment of it into this till's drawer, and a manager's switch and
-       limit on their card. Shown only while the shop sells on account. -->
+  <!-- Customer receivables plus the optional POS on-account controls. -->
   <section v-if="facts && facts.enabled" class="credit-card card" data-tour="customer-credit">
     <div class="cr-head">
-      <h3><Icon name="clock" /> {{ t('On account') }}</h3>
-      <span v-if="facts.reason" class="badge amber">{{ t('Not on account') }}</span>
+      <h3><Icon name="clock" /> {{ t('Customer account') }}</h3>
+      <span v-if="facts.reason && facts.can_sell" class="badge amber">{{ t('Not on account') }}</span>
     </div>
 
     <div class="cr-stats">
@@ -18,21 +16,21 @@
       </div>
       <!-- Holds and orders not invoiced (0.61.1): not owed, but ERPNext
            counts them against the limit, so "Left to use" takes them off. -->
-      <div v-if="facts.held > 0" class="cr-stat" data-tour="customer-credit-held">
+      <div v-if="session.settings.credit_sales_enabled && facts.held > 0" class="cr-stat" data-tour="customer-credit-held">
         <div class="cr-v">{{ money(facts.held, facts.currency) }}</div>
         <div class="cr-l">{{ t('Holds and orders not invoiced') }}</div>
       </div>
-      <div class="cr-stat">
+      <div v-if="session.settings.credit_sales_enabled" class="cr-stat">
         <div class="cr-v">{{ facts.limit > 0 ? money(facts.limit, facts.currency) : t('No limit') }}</div>
         <div class="cr-l">{{ facts.limit_source === 'default' ? t('Credit limit (shop default)') : t('Credit limit') }}</div>
       </div>
-      <div v-if="facts.available != null" class="cr-stat">
+      <div v-if="session.settings.credit_sales_enabled && facts.available != null" class="cr-stat">
         <div class="cr-v">{{ money(facts.available, facts.currency) }}</div>
         <div class="cr-l">{{ t('Left to use') }}</div>
       </div>
     </div>
-    <p v-if="facts.held > 0" class="muted small cr-held">{{ t('Not owed yet, but ERPNext counts them against the credit limit.') }}</p>
-    <p v-if="facts.reason" class="muted small cr-why">{{ facts.reason }}</p>
+    <p v-if="session.settings.credit_sales_enabled && facts.held > 0" class="muted small cr-held">{{ t('Not owed yet, but ERPNext counts them against the credit limit.') }}</p>
+    <p v-if="facts.reason && facts.can_sell" class="muted small cr-why">{{ facts.reason }}</p>
 
     <!-- A manager's switch and limit (Who can do what: Set a customer's credit). -->
     <div v-if="facts.can_set" class="cr-set">
@@ -166,7 +164,7 @@ let key = null
 
 async function load() {
   facts.value = null
-  if (!props.customer || !(session.settings?.credit_sales_enabled)) return
+  if (!props.customer || !(session.settings?.enable_customer_balances)) return
   try {
     facts.value = await call('esafepos.api.credit.customer_credit', {
       customer: props.customer,

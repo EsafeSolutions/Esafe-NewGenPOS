@@ -23,6 +23,7 @@ from esafepos.api import labels
 from esafepos.api import permissions
 from esafepos.api import stock_app
 from esafepos import cash_out, cashback_rules, credit_sales, languages, refund_approval, reports_access, scope, variance
+from esafepos import features
 
 def _can_manage():
     """Can the user change ESAFE POS-wide settings (the General tab)?"""
@@ -225,6 +226,7 @@ def get_settings():
         # Sales on account (esafepos.credit_sales, 0.60.0), with what EsafePOS
         # set up for them in each company that has an outlet.
         **credit_sales.client_facts(),
+        **features.client_facts(doc),
         "credit_setup": _credit_setup(),
         # Taking money out of the drawer (esafepos.cash_out, 0.61.0).
         **cash_out.client_facts(),
@@ -553,6 +555,7 @@ def save_settings(payload: dict | str):
     # sends none of these: leave them alone.
     if "credit_sales_enabled" in payload:
         doc.credit_sales_enabled = 1 if payload.get("credit_sales_enabled") else 0
+    features.save(doc, payload)
     if payload.get("credit_customers") in credit_sales.WHO:
         doc.credit_customers = payload.get("credit_customers")
     if "credit_default_limit" in payload:

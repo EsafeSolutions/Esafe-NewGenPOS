@@ -475,7 +475,7 @@ def _client_settings(profile_name=None):
 
     from frappe.utils import cint
 
-    from esafepos import accounting_periods, cash_out, credit_sales, languages, refund_approval, variance
+    from esafepos import accounting_periods, cash_out, credit_sales, features, languages, refund_approval, variance
     from esafepos.api import approval_requests
     from esafepos.api import labels as labels_mod
 
@@ -540,6 +540,7 @@ def _client_settings(profile_name=None):
         **variance.client_facts(),
         # Sales on account (esafepos.credit_sales, 0.60.0).
         **credit_sales.client_facts(),
+        **features.client_facts(doc),
         # Taking money out of the drawer (esafepos.cash_out, 0.61.0).
         **cash_out.client_facts(),
         # A supervisor approves refunds (esafepos.refund_approval, 0.63.0).

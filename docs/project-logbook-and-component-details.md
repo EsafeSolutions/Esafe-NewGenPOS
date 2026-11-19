@@ -25,6 +25,8 @@ EsafePOS is a browser-based point-of-sale application for ERPNext and Frappe. It
 
 ### Unreleased
 
+- Began implementation of the POS selling/HR feature-switch foundation: added independent site-wide switches for regular Sales Invoices, customer balances/payments, cheque tracking, quotations, Sales Orders, HR integration, attendance, expense claims, day salary, commissions, and commission payroll. Server gates now protect the existing direct Sales Invoice, quotation creation, customer balance/payment, and salesperson commission-report paths. Customer account balances can be shown when on-account selling is disabled. Added responsive Modules & Features cards and a phone-friendly customer list/detail layout. Cheque, Sales Order, HR, and payroll workflows are marked in development and cannot be enabled until their actions are implemented. Verification: frontend production build passed; settings DocType JSON parsed successfully; tests were not run.
+- Added `docs/pos-selling-and-hr-implementation-plan.md`, a phased design for regular Sales Invoices, ERPNext customer balances and Payment Entries, quotation/order progression, cheque tracking, optional Frappe HR attendance and claims, day wages, employee commission payout, and individually configurable Modules & Features switches. The plan was checked against the existing sales, credit, customer, quotation, and salesperson modules and official ERPNext/Frappe HR documentation.
 - Receipt branding: removed the currency code from directly below the shop name, added a configurable shop contact number above the address for the live preview, browser and network-printer receipts, and appended ESAFE's default contact number beside `pos.esafe.lk` in the standard footer. Settings persist globally and per POS Profile.
 - Affected modules: `frontend/src/components/ReceiptView.vue`, `frontend/src/views/SettingsView.vue`, session/settings APIs, ESC/POS receipt rendering, and the `EsafePOS Settings` DocType. Verification: `cd frontend && npm run build` passed; no tests run.
 
@@ -53,6 +55,7 @@ EsafePOS is a browser-based point-of-sale application for ERPNext and Frappe. It
 - ERPNext loyalty point display and redemption.
 - Gift card issuance, tender, balance entries, and redemption.
 - Store credit ledger and tender; customer credit/on-account sales and customer payment collection.
+- When enabled separately, customer account balances and open invoices remain visible even if new POS on-account selling is turned off.
 - Cashback rules, earned balances, redemption, expiry, and scheduled accounting.
 
 ### 2.4 Returns, exchanges, and holds
@@ -82,6 +85,8 @@ EsafePOS is a browser-based point-of-sale application for ERPNext and Frappe. It
 
 - Insights includes sales summary, cashiers, products, profit, customers, outlets, and salesperson reporting, with date and organizational scopes and CSV export where implemented.
 - Settings screens configure features, permissions, outlets, payments, customer forms, languages, receipts, approvals, pricing, promotions, and stock tools.
+- Modules & Features has independent switches for direct Sales Invoice mode, customer balances and payments, cheque tracking, Quotations, Sales Orders, optional Frappe HR functions, and salesperson commissions/payroll. Switches and dependencies are enforced by the server; Frappe HR controls require the separate app.
+- Customer search/profile switches to a single-pane detail view on phones, keeps invoice tables horizontally scrollable, and uses a compact two-column layout for tablets.
 - Capability rules may be assigned to roles or users. UI visibility is paired with server-side checks.
 - PIN/passcode support, till locking, manager approval flows, audit log, and system checks support operational controls.
 - Thirteen interface locales are present: English, Arabic, Spanish, German, Simplified Chinese, French, Thai, Indonesian, Vietnamese, Brazilian Portuguese, Persian, Russian, and Turkish. Arabic and Persian use RTL layout.

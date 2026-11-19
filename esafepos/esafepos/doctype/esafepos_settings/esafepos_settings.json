@@ -80,6 +80,18 @@
   "group_section",
   "balances_across_companies",
   "features_section",
+  "enable_regular_invoices",
+  "enable_customer_balances",
+  "enable_customer_payments",
+  "enable_cheque_tracking",
+  "enable_quotations",
+  "enable_sales_orders",
+  "enable_hr_integration",
+  "enable_attendance",
+  "enable_expense_claims",
+  "enable_day_salary",
+  "enable_sales_commissions",
+  "enable_commission_payroll",
   "enable_order_discount",
   "enable_service_charge",
   "service_charge_percent",
@@ -565,6 +577,90 @@
    "fieldname": "features_section",
    "fieldtype": "Section Break",
    "label": "Features"
+  },
+  {
+   "default": "1",
+   "description": "Allow this POS Profile's direct ERPNext Sales Invoice mode. POS Invoice mode continues to work when this is off.",
+   "fieldname": "enable_regular_invoices",
+   "fieldtype": "Check",
+   "label": "Regular Sales Invoices"
+  },
+  {
+   "default": "1",
+   "description": "Show ERPNext customer receivable balances and open invoices in POS customer profiles.",
+   "fieldname": "enable_customer_balances",
+   "fieldtype": "Check",
+   "label": "Customer balances"
+  },
+  {
+   "default": "1",
+   "description": "Allow customer receipts and allocation against outstanding invoices.",
+   "fieldname": "enable_customer_payments",
+   "fieldtype": "Check",
+   "label": "Customer payment collection"
+  },
+  {
+   "default": "0",
+   "description": "Enable cheque reference and due-date capture in customer payment workflows after cheque accounts are configured.",
+   "fieldname": "enable_cheque_tracking",
+   "fieldtype": "Check",
+   "label": "Cheque tracking"
+  },
+  {
+   "default": "1",
+   "description": "Allow creating and printing ERPNext Quotations from POS.",
+   "fieldname": "enable_quotations",
+   "fieldtype": "Check",
+   "label": "Quotations"
+  },
+  {
+   "default": "0",
+   "description": "Enable Sales Order workflows in POS when the order screen is configured.",
+   "fieldname": "enable_sales_orders",
+   "fieldtype": "Check",
+   "label": "Sales Orders"
+  },
+  {
+   "default": "0",
+   "description": "Enable EsafePOS entry points to Frappe HR. Frappe HR must be installed separately.",
+   "fieldname": "enable_hr_integration",
+   "fieldtype": "Check",
+   "label": "Frappe HR integration"
+  },
+  {
+   "default": "0",
+   "description": "Enable attendance actions from POS. Requires Frappe HR integration and attendance permissions.",
+   "fieldname": "enable_attendance",
+   "fieldtype": "Check",
+   "label": "Employee attendance"
+  },
+  {
+   "default": "0",
+   "description": "Enable employee Expense Claim actions from POS. Frappe HR approval remains authoritative.",
+   "fieldname": "enable_expense_claims",
+   "fieldtype": "Check",
+   "label": "Employee expense claims"
+  },
+  {
+   "default": "0",
+   "description": "Enable daily wage payroll calculations after the attendance and day-rate policy is configured.",
+   "fieldname": "enable_day_salary",
+   "fieldtype": "Check",
+   "label": "Daily salary"
+  },
+  {
+   "default": "1",
+   "description": "Enable salesperson incentive and commission reporting from submitted POS and Sales Invoices.",
+   "fieldname": "enable_sales_commissions",
+   "fieldtype": "Check",
+   "label": "Salesperson commissions"
+  },
+  {
+   "default": "0",
+   "description": "Enable approved commission payout through payroll. Requires Frappe HR, employee links, and payroll configuration.",
+   "fieldname": "enable_commission_payroll",
+   "fieldtype": "Check",
+   "label": "Commission payroll payout"
   },
   {
    "default": "1",
@@ -1248,4 +1344,4 @@
  "sort_order": "DESC",
  "states": [],
  "track_changes": 1
-}
+}

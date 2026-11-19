@@ -146,6 +146,10 @@ def shift_rows(session_name, sale_doctype):
     """The shift report's lines (X and Z): per salesperson, for this shift only.
     Empty when the till does not ask for salespeople or nobody was named. The
     commission shows only to whoever may see the salesperson report."""
+    from esafepos.features import enabled as feature_enabled
+
+    if not feature_enabled("enable_sales_commissions"):
+        return []
     if mode() == "Off" or not frappe.db.has_column(sale_doctype, "esafepos_session"):
         return []
     rows = _rows(sale_doctype, "inv.esafepos_session = %(session)s", {"session": session_name})
@@ -194,6 +198,10 @@ def report(from_date: str | None = None, to_date: str | None = None, pos_profile
     company: count and net amount of sales and of returns, the net, and the
     commission ERPNext worked out. Amounts are before tax, in the company
     currency. For whoever may "See sales by salesperson" (managers always)."""
+    from esafepos.features import enabled as feature_enabled
+
+    if not feature_enabled("enable_sales_commissions"):
+        frappe.throw(_("Salesperson commissions are turned off in Modules & Features."), frappe.PermissionError)
     if not permissions.can_see_sales_by_person():
         frappe.throw(_("You're not allowed to see sales by salesperson."), frappe.PermissionError)
     start = getdate(from_date or nowdate())

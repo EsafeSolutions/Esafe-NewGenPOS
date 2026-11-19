@@ -618,6 +618,10 @@ def create_pos_quotation(payload: dict | str):
     """
     if isinstance(payload, str):
         payload = json.loads(payload)
+    from esafepos.features import enabled as feature_enabled
+
+    if not feature_enabled("enable_quotations"):
+        frappe.throw(_("Quotations are turned off in Modules & Features."), frappe.PermissionError)
     _require_sell()
     profile = frappe.get_cached_doc("POS Profile", payload["pos_profile"])
     profile.check_permission("read")
@@ -731,6 +735,12 @@ def submit_sale(payload: dict | str):
             return _sale_answer(existing)
     profile = frappe.get_cached_doc("POS Profile", payload["pos_profile"])
     from esafepos.api import permissions as outlet_permissions
+
+    if profile.get("esafepos_invoice_mode") == "Sales Invoice":
+        from esafepos.features import enabled as feature_enabled
+
+        if not feature_enabled("enable_regular_invoices"):
+            frappe.throw(_("Regular Sales Invoices are turned off in Modules & Features."), frappe.PermissionError)
 
     outlet_permissions.assert_outlet(profile.name)
     session = _open_session(profile.name)

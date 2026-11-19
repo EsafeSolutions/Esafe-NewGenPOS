@@ -43,9 +43,21 @@ def customer_credit(customer: str, company: str):
     limit, what they owe and each debt still open, oldest first."""
     if not frappe.has_permission("Customer", "read"):
         frappe.throw(_("Not permitted"), frappe.PermissionError)
+    from esafepos.features import enabled as feature_enabled
+
+    if not feature_enabled("enable_customer_balances"):
+        frappe.throw(_("Customer balances are turned off in Modules & Features."), frappe.PermissionError)
     _company_allowed(company)
     out = credit_sales.facts(customer, company)
-    out["items"] = credit_sales.open_items(customer, company) if out["enabled"] else []
+    # Balances also cover regular ERPNext invoices when on-account selling is off.
+    out["enabled"] = 1
+    out["owed"] = credit_sales.owed(customer, company)
+    out["items"] = credit_sales.open_items(customer, company)
+    if not credit_sales.enabled():
+        out["can_sell"] = 0
+        out["can_set"] = 0
+        out["reason"] = _("Sales on account is turned off; existing invoice balances can still be viewed.")
+    out["can_take_payment"] = bool(out.get("can_take_payment")) and feature_enabled("enable_customer_payments")
     return out
 
 
@@ -103,6 +115,10 @@ def receive_payment(
     """Take a payment of what the customer owes into this till's drawer: one
     Cash Entry (a Bank Entry for a card or a transfer), allocated oldest
     first, or to `items` ([{doctype, name}])."""
+    from esafepos.features import enabled as feature_enabled
+
+    if not feature_enabled("enable_customer_payments"):
+        frappe.throw(_("Customer payment collection is turned off in Modules & Features."), frappe.PermissionError)
     if not permissions.can_take_customer_payments():
         frappe.throw(_("You are not allowed to take customer payments."), frappe.PermissionError)
     permissions.assert_outlet(pos_profile)

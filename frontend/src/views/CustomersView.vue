@@ -2,7 +2,7 @@
      SPDX-License-Identifier: AGPL-3.0-only
      "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md. -->
 <template>
-  <div class="customers">
+  <div class="customers" :class="{ 'detail-selected': selected }">
     <!-- Left: searchable, paginated customer list -->
     <aside class="cust-list">
       <div class="list-head">
@@ -44,6 +44,9 @@
 
     <!-- Right: selected customer's profile + transactions -->
     <section class="cust-detail">
+      <button v-if="selected" type="button" class="btn btn-outline mobile-customer-back" @click="clearSelection">
+        <span aria-hidden="true">←</span> {{ t('All customers') }}
+      </button>
       <div v-if="!selected" class="empty-detail muted">
         <svg viewBox="0 0 24 24" width="46" height="46"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <p>{{ t('Select a customer to see their profile and transactions') }}</p>
@@ -82,7 +85,7 @@
         </div>
 
         <!-- Sales on account (0.60.0): what they owe, a payment, their limit. -->
-        <CustomerCredit :customer="detail.name" :company="companyView || session.company" @changed="reloadTxns" />
+        <CustomerCredit v-if="session.settings?.enable_customer_balances" :customer="detail.name" :company="companyView || session.company" @changed="reloadTxns" />
 
         <div class="txn-head">
           <h3>{{ t('Transactions') }}</h3>
@@ -96,6 +99,7 @@
             <input type="date" v-model="dateTo" :title="t('To')" @change="reloadTxns" />
           </div>
         </div>
+        <div class="txn-table-wrap">
         <table class="txn-table">
           <thead>
             <tr>
@@ -125,6 +129,7 @@
             </tr>
           </tbody>
         </table>
+        </div>
         <div v-if="loadingTxns" class="muted center pad">{{ t('Loading…') }}</div>
         <div v-else-if="!txns.length" class="muted center pad">{{ t('No transactions') }}</div>
         <button v-if="txnsMore && !loadingTxns" class="btn btn-outline load-more" @click="loadMoreTxns">
@@ -252,6 +257,12 @@ async function select(c) {
     loadingDetail.value = false
   }
   reloadTxns()
+}
+
+function clearSelection() {
+  selected.value = null
+  detail.value = null
+  txns.value = []
 }
 
 function txnFilters(start) {
@@ -410,6 +421,8 @@ function updateReceipt(updated) {
 .center { text-align: center; }
 .pad { padding: 22px 0; }
 .load-more { width: 100%; margin-top: 12px; }
+.mobile-customer-back { display: none; }
+.txn-table-wrap { width: 100%; overflow-x: auto; overscroll-behavior-inline: contain; }
 .badge {
   font-size: 11px;
   font-weight: 700;
@@ -422,4 +435,27 @@ function updateReceipt(updated) {
 .badge.amber { background: rgba(245, 166, 35, 0.18); color: #9a6a0a; }
 html[data-theme='dark'] .badge.red { background: rgba(255, 120, 120, 0.2); color: #ff9b9b; }
 html[data-theme='dark'] .badge.amber { background: rgba(245, 190, 90, 0.2); color: #ffd27a; }
+@media (max-width: 1024px) {
+  .cust-list { width: 260px; }
+  .cust-detail { padding: 16px; }
+  .stat { min-width: 125px; }
+}
+@media (max-width: 700px) {
+  .customers { flex-direction: column; overflow: auto; }
+  .cust-list { width: 100%; max-height: 45vh; flex: 0 0 auto; border-right: 0; border-bottom: 1px solid var(--border); }
+  .cust-detail { flex: 1; overflow: visible; padding: 14px 12px 24px; }
+  .customers.detail-selected .cust-list { display: none; }
+  .customers.detail-selected .cust-detail { display: block; }
+  .mobile-customer-back { display: inline-flex; align-items: center; gap: 6px; margin: 0 0 12px; min-height: 40px; }
+  .detail-head { flex-direction: column; }
+  .company-view { width: 100%; max-width: none; min-height: 40px; }
+  .profile-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .stat-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .stat { min-width: 0; padding: 10px; }
+  .stat-v { font-size: 16px; overflow-wrap: anywhere; }
+  .txn-head { align-items: flex-start; flex-direction: column; }
+  .txn-filters { width: 100%; }
+  .txn-filters select, .txn-filters input { min-width: 0; flex: 1 1 120px; }
+  .txn-table { min-width: 600px; }
+}
 </style>

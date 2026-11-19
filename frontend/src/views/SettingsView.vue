@@ -1555,6 +1555,35 @@
         <p class="muted hint-row" style="padding: 0 0 6px">
           {{ t('Turn till features on or off. Each control is independent.') }}
         </p>
+        <div class="module-toggle-grid" aria-label="Modules and Features">
+          <label v-for="row in moduleFeatureRows" :key="row.field" class="module-toggle-card">
+            <input
+              type="checkbox"
+              class="setting-toggle"
+              :checked="Boolean(generalForm[row.field])"
+              :disabled="moduleFeatureDisabled(row)"
+              @change="setModuleFeature(row, $event.target.checked)"
+            />
+            <span class="setting-text">
+              <span class="module-toggle-heading">
+                <span class="setting-title">{{ t(row.title) }}</span>
+                <span class="module-state" :class="{ unavailable: moduleFeatureUnavailable(row) || row.pending }">
+                  {{ row.pending ? t('In development') : (moduleFeatureUnavailable(row) ? t('Unavailable') : (generalForm[row.field] ? t('On') : t('Off'))) }}
+                </span>
+              </span>
+              <span class="setting-desc">{{ t(row.description) }}</span>
+              <span v-if="moduleFeatureUnavailable(row)" class="module-dependency">
+                {{ t('Install Frappe HR to enable this feature.') }}
+              </span>
+              <span v-else-if="row.pending" class="module-dependency">
+                {{ t('This workflow is not connected yet. Its switch will be available when implementation is ready.') }}
+              </span>
+              <span v-else-if="moduleFeatureBlockedBy(row)" class="module-dependency">
+                {{ t('Turn on the required parent feature first.') }}
+              </span>
+            </span>
+          </label>
+        </div>
         <div class="setting-list">
           <label class="setting-row">
             <input type="checkbox" class="setting-toggle" v-model="generalForm.enable_order_discount" :true-value="1" :false-value="0" />
@@ -2818,6 +2847,18 @@ const generalForm = ref({
   credit_sales_enabled: 0,
   credit_customers: 'Customers allowed on their card',
   credit_default_limit: 0,
+  enable_regular_invoices: 1,
+  enable_customer_balances: 1,
+  enable_customer_payments: 1,
+  enable_cheque_tracking: 0,
+  enable_quotations: 1,
+  enable_sales_orders: 0,
+  enable_hr_integration: 0,
+  enable_attendance: 0,
+  enable_expense_claims: 0,
+  enable_day_salary: 0,
+  enable_sales_commissions: 1,
+  enable_commission_payroll: 0,
   variance_alert_enabled: 0,
   variance_alert_threshold: 0,
   variance_alert_role: '',
@@ -2893,6 +2934,52 @@ const generalForm = ref({
   return_reasons: [],
   approvers: [],
 })
+
+const moduleFeatureRows = [
+  { field: 'enable_regular_invoices', title: 'Regular Sales Invoices', description: 'Allow the POS Profile direct Sales Invoice mode.' },
+  { field: 'enable_customer_balances', title: 'Customer balances', description: 'Show customer receivables and open invoices from ERPNext.' },
+  { field: 'enable_customer_payments', title: 'Customer payment collection', description: 'Collect and allocate payments against customer invoices.', requires: ['enable_customer_balances'] },
+  { field: 'enable_cheque_tracking', title: 'Cheque tracking', description: 'Capture cheque details and due dates in payment workflows.', requires: ['enable_customer_payments'], pending: true },
+  { field: 'enable_quotations', title: 'Quotations', description: 'Create and print ERPNext Quotations from the POS.' },
+  { field: 'enable_sales_orders', title: 'Sales Orders', description: 'Enable the Sales Order workflow in POS.', pending: true },
+  { field: 'enable_hr_integration', title: 'Frappe HR integration', description: 'Connect POS entry points to Frappe HR.', needsHr: true, pending: true },
+  { field: 'enable_attendance', title: 'Employee attendance', description: 'Enable attendance actions for authorized staff.', needsHr: true, requires: ['enable_hr_integration'], pending: true },
+  { field: 'enable_expense_claims', title: 'Employee expense claims', description: 'Enable staff Expense Claim actions and status.', needsHr: true, requires: ['enable_hr_integration'], pending: true },
+  { field: 'enable_day_salary', title: 'Daily salary', description: 'Use attendance and the approved day-rate policy in payroll.', needsHr: true, requires: ['enable_hr_integration', 'enable_attendance'], pending: true },
+  { field: 'enable_sales_commissions', title: 'Salesperson commissions', description: 'Show salesperson incentive reporting for submitted sales.' },
+  { field: 'enable_commission_payroll', title: 'Commission payroll payout', description: 'Pay approved commissions through configured payroll.', needsHr: true, requires: ['enable_hr_integration', 'enable_sales_commissions'], pending: true },
+]
+
+function moduleFeatureUnavailable(row) {
+  return Boolean(row.needsHr && !settingsInfo.value.hrms_installed)
+}
+
+function moduleFeatureBlockedBy(row) {
+  return Boolean(row.requires?.some((field) => !generalForm.value[field]))
+}
+
+function moduleFeatureDisabled(row) {
+  return moduleFeaturePending(row) || moduleFeatureUnavailable(row) || (!generalForm.value[row.field] && moduleFeatureBlockedBy(row))
+}
+
+function moduleFeaturePending(row) {
+  return Boolean(row.pending)
+}
+
+function setModuleFeature(row, checked) {
+  if (moduleFeatureDisabled(row)) return
+  const children = moduleFeatureRows.filter((candidate) => candidate.requires?.includes(row.field))
+  const activeChildren = children.filter((candidate) => generalForm.value[candidate.field])
+  if (!checked && activeChildren.length) {
+    session.notify(t('Turn off dependent features first: {features}', { features: activeChildren.map((child) => t(child.title)).join(', ') }), true)
+    return
+  }
+  if (row.field === 'enable_customer_balances' && !checked && generalForm.value.credit_sales_enabled) {
+    session.notify(t('Turn off Sales on account first.'), true)
+    return
+  }
+  generalForm.value[row.field] = checked ? 1 : 0
+}
 const logoError = ref(false)
 
 // Return reasons and reasons for a short or over are kept in English and every
@@ -3545,6 +3632,18 @@ async function load() {
     credit_sales_enabled: info.credit_sales_enabled ? 1 : 0,
     credit_customers: info.credit_customers || 'Customers allowed on their card',
     credit_default_limit: info.credit_default_limit || 0,
+    enable_regular_invoices: info.enable_regular_invoices ?? 1,
+    enable_customer_balances: info.enable_customer_balances ?? 1,
+    enable_customer_payments: info.enable_customer_payments ?? 1,
+    enable_cheque_tracking: info.enable_cheque_tracking ?? 0,
+    enable_quotations: info.enable_quotations ?? 1,
+    enable_sales_orders: info.enable_sales_orders ?? 0,
+    enable_hr_integration: info.enable_hr_integration ?? 0,
+    enable_attendance: info.enable_attendance ?? 0,
+    enable_expense_claims: info.enable_expense_claims ?? 0,
+    enable_day_salary: info.enable_day_salary ?? 0,
+    enable_sales_commissions: info.enable_sales_commissions ?? 1,
+    enable_commission_payroll: info.enable_commission_payroll ?? 0,
     variance_alert_enabled: info.variance_alert_enabled || 0,
     variance_alert_threshold: info.variance_alert_threshold || 0,
     variance_alert_role: info.variance_alert_role || '',
@@ -4919,6 +5018,40 @@ button.sec-title.collapsible + * { margin-top: 14px; }
 
 /* iOS-style settings list */
 .setting-list { display: flex; flex-direction: column; }
+.module-toggle-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 12px 0 20px;
+}
+.module-toggle-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  min-width: 0;
+  min-height: 88px;
+  padding: 13px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  cursor: pointer;
+}
+.module-toggle-card:has(.setting-toggle:disabled) { cursor: not-allowed; opacity: 0.72; }
+.module-toggle-card .setting-toggle { width: 20px; height: 20px; margin-top: 1px; }
+.module-toggle-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.module-toggle-heading .setting-title { font-size: 13px; }
+.module-state {
+  flex: 0 0 auto;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--brand-soft);
+  color: var(--brand-dark);
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.module-state.unavailable { background: rgba(245, 166, 35, 0.15); color: var(--text-muted); }
+.module-dependency { color: var(--text-muted); font-size: 11px; line-height: 1.4; }
 .setting-row {
   display: flex;
   align-items: flex-start;
@@ -5076,6 +5209,9 @@ button.sec-title.collapsible + * { margin-top: 14px; }
   font-size: 13px;
 }
 @media (max-width: 560px) {
+  .module-toggle-grid { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .module-toggle-card { min-height: 76px; padding: 11px 12px; }
+  .module-toggle-heading { align-items: center; }
   .cb-grid { grid-template-columns: 1fr; gap: 2px; }
 }
 </style>

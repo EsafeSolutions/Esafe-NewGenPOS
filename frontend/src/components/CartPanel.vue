@@ -316,13 +316,14 @@
       <button
         type="button" class="btn btn-primary pay"
         data-tour="cart-pay"
-        :disabled="!cart.lines.length || !session.registerOpen || session.permissions.sell === false || !!session.sellBlockedBy"
-        :title="session.permissions.sell === false ? t('You do not have permission to make sales') : ''"
+        :disabled="!cart.lines.length || !session.registerOpen || session.permissions.sell === false || !!session.sellBlockedBy || (session.invoiceMode === 'Sales Invoice' && !session.settings.enable_regular_invoices)"
+        :title="session.permissions.sell === false ? t('You do not have permission to make sales') : (session.invoiceMode === 'Sales Invoice' && !session.settings.enable_regular_invoices ? t('Regular Sales Invoices are turned off in Modules & Features') : '')"
         @click="$emit('pay')"
       >
         {{ t('Pay') }}&nbsp;&nbsp;{{ cart.show(cart.total) }}
       </button>
       <button
+        v-if="session.settings.enable_quotations"
         type="button" class="btn btn-outline quotation"
         :title="t('Create QT')" :aria-label="t('Create QT')"
         :disabled="!cart.lines.length || session.offline || cart.submitting || session.permissions.sell === false || !!session.sellBlockedBy"

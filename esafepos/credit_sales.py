@@ -67,7 +67,9 @@ def _setting(field):
 
 
 def enabled():
-    return bool(cint(_setting("credit_sales_enabled")))
+    from esafepos.features import enabled as feature_enabled
+
+    return bool(cint(_setting("credit_sales_enabled"))) and feature_enabled("enable_customer_balances")
 
 
 def who():

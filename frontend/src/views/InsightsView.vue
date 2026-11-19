@@ -69,7 +69,7 @@
 </template>
 
 <script setup>
-import { computed, h, onMounted, ref } from 'vue'
+import { computed, h, onMounted, ref, watch } from 'vue'
 import { call } from '../api'
 import { t, locale } from '../i18n'
 import { theme } from '../theme'
@@ -95,6 +95,7 @@ const tabs = computed(() =>
     session.permissions.cashier_report && { key: 'cashiers', label: 'Cashiers' },
     session.permissions.insights && { key: 'dashboard', label: 'Sales dashboard' },
     session.permissions.sales_by_person &&
+      session.settings.enable_sales_commissions !== 0 &&
       (session.settings.salesperson_mode || 'Optional') !== 'Off' && { key: 'salespeople', label: 'Salespeople' },
   ].filter(Boolean)
 )
@@ -120,6 +121,12 @@ function pick(key) {
     load()
   }
 }
+
+watch(tabs, (available) => {
+  if (active.value && !available.some((tab) => tab.key === active.value)) {
+    pick(available[0]?.key || 'dashboard')
+  }
+})
 
 const loading = ref(true)
 const error = ref('')

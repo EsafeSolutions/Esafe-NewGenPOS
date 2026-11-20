@@ -92,6 +92,9 @@
   "enable_day_salary",
   "enable_sales_commissions",
   "enable_commission_payroll",
+  "enable_sales_rep_mode",
+  "enable_erp_pricing_rules",
+  "enable_customer_sales_progress",
   "enable_order_discount",
   "enable_service_charge",
   "service_charge_percent",
@@ -150,6 +153,9 @@
   "receipt_show_terms",
   "receipt_terms",
   "receipt_custom_fields",
+  "qz_signing_section",
+  "qz_signing_certificate",
+  "qz_signing_private_key",
   "insights_section",
   "enable_insights",
   "reports_in_insights",
@@ -663,6 +669,27 @@
    "label": "Commission payroll payout"
   },
   {
+   "default": "0",
+   "description": "Enable the optional ERPNext-aligned Sales Rep customer workflow.",
+   "fieldname": "enable_sales_rep_mode",
+   "fieldtype": "Check",
+   "label": "Sales Rep Mode"
+  },
+  {
+   "default": "0",
+   "description": "Use ERPNext Pricing Rules for eligible POS sales, quotations, and regular invoices.",
+   "fieldname": "enable_erp_pricing_rules",
+   "fieldtype": "Check",
+   "label": "ERPNext automatic discounts"
+  },
+  {
+   "default": "0",
+   "description": "Show the customer's quotation-to-payment progress, delivery balance, payment history, and pending tasks.",
+   "fieldname": "enable_customer_sales_progress",
+   "fieldtype": "Check",
+   "label": "Customer sales progress"
+  },
+  {
    "default": "1",
    "description": "Allow a single discount on the whole cart (subject to the discount limit + edit-price role).",
    "fieldname": "enable_order_discount",
@@ -960,6 +987,23 @@
    "fieldname": "receipt_fields_section",
    "fieldtype": "Section Break",
    "label": "Receipt Fields"
+  },
+  {
+   "fieldname": "qz_signing_section",
+   "fieldtype": "Section Break",
+   "label": "QZ Tray Signing"
+  },
+  {
+   "description": "Public QZ digital certificate used to verify signed print requests.",
+   "fieldname": "qz_signing_certificate",
+   "fieldtype": "Long Text",
+   "label": "QZ digital certificate"
+  },
+  {
+   "description": "Stored as an encrypted Password value. Never sent to the browser.",
+   "fieldname": "qz_signing_private_key",
+   "fieldtype": "Password",
+   "label": "QZ signing private key"
   },
   {
    "default": "0",

@@ -132,7 +132,7 @@ If you create a customer while offline, EsafePOS saves them locally and reconcil
 
 EsafePOS has its own promotions engine, so you don't have to wrangle ERPNext Pricing Rules at the till. Create promotions in the desk under **POS Promotion → New**.
 
-> **EsafePOS pricing vs ERPNext Pricing Rules.** EsafePOS owns pricing at the point of sale. Its **price books, promotions and bundles** are always the source of truth, and it **automatically ignores ERPNext Pricing Rules on every POS sale**, so the price the till shows always matches the posted invoice, and there's nothing to enable or disable. (You may see an *Ignore Pricing Rule* option in ERPNext; EsafePOS already applies it for you at the POS.) Your existing Pricing Rules keep working on non-POS documents such as Sales Orders and regular Sales Invoices.
+> **EsafePOS pricing vs ERPNext Pricing Rules.** By default, EsafePOS uses its price books, promotions and bundles, and ignores ERPNext Pricing Rules. Shops can turn on **Sales Rep Mode → ERPNext automatic discounts** in Modules & Features to use native Pricing Rules for POS sales, quotations and regular Sales Invoices. In that mode EsafePOS automatic Promotions are not layered on top of ERPNext rules, preventing duplicate automatic discounts. Existing Pricing Rules continue to work in ERPNext documents.
 
 | Type | What it does | Key fields |
 |---|---|---|

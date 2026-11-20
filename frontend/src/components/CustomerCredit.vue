@@ -14,6 +14,10 @@
         <div class="cr-v">{{ money(facts.owed, facts.currency) }}</div>
         <div class="cr-l">{{ t('Owes') }}</div>
       </div>
+      <div v-if="facts.pos_credit_available > 0" class="cr-stat cr-credit">
+        <div class="cr-v">{{ money(facts.pos_credit_available, facts.currency) }}</div>
+        <div class="cr-l">{{ t('Unallocated customer credit') }}</div>
+      </div>
       <!-- Holds and orders not invoiced (0.61.1): not owed, but ERPNext
            counts them against the limit, so "Left to use" takes them off. -->
       <div v-if="session.settings.credit_sales_enabled && facts.held > 0" class="cr-stat" data-tour="customer-credit-held">
@@ -101,6 +105,13 @@
         </label>
       </div>
       <p v-if="tooMuch" class="cr-warn small">{{ t('The customer owes {amount} on these sales: take at most that.', { amount: money(open, facts.currency) }) }}</p>
+      <label v-if="excess > 0" class="cr-excess setting-row">
+        <input v-model="addExcessToCredit" type="checkbox" class="setting-toggle" />
+        <span class="setting-text">
+          <span class="setting-title">{{ t('Add excess to customer credit') }}</span>
+          <span class="setting-desc">{{ t('{amount} will stay as an unallocated customer advance for a future invoice.', { amount: money(excess, facts.currency) }) }}</span>
+        </span>
+      </label>
       <div class="cr-actions">
         <button class="btn btn-outline" :disabled="busy" @click="stopTaking">{{ t('Cancel') }}</button>
         <button class="btn btn-primary" :disabled="busy || !valid" @click="take">
@@ -118,6 +129,7 @@
         <div v-for="row in paid.allocations" :key="row.name" class="pr-row">
           <span class="mono">{{ row.invoice }}</span><span>{{ money(row.allocated, paid.currency) }}</span>
         </div>
+        <div v-if="paid.credit_added > 0" class="pr-row"><span>{{ t('Added to customer credit') }}</span><span>{{ money(paid.credit_added, paid.currency) }}</span></div>
         <div class="pr-row pr-total"><span>{{ t('Paid') }}</span><span>{{ money(paid.amount, paid.currency) }}</span></div>
         <div class="pr-row"><span>{{ t('Still owed') }}</span><span>{{ money(paid.owed_after, paid.currency) }}</span></div>
         <footer class="pr-brand muted small">{{ RECEIPT_BRAND }}</footer>
@@ -158,6 +170,7 @@ const chosen = ref([])
 const amount = ref('')
 const mode = ref(null)
 const reference = ref('')
+const addExcessToCredit = ref(false)
 const busy = ref(false)
 const paid = ref(null)
 let key = null
@@ -223,7 +236,8 @@ const open = computed(() => {
   return Math.round(pick.reduce((sum, i) => sum + i.outstanding, 0) * 100) / 100
 })
 const parsed = computed(() => parseMoney(amount.value))
-const tooMuch = computed(() => (parsed.value || 0) > open.value + 0.005)
+const excess = computed(() => Math.max(Math.round(((parsed.value || 0) - open.value) * 100) / 100, 0))
+const tooMuch = computed(() => excess.value > 0 && !addExcessToCredit.value)
 const valid = computed(() => (parsed.value || 0) > 0 && !tooMuch.value && Boolean(mode.value))
 
 function startTaking() {
@@ -233,6 +247,7 @@ function startTaking() {
   const cash = payModes.value.find((m) => m.type === 'Cash')
   mode.value = (cash || payModes.value[0])?.mode_of_payment || null
   reference.value = ''
+  addExcessToCredit.value = false
   // One key per payment from its first attempt: a retry after a lost answer
   // finds the payment that posted instead of taking the money twice.
   key = newId()
@@ -243,7 +258,10 @@ function stopTaking() {
 }
 // The amount follows the sales ticked until the cashier types their own.
 watch(chosen, () => {
-  if (taking.value) amount.value = open.value.toFixed(2)
+  if (taking.value) {
+    amount.value = open.value.toFixed(2)
+    addExcessToCredit.value = false
+  }
 })
 
 async function take() {
@@ -260,6 +278,7 @@ async function take() {
       items: JSON.stringify(items),
       reference_no: reference.value || null,
       idempotency_key: key,
+      add_excess_to_credit: addExcessToCredit.value ? 1 : 0,
     })
     session.notify(t('Payment taken'))
     taking.value = false
@@ -317,6 +336,7 @@ watch(() => [props.customer, props.company], load, { immediate: true })
 .cr-row { display: flex; gap: 10px; flex-wrap: wrap; }
 .cr-row .field { flex: 1 1 150px; }
 .cr-warn { color: var(--red); margin: 0; font-weight: 600; }
+.cr-excess { padding: 9px 10px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-2); }
 .cr-receipt { border-top: 1px solid var(--border); padding-top: 10px; display: flex; flex-direction: column; gap: 10px; }
 .payment-receipt {
   border: 1px dashed var(--border);

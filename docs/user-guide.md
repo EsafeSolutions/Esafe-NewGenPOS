@@ -662,9 +662,20 @@ currency list need permission to change EsafePOS Settings.
 The receipt modal shows totals, taxes, payments, change, applied promotions
 (★) and bundles (🎁), loyalty earned/redeemed, gift card info.
 **Print receipt** uses, in order:
-1. the **ESC/POS network printer** (if configured on the profile, incl. cash-drawer kick),
-2. the profile's **Print Format** via ERPNext print view,
-3. the built-in receipt via the browser dialog.
+1. **QZ Tray** on this computer when a local printer is selected and the POS Profile uses the built-in receipt,
+2. the **ESC/POS network printer** (if configured on the profile, incl. cash-drawer kick),
+3. the profile's **Print Format** via ERPNext print view,
+4. the built-in receipt via the browser dialog.
+
+For QZ Tray, install and run QZ Tray on every Windows till, then open
+**Settings → General → Receipt**, choose **Connect and find printers**, select
+the local receipt printer, and send a test receipt. QZ can show an approval
+prompt until signing is configured. A manager can upload the QZ digital
+certificate and matching PEM private key in the same section; EsafePOS stores
+the private key as an encrypted Password value and signs each request on the
+server. Use QZ's trusted production certificate for multiple tills; demo keys
+are intended for local development. A POS Profile ERPNext Print Format keeps
+using ERPNext's print view and is not sent through the QZ built-in receipt path.
 
 The built-in browser receipt uses the **58mm / 80mm paper width** saved in
 Settings → Receipt (including the sale outlet's override). It prints a separate,
@@ -690,12 +701,14 @@ its own page layout instead of the built-in receipt settings.
 
 ---
 
-## 4. Promotions (replaces ERPNext Pricing Rules at the POS)
+## 4. Promotions and ERPNext Pricing Rules
 
-Managed in **POS Settings → Promotions** (or the desk DocType). EsafePOS sets
-`ignore_pricing_rule` on its invoices, so ERPNext Pricing Rules never
-double-apply. **Promotions only affect sales made through /pos**, desk-made
-invoices are untouched.
+Managed in **POS Settings → Promotions** (or the desk DocType). By default,
+EsafePOS uses its own promotions and ignores ERPNext Pricing Rules. In **Sales
+Rep Mode**, switch on **ERPNext automatic discounts** to use native ERPNext
+Pricing Rules for POS sales, quotations and regular Sales Invoices. When active,
+EsafePOS automatic Promotions are not layered on top of ERPNext rules; manual
+discounts and bundle prices keep their existing controls.
 
 ### Types
 | Type | Behaviour | Key fields |
@@ -1607,17 +1620,42 @@ owe, their credit limit and what it leaves, and each sale still owing, oldest fi
 
 - **Take a payment** (Permissions: *Take customer payments*) takes the customer's
   money into this till's drawer, so the register must be open. It settles the oldest
-  sales first, or the sales ticked. Never more than is owed, and a retry after a lost
-  answer never takes it twice. It is ERPNext's own receipt voucher, a **Cash Entry** (a
-  **Bank Entry** for a card or a transfer), allocated to each sale's entry, and the
-  shift's close expects the money in that drawer. Print the payment receipt from the
-  same card.
+  sales first, or the sales ticked. If the customer pays more than those balances,
+  select **Add excess to customer credit** before taking the payment. The receipt
+  applies only what is owed and keeps the rest as an unallocated customer advance on
+  the same receivable account. The customer card shows that POS credit separately;
+  staff can allocate it to a later invoice in ERPNext Payment Reconciliation. A retry
+  after a lost answer never takes the money twice. It is an ERPNext **Cash Entry** (a
+  **Bank Entry** for a card or transfer), and the shift's close expects the full
+  payment in that drawer. Print the payment receipt from the same card.
 - **Allowed to buy on account** and **Credit limit of their own** (Permissions: *Set a
   customer's credit*): the limit is ERPNext's own, on the customer's card for this
   company. 0 removes it, so the group's, the company's or the shop's default applies.
 
 The customer can also pay in ERPNext as usual (a Payment Entry or a Journal Entry
 against the sale's entry).
+
+### Sales Rep Mode
+
+In **Settings → General → Features**, turn on **Sales Rep Mode** to reveal its
+independent **ERPNext automatic discounts** and **Customer sales progress**
+switches. ERPNext Pricing Rules are evaluated for the current POS cart and used
+for POS sales, quotations, and regular Sales Invoices when that switch is on.
+The cart displays the server-calculated total and the matching rule names before
+checkout. The current EsafePOS automatic Promotions are not layered over an
+ERPNext Pricing Rule discount. This feature needs a live connection because the
+active rules are read from ERPNext at pricing time; offline checkout is blocked
+while the switch is enabled.
+
+With **Customer sales progress** on, a customer profile shows the ERPNext
+Quotation → Sales Order → Delivery Note → Sales Invoice progression, the
+customer's receivable balance, goods still to deliver, receipts grouped by cash,
+cheque, bank transfer and other payment methods, each receipt's date/reference,
+and open ToDo tasks linked to that customer. The endpoint is read-only and only
+returns document types the signed-in user may read. Receipt totals use company
+currency. Links open the source documents in ERPNext. The panel refreshes on
+request and uses stacked stage cards and swipeable payment details on phones and
+tablets.
 
 **Performance:** every query is server-paginated and scoped to indexed columns,
 and per-customer totals are computed only when you open a customer, never for
@@ -1633,6 +1671,8 @@ The earlier entries below cover the shared release history inherited from the or
 
 ### Unreleased
 
+- **Sales Rep Mode:** Independent Settings switches enable ERPNext automatic Pricing Rules for POS, quotations and regular invoices, plus a customer progress view for quotations, orders, deliveries, invoices, outstanding, payments and customer-linked tasks. The progress panel is read-only and adapts to phone/tablet widths. Fixed customer profiles failing when the optional invoice-origin custom field has not yet been migrated.
+- **Excess customer payments:** Cashiers may opt to keep an overpayment as customer credit. The POS applies only the selected invoice balances, posts the remainder as an unallocated receivable credit, and shows it on the customer card and payment receipt. ERPNext Payment Reconciliation can allocate that advance to a later invoice. The option is available in the responsive customer-payment form.
 - **Regular customer invoices.** The Sell cart and a new Invoices screen create a named-customer standard ERPNext Sales Invoice without an open register or payment. The cashier can set an optional due date and salesperson. Server-side pricing, tax, discounts, serials and stock are rechecked; the submitted receivable is visible in customer balances and can be paid through customer account collection. The action is controlled by the Regular Sales Invoices switch and supports phone/tablet layouts.
 - Added three Sell catalog modes, quick Add and tap-to-open item editing. The read-only customer display shows line savings, running totals, amount due or change, and the completed receipt with earned rewards.
 

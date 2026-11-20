@@ -53,12 +53,32 @@ def customer_credit(customer: str, company: str):
     out["enabled"] = 1
     out["owed"] = credit_sales.owed(customer, company)
     out["items"] = credit_sales.open_items(customer, company)
+    out["pos_credit_available"] = _unallocated_pos_credit(customer, company)
     if not credit_sales.enabled():
         out["can_sell"] = 0
         out["can_set"] = 0
         out["reason"] = _("Sales on account is turned off; existing invoice balances can still be viewed.")
     out["can_take_payment"] = bool(out.get("can_take_payment")) and feature_enabled("enable_customer_payments")
     return out
+
+
+def _unallocated_pos_credit(customer, company):
+    """Unallocated credit from POS customer-payment receipts, in company currency."""
+    value = frappe.db.sql(
+        """
+        select sum(jea.credit_in_account_currency - jea.debit_in_account_currency)
+        from `tabJournal Entry` je
+        join `tabJournal Entry Account` jea on jea.parent = je.name
+        join `tabAccount` account on account.name = jea.account
+        where je.docstatus = 1 and je.esafepos_credit_kind = 'Payment'
+          and je.company = %(company)s and jea.party_type = 'Customer' and jea.party = %(customer)s
+          and account.account_type = 'Receivable'
+          and jea.credit_in_account_currency > jea.debit_in_account_currency
+          and ifnull(jea.reference_type, '') = '' and ifnull(jea.reference_name, '') = ''
+        """,
+        {"customer": customer, "company": company},
+    )
+    return flt(value[0][0] if value and value[0][0] else 0, 2)
 
 
 def _internal_modes():
@@ -77,16 +97,20 @@ def _mode_account(mode, company):
     return frappe.db.get_value("Mode of Payment Account", {"parent": mode, "company": company}, "default_account")
 
 
-def _allocate(items, amount, chosen):
+def _allocate(items, amount, chosen, allow_excess=False):
     """Spread `amount` over the open debts, oldest first, or over the chosen ones
     only. All on one receivable account (a Payment Entry has one)."""
     pick = [item for item in items if not chosen or (item["doctype"], item["name"]) in chosen]
     if not pick:
         frappe.throw(_("Nothing is owed on the sales chosen."), title=_("Take a payment"))
     account = pick[0]["account"]
-    pick = [item for item in pick if item["account"] == account]
+    if any(item["account"] != account for item in pick):
+        frappe.throw(
+            _("The selected sales use different receivable accounts. Take separate payments for them."),
+            title=_("Take a payment"),
+        )
     open_total = flt(sum(item["outstanding"] for item in pick), 2)
-    if amount > open_total + credit_sales.EPSILON:
+    if amount > open_total + credit_sales.EPSILON and not allow_excess:
         frappe.throw(
             _("The customer owes {0} on the sales chosen: take at most that.").format(open_total),
             title=_("Take a payment"),
@@ -99,7 +123,7 @@ def _allocate(items, amount, chosen):
             break
         rows.append((item, take))
         left = flt(left - take, 2)
-    return account, rows
+    return account, rows, flt(max(amount - open_total, 0), 2)
 
 
 @frappe.whitelist()
@@ -111,6 +135,7 @@ def receive_payment(
     items: list | str | None = None,
     reference_no: str | None = None,
     idempotency_key: str | None = None,
+    add_excess_to_credit: int | str | None = None,
 ):
     """Take a payment of what the customer owes into this till's drawer: one
     Cash Entry (a Bank Entry for a card or a transfer), allocated oldest
@@ -154,7 +179,10 @@ def receive_payment(
     if isinstance(items, str):
         items = json.loads(items or "[]")
     chosen = {(row.get("doctype"), row.get("name")) for row in (items or []) if row.get("name")}
-    account, rows = _allocate(credit_sales.open_items(customer, company), amount, chosen)
+    add_excess_to_credit = bool(cint(add_excess_to_credit))
+    account, rows, excess = _allocate(
+        credit_sales.open_items(customer, company), amount, chosen, allow_excess=add_excess_to_credit
+    )
 
     cost_center = profile.get("cost_center") or frappe.get_cached_value("Company", company, "cost_center")
     dims = credit_sales._dimensions(profile)
@@ -179,6 +207,20 @@ def receive_payment(
                 "credit_in_account_currency": take,
                 "reference_type": item["doctype"],
                 "reference_name": item["name"],
+                "cost_center": cost_center,
+                **dims,
+            }
+        )
+    if excess > 0:
+        # Keep surplus on the customer's receivable account without an invoice
+        # reference. This is an unallocated customer advance, not a credit note.
+        lines.append(
+            {
+                "account": account,
+                "party_type": "Customer",
+                "party": customer,
+                "debit_in_account_currency": 0,
+                "credit_in_account_currency": excess,
                 "cost_center": cost_center,
                 **dims,
             }
@@ -237,6 +279,8 @@ def payment_receipt(payment: str):
         if row.get("party_type") != "Customer":
             paid_to = paid_to or row.account
             continue
+        if not row.reference_name:
+            continue
         invoice = row.reference_name
         if row.reference_type == "Journal Entry":
             invoice = frappe.db.get_value("Journal Entry", row.reference_name, "esafepos_credit_invoice") or invoice
@@ -249,6 +293,17 @@ def payment_receipt(payment: str):
             }
         )
     customer = je.get("esafepos_credit_customer")
+    credit_added = flt(
+        sum(
+            flt(row.credit_in_account_currency, 2)
+            for row in je.accounts or []
+            if row.get("party_type") == "Customer" and not row.get("reference_name")
+        ),
+        2,
+    )
+    paid_amount = flt(
+        sum(flt(row.debit_in_account_currency, 2) for row in je.accounts or [] if row.account == paid_to), 2
+    )
     return {
         "name": je.name,
         "doctype": "Journal Entry",
@@ -258,7 +313,8 @@ def payment_receipt(payment: str):
         "currency": frappe.get_cached_value("Company", je.company, "default_currency"),
         "posting_date": str(je.posting_date),
         "mode_of_payment": je.get("mode_of_payment"),
-        "amount": flt(sum(row["allocated"] for row in allocations), 2),
+        "amount": paid_amount,
+        "credit_added": credit_added,
         "reference_no": je.get("cheque_no"),
         "allocations": allocations,
         "owed_after": credit_sales.owed(customer, je.company),

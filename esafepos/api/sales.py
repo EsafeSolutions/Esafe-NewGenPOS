@@ -210,21 +210,20 @@ def _table_doctype(pos_profile):
     return "POS Invoice"
 
 
-def _ensure_ignore_pricing_rule(profile):
-    """EsafePOS prices every sale itself (price books + its own promotion engine)
-    and never applies ERPNext Pricing Rules, so a rule ERPNext re-applies on
-    submit would diverge from what the till charged and land the invoice
-    "Partly Paid". We already set `ignore_pricing_rule` on the invoice, but
+def _ensure_ignore_pricing_rule(profile, ignore=True):
+    """Set the POS Profile flag to the engine selected for this sale. The
+    default EsafePOS pricing path ignores ERPNext rules; Sales Rep Mode can
+    pre-resolve ERPNext rules and then freeze the calculated invoice values.
+    We set `ignore_pricing_rule` on the invoice too, but
     ERPNext's POS flow (`set_pos_fields`) re-reads that flag from the POS Profile
-    on every save and flips ours back to the profile's value. So mirror
-    EsafePOS's always-ignore behaviour onto the profile itself: set the POS
-    Profile's "Ignore Pricing Rule" to 1 once, idempotently. (No-op if the field
-    isn't present or is already set.)"""
+    on every save and flips ours back to the profile's value. No-op when the
+    field isn't present or already matches."""
     if not frappe.get_meta("POS Profile").has_field("ignore_pricing_rule"):
         return
-    if not profile.get("ignore_pricing_rule"):
-        frappe.db.set_value("POS Profile", profile.name, "ignore_pricing_rule", 1)
-        profile.ignore_pricing_rule = 1
+    wanted = 1 if ignore else 0
+    if cint(profile.get("ignore_pricing_rule")) != wanted:
+        frappe.db.set_value("POS Profile", profile.name, "ignore_pricing_rule", wanted)
+        profile.ignore_pricing_rule = wanted
         frappe.clear_document_cache("POS Profile", profile.name)
 
 
@@ -287,13 +286,18 @@ def _build_sale_invoice(
     # A price typed at the till replaces the line's price before offers, as a
     # price list price would (the outlet's switch and the rule are checked).
     price_overrides = _price_overrides(payload, lines, ctx, profile)
+    from esafepos.features import enabled as feature_enabled
+
+    erp_pricing_rules = feature_enabled("enable_erp_pricing_rules")
     bundle_discounts, bundle_applied = _apply_bundles(payload["items"], lines, profile.name)
 
     # Promotions never touch bundle lines, bundle pricing is final.
     non_bundle_idx = [
         i for i, row in enumerate(payload["items"]) if not row.get("bundle_key")
     ]
-    active_promos = get_active_promotions(profile.name, include_coupon=True)
+    # The Sales Rep Mode setting makes ERPNext's rule engine the single source
+    # of automatic item discounts, avoiding a second EsafePOS promo discount.
+    active_promos = [] if erp_pricing_rules else get_active_promotions(profile.name, include_coupon=True)
     # A valid bulk-coupon code unlocks its promotion just like a legacy single
     # code (sets that promo's coupon_code to the provided code for the engine).
     coupons.apply_to_promotions(active_promos, payload.get("coupon_codes") or [])
@@ -329,11 +333,9 @@ def _build_sale_invoice(
         _check_price_edit_permission(approval_payload)
     discount_approver = _check_discount_passcode(approval_payload) if check_passcode else None
 
-    # EsafePOS owns POS pricing (price books + its own promotion engine), and the
-    # till/cart NEVER applies ERPNext Pricing Rules, so POS sales always ignore
-    # them. Otherwise the posted invoice would diverge from what the till charged
-    # and land "Partly Paid". (ERPNext Pricing Rules still apply to non-POS docs.)
-    ignore_pricing_rule = 1
+    # The configured engine must be resolved once while building the document;
+    # the exact resolved rate is then frozen on the invoice before submission.
+    ignore_pricing_rule = 0 if erp_pricing_rules else 1
 
     # Some ERPNext versions don't carry `update_stock` on the POS Profile, so a
     # direct attribute access throws ('POSProfile' object has no attribute
@@ -344,9 +346,11 @@ def _build_sale_invoice(
     _update_stock = profile.get("update_stock")
     update_stock = 1 if _update_stock is None else cint(_update_stock)
 
-    # Make ERPNext's POS flow agree with EsafePOS: always ignore Pricing Rules.
-    # (Sets POS Profile → Ignore Pricing Rule so the flag survives submit.)
-    _ensure_ignore_pricing_rule(profile)
+    # ERPNext POS can re-read this flag from the POS Profile during validation.
+    # Set the document flag for preview/build; the final resolved invoice values
+    # are frozen below so submit cannot apply a second discount.
+    if not erp_pricing_rules:
+        _ensure_ignore_pricing_rule(profile, ignore=True)
 
     invoice = erpnext_compat.new_doc(_sale_doctype(profile))
     invoice.update(
@@ -435,9 +439,61 @@ def _build_sale_invoice(
     # it). Setting discount_amount alone is silently ignored and the full
     # price is posted. So express every discount as a percentage and clear
     # rate so ERPNext recalculates it from the percentage on each pass.
+    auto_discount_total = 0.0
+    erp_line_discounts = [0.0] * len(lines)
+    applied_erp_rules = set()
     for i, item_row in enumerate(invoice.items):
+        # ERPNext may add a free item from a Pricing Rule. Keep its native zero
+        # rate/discount fields; it has no corresponding EsafePOS cart row.
+        if i >= len(lines):
+            continue
         price = flt(lines[i]["price"])
         per_unit = flt(per_unit_discounts[i])
+        if erp_pricing_rules:
+            base_rate = flt(item_row.price_list_rate) or flt(price * ctx.factor)
+            rule_rate = flt(item_row.rate)
+            rule_names = item_row.get("pricing_rules") or ""
+            is_bundle_line = bool((payload.get("items") or [])[i].get("bundle_key"))
+            if is_bundle_line:
+                rule_names = ""
+            if isinstance(rule_names, str):
+                try:
+                    decoded_rules = json.loads(rule_names)
+                except Exception:
+                    decoded_rules = rule_names.replace(",", "\n").splitlines()
+                if not isinstance(decoded_rules, (list, tuple)):
+                    decoded_rules = [decoded_rules]
+                for part in decoded_rules:
+                    rule_name = str(part).strip().strip('"[] ')
+                    if rule_name and frappe.db.exists("Pricing Rule", rule_name):
+                        applied_erp_rules.add(frappe.db.get_value("Pricing Rule", rule_name, "title") or rule_name)
+            elif isinstance(rule_names, (list, tuple)):
+                for part in rule_names:
+                    rule_name = str(part).strip()
+                    if rule_name and frappe.db.exists("Pricing Rule", rule_name):
+                        applied_erp_rules.add(frappe.db.get_value("Pricing Rule", rule_name, "title") or rule_name)
+            # Bundles have their own fixed-price calculation. Don't stack an
+            # ERPNext rule on the same bundle line; apply the bundle only there.
+            if is_bundle_line:
+                rule_rate = base_rate
+            else:
+                auto_discount_total += max(base_rate - rule_rate, 0) * flt(item_row.qty)
+            custom_ratio = min(per_unit, price) / price if price > 0 else 0
+            final_rate = max(rule_rate * (1 - custom_ratio), 0)
+            erp_line_discounts[i] = flt(max(base_rate - final_rate, 0) * flt(item_row.qty), 2)
+            per_unit_discounts[i] = max(price - (final_rate / ctx.factor if ctx.factor else final_rate), 0)
+            item_row.price_list_rate = flt(base_rate, item_row.precision("price_list_rate"))
+            item_row.margin_type = ""
+            item_row.margin_rate_or_amount = 0
+            item_row.rate_with_margin = 0
+            item_row.rate = 0
+            item_row.pricing_rules = ""
+            item_row.is_free_item = 0
+            item_row.discount_percentage = (
+                flt((base_rate - final_rate) / base_rate * 100, 6) if base_rate > 0 else 0
+            )
+            item_row.discount_amount = 0
+            continue
         # The only conversion: the row's list price in the sale's currency. The
         # discount below is a percentage, so it carries over unchanged.
         item_row.price_list_rate = flt(price * ctx.factor, item_row.precision("price_list_rate"))
@@ -458,6 +514,18 @@ def _build_sale_invoice(
         else:
             item_row.discount_percentage = 0
         item_row.discount_amount = 0
+
+    if erp_pricing_rules:
+        # The discounts/rates have already been calculated by ERPNext above.
+        # Freeze those same values for POS Invoice validation and closing.
+        invoice.ignore_pricing_rule = 1
+        _ensure_ignore_pricing_rule(profile, ignore=True)
+    invoice.flags.esafepos_erp_pricing = {
+        "enabled": bool(erp_pricing_rules),
+        "discount_total": flt(auto_discount_total, 2),
+        "rules": sorted(applied_erp_rules),
+        "line_discounts": erp_line_discounts if erp_pricing_rules else [],
+    }
 
     _apply_service_charge(invoice, profile, lines, per_unit_discounts)
 
@@ -596,6 +664,20 @@ def quote_sale(payload: dict | str):
         "net_total": flt(invoice.net_total, prec),
         "total_taxes": flt(invoice.total_taxes_and_charges, prec),
         "cashback_earn": flt(_cashback_estimate(invoice, profile, payload), prec),
+        "erp_pricing": getattr(invoice.flags, "esafepos_erp_pricing", {"enabled": False, "discount_total": 0, "rules": []}),
+        "tax_breakdown": {
+            "exclusive": [
+                {"description": row.description, "amount": flt(row.tax_amount, prec)}
+                for row in invoice.taxes or []
+                if not cint(row.get("included_in_print_rate")) and flt(row.tax_amount)
+            ],
+            "included": [
+                {"description": row.description, "amount": flt(row.tax_amount, prec)}
+                for row in invoice.taxes or []
+                if cint(row.get("included_in_print_rate")) and flt(row.tax_amount)
+            ],
+            "exclusiveTotal": flt(sum(flt(row.tax_amount) for row in invoice.taxes or [] if not cint(row.get("included_in_print_rate"))), prec),
+        } if erp_pricing_rules else None,
         # Which tenders this basket may not be paid with, answered here rather
         # than in a second request: on a till in Riyadh talking to a server in
         # Mumbai the round trip costs far more than the query.

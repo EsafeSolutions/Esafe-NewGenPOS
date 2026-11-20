@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import frappe
 from frappe import _
-from frappe.utils import cint, flt
+from frappe.utils import cint, flt, now_datetime
 
 CUSTOMER_FIELDS = [
     "name", "customer_name", "customer_group", "customer_type",
@@ -101,13 +101,19 @@ def customer_detail(customer: str, company: str | None = None):
     # and its POS Invoices are already counted.
     from esafepos.walk_in import customer_attribution_sql
 
+    has_invoice_origin = frappe.get_meta("Sales Invoice").has_field("esafepos_invoice_origin")
+
     stats = frappe._dict(sales_count=0, returns_count=0, total_spent=0, total_refunded=0, last_purchase=None)
     for doctype, extra in (
         ("POS Invoice", ""),
         (
             "Sales Invoice",
-            " and ((pi.is_pos = 1 and ifnull(pi.is_consolidated, 0) = 0) "
-            "or (pi.is_pos = 0 and pi.esafepos_invoice_origin = 'Customer Invoice'))",
+            (
+                " and ((pi.is_pos = 1 and ifnull(pi.is_consolidated, 0) = 0) "
+                "or (pi.is_pos = 0 and pi.esafepos_invoice_origin = 'Customer Invoice'))"
+                if has_invoice_origin
+                else " and ((pi.is_pos = 1 and ifnull(pi.is_consolidated, 0) = 0) or pi.is_pos = 0)"
+            ),
         ),
     ):
         join, _, customer_matches = customer_attribution_sql(doctype)
@@ -169,4 +175,226 @@ def customer_detail(customer: str, company: str | None = None):
         "currency": (frappe.get_cached_value("Company", company, "default_currency") if company else None)
         or frappe.db.get_default("currency"),
         "billing_currency": doc.get("default_currency"),
+    }
+
+
+def _fields(doctype, names):
+    meta = frappe.get_meta(doctype)
+    return [name for name in names if meta.has_field(name)]
+
+
+def _company_for_customer_view(company):
+    company = company or frappe.defaults.get_user_default("company") or frappe.db.get_single_value(
+        "Global Defaults", "default_company"
+    )
+    from esafepos.api.permissions import allowed_companies
+
+    companies = allowed_companies()
+    if companies is not None and company not in companies:
+        frappe.throw(_("You cannot see figures for {0}.").format(company), frappe.PermissionError)
+    return company
+
+
+@frappe.whitelist()
+def customer_sales_progress(customer: str, company: str | None = None):
+    """Read-only Sales Rep Mode view of this customer's ERPNext sales pipeline."""
+    _require_read()
+    from esafepos.features import enabled as feature_enabled
+
+    if not feature_enabled("enable_customer_sales_progress"):
+        frappe.throw(_("Customer sales progress is turned off in Modules & Features."), frappe.PermissionError)
+    if not frappe.db.exists("Customer", customer):
+        frappe.throw(_("Customer {0} not found.").format(customer))
+    company = _company_for_customer_view(company)
+    stages = {}
+
+    def fetch_stage(doctype, filters, requested, order_by, limit=40):
+        if not frappe.has_permission(doctype, "read"):
+            return []
+        fields = _fields(doctype, requested)
+        return frappe.get_list(
+            doctype,
+            filters=filters,
+            fields=fields,
+            order_by=order_by,
+            limit_page_length=limit,
+        )
+
+    quotations = fetch_stage(
+        "Quotation",
+        {"quotation_to": "Customer", "party_name": customer, "company": company, "docstatus": 1},
+        ["name", "transaction_date", "valid_till", "status", "grand_total", "currency"],
+        "transaction_date desc, modified desc",
+    )
+    orders = fetch_stage(
+        "Sales Order",
+        {"customer": customer, "company": company, "docstatus": 1},
+        ["name", "transaction_date", "delivery_date", "status", "grand_total", "currency", "per_delivered", "per_billed", "total_qty"],
+        "transaction_date desc, modified desc",
+    )
+    order_names = [row.name for row in orders]
+    delivery_notes = fetch_stage(
+        "Delivery Note",
+        {"customer": customer, "company": company, "docstatus": 1},
+        ["name", "posting_date", "status", "grand_total", "currency", "per_billed"],
+        "posting_date desc, modified desc",
+    )
+    invoices = fetch_stage(
+        "Sales Invoice",
+        {"customer": customer, "company": company, "docstatus": 1},
+        ["name", "posting_date", "due_date", "status", "grand_total", "outstanding_amount", "currency", "conversion_rate", "is_pos", "is_consolidated"],
+        "posting_date desc, modified desc",
+    )
+    invoices = [row for row in invoices if not (cint(row.get("is_pos")) and cint(row.get("is_consolidated")))]
+
+    undelivered_qty = 0.0
+    undelivered_value = 0.0
+    if order_names and frappe.has_permission("Sales Order", "read") and frappe.db.table_exists("Sales Order Item"):
+        item_fields = _fields("Sales Order Item", ["qty", "delivered_qty", "rate", "item_code", "item_name", "parent"])
+        for row in frappe.get_all(
+            "Sales Order Item",
+            filters={"parent": ["in", order_names], "parenttype": "Sales Order"},
+            fields=item_fields,
+            limit_page_length=0,
+        ):
+            remaining = max(flt(row.qty) - flt(row.get("delivered_qty")), 0)
+            undelivered_qty += remaining
+            undelivered_value += remaining * flt(row.get("rate"))
+
+    payments = []
+    if frappe.has_permission("Payment Entry", "read"):
+        payments.extend(
+            fetch_stage(
+                "Payment Entry",
+                {"payment_type": "Receive", "party_type": "Customer", "party": customer, "company": company, "docstatus": 1},
+                ["name", "posting_date", "mode_of_payment", "reference_no", "reference_date", "paid_amount", "received_amount", "base_paid_amount", "currency"],
+                "posting_date desc, modified desc",
+                100,
+            )
+        )
+    if frappe.has_permission("POS Invoice", "read"):
+        pos_meta = frappe.get_meta("POS Invoice")
+        payment_field = pos_meta.get_field("payments")
+        pos_invoices = frappe.get_list(
+            "POS Invoice",
+            filters={"customer": customer, "company": company, "docstatus": 1},
+            fields=_fields("POS Invoice", ["name", "posting_date", "currency", "conversion_rate"]),
+            limit_page_length=0,
+        )
+        if payment_field and payment_field.options and pos_invoices:
+            payment_doctype = payment_field.options
+            payment_names = [row.name for row in pos_invoices]
+            payment_fields = _fields(
+                payment_doctype,
+                ["parent", "mode_of_payment", "amount", "base_amount", "reference_no", "reference_date"],
+            )
+            invoice_by_name = {row.name: row for row in pos_invoices}
+            for row in frappe.get_all(
+                payment_doctype,
+                filters={"parent": ["in", payment_names], "parenttype": "POS Invoice"},
+                fields=payment_fields,
+                limit_page_length=0,
+            ):
+                invoice = invoice_by_name.get(row.parent)
+                amount = flt(row.get("base_amount") or (flt(row.get("amount")) * flt(invoice.get("conversion_rate") or 1)), 2)
+                payments.append({
+                    "name": row.parent,
+                    "posting_date": invoice.posting_date,
+                    "mode_of_payment": row.get("mode_of_payment"),
+                    "reference_no": row.get("reference_no"),
+                    "reference_date": row.get("reference_date"),
+                    "paid_amount": amount,
+                    "currency": frappe.get_cached_value("Company", company, "default_currency"),
+                })
+    if frappe.has_permission("Sales Invoice", "read"):
+        pos_sales_invoices = [row for row in invoices if cint(row.get("is_pos"))]
+        payment_field = frappe.get_meta("Sales Invoice").get_field("payments")
+        if payment_field and payment_field.options and pos_sales_invoices:
+            payment_doctype = payment_field.options
+            invoice_names = [row.name for row in pos_sales_invoices]
+            payment_fields = _fields(
+                payment_doctype,
+                ["parent", "mode_of_payment", "amount", "base_amount", "reference_no", "reference_date"],
+            )
+            invoice_by_name = {row.name: row for row in pos_sales_invoices}
+            for row in frappe.get_all(
+                payment_doctype,
+                filters={"parent": ["in", invoice_names], "parenttype": "Sales Invoice"},
+                fields=payment_fields,
+                limit_page_length=0,
+            ):
+                invoice = invoice_by_name.get(row.parent)
+                amount = flt(row.get("base_amount") or (flt(row.get("amount")) * flt(invoice.get("conversion_rate") or 1)), 2)
+                payments.append({
+                    "name": row.parent,
+                    "posting_date": invoice.posting_date,
+                    "mode_of_payment": row.get("mode_of_payment"),
+                    "reference_no": row.get("reference_no"),
+                    "reference_date": row.get("reference_date"),
+                    "paid_amount": amount,
+                    "currency": frappe.get_cached_value("Company", company, "default_currency"),
+                })
+    if frappe.has_permission("Journal Entry", "read") and frappe.get_meta("Journal Entry").has_field("esafepos_credit_kind"):
+        journals = frappe.get_list(
+            "Journal Entry",
+            filters={"esafepos_credit_kind": "Payment", "esafepos_credit_customer": customer, "company": company, "docstatus": 1},
+            fields=["name", "posting_date", "mode_of_payment", "cheque_no", "cheque_date"],
+            order_by="posting_date desc, modified desc",
+            limit_page_length=100,
+        )
+        for entry in journals:
+            cash_rows = frappe.get_all(
+                "Journal Entry Account",
+                filters={"parent": entry.name, "parenttype": "Journal Entry", "party_type": ["in", ["", None]], "debit_in_account_currency": [">", 0]},
+                fields=["debit_in_account_currency"],
+                limit_page_length=0,
+            )
+            amount = flt(sum(flt(row.debit_in_account_currency) for row in cash_rows), 2)
+            payments.append({
+                "name": entry.name,
+                "posting_date": entry.posting_date,
+                "mode_of_payment": entry.mode_of_payment,
+                "reference_no": entry.cheque_no,
+                "reference_date": entry.cheque_date,
+                "paid_amount": amount,
+                "currency": frappe.get_cached_value("Company", company, "default_currency"),
+            })
+
+    payments.sort(key=lambda row: str(row.get("posting_date") or ""), reverse=True)
+    payment_totals = {"cash": 0.0, "cheque": 0.0, "bank_transfer": 0.0, "other": 0.0, "total": 0.0}
+    for row in payments:
+        amount = flt(row.get("base_paid_amount") or row.get("received_amount") or row.get("paid_amount"), 2)
+        mode = (row.get("mode_of_payment") or "").casefold()
+        bucket = "cheque" if "cheque" in mode or "check" in mode else ("cash" if "cash" in mode else ("bank_transfer" if "bank" in mode or "transfer" in mode else "other"))
+        payment_totals[bucket] += amount
+        payment_totals["total"] += amount
+    payment_totals = {key: flt(value, 2) for key, value in payment_totals.items()}
+
+    todos = []
+    if frappe.has_permission("ToDo", "read"):
+        todos = fetch_stage(
+            "ToDo",
+            {"reference_type": "Customer", "reference_name": customer, "status": "Open"},
+            ["name", "description", "date", "allocated_to", "priority", "status"],
+            "date asc, modified desc",
+            50,
+        )
+
+    from esafepos.credit_sales import owed
+
+    return {
+        "company": company,
+        "currency": frappe.get_cached_value("Company", company, "default_currency"),
+        "stages": {
+            "quotations": quotations,
+            "sales_orders": orders,
+            "delivery_notes": delivery_notes,
+            "sales_invoices": invoices,
+        },
+        "outstanding": flt(owed(customer, company), 2),
+        "goods_to_deliver": {"qty": flt(undelivered_qty, 3), "value": flt(undelivered_value, 2)},
+        "payments": payments[:100],
+        "payment_totals": payment_totals,
+        "pending_tasks": todos,
+        "refreshed_at": str(now_datetime()),
     }

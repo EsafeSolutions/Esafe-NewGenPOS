@@ -1556,7 +1556,7 @@
           {{ t('Turn till features on or off. Each control is independent.') }}
         </p>
         <div class="module-toggle-grid" aria-label="Modules and Features">
-          <label v-for="row in moduleFeatureRows" :key="row.field" class="module-toggle-card">
+          <label v-for="row in moduleFeatureRows" :key="row.field" class="module-toggle-card" :class="{ 'span-2': row.field === 'enable_sales_rep_mode' }">
             <input
               type="checkbox"
               class="setting-toggle"
@@ -1864,6 +1864,7 @@
       <div class="sec-card" v-show="generalSection === 'receipt'">
         <div class="sec-title"><Icon name="image" /> {{ t('Receipt') }}</div>
         <p class="sec-note">{{ t('What the receipt shows and how it prints, shared or per outlet.') }}</p>
+        <QzTraySetup :can-manage="canManage" :print-format="session.printFormat" />
         <p class="muted hint-row" style="padding: 0 0 10px">
           {{ t('Design the receipt shown on screen and printed from the browser.') }}
         </p>
@@ -2618,6 +2619,7 @@
 
 <script setup>
 import Icon from '../components/Icon.vue'
+import QzTraySetup from '../components/QzTraySetup.vue'
 import OfflineLogModal from '../components/OfflineLogModal.vue'
 import { ref, computed, onMounted, watch } from 'vue'
 import { call } from '../api'
@@ -2859,6 +2861,9 @@ const generalForm = ref({
   enable_day_salary: 0,
   enable_sales_commissions: 1,
   enable_commission_payroll: 0,
+  enable_sales_rep_mode: 0,
+  enable_erp_pricing_rules: 0,
+  enable_customer_sales_progress: 0,
   variance_alert_enabled: 0,
   variance_alert_threshold: 0,
   variance_alert_role: '',
@@ -2948,6 +2953,9 @@ const moduleFeatureRows = [
   { field: 'enable_day_salary', title: 'Daily salary', description: 'Use attendance and the approved day-rate policy in payroll.', needsHr: true, requires: ['enable_hr_integration', 'enable_attendance'], pending: true },
   { field: 'enable_sales_commissions', title: 'Salesperson commissions', description: 'Show salesperson incentive reporting for submitted sales.' },
   { field: 'enable_commission_payroll', title: 'Commission payroll payout', description: 'Pay approved commissions through configured payroll.', needsHr: true, requires: ['enable_hr_integration', 'enable_sales_commissions'], pending: true },
+  { field: 'enable_sales_rep_mode', title: 'Sales Rep Mode', description: 'Turn on the customer sales workflow, then choose which sales-representative features to enable.' },
+  { field: 'enable_erp_pricing_rules', title: 'ERPNext automatic discounts', description: 'Use ERPNext Pricing Rules in POS sales, quotations and regular invoices.', requires: ['enable_sales_rep_mode'] },
+  { field: 'enable_customer_sales_progress', title: 'Customer sales progress', description: 'Show quotations, orders, deliveries, invoices, balances, receipts and pending tasks.', requires: ['enable_sales_rep_mode'] },
 ]
 
 function moduleFeatureUnavailable(row) {
@@ -3644,6 +3652,9 @@ async function load() {
     enable_day_salary: info.enable_day_salary ?? 0,
     enable_sales_commissions: info.enable_sales_commissions ?? 1,
     enable_commission_payroll: info.enable_commission_payroll ?? 0,
+    enable_sales_rep_mode: info.enable_sales_rep_mode ?? 0,
+    enable_erp_pricing_rules: info.enable_erp_pricing_rules ?? 0,
+    enable_customer_sales_progress: info.enable_customer_sales_progress ?? 0,
     variance_alert_enabled: info.variance_alert_enabled || 0,
     variance_alert_threshold: info.variance_alert_threshold || 0,
     variance_alert_role: info.variance_alert_role || '',
@@ -5210,6 +5221,7 @@ button.sec-title.collapsible + * { margin-top: 14px; }
 }
 @media (max-width: 560px) {
   .module-toggle-grid { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .module-toggle-card.span-2 { grid-column: auto; }
   .module-toggle-card { min-height: 76px; padding: 11px 12px; }
   .module-toggle-heading { align-items: center; }
   .cb-grid { grid-template-columns: 1fr; gap: 2px; }

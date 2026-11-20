@@ -1,6 +1,6 @@
 # POS Selling, Customer Accounts, and HR Implementation Plan
 
-**Status:** In progress. The customer invoice-from-cart flow and independent feature switches are implemented in the repository; quote/order progression, cheque handling, and HR payroll workflows remain staged.
+**Status:** In progress. The customer invoice-from-cart flow, independent feature switches, Sales Rep Mode gates, ERPNext Pricing Rule pricing path, and read-only customer pipeline are implemented in the repository. Quote/order actions, cheque lifecycle management, and HR payroll workflows remain staged.
 **Scope:** EsafePOS checkout and invoicing, ERPNext Selling documents, customer balances and receipts, and optional Frappe HR integration.
 
 ## 1. Goal and system of record
@@ -34,6 +34,33 @@ The ERPNext documentation describes the standard selling progression as Quotatio
 Relevant existing modules include `esafepos/api/sales.py`, `esafepos/api/credit.py`, `esafepos/credit_sales.py`, `esafepos/api/customers.py`, `esafepos/api/salespeople.py`, `frontend/src/views/SellView.vue`, and `frontend/src/components/CustomerCredit.vue`.
 
 ## 3. Recommended user experience
+
+### Sales Rep Mode (new scoped module)
+
+Add a master **Sales Rep Mode** switch in Modules & Features. Keep its child
+features independently switchable and default them off until the customer,
+pricing, and payment views have been verified on the target ERPNext site:
+
+| Child feature | POS behavior | Customer profile behavior |
+|---|---|---|
+| ERPNext auto discounts | Detect matching ERPNext Pricing Rules using the selected customer, price list, company, transaction date, item, quantity and UOM. Show the rule and savings before checkout; use ERPNext's calculated values as the submitted document values. Keep EsafePOS promotions separate and prevent both engines from discounting the same line twice. | Not applicable. |
+| Customer sales progress | Use the ERPNext quotation, Sales Order, Delivery Note, Sales Invoice and Payment Entry records as one read-only customer timeline. Include outstanding totals, paid-to-date, payment method/reference/date, undelivered quantities, and open customer-linked ToDos. | Show the timeline with a company/currency selector, stage totals and drill-through links. On phones and tablets, use stacked stage cards and horizontally scrollable detail tables. |
+
+Turning Sales Rep Mode off hides and rejects both child features without
+changing ERPNext records. The default POS mode keeps the existing EsafePOS
+promotion engine and transaction behavior. Apply the pricing-rule child to
+both `/pos` checkout/quotation creation and regular Sales Invoice creation, so
+the displayed pre-sale amount and submitted ERPNext document agree.
+
+Implementation order: (1) write the switch/dependency and document-source plan;
+(2) add the independently gated server settings and fix missing-custom-field
+compatibility in customer profiles; (3) add a permission-scoped, read-only
+customer sales-progress endpoint and responsive profile section; (4) add an
+ERPNext Pricing Rule preview in the cart and feed its validated result into
+POS invoice, quotation and regular Sales Invoice builders; (5) verify desktop,
+tablet and phone layouts and record the live-site prerequisites. Customer
+progress is informational; payment, delivery and order changes continue in
+their ERPNext documents unless a later workflow explicitly adds those actions.
 
 ### Modules and Features switches
 

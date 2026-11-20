@@ -84,6 +84,12 @@
           <div class="stat"><div class="stat-v">{{ money(detail.wallet.store_credit) }}</div><div class="stat-l">{{ t('Store credit') }}</div></div>
         </div>
 
+        <CustomerSalesProgress
+          v-if="session.settings?.enable_customer_sales_progress"
+          :customer="detail.name"
+          :company="companyView || session.company"
+        />
+
         <!-- Sales on account (0.60.0): what they owe, a payment, their limit. -->
         <CustomerCredit v-if="session.settings?.enable_customer_balances" :customer="detail.name" :company="companyView || session.company" @changed="reloadTxns" />
 
@@ -155,6 +161,7 @@
 import Icon from '../components/Icon.vue'
 import ReceiptModal from '../components/ReceiptModal.vue'
 import CustomerCredit from '../components/CustomerCredit.vue'
+import CustomerSalesProgress from '../components/CustomerSalesProgress.vue'
 import { useRouter } from 'vue-router'
 import { ref, onMounted } from 'vue'
 import { call } from '../api'

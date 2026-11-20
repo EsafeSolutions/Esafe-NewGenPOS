@@ -653,9 +653,9 @@ def ensure_hot_indexes():
 
 def drop_deprecated_custom_fields():
     """Remove POS Profile custom fields EsafePOS no longer uses. Idempotent.
-    `esafepos_ignore_pricing_rules` was retired in v0.12.0. POS sales now ALWAYS
-    ignore ERPNext Pricing Rules (the till never applies them), so the toggle
-    only invited the price-book-vs-Pricing-Rule mismatch."""
+    `esafepos_ignore_pricing_rules` was retired in v0.12.0. POS sales use the
+    EsafePOS promotion engine by default; the current Modules & Features switch
+    explicitly opts eligible sales into ERPNext's Pricing Rule engine."""
     for name in ("POS Profile-esafepos_ignore_pricing_rules",):
         if frappe.db.exists("Custom Field", name):
             frappe.delete_doc("Custom Field", name, ignore_permissions=True)

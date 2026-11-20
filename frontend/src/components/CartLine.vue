@@ -159,6 +159,7 @@ const props = defineProps({
   promoDiscount: { type: Number, default: 0 },
   promoTitles: { type: Array, default: () => [] },
   bundleDiscount: { type: Number, default: 0 },
+  serverDiscount: { type: Number, default: null },
   suggestions: { type: Array, default: () => [] },
 })
 
@@ -169,7 +170,9 @@ const expanded = ref(false)
 const serialOpen = ref(false)
 
 const discountMethod = computed(() => props.line.manual_discount_method || 'percent')
-const totalDiscount = computed(() => (props.promoDiscount || 0) + (props.bundleDiscount || 0) + (cart.discountBreakdown.manual[props.index] || 0))
+const totalDiscount = computed(() => props.serverDiscount != null
+  ? props.serverDiscount
+  : (props.promoDiscount || 0) + (props.bundleDiscount || 0) + (cart.discountBreakdown.manual[props.index] || 0))
 
 // The unit price in the sale's currency: the typed one, or the list's.
 const listPrice = computed(() => cart.inSale(props.line.price_before_override ?? props.line.price))

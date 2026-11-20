@@ -23,6 +23,9 @@ FIELDS = (
     "enable_day_salary",
     "enable_sales_commissions",
     "enable_commission_payroll",
+    "enable_sales_rep_mode",
+    "enable_erp_pricing_rules",
+    "enable_customer_sales_progress",
 )
 
 # Existing workflows stay available by default. New HR and order workflows are
@@ -40,6 +43,9 @@ DEFAULTS = {
     "enable_day_salary": 0,
     "enable_sales_commissions": 1,
     "enable_commission_payroll": 0,
+    "enable_sales_rep_mode": 0,
+    "enable_erp_pricing_rules": 0,
+    "enable_customer_sales_progress": 0,
 }
 
 # These controls are staged until their workflows are connected. Keeping them
@@ -63,6 +69,8 @@ DEPENDENCIES = {
     "enable_expense_claims": ("enable_hr_integration",),
     "enable_day_salary": ("enable_hr_integration", "enable_attendance"),
     "enable_commission_payroll": ("enable_hr_integration", "enable_sales_commissions"),
+    "enable_erp_pricing_rules": ("enable_sales_rep_mode",),
+    "enable_customer_sales_progress": ("enable_sales_rep_mode",),
 }
 
 

@@ -55,6 +55,8 @@ export const useCartStore = defineStore('cart', {
     _saleKey: null,
     _invoiceKey: null,
     _quoteCache: null, // {signature, at, promise} see quote()
+    serverQuote: null,
+    serverQuoteSignature: '',
     _quoteTimer: null,
   }),
 
@@ -84,6 +86,15 @@ export const useCartStore = defineStore('cart', {
 
     evaluation(state) {
       const session = useSessionStore()
+      if (session.settings?.enable_erp_pricing_rules) {
+        return {
+          line_discounts: state.lines.map(() => 0),
+          line_promotions: state.lines.map(() => []),
+          basket_discount: 0,
+          applied: [],
+          total_savings: 0,
+        }
+      }
       const { idx, cart } = this._promoView
       const raw = evaluatePromotions(cart, session.promotions)
       const line_discounts = state.lines.map(() => 0)
@@ -232,6 +243,21 @@ export const useCartStore = defineStore('cart', {
     // information; exclusive rows add to what the customer pays.
     taxBreakdown() {
       const session = useSessionStore()
+      const signature = JSON.stringify(this._basePayload())
+      const quotedTaxes = this.serverQuote?.tax_breakdown
+      if (
+        session.settings?.enable_erp_pricing_rules &&
+        this.serverQuoteSignature === signature &&
+        quotedTaxes
+      ) {
+        const factor = this.saleCurrency.blocked ? 1 : (this.saleCurrency.factor || 1)
+        return {
+          ...quotedTaxes,
+          exclusive: (quotedTaxes.exclusive || []).map((tax) => ({ ...tax, amount: round2(tax.amount / factor) })),
+          included: (quotedTaxes.included || []).map((tax) => ({ ...tax, amount: round2(tax.amount / factor) })),
+          exclusiveTotal: round2((quotedTaxes.exclusiveTotal || 0) / factor),
+        }
+      }
       const net = this.netTotal
       const exclusive = []
       const included = []
@@ -264,9 +290,49 @@ export const useCartStore = defineStore('cart', {
     },
 
     total() {
+      const signature = JSON.stringify(this._basePayload())
+      if (
+        useSessionStore().settings?.enable_erp_pricing_rules &&
+        this.serverQuoteSignature === signature &&
+        typeof this.serverQuote?.payable === 'number'
+      ) {
+        const factor = this.saleCurrency.blocked ? 1 : (this.saleCurrency.factor || 1)
+        return round2(this.serverQuote.payable / factor)
+      }
       return round2(
         this.netTotal + this.taxBreakdown.exclusiveTotal + this.serviceCharge
       )
+    },
+
+    erpPricingDiscount() {
+      const signature = JSON.stringify(this._basePayload())
+      const factor = this.saleCurrency.blocked ? 1 : (this.saleCurrency.factor || 1)
+      return this.serverQuoteSignature === signature ? round2((Number(this.serverQuote?.erp_pricing?.discount_total) || 0) / factor) : 0
+    },
+
+    erpPricingRules() {
+      const signature = JSON.stringify(this._basePayload())
+      return this.serverQuoteSignature === signature ? this.serverQuote?.erp_pricing?.rules || [] : []
+    },
+
+    serverQuoteSavings() {
+      const signature = JSON.stringify(this._basePayload())
+      if (this.serverQuoteSignature !== signature) return null
+      const lineDiscounts = this.serverQuote?.erp_pricing?.line_discounts
+      if (!Array.isArray(lineDiscounts)) return null
+      const factor = this.saleCurrency.blocked ? 1 : (this.saleCurrency.factor || 1)
+      return round2(lineDiscounts.reduce((sum, amount) => sum + (Number(amount) || 0), 0) / factor)
+    },
+
+    erpPricingLineDiscount() {
+      return (index) => {
+        const signature = JSON.stringify(this._basePayload())
+        if (this.serverQuoteSignature !== signature) return null
+        const lineDiscounts = this.serverQuote?.erp_pricing?.line_discounts
+        if (!Array.isArray(lineDiscounts)) return null
+        const factor = this.saleCurrency.blocked ? 1 : (this.saleCurrency.factor || 1)
+        return round2((Number(lineDiscounts[index]) || 0) / factor)
+      }
     },
 
     // Per-unit discount of each line, worked out as the server does
@@ -674,6 +740,8 @@ export const useCartStore = defineStore('cart', {
       this.note = ''
       this._saleKey = null
       this._invoiceKey = null
+      this.serverQuote = null
+      this.serverQuoteSignature = ''
       // salesPerson intentionally kept, it's the staff member on shift
     },
 
@@ -861,7 +929,13 @@ export const useCartStore = defineStore('cart', {
       if (cached && cached.signature === signature && Date.now() - cached.at < 60000) {
         return cached.promise
       }
-      const promise = call('esafepos.api.sales.quote_sale', { payload }).catch(() => null)
+      const promise = call('esafepos.api.sales.quote_sale', { payload }).then((result) => {
+        if (result && JSON.stringify(this._basePayload()) === signature) {
+          this.serverQuote = result
+          this.serverQuoteSignature = signature
+        }
+        return result
+      }).catch(() => null)
       this._quoteCache = { signature, at: Date.now(), promise }
       // A failed quote is not an answer, don't keep it (the till falls back to
       // its own total and tries again next time).
@@ -968,6 +1042,9 @@ export const useCartStore = defineStore('cart', {
 
     async _queueOffline(payload, payments) {
       const session = useSessionStore()
+      if (session.settings?.enable_erp_pricing_rules) {
+        throw new Error('ERPNext automatic discounts need a connection so the till can confirm the current Pricing Rules')
+      }
       if (payload.items.some((item) => item.uom)) {
         throw new Error('Alternate selling units need a connection to confirm their price and stock conversion.')
       }

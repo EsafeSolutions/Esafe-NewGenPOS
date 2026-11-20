@@ -202,6 +202,7 @@
         :promo-discount="evaluation.line_discounts[i]"
         :promo-titles="evaluation.line_promotions[i]"
         :bundle-discount="cart.bundleBreakdown.discounts[i]"
+        :server-discount="session.settings.enable_erp_pricing_rules ? cart.erpPricingLineDiscount(i) : null"
         :suggestions="cart.lineSuggestions[i]"
         @suggestion="onSuggestion"
       />
@@ -236,6 +237,10 @@
           <div class="row">
             <span>{{ t('Subtotal') }}</span>
             <span>{{ cart.show(cart.subtotal) }}</span>
+          </div>
+          <div v-if="session.settings.enable_erp_pricing_rules && cart.erpPricingDiscount > 0" class="row promo-row">
+            <span class="promo-badge"><Icon name="tag" /> {{ t('ERPNext automatic discounts') }}<template v-if="cart.erpPricingRules.length"> · {{ cart.erpPricingRules.join(', ') }}</template></span>
+            <span>-{{ cart.show(cart.erpPricingDiscount) }}</span>
           </div>
           <div v-for="promo in evaluation.applied" :key="promo.name" class="row promo-row">
             <span class="promo-badge"><Icon name="star" /> {{ promo.title }}</span>
@@ -410,7 +415,9 @@ function toggleDetails() {
 }
 // What the folded breakdown saves the customer, shown beside the toggle.
 const savings = computed(
-  () => cart.promoSavings + cart.bundleSavings + cart.manualDiscountTotal + cart.orderDiscountTotal
+  () => session.settings.enable_erp_pricing_rules && cart.serverQuoteSavings != null
+    ? cart.serverQuoteSavings
+    : cart.erpPricingDiscount + cart.promoSavings + cart.bundleSavings + cart.manualDiscountTotal + cart.orderDiscountTotal
 )
 
 function onGiftCardSold(receipt) {

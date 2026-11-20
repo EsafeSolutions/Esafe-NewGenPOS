@@ -2936,7 +2936,7 @@ const generalForm = ref({
 })
 
 const moduleFeatureRows = [
-  { field: 'enable_regular_invoices', title: 'Regular Sales Invoices', description: 'Allow the POS Profile direct Sales Invoice mode.' },
+  { field: 'enable_regular_invoices', title: 'Regular Sales Invoices', description: 'Create named-customer invoices from the cart or use direct Sales Invoice checkout.' },
   { field: 'enable_customer_balances', title: 'Customer balances', description: 'Show customer receivables and open invoices from ERPNext.' },
   { field: 'enable_customer_payments', title: 'Customer payment collection', description: 'Collect and allocate payments against customer invoices.', requires: ['enable_customer_balances'] },
   { field: 'enable_cheque_tracking', title: 'Cheque tracking', description: 'Capture cheque details and due dates in payment workflows.', requires: ['enable_customer_payments'], pending: true },

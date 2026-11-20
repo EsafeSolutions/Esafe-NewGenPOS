@@ -73,7 +73,12 @@ def _number_field():
 def _rows(doctype, condition, params):
     """One row per invoice and salesperson. `doctype` and `condition` are fixed
     text from this module, never user input."""
-    extra = " and inv.is_pos = 1 and inv.is_consolidated = 0" if doctype == "Sales Invoice" else ""
+    extra = (
+        " and ((inv.is_pos = 1 and ifnull(inv.is_consolidated, 0) = 0) "
+        "or (inv.is_pos = 0 and inv.esafepos_invoice_origin = 'Customer Invoice'))"
+        if doctype == "Sales Invoice"
+        else ""
+    )
     return frappe.db.sql(  # nosemgrep
         f"""
         select inv.name, inv.is_return, inv.base_net_total, st.sales_person,

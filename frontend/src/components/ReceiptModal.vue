@@ -62,6 +62,10 @@
               {{ copied ? t('Link copied') : t('Copy link') }}
             </button>
           </div>
+          <label v-if="shareDetails" class="share-link">
+            <span>{{ t('Invoice link') }}<small v-if="copyFailed"> · {{ t('Copy was blocked. Select and copy the link below.') }}</small></span>
+            <input :value="shareDetails.url" readonly dir="ltr" @focus="$event.target.select()" @click="$event.target.select()" />
+          </label>
           <div class="muted small share-note">
             {{ t('WhatsApp opens a ready message for confirmation. SMS uses ERPNext SMS Settings.') }}
           </div>
@@ -178,6 +182,7 @@ const shareMobile = ref('')
 const sharing = ref(false)
 const smsing = ref(false)
 const copied = ref(false)
+const copyFailed = ref(false)
 const shareDetails = ref(null)
 const customerEditorOpen = ref(false)
 const customerSaving = ref(false)
@@ -193,6 +198,7 @@ function onCustomerLinked(updated) {
   shareOpen.value = false
   shareDetails.value = null
   shareMobile.value = ''
+  copyFailed.value = false
   emit('updated', updated)
   session.notify(t('Customer linked to invoice'))
 }
@@ -327,23 +333,46 @@ async function sendSms() {
 
 async function copyInvoiceLink() {
   sharing.value = true
+  copyFailed.value = false
   try {
     const details = await getShareDetails()
+    let didCopy = false
     if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(details.url)
-    } else {
+      try {
+        await navigator.clipboard.writeText(details.url)
+        didCopy = true
+      } catch {
+        // Fetching the signed link can outlast transient clipboard activation,
+        // especially in mobile browsers. Try their legacy copy path next.
+      }
+    }
+    if (!didCopy) {
       const area = document.createElement('textarea')
       area.value = details.url
+      area.setAttribute('readonly', '')
+      area.setAttribute('aria-hidden', 'true')
       area.style.position = 'fixed'
-      area.style.opacity = '0'
+      area.style.insetInlineStart = '-9999px'
+      area.style.top = '0'
+      area.style.fontSize = '16px'
       document.body.appendChild(area)
+      area.focus()
       area.select()
-      document.execCommand('copy')
-      area.remove()
+      area.setSelectionRange(0, area.value.length)
+      try {
+        didCopy = document.execCommand('copy')
+      } catch {
+        didCopy = false
+      } finally {
+        area.remove()
+      }
     }
-    copied.value = true
-    session.notify(t('E-invoice link copied'))
-    window.setTimeout(() => { copied.value = false }, 1800)
+    copied.value = didCopy
+    copyFailed.value = !didCopy
+    if (didCopy) {
+      session.notify(t('E-invoice link copied'))
+      window.setTimeout(() => { copied.value = false }, 1800)
+    }
   } catch (e) {
     session.notify(e.message, true)
   } finally {
@@ -505,6 +534,9 @@ async function print() {
 .share-mobile input { width: 100%; background: var(--card-bg); }
 .share-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
 .share-actions .btn { padding: 9px 8px; font-size: 12px; }
+.share-link { display: grid; gap: 6px; margin-top: 10px; font-size: 12px; font-weight: 700; }
+.share-link small { color: var(--text-muted); font-weight: 500; }
+.share-link input { width: 100%; min-height: 44px; padding: 9px 10px; color: var(--text); background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; font-size: 13px; user-select: all; }
 .share-note { margin-top: 9px; line-height: 1.4; }
 @media (max-width: 460px) {
   .share-actions { grid-template-columns: 1fr; }

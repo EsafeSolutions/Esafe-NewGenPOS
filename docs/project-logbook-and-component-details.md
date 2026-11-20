@@ -25,6 +25,8 @@ EsafePOS is a browser-based point-of-sale application for ERPNext and Frappe. It
 
 ### Unreleased
 
+- Fixed the POS **Copy link** action in the E-invoice sharing card: if the asynchronous signed-link request causes browser clipboard activation to expire or the clipboard API is denied, the app tries a legacy copy operation and exposes a selectable read-only URL for manual copying. The recovery path is designed for phone and tablet browsers as well as desktop. Verification: frontend production build pending; tests not run.
+- Added an online-only **Invoice** action to the POS cart and a dedicated **Invoices** screen for use without an open register. Both require a named customer and create a submitted, non-POS ERPNext Sales Invoice without upfront payment; the workspace accepts an optional due date and salesperson. The backend reuses server-side item pricing, discounts, taxes, serial, and stock validation; checks Sales Invoice create/submit permissions; enforces required salesperson selection; and uses idempotency keys. A read-only invoice-origin field ties the regular invoice to its source outlet, so customer purchase totals, management sales, and salesperson commission reports include it without counting consolidated invoices twice. Customer outstanding and the existing till payment collection flow then operate on the invoice through ERPNext's receivable ledger. The action and navigation entry are controlled by the Regular Sales Invoices switch, and layouts support mobile/tablet widths. Updated the implementation plan and user guide with shipped and staged scope. Verification: `cd frontend && npm run build` passed before the report/schema adjustment; Python syntax checking was unavailable in this environment; tests not run.
 - Began implementation of the POS selling/HR feature-switch foundation: added independent site-wide switches for regular Sales Invoices, customer balances/payments, cheque tracking, quotations, Sales Orders, HR integration, attendance, expense claims, day salary, commissions, and commission payroll. Server gates now protect the existing direct Sales Invoice, quotation creation, customer balance/payment, and salesperson commission-report paths. Customer account balances can be shown when on-account selling is disabled. Added responsive Modules & Features cards and a phone-friendly customer list/detail layout. Cheque, Sales Order, HR, and payroll workflows are marked in development and cannot be enabled until their actions are implemented. Verification: frontend production build passed; settings DocType JSON parsed successfully; tests were not run.
 - Added `docs/pos-selling-and-hr-implementation-plan.md`, a phased design for regular Sales Invoices, ERPNext customer balances and Payment Entries, quotation/order progression, cheque tracking, optional Frappe HR attendance and claims, day wages, employee commission payout, and individually configurable Modules & Features switches. The plan was checked against the existing sales, credit, customer, quotation, and salesperson modules and official ERPNext/Frappe HR documentation.
 - Receipt branding: removed the currency code from directly below the shop name, added a configurable shop contact number above the address for the live preview, browser and network-printer receipts, and appended ESAFE's default contact number beside `pos.esafe.lk` in the standard footer. Settings persist globally and per POS Profile.
@@ -37,6 +39,7 @@ EsafePOS is a browser-based point-of-sale application for ERPNext and Frappe. It
 - Cached catalog search, product stock availability, price check, and a cart with customer, channel, salesperson, note, coupon, and discount controls.
 - Multiple payment methods, split tender, cash shortcuts, change due, payment references, and customer payment collection.
 - Per-profile choice of POS Invoice (normally consolidated at shift close) or Sales Invoice (posted directly); both use standard ERPNext documents.
+- Named-customer standard Sales Invoice creation from the cart, plus an invoice workspace usable without opening a till register; submitted invoices remain receivables until paid through customer account collection.
 - Printable receipts with a default ESAFE footer, configurable details and a lightly lined Table template. The invoice barcode opens the matching sale in History. Includes browser printing, ESC/POS network printing, reprints, and cash-drawer kick where configured.
 - Three catalog views with quick Add, progressive loading and a tap-to-open item editor for quantity, stock unit, authorized price edits and discounts.
 - A second-screen customer display with an optional membership keypad, latest-item highlight, automatic product icons, pinned totals and a completed receipt with rewards.
@@ -132,6 +135,7 @@ Typical startup calls `esafepos.api.session.get_bootstrap`, which supplies the s
 | `/` | `SellView.vue` | Product search/grid, cart, customer and checkout actions |
 | `/history` | `HistoryView.vue` | Search/browse posted sales; start refund, exchange, or reprint workflows |
 | `/customers` | `CustomersView.vue` | Customer lookup, account balances, statements/reports, and customer-facing actions |
+| `/invoices` | `InvoicesView.vue` | Build and submit a named-customer ERPNext Sales Invoice without a register session |
 | `/holds` | `HoldsView.vue` | Find and manage layaways, installments, completion, and cancellation |
 | `/register` | `RegisterView.vue` | Open, monitor, reconcile, and close a register session |
 | `/insights` | `InsightsView.vue` | Management reports and scoped dashboards |
@@ -145,6 +149,7 @@ Typical startup calls `esafepos.api.session.get_bootstrap`, which supplies the s
 | Component | Responsibility |
 |---|---|
 | `NavRail.vue` | Main navigation, theme toggle, current screen navigation |
+| `InvoicesView.vue` | Customer, item, quantity, and note entry for standard non-POS Sales Invoices |
 | `Icon.vue` | Shared inline icon set |
 | `ProductGrid.vue`, `ItemDetailModal.vue` | Three sell-screen layouts, progressive catalog rendering and item quantity, price and discount edits |
 | `CartPanel.vue`, `CartLine.vue` | Cart summary and editable line-level controls |

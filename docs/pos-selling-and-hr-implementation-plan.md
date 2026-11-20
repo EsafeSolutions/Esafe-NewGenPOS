@@ -1,6 +1,6 @@
 # POS Selling, Customer Accounts, and HR Implementation Plan
 
-**Status:** Proposed plan; no feature implementation is included.  
+**Status:** In progress. The customer invoice-from-cart flow and independent feature switches are implemented in the repository; quote/order progression, cheque handling, and HR payroll workflows remain staged.
 **Scope:** EsafePOS checkout and invoicing, ERPNext Selling documents, customer balances and receipts, and optional Frappe HR integration.
 
 ## 1. Goal and system of record
@@ -150,3 +150,9 @@ Use Frappe HR Expense Claim for employee-paid business expenses, including attac
 ## 8. Suggested first release
 
 Start with Phase 0 and Phase 1, then Phase 2. This delivers reliable ERPNext customer balances and standard named-customer invoices before payroll complexity is introduced. Keep current POS credit-sale behavior available during rollout, with a company/profile setting to choose which invoice/payment route is active. Add quote progression and cheque handling next; start HR only after its attendance, day-wage, and commission policies are agreed.
+
+## 9. Implementation progress
+
+- **Feature switches and existing customer accounts:** Implemented as independent site-wide controls. Customer balances, open invoice balances, and till receipt collection are already connected to ERPNext records.
+- **Named-customer invoice:** Implemented as online-only actions from the cart and a dedicated Invoices screen. They create and submit a standard non-POS ERPNext Sales Invoice, require a named customer and an authorized Sales Invoice create/submit role, use server-side outlet pricing/tax/discount/stock rules, support an optional due date and salesperson, and do not require an open register or immediate payment. A read-only origin marker includes these sales in outlet/customer and salesperson reports without including consolidated shift invoices twice. The invoice is available for later payment through the customer account workflow.
+- **Still staged:** Draft/review invoices, invoice list and edit actions, payment terms UI, standard Payment Entry adapter, cheque due-date tracking, Sales Order continuation, and all HR actions. Existing ERPNext records remain authoritative; the feature switches for these staged workflows remain disabled until their APIs and UI are complete.

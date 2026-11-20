@@ -110,7 +110,7 @@
       <ProductGrid v-else :mode="itemMode" data-tour="sell-products" @select="addToCart" @inspect="inspectItem" />
     </section>
 
-    <CartPanel @pay="onPay" @park="parkOpen = true" @hold="openHold" @quotation="createQuotation" @receipt="receipt = $event">
+    <CartPanel @pay="onPay" @park="parkOpen = true" @hold="openHold" @quotation="createQuotation" @invoice="createCustomerInvoice" @receipt="receipt = $event">
       <template #header-actions>
         <button type="button" class="btn btn-outline btn-icon" data-tour="sell-parked"
           :title="t('Retrieve Sale')" :aria-label="t('Retrieve Sale')" @click="parkedOpen = true">
@@ -485,6 +485,26 @@ async function createQuotation() {
     const quote = await cart.createQuotation()
     tab.location.replace(`/printview?doctype=Quotation&name=${encodeURIComponent(quote.name)}&no_letterhead=0`)
     session.notify(t('Quotation {name} created', { name: quote.name }))
+  } catch (e) {
+    tab.close()
+    session.notify(e.message, true)
+  }
+}
+
+async function createCustomerInvoice() {
+  if (session.settings.salesperson_mode === 'Required' && session.salesPersons.length && !cart.salesPerson) {
+    session.notify(t('Pick the salesperson first'), true)
+    return
+  }
+  const tab = window.open('about:blank', '_blank')
+  if (!tab) {
+    session.notify(t('Allow pop-ups to open the invoice.'), true)
+    return
+  }
+  try {
+    const invoice = await cart.createCustomerInvoice()
+    tab.location.replace(`/printview?doctype=Sales%20Invoice&name=${encodeURIComponent(invoice.name)}&no_letterhead=0`)
+    session.notify(t('Sales Invoice {name} created', { name: invoice.name }))
   } catch (e) {
     tab.close()
     session.notify(e.message, true)

@@ -808,6 +808,16 @@ def make_custom_fields():
             search_index=1,
         ),
         dict(
+            fieldname="esafepos_invoice_origin",
+            label="EsafePOS Invoice Origin",
+            fieldtype="Data",
+            insert_after="esafepos_session",
+            read_only=1,
+            no_copy=1,
+            search_index=1,
+            description="Marks a standard Sales Invoice created in the EsafePOS customer invoice workspace.",
+        ),
+        dict(
             fieldname="esafepos_promotions",
             label="Applied Promotions",
             fieldtype="Long Text",

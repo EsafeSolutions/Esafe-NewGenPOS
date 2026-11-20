@@ -10,7 +10,7 @@ import math
 
 import frappe
 from frappe import _
-from frappe.utils import cint, date_diff, flt, now_datetime, nowdate
+from frappe.utils import cint, date_diff, flt, getdate, now_datetime, nowdate
 
 from esafepos import cashback, cashback_rules, coupons, credit_sales, currency, deposits, gift_cards, store_credit
 from esafepos.price_books import effective_prices, resolve_price_list, standard_prices
@@ -700,6 +700,93 @@ def create_pos_quotation(payload: dict | str):
         "customer": customer,
         "grand_total": flt(quotation.grand_total),
         "currency": quotation.currency,
+    }
+
+
+@frappe.whitelist()
+def create_customer_invoice(payload: dict | str):
+    """Create a standard, non-POS ERPNext Sales Invoice from the current cart.
+
+    Unlike a counter checkout this does not need an open register or an upfront
+    payment. ERPNext owns the resulting receivable and due date; subsequent
+    receipts are collected from the customer account workflow.
+    """
+    if isinstance(payload, str):
+        payload = json.loads(payload)
+    from esafepos.features import enabled as feature_enabled
+    from esafepos.api import permissions as outlet_permissions
+
+    if not feature_enabled("enable_regular_invoices"):
+        frappe.throw(_("Regular Sales Invoices are turned off in Modules & Features."), frappe.PermissionError)
+    if not frappe.has_permission("Sales Invoice", "create"):
+        frappe.throw(_("You are not permitted to create Sales Invoices."), frappe.PermissionError)
+    if not frappe.has_permission("Sales Invoice", "submit"):
+        frappe.throw(_("You are not permitted to submit Sales Invoices."), frappe.PermissionError)
+    if not payload.get("customer"):
+        frappe.throw(_("Select a named customer before creating an invoice."))
+    if not payload.get("items"):
+        frappe.throw(_("Add at least one item before creating an invoice."))
+
+    key = (payload.get("idempotency_key") or "").strip()
+    if key:
+        existing = _find_by_idempotency_key(key)
+        if existing:
+            return _customer_invoice_answer(existing)
+
+    profile = frappe.get_doc("POS Profile", payload["pos_profile"])
+    outlet_permissions.assert_outlet(profile.name)
+    # Use the POS's server-side price, tax, discount, serial, and stock rules,
+    # while selecting ERPNext's standard Sales Invoice document type.
+    profile.esafepos_invoice_mode = "Sales Invoice"
+    invoice, customer = _build_sale_invoice(profile, payload, session_name=None, pin=True)
+    if customer != payload.get("customer"):
+        frappe.throw(_("A customer invoice must belong to the selected customer."))
+
+    invoice.is_pos = 0
+    _set_custom(invoice, ("esafepos_invoice_origin",), "Customer Invoice")
+    invoice.set("payments", [])
+    invoice.set("redeem_loyalty_points", 0)
+    invoice.set("remarks", _build_remarks(payload.get("note"), None))
+    if payload.get("due_date"):
+        invoice.due_date = getdate(payload.get("due_date"))
+    if key:
+        _set_custom(invoice, ("esafepos_idempotency_key",), key)
+    if any(row.uom != row.stock_uom for row in invoice.items):
+        _assert_alternate_unit_stock(invoice, profile)
+    invoice.check_permission("create")
+    posted = _insert_once(invoice, key)
+    if posted:
+        return _customer_invoice_answer(posted)
+    invoice.check_permission("submit")
+    invoice.submit()
+
+    from esafepos.api import audit
+
+    audit.log(
+        "Create customer Sales Invoice",
+        detail="{0} for {1}".format(invoice.name, customer),
+        amount=flt(invoice.grand_total),
+        reference_doctype="Sales Invoice",
+        reference_name=invoice.name,
+        pos_profile=profile.name,
+    )
+    return _customer_invoice_answer(invoice.name)
+
+
+def _customer_invoice_answer(name):
+    doc = frappe.get_doc("Sales Invoice", name)
+    doc.check_permission("read")
+    return {
+        "name": doc.name,
+        "doctype": "Sales Invoice",
+        "customer": doc.customer,
+        "customer_name": doc.customer_name,
+        "company": doc.company,
+        "posting_date": str(doc.posting_date),
+        "due_date": str(doc.due_date) if doc.due_date else None,
+        "grand_total": flt(doc.grand_total),
+        "outstanding_amount": flt(doc.outstanding_amount),
+        "currency": doc.currency,
     }
 
 

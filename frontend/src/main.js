@@ -18,6 +18,7 @@ import SettingsView from './views/SettingsView.vue'
 import LabelsView from './views/LabelsView.vue'
 import ItemsView from './views/ItemsView.vue'
 import StockCountView from './views/StockCountView.vue'
+import InvoicesView from './views/InvoicesView.vue'
 import CustomerDisplayView from './views/CustomerDisplayView.vue'
 import './styles.css'
 
@@ -27,6 +28,7 @@ const router = createRouter({
     { path: '/', component: SellView },
     { path: '/history', component: HistoryView },
     { path: '/customers', component: CustomersView },
+    { path: '/invoices', component: InvoicesView },
     { path: '/holds', component: HoldsView },
     { path: '/register', component: RegisterView },
     { path: '/insights', component: InsightsView },

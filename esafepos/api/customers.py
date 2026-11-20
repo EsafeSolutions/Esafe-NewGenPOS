@@ -104,7 +104,11 @@ def customer_detail(customer: str, company: str | None = None):
     stats = frappe._dict(sales_count=0, returns_count=0, total_spent=0, total_refunded=0, last_purchase=None)
     for doctype, extra in (
         ("POS Invoice", ""),
-        ("Sales Invoice", " and pi.is_pos = 1 and ifnull(pi.is_consolidated, 0) = 0"),
+        (
+            "Sales Invoice",
+            " and ((pi.is_pos = 1 and ifnull(pi.is_consolidated, 0) = 0) "
+            "or (pi.is_pos = 0 and pi.esafepos_invoice_origin = 'Customer Invoice'))",
+        ),
     ):
         join, _, customer_matches = customer_attribution_sql(doctype)
         # doctype and extra are fixed strings, the values are bound.

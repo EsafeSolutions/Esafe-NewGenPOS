@@ -312,7 +312,7 @@
         <Icon name="gift" />
       </button>
     </div>
-    <div class="checkout-actions">
+    <div class="checkout-actions" :class="{ 'with-invoice': session.settings.enable_regular_invoices }">
       <button
         type="button" class="btn btn-primary pay"
         data-tour="cart-pay"
@@ -321,6 +321,16 @@
         @click="$emit('pay')"
       >
         {{ t('Pay') }}&nbsp;&nbsp;{{ cart.show(cart.total) }}
+      </button>
+      <button
+        v-if="session.settings.enable_regular_invoices"
+        type="button" class="btn btn-outline invoice-action"
+        :title="t('Create a customer invoice to be paid later')"
+        :aria-label="t('Create customer invoice')"
+        :disabled="!cart.lines.length || !cart.customer || session.offline || cart.submitting || session.permissions.sell === false || !!session.sellBlockedBy"
+        @click="$emit('invoice')"
+      >
+        {{ t('Invoice') }}
       </button>
       <button
         v-if="session.settings.enable_quotations"
@@ -354,7 +364,7 @@ import CartLine from './CartLine.vue'
 import CustomerModal from './CustomerModal.vue'
 import SellGiftCardModal from './SellGiftCardModal.vue'
 
-const emit = defineEmits(['pay', 'park', 'hold', 'receipt', 'quotation'])
+const emit = defineEmits(['pay', 'park', 'hold', 'receipt', 'quotation', 'invoice'])
 
 const cart = useCartStore()
 const session = useSessionStore()
@@ -827,6 +837,8 @@ html[data-theme='dark'] .suggestion:hover { background: rgba(150, 100, 255, 0.3)
   gap: 6px;
   padding: 3px 10px 10px;
 }
+.checkout-actions.with-invoice { grid-template-columns: minmax(0, 1fr) auto auto; }
+.checkout-actions .invoice-action { min-width: 72px; }
 .checkout-actions .btn {
   min-height: 44px;
   padding: 7px 12px;

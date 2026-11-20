@@ -17,6 +17,10 @@
       <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <span class="rail-label">{{ t('Customers') }}</span>
     </router-link>
+    <router-link v-if="!session.reportsOnly && session.settings.enable_regular_invoices && session.permissions.sell !== false" to="/invoices" class="rail-item" :title="t('Invoices')" active-class="active">
+      <svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14l-3-1.5L13 21l-3-1.5L7 21l-1-1V3zm9 0v5h5M9 12h6M9 16h6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span class="rail-label">{{ t('Invoices') }}</span>
+    </router-link>
     <router-link v-if="holdsVisible" to="/holds" class="rail-item" :title="t('Holds')" active-class="active">
       <svg viewBox="0 0 24 24"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
       <span class="rail-label">{{ t('Holds') }}</span>

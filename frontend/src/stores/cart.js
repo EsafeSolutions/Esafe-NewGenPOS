@@ -53,6 +53,7 @@ export const useCartStore = defineStore('cart', {
     // so a sale whose answer was lost on the way back (and that the till then
     // queued, or the cashier retried) can never post twice.
     _saleKey: null,
+    _invoiceKey: null,
     _quoteCache: null, // {signature, at, promise} see quote()
     _quoteTimer: null,
   }),
@@ -672,6 +673,7 @@ export const useCartStore = defineStore('cart', {
       this.activePriceList = null
       this.note = ''
       this._saleKey = null
+      this._invoiceKey = null
       // salesPerson intentionally kept, it's the staff member on shift
     },
 
@@ -899,6 +901,37 @@ export const useCartStore = defineStore('cart', {
             discount_request: this.discountRequest,
           },
         })
+        this.clear()
+        return result
+      } finally {
+        this.submitting = false
+      }
+    },
+
+    async createCustomerInvoice() {
+      const session = useSessionStore()
+      if (session.offline) throw new Error('Creating a customer invoice needs a connection')
+      if (!session.settings.enable_regular_invoices) throw new Error('Regular Sales Invoices are turned off in Modules & Features')
+      if (!this.customer?.name) throw new Error('Select a customer before creating an invoice')
+      if (!this.lines.length) throw new Error('Add at least one item before creating an invoice')
+      const invoicePayload = {
+        ...this._basePayload(),
+        discount_passcode: this.discountPasscode,
+        discount_request: this.discountRequest,
+      }
+      const signature = JSON.stringify(invoicePayload)
+      if (!this._invoiceKey || this._invoiceKey.signature !== signature) {
+        this._invoiceKey = { signature, key: newId() }
+      }
+      this.submitting = true
+      try {
+        const result = await call('esafepos.api.sales.create_customer_invoice', {
+          payload: {
+            ...invoicePayload,
+            idempotency_key: this._invoiceKey.key,
+          },
+        })
+        this._invoiceKey = null
         this.clear()
         return result
       } finally {

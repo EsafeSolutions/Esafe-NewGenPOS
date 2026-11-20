@@ -399,6 +399,7 @@ const pageTitle = computed(
       '/': t('Sell'),
       '/history': t('Sales History'),
       '/customers': t('Customers'),
+      '/invoices': t('Customer invoice'),
       '/holds': t('Holds'),
       '/register': t('Register'),
       '/insights': t('Insights'),

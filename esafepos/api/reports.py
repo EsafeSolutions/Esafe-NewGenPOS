@@ -90,7 +90,12 @@ def _invoices(outlets, start, end):
     rows = []
     params = {"outlets": tuple(outlets), "start": start, "end": end}
     for doctype in SALE_DOCTYPES:
-        extra = " and is_pos = 1 and is_consolidated = 0" if doctype == "Sales Invoice" else ""
+        extra = (
+            " and ((is_pos = 1 and ifnull(is_consolidated, 0) = 0) "
+            "or (is_pos = 0 and esafepos_invoice_origin = 'Customer Invoice'))"
+            if doctype == "Sales Invoice"
+            else ""
+        )
         found = frappe.db.sql(  # nosemgrep
             f"""
             select name, %(doctype)s as doctype, owner, pos_profile, customer, posting_date, posting_time,

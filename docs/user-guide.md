@@ -469,6 +469,26 @@ Everything the client computed is **re-validated server-side** at submit:
 prices, promotions, serials, balances, passcodes. The client math is
 display-only.
 
+### Regular customer invoices
+
+Use **Invoices** in the left menu to create a standard ERPNext Sales Invoice
+without opening a register, or choose a customer in the Sell cart and tap
+**Invoice**. Select a named customer, search and add items, adjust quantities,
+choose an optional due date and salesperson where enabled, then create the
+invoice. The server rechecks item prices, discounts, taxes and stock against the
+selected outlet; ERPNext applies the customer's payment terms and records the
+outstanding receivable. No payment is taken on this action.
+The invoice opens in ERPNext's print view, and its balance appears in the
+customer account when **Customer balances** is enabled. To collect later, open
+the customer in **Customers** and use **Take a payment**; that till receipt
+still requires an open register and the user's customer-payment permission.
+
+The **Regular Sales Invoices** switch in **Settings → General → Features**
+controls the new invoice action and the POS Profile's direct Sales Invoice
+checkout mode. The cashier needs Sales Invoice create and submit permissions.
+The invoice workspace is online-only and uses the active POS Profile's company,
+price list, taxes, warehouse and currency settings.
+
 ### Selling on account (0.60.0)
 
 A customer takes the goods now and pays later: all of it, or the rest after paying
@@ -1613,6 +1633,7 @@ The earlier entries below cover the shared release history inherited from the or
 
 ### Unreleased
 
+- **Regular customer invoices.** The Sell cart and a new Invoices screen create a named-customer standard ERPNext Sales Invoice without an open register or payment. The cashier can set an optional due date and salesperson. Server-side pricing, tax, discounts, serials and stock are rechecked; the submitted receivable is visible in customer balances and can be paid through customer account collection. The action is controlled by the Regular Sales Invoices switch and supports phone/tablet layouts.
 - Added three Sell catalog modes, quick Add and tap-to-open item editing. The read-only customer display shows line savings, running totals, amount due or change, and the completed receipt with earned rewards.
 
 - The ERPNext app, web app and launcher now use the ESAFE POS name. The Python package and API namespace are `esafepos`. Existing sites use the [one-time upgrade](esafepos-upgrade.md).

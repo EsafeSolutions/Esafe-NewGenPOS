@@ -28,6 +28,25 @@ export function discountBreakdown(lines, promo, bundles, order, factor = 1, roun
     manualPercent[i] = base > 0 ? amount / base * 100 : 0
     return amount
   })
+  // A direct bundle discount is per complete bundle, never per kg/component.
+  const groups = new Map()
+  lines.forEach((line, i) => {
+    if (line.bundle_key) {
+      if (!groups.has(line.bundle_key)) groups.set(line.bundle_key, [])
+      groups.get(line.bundle_key).push(i)
+    }
+  })
+  for (const indexes of groups.values()) {
+    const first = lines[indexes[0]]
+    const base = indexes.reduce((sum, i) => sum + bases[i], 0)
+    const amount = first.bundle_discount_method === 'amount'
+      ? Math.min(base, positive(first.bundle_discount_amount) / factor * (positive(first.bundle_qty) || 1))
+      : base * pct(first.bundle_discount_percent) / 100
+    for (const i of indexes) {
+      manual[i] = base > 0 ? amount * bases[i] / base : 0
+      manualPercent[i] = base > 0 ? amount / base * 100 : 0
+    }
+  }
   const orderBase = eligible.reduce((sum, i) => sum + Math.max(0, lines[i].price * lines[i].qty - whole[i] - manual[i]), 0)
   const orderTotal = order.enabled ? (order.method === 'amount'
     ? Math.min(orderBase, positive(order.amount) / factor)

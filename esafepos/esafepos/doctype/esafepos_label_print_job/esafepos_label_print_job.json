@@ -1,0 +1,87 @@
+{
+  "doctype": "DocType",
+  "name": "EsafePOS Label Print Job",
+  "module": "EsafePOS",
+  "autoname": "hash",
+  "engine": "InnoDB",
+  "field_order": [
+    "company",
+    "pos_profile",
+    "status",
+    "label_count",
+    "snapshot",
+    "result_detail",
+    "request_id",
+    "reprint_of"
+  ],
+  "fields": [
+    {
+      "fieldname": "company",
+      "fieldtype": "Link",
+      "label": "Company",
+      "options": "Company",
+      "reqd": 1
+    },
+    {
+      "fieldname": "pos_profile",
+      "fieldtype": "Link",
+      "label": "POS Profile",
+      "options": "POS Profile",
+      "reqd": 1
+    },
+    {
+      "fieldname": "status",
+      "fieldtype": "Select",
+      "label": "Status",
+      "options": "Prepared\nDialog opened\nSubmitted\nOutcome unknown\nExported\nCanceled",
+      "reqd": 1
+    },
+    {
+      "fieldname": "label_count",
+      "fieldtype": "Int",
+      "label": "Label count",
+      "reqd": 1
+    },
+    {
+      "fieldname": "snapshot",
+      "fieldtype": "Long Text",
+      "label": "Snapshot (JSON)",
+      "reqd": 1,
+      "read_only": 1
+    },
+    {
+      "fieldname": "result_detail",
+      "fieldtype": "Small Text",
+      "label": "Result"
+    },
+    {
+      "fieldname": "request_id",
+      "fieldtype": "Data",
+      "label": "Request ID",
+      "reqd": 1,
+      "read_only": 1,
+      "unique": 1
+    },
+    {
+      "fieldname": "reprint_of",
+      "fieldtype": "Link",
+      "label": "Reprint of",
+      "options": "EsafePOS Label Print Job"
+    }
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "report": 1
+    },
+    {
+      "role": "EsafePOS Manager",
+      "read": 1,
+      "report": 1
+    }
+  ],
+  "track_changes": 1,
+  "sort_field": "modified",
+  "sort_order": "DESC"
+}

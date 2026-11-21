@@ -1,0 +1,43 @@
+import assert from 'node:assert/strict'
+import { DEFAULT_STOCK,DEFAULT_PRINTER,geometry,layoutJob,stockForPreset,mm,calibrationKey,migrateOptions } from './src/labels/stock.js'
+import { DEFAULT_DESIGN,designFor } from './src/labels/design.js'
+import { labelScene,validateJob,barcodeMetrics,pageSvg,safeImage } from './src/labels/render.js'
+const item={item_code:'LP1',item_name:'Tea',barcode:'LP1',price_text:'LKR 450',qty:25}
+const triple={...DEFAULT_STOCK,w:30,h:20,columns:3,gapX:2,left:2,right:2}
+const job=layoutJob([item],triple)
+assert.equal(job.errors.length,0);assert.equal(job.pages.length,9);assert.equal(job.blanks,2)
+assert.equal(job.geometry.pageW,98);assert.deepEqual(job.pages[0].map((s) => s.x),[2,34,66])
+assert.equal(layoutJob([{...item,qty:7}],{...triple,columns:2}).pages.length,4)
+assert.equal(geometry({...triple,autoWidth:false,pageW:80}).errors.length,1)
+assert.equal(geometry({...triple,columns:0}).capacity,0)
+assert.ok(geometry({...triple,gapX:NaN}).errors.length)
+assert.equal(mm(2,'in'),50.8);assert.notEqual(stockForPreset('in-2x1').w,stockForPreset('50x25').w)
+assert.equal(migrateOptions({size:'custom',w:28,h:13}).stock.w,28)
+assert.equal(geometry({...triple,feedMode:'pitch'}).pageH,23)
+assert.equal(geometry({...triple,feedMode:'driver'}).pageH,20)
+const skipped=layoutJob([{...item,qty:3}],{...triple,start:1,skip:'3-4'})
+assert.deepEqual(skipped.pages.flat().map((s) => s.index),[1,4,5])
+assert.ok(layoutJob([{...item,qty:1.5}],triple).errors.length)
+assert.ok(layoutJob([{...item,qty:10001}],triple).errors.length)
+const sheet={...DEFAULT_STOCK,kind:'sheet',w:50,h:25,columns:3,rows:8,pageW:210,pageH:297,order:'column'}
+assert.deepEqual(layoutJob([{...item,qty:9}],sheet).pages[0].slice(0,2).map((s) => [s.x,s.y]),[[0,0],[0,28]])
+assert.ok(geometry({...sheet,h:40}).errors.length)
+assert.equal(calibrationKey(triple,DEFAULT_PRINTER),calibrationKey({...triple,start:2,skip:'1',units:'in'},DEFAULT_PRINTER))
+assert.notEqual(calibrationKey(triple,DEFAULT_PRINTER),calibrationKey({...triple,gapY:4},DEFAULT_PRINTER))
+const design=designFor('classic')
+assert.equal(labelScene(item,DEFAULT_STOCK,design).errors.length,0)
+assert.ok(labelScene(item,DEFAULT_STOCK,{...design,scale:300}).errors.length)
+assert.ok(labelScene(item,DEFAULT_STOCK,{...design,barcodeFormat:'EAN13'}).errors.length)
+assert.ok(labelScene({...item,barcode:'4006381333932'},DEFAULT_STOCK,{...design,barcodeFormat:'EAN13'}).errors.length)
+const ean=barcodeMetrics('0012345678905',design,DEFAULT_PRINTER)
+assert.deepEqual(ean.quiet,[11,7]);assert.equal(ean.text,'0012345678905');assert.ok(Number.isInteger(Math.round(ean.module*ean.dpmm*100000)/100000))
+assert.ok(labelScene({...item,barcode:'4006381333931'},DEFAULT_STOCK,{...design,retail:true}).errors.length)
+assert.ok(labelScene({...item,barcode:'4006381333931'},DEFAULT_STOCK,design).warnings.length)
+assert.ok(labelScene(item,DEFAULT_STOCK,designFor('branded')).errors.some((s) => s.includes('logo')))
+assert.equal(labelScene(item,DEFAULT_STOCK,designFor('qr')).errors.length,0)
+assert.ok(validateJob([item],triple,design,{...DEFAULT_PRINTER,maxWidth:70}).errors.length)
+const svg=pageSvg(job.pages[0],job.geometry,design)
+assert.ok(svg.includes('width="30" height="20"'));assert.equal((svg.match(/width="30mm"/g)||[]).length,0)
+assert.ok(!safeImage('javascript:alert(1)'));assert.ok(!safeImage('//evil.example/image'));assert.ok(safeImage('/files/logo.png'))
+assert.ok(labelScene({...item,item_name:'<script>alert(1)</script>'},DEFAULT_STOCK,{...design,show:{...design.show,barcode:false}}).svg.includes('&lt;'))
+console.log('PASS label geometry, quantities, skips, exact units, calibration keys, SVG bounds, barcode and QR validation')

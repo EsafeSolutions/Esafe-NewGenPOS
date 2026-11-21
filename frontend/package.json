@@ -10,6 +10,7 @@
   "dependencies": {
     "@lucide/vue": "^1.73.0",
     "pinia": "^2.1.7",
+    "qrcode-generator": "2.0.4",
     "vue": "^3.4.21",
     "vue-router": "^4.3.0"
   },

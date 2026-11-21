@@ -11,7 +11,13 @@
         </div>
         <div v-if="line.warranty_days" class="line-warranty"><Icon name="shield" /> {{ warrantyLabel(line.warranty_days) }}</div>
         <div v-if="line.bundle_key" class="bundle-chip-row">
-          <span class="bundle-chip"><Icon name="gift" /> {{ line.bundle_title }}</span>
+          <span class="bundle-chip"><Icon name="gift" /> {{ line.bundle_title }} × {{ line.bundle_qty || 1 }}</span>
+        </div>
+        <div v-if="line.bundle_discount_method === 'amount' && line.bundle_discount_amount" class="muted small">
+          {{ t('{amount} discount per bundle', { amount: money(line.bundle_discount_amount, cart.saleCurrency.currency) }) }}
+        </div>
+        <div v-else-if="line.bundle_discount_percent" class="muted small">
+          {{ t('{percent}% bundle discount', { percent: line.bundle_discount_percent }) }}
         </div>
         <div v-if="line.has_serial_no" class="serial-chips">
           <span v-for="serial in line.serial_nos" :key="serial" class="serial-chip">
@@ -53,9 +59,34 @@
     </button>
 
     <div v-if="expanded && line.bundle_key" class="line-edit">
-      <span class="muted small" style="flex: 1">
-        {{ t('Bundle pricing, items stay separate lines for individual returns.') }}
-      </span>
+      <template v-if="isBundleLead">
+        <div class="edit-field">
+          <label :for="`bundle-qty-${index}`">{{ bundleLines.length === 1 ? t('Packs') : t('Bundles') }}</label>
+          <div class="stepper">
+            <button class="btn btn-outline" :aria-label="t('Decrease bundle quantity')" @click="setBundleQuantity((line.bundle_qty || 1) - 1)">−</button>
+            <input :id="`bundle-qty-${index}`" type="number" min="0" step="1" inputmode="numeric"
+              :value="line.bundle_qty || 1" @change="changeBundleQuantity($event)" />
+            <button class="btn btn-outline" :aria-label="t('Increase bundle quantity')" @click="setBundleQuantity((line.bundle_qty || 1) + 1)">+</button>
+          </div>
+        </div>
+        <div class="edit-field discount-field">
+          <label :for="`bundle-discount-${index}`">{{ bundleDiscountMethod === 'amount' ? t('Discount per bundle') : t('Bundle discount') }}</label>
+          <div class="discount-control">
+            <select :aria-label="t('Bundle discount method')" :value="bundleDiscountMethod" :disabled="!canEditPrice"
+              @change="cart.setBundleDiscount(line.bundle_key, 0, $event.target.value)">
+              <option value="percent">%</option>
+              <option value="amount">{{ t('Direct') }}</option>
+            </select>
+            <input :id="`bundle-discount-${index}`" type="number" min="0" step="0.01" inputmode="decimal"
+              :max="bundleDiscountMethod === 'percent' ? 100 : undefined" :disabled="!canEditPrice"
+              :value="bundleDiscountMethod === 'amount' ? (line.bundle_discount_amount || 0) : (line.bundle_discount_percent || 0)"
+              @input="cart.setBundleDiscount(line.bundle_key, $event.target.value)" />
+            <span v-if="bundleDiscountMethod === 'amount'" class="muted small">{{ cart.saleCurrency.currency }}</span>
+          </div>
+        </div>
+        <span class="bundle-hint muted small">{{ t('Quantity and discount apply to the complete bundle.') }}</span>
+      </template>
+      <span v-else class="muted small">{{ t('Edit quantity and discount on the first item in this bundle.') }}</span>
       <button class="btn btn-ghost remove" @click="cart.removeBundle(line.bundle_key)">
         {{ t('Remove bundle') }}
       </button>
@@ -170,6 +201,9 @@ const expanded = ref(false)
 const serialOpen = ref(false)
 
 const discountMethod = computed(() => props.line.manual_discount_method || 'percent')
+const bundleDiscountMethod = computed(() => props.line.bundle_discount_method || 'percent')
+const bundleLines = computed(() => cart.lines.filter((line) => line.bundle_key === props.line.bundle_key))
+const isBundleLead = computed(() => bundleLines.value[0] === props.line)
 const totalDiscount = computed(() => props.serverDiscount != null
   ? props.serverDiscount
   : (props.promoDiscount || 0) + (props.bundleDiscount || 0) + (cart.discountBreakdown.manual[props.index] || 0))
@@ -192,6 +226,19 @@ function setDiscount(value) {
 function setPrice(event) {
   cart.setLinePrice(props.index, event.target.value)
   event.target.value = priceText.value
+}
+
+function setBundleQuantity(qty) {
+  try {
+    cart.setBundleQty(props.line.bundle_key, qty)
+  } catch (error) {
+    session.notify(error.message, true)
+  }
+}
+
+function changeBundleQuantity(event) {
+  if (event.target.value !== '') setBundleQuantity(event.target.value)
+  event.target.value = props.line.bundle_qty || 1
 }
 </script>
 
@@ -308,6 +355,7 @@ html[data-theme='dark'] .line-suggestion:hover { background: rgba(150, 100, 255,
 .discount-control select { width: 82px; padding: 7px 8px; }
 .discount-control input { width: 80px; }
 .price-hint { flex-basis: 100%; }
+.bundle-hint { flex-basis: 100%; }
 .reset-price { display: block; color: var(--brand-dark); font-size: 11px; margin-top: 4px; }
 .stepper { display: flex; gap: 4px; }
 .stepper .btn { padding: 7px 12px; }

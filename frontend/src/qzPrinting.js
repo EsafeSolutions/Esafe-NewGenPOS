@@ -31,7 +31,10 @@ function loadQz() {
   return scriptPromise
 }
 
-async function configureSigning(qz) {
+async function configureSigning(qz, context = null) {
+  // Each connection selects its own authorized signing path, including a return
+  // to normal receipt printing after using the label workspace.
+  qz.security.setSignaturePromise(() => (resolve) => resolve(''))
   let config = null
   try {
     config = await call('esafepos.api.qz_printing.get_signing_certificate')
@@ -45,7 +48,8 @@ async function configureSigning(qz) {
   })
   qz.security.setSignatureAlgorithm('SHA512')
   qz.security.setSignaturePromise((toSign) => (resolve, reject) => {
-    call('esafepos.api.qz_printing.sign_request', { request: toSign })
+    call(context ? 'esafepos.api.labels.sign_request' : 'esafepos.api.qz_printing.sign_request',
+      context ? { request: toSign, pos_profile: context.pos_profile, job: context.job || null } : { request: toSign })
       .then(resolve)
       .catch(reject)
   })
@@ -69,17 +73,17 @@ export function saveSelectedQzPrinter(printer) {
   }
 }
 
-export async function connectQz() {
+export async function connectQz(context = null) {
   const qz = await loadQz()
-  const signed = await configureSigning(qz)
+  const signed = await configureSigning(qz, context)
   if (!qz.websocket.isActive()) {
     await qz.websocket.connect({ retries: 2, delay: 1 })
   }
   return { qz, signed }
 }
 
-export async function findQzPrinters() {
-  const { qz, signed } = await connectQz()
+export async function findQzPrinters(context = null) {
+  const { qz, signed } = await connectQz(context)
   const printers = await qz.printers.find()
   return { printers, signed }
 }

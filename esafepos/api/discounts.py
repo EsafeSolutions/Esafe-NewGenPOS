@@ -38,6 +38,22 @@ def discount_breakdown(lines, promo, bundles, order, factor=1, rounding=round):
             amount = base * min(100.0, positive(line.get("manual_discount_percent"))) / 100.0
         manual.append(amount)
         manual_percent.append(amount / base * 100.0 if base > 0 else 0.0)
+    # Direct bundle amounts are per complete pack/set, not per stock unit.
+    groups = {}
+    for i, line in enumerate(lines):
+        if line.get("bundle_key"):
+            groups.setdefault(line["bundle_key"], []).append(i)
+    for indexes in groups.values():
+        first = lines[indexes[0]]
+        base = sum(bases[i] for i in indexes)
+        if first.get("bundle_discount_method") == "amount":
+            amount = min(base, positive(first.get("bundle_discount_amount")) / factor
+                         * (positive(first.get("bundle_qty")) or 1))
+        else:
+            amount = base * min(100.0, positive(first.get("bundle_discount_percent"))) / 100.0
+        for i in indexes:
+            manual[i] = amount * bases[i] / base if base > 0 else 0.0
+            manual_percent[i] = amount / base * 100.0 if base > 0 else 0.0
     order_base = sum(max(0.0, lines[i]["price"] * lines[i]["qty"] - whole[i] - manual[i])
                      for i in eligible)
     order_total = 0.0

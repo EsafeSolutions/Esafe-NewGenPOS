@@ -92,6 +92,11 @@ def sign_request(request: str):
     request = request or ""
     if not isinstance(request, str) or not request or len(request) > 131072:
         frappe.throw(_("The QZ print request is invalid."))
+    return _sign(request)
+
+
+def _sign(request):
+    """Shared cryptography, called only after the receipt/label authorization."""
     doc = _settings()
     private_key = doc.get_password(PRIVATE_KEY_FIELD, raise_exception=False)
     if not private_key or not doc.get(CERTIFICATE_FIELD):

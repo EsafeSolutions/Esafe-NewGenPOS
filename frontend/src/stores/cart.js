@@ -61,7 +61,7 @@ export const useCartStore = defineStore('cart', {
   }),
 
   getters: {
-    // Promotions only see NON-bundle lines (bundle pricing is final);
+    // Promotions only see NON-bundle lines; bundles have their own discounts.
     // results are remapped back onto the full line list.
     _promoView(state) {
       const session = useSessionStore()
@@ -137,7 +137,7 @@ export const useCartStore = defineStore('cart', {
           const group = (groups[line.bundle_key] ??= {
             idxs: [],
             title: line.bundle_title,
-            price: line.bundle_price,
+            price: line.bundle_price * (line.bundle_qty || 1),
           })
           group.idxs.push(i)
         }
@@ -155,7 +155,7 @@ export const useCartStore = defineStore('cart', {
           // Manager-defined split: discount each line down to its share
           for (const i of group.idxs) {
             discounts[i] = round2(
-              state.lines[i].price * state.lines[i].qty - state.lines[i].bundle_allocated
+              state.lines[i].price * state.lines[i].qty - state.lines[i].bundle_allocated * (state.lines[i].bundle_qty || 1)
             )
           }
           applied.push({ key, title: group.title, savings: round2(Math.max(0, natural - (group.price || 0))) })
@@ -492,17 +492,46 @@ export const useCartStore = defineStore('cart', {
 
     // One tap adds the whole bundle: components as SEPARATE lines (so each
     // can be returned individually), tagged + priced as one bundle instance.
+    _matchingBundle(bundle) {
+      const existing = this.lines.find((line) => line.bundle_name === bundle.name &&
+        line.bundle_price === bundle.bundle_price)
+      if (existing) {
+        const group = this.lines.filter((line) => line.bundle_key === existing.bundle_key)
+        if (group.length === bundle.items.length && bundle.items.every((component) =>
+          group.some((line) => line.item_code === component.item_code &&
+            (line.bundle_component_qty || line.qty / (line.bundle_qty || 1)) === component.qty))) {
+          return existing
+        }
+      }
+      return null
+    },
+
     async addBundle(bundle) {
       const session = useSessionStore()
-      this._bundleSeq = (this._bundleSeq || 0) + 1
-      const key = `${bundle.name}#${this._bundleSeq}`
+      const existing = this._matchingBundle(bundle)
+      if (existing) {
+        this.setBundleQty(existing.bundle_key, (existing.bundle_qty || 1) + 1)
+        return existing.bundle_key
+      }
+      const key = `${bundle.name}#${newId()}`
 
       const codes = bundle.items.map((component) => component.item_code)
       const info = {}
       for (const cached of await getCatalogItems(codes).catch(() => [])) {
         info[cached.item_code] = cached
       }
+      for (const item of useCatalogStore().items) {
+        if (codes.includes(item.item_code)) info[item.item_code] = item
+      }
       if (!session.offline) {
+        // Bundles must also work before the background catalog cache finishes.
+        for (const code of codes.filter((code) => !info[code])) {
+          const result = await call('esafepos.api.catalog.resolve_scan', {
+            pos_profile: session.posProfile, code,
+            customer_group: this.customer?.customer_group || null, app_type: this.appType,
+          })
+          if (result.found) info[code] = result.item
+        }
         try {
           const data = await call('esafepos.api.catalog.get_prices', {
             pos_profile: session.posProfile,
@@ -519,18 +548,35 @@ export const useCartStore = defineStore('cart', {
         }
       }
 
+      // A second tap may have finished loading while this one was awaiting prices.
+      const concurrent = this._matchingBundle(bundle)
+      if (concurrent) {
+        this.setBundleQty(concurrent.bundle_key, (concurrent.bundle_qty || 1) + 1)
+        return concurrent.bundle_key
+      }
       const allAllocated = bundle.items.every((component) => component.allocated_amount)
+      // Validate all components before changing the cart.
       for (const component of bundle.items) {
-        const detail = info[component.item_code] || {}
+        const detail = info[component.item_code]
+        if (!detail?.stock_uom && !detail?.uom) {
+          throw new Error(`${component.item_name}: item details are unavailable. Refresh the catalog online.`)
+        }
         if (detail.has_serial_no) {
           throw new Error(
             `${component.item_name}: serialized items cannot be sold in bundles`
           )
         }
+        this._checkBundleStock(detail, Number(component.qty))
+      }
+      for (const component of bundle.items) {
+        const detail = info[component.item_code]
         this.lines.push({
           item_code: component.item_code,
           item_name: detail.item_name || component.item_name,
           uom: detail.stock_uom || detail.uom,
+          whole_qty: detail.whole_qty,
+          is_stock_item: detail.is_stock_item,
+          actual_qty: detail.actual_qty,
           image: detail.image,
           item_group: detail.item_group || null,
           brand: detail.brand || null,
@@ -546,6 +592,8 @@ export const useCartStore = defineStore('cart', {
           bundle_name: bundle.name,
           bundle_title: bundle.title,
           bundle_price: bundle.bundle_price,
+          bundle_qty: 1,
+          bundle_component_qty: component.qty,
           // manager-defined split of the bundle price (whole-row amount)
           bundle_allocated: allAllocated ? component.allocated_amount : null,
         })
@@ -555,6 +603,52 @@ export const useCartStore = defineStore('cart', {
 
     removeBundle(key) {
       this.lines = this.lines.filter((line) => line.bundle_key !== key)
+      this.discountPasscode = null
+      this.discountRequest = null
+    },
+
+    _checkBundleStock(item, extra) {
+      const session = useSessionStore()
+      const detail = useCatalogStore().items.find((row) => row.item_code === item.item_code) || item
+      const current = this.lines.filter((row) => row.item_code === item.item_code)
+        .reduce((sum, row) => sum + row.qty * (row.conversion_factor || 1), 0)
+      if (!session.offline && !session.allowNegativeStock && detail.is_stock_item &&
+        Number.isFinite(detail.actual_qty) && Math.round((current + extra) * 10000) / 10000 > detail.actual_qty) {
+        throw new Error(`${detail.item_name}: only ${detail.actual_qty} ${detail.stock_uom || detail.uom} in stock`)
+      }
+    },
+
+    setBundleQty(key, value) {
+      const qty = Number(value)
+      const group = this.lines.filter((line) => line.bundle_key === key)
+      if (!group.length || !Number.isSafeInteger(qty) || qty < 0) return
+      if (qty === 0) return this.removeBundle(key)
+      for (const line of group) {
+        const perBundle = line.bundle_component_qty || line.qty / (line.bundle_qty || 1)
+        this._checkBundleStock(line, perBundle * qty - line.qty)
+      }
+      for (const line of group) {
+        line.bundle_component_qty = line.bundle_component_qty || line.qty / (line.bundle_qty || 1)
+        line.qty = Math.round(line.bundle_component_qty * qty * 10000) / 10000
+        line.bundle_qty = qty
+      }
+      this.discountPasscode = null
+      this.discountRequest = null
+    },
+
+    setBundleDiscount(key, value, method = null) {
+      if (useSessionStore().permissions?.can_edit_price === false) return
+      const group = this.lines.filter((line) => line.bundle_key === key)
+      const nextMethod = method || group[0]?.bundle_discount_method || 'percent'
+      const number = Number(value)
+      const amount = Number.isFinite(number) ? Math.max(0, number) : 0
+      for (const line of group) {
+        line.bundle_discount_method = nextMethod === 'amount' ? 'amount' : 'percent'
+        line.bundle_discount_amount = nextMethod === 'amount' ? round2(amount) : 0
+        line.bundle_discount_percent = nextMethod === 'amount' ? 0 : Math.min(100, amount)
+      }
+      this.discountPasscode = null
+      this.discountRequest = null
     },
 
     // "Sell in dollars": the sale goes to that currency's walk-in customer,
@@ -681,6 +775,7 @@ export const useCartStore = defineStore('cart', {
     },
 
     setQty(index, qty) {
+      if (this.lines[index]?.bundle_key) return
       if (this.lines[index]?.has_serial_no) return // qty is locked to serial count
       qty = Math.round((Number(qty) || 0) * 10000) / 10000
       if (this.lines[index]?.whole_qty && !Number.isInteger(qty)) return
@@ -689,6 +784,7 @@ export const useCartStore = defineStore('cart', {
     },
 
     removeLine(index) {
+      if (this.lines[index]?.bundle_key) return this.removeBundle(this.lines[index].bundle_key)
       this.lines.splice(index, 1)
     },
 
@@ -844,6 +940,12 @@ export const useCartStore = defineStore('cart', {
           price_override: l.price_override ?? null,
           serial_nos: l.serial_nos || [],
           bundle_key: l.bundle_key || null,
+          ...(l.bundle_key ? {
+            bundle_qty: l.bundle_qty || 1,
+            bundle_discount_method: l.bundle_discount_method || 'percent',
+            bundle_discount_amount: l.bundle_discount_amount || 0,
+            bundle_discount_percent: l.bundle_discount_percent || 0,
+          } : {}),
         })),
         coupon_codes: this.couponCodes,
         sales_person: this.salesPerson,

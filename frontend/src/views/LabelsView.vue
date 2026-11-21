@@ -1,356 +1,199 @@
-<!-- Copyright (c) 2026 Esafe (PVT) LTD
-     SPDX-License-Identifier: AGPL-3.0-only
-     "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md. -->
-<!-- Barcode and price labels (0.67.0, esafepos.api.labels): items from a search
-     or a scan, from a document that brought goods in, or from the prices changed
-     since a date; the size, what prints, a preview, and the print itself. -->
+<!-- Copyright (c) 2026 Esafe (PVT) LTD; SPDX-License-Identifier: AGPL-3.0-only -->
 <template>
-  <div class="labels">
-    <section class="card pick">
-      <div v-if="!session.permissions.print_labels" class="muted empty">{{ t("You're not allowed to print labels.") }}</div>
-      <template v-else>
-        <div class="add-row">
-          <div class="search-box" data-tour="labels-search">
-            <Icon name="search" />
-            <input
-              ref="searchInput"
-              v-model="query"
-              :placeholder="t('Scan a barcode or search for an item…')"
-              @input="debouncedSearch"
-              @keydown.enter.prevent="scanOrPick"
-            />
-          </div>
-        </div>
-        <div v-if="found.length" class="found">
-          <button v-for="item in found" :key="item.item_code" type="button" class="found-row" @click="addItems([{ item_code: item.item_code, qty: 1 }])">
-            <bdi>{{ item.item_name }}</bdi>
-            <span class="muted small" dir="ltr">{{ item.item_code }}</span>
-          </button>
-        </div>
-
-        <div class="sources">
-          <div class="source" data-tour="labels-document">
-            <span class="src-title">{{ t('From a document') }}</span>
-            <div class="src-row">
-              <select v-model="docType" class="cf-in" @change="loadDocuments">
-                <option v-for="d in DOCTYPES" :key="d" :value="d">{{ t(d) }}</option>
-              </select>
-              <input v-model="docSearch" class="cf-in grow" :placeholder="t('Number or supplier…')" @input="debouncedDocuments" />
-            </div>
-            <div v-if="docs.length" class="doc-list">
-              <button v-for="d in docs" :key="d.name" type="button" class="found-row" @click="fromDocument(d.name)">
-                <bdi dir="ltr">{{ d.name }}</bdi>
-                <span class="muted small"><bdi>{{ d.party }}</bdi> · <bdi dir="ltr">{{ d.date }}</bdi><span v-if="d.draft"> · {{ t('Draft') }}</span></span>
-              </button>
-            </div>
-          </div>
-          <div class="source">
-            <span class="src-title">{{ t('Prices changed since') }}</span>
-            <div class="src-row">
-              <input v-model="since" type="date" class="cf-in" />
-              <button class="btn btn-outline" type="button" :disabled="!since || busy" @click="priceChanges">{{ t('Add') }}</button>
-            </div>
-          </div>
-        </div>
-
-        <div v-if="error" class="neg small err">{{ error }}</div>
-        <div v-if="!rows.length" class="muted empty">{{ t('Add items to print their labels.') }}</div>
-        <div v-else class="wrap">
-          <table class="rt">
-            <thead>
-              <tr>
-                <th>{{ t('Item') }}</th>
-                <th class="num">{{ t('Price') }}</th>
-                <th class="num">{{ t('Copies') }}</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="row in rows" :key="row.item_code">
-                <td>
-                  <div><bdi>{{ row.item_name }}</bdi></div>
-                  <div class="muted small" dir="ltr">{{ row.barcode || row.item_code }}</div>
-                  <div v-if="row.unpriced" class="warn small">{{ t('No price on this outlet’s price list.') }}</div>
-                  <div v-else-if="!row.barcode" class="muted small">{{ t('No barcode: the item code is printed as one.') }}</div>
-                </td>
-                <td class="num"><bdi>{{ money(row.price_with_tax, row.currency) }}</bdi></td>
-                <td class="num">
-                  <input v-model.number="row.qty" type="number" min="0" max="999" class="qty" />
-                </td>
-                <td><button class="btn-ghost" type="button" :title="t('Remove')" @click="remove(row)"><Icon name="close" /></button></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </template>
-    </section>
-
-    <section v-if="session.permissions.print_labels" class="card setup">
-      <div class="setup-body">
-        <label class="field" data-tour="labels-size">
-          <span>{{ t('Label size') }}</span>
-          <select v-model="opts.size" class="cf-in">
-            <option v-for="p in PRESETS" :key="p.key" :value="p.key">{{ t(p.label) }}</option>
-          </select>
-        </label>
-        <div v-if="size.custom" class="custom">
-          <label class="field"><span>{{ t('Width, mm') }}</span><input v-model.number="opts.w" type="number" min="20" max="120" class="cf-in" /></label>
-          <label class="field"><span>{{ t('Height, mm') }}</span><input v-model.number="opts.h" type="number" min="15" max="120" class="cf-in" /></label>
-        </div>
-        <div class="field">
-          <span>{{ t('On the label') }}</span>
-          <label v-for="f in fieldChoices" :key="f.key" class="check">
-            <input v-model="opts.show[f.key]" type="checkbox" /> {{ t(f.label) }}
-          </label>
-        </div>
-        <div class="muted small">{{ t('{n} labels', { n: total }) }}</div>
-        <button class="btn btn-primary" type="button" data-tour="labels-print" :disabled="!total || printing" @click="print">
-          <Icon name="tag" /> {{ printing ? t('Preparing…') : t('Print labels') }}
-        </button>
-        <p class="muted small">{{ t('Choose your label printer in the print window, with margins set to none and the scale at 100%.') }}</p>
+  <div v-if="!session.permissions.print_labels" class="empty">{{ t("You're not allowed to print labels.") }}</div>
+  <main v-else class="labels">
+    <header class="heading"><div><h1>{{ t('Label printing') }}</h1><p>{{ t('Choose your stock, make it yours, and print.') }}</p></div><div class="actions"><span>{{ job.total }} {{ t('labels') }}</span><button class="btn btn-primary" :disabled="!canPrint" @click="output('print')"><Icon name="printer" />{{ printing ? t('Preparing…') : t('Print labels') }}</button></div></header>
+    <section class="card queue">
+      <div class="section-head"><h2>{{ t('Items to label') }}</h2><button class="text-btn" :disabled="!rows.length" @click="rows=[]">{{ t('Clear') }}</button></div>
+      <div class="queue-pad"><label class="search"><Icon name="search" /><input ref="searchInput" v-model="query" :placeholder="t('Scan or search items…')" @input="scheduleSearch" @keydown.enter.prevent="scanOrPick" /></label>
+        <div v-if="found.length" class="found"><button v-for="item in found" :key="item.item_code" @click="addItems([{item_code:item.item_code,qty:1}])">{{ item.item_name }}<small>{{ item.item_code }}</small></button></div>
+        <details><summary>{{ t('Add from documents or changed prices') }}</summary><div class="stack"><select v-model="docType" class="cf-in" :aria-label="t('Document type')" @change="loadDocuments"><option v-for="d in DOCTYPES" :key="d">{{ d }}</option></select><input v-model="docSearch" class="cf-in" :placeholder="t('Number or supplier…')" @input="scheduleDocuments" /><div class="found"><button v-for="d in docs" :key="d.name" @click="fromDocument(d.name)">{{ d.name }}<small>{{ d.party }} · {{ d.date }}</small></button></div><label class="field"><span>{{ t('Prices changed since') }}</span><input v-model="since" type="date" class="cf-in" /></label><button class="btn btn-outline" :disabled="!since || busy" @click="priceChanges">{{ t('Add changed prices') }}</button></div></details>
+        <div v-if="rows.length" class="bulk"><label>{{ t('Copies each') }} <input v-model.number="bulkQty" type="number" min="0" max="10000" /></label><button class="text-btn" @click="setCopies">{{ t('Apply') }}</button></div>
       </div>
-      <div class="preview-head muted small">{{ t('Preview') }}</div>
-      <iframe class="preview" :title="t('Preview')" :srcdoc="previewHtml"></iframe>
+      <div v-if="!rows.length" class="empty"><Icon name="tag" /><strong>{{ t('Start with a product') }}</strong><p>{{ t('Scan a barcode, search your catalog, or add items from a stock document.') }}</p></div>
+      <ol v-else class="queue-list"><li v-for="(row,index) in rows" :key="row._id"><div class="queue-row"><div class="item"><bdi>{{ row.item_name }}</bdi><small>{{ row.barcode || row.item_code }} · {{ row.uom }}</small><strong>{{ money(row.price_with_tax,row.currency) }}</strong><small v-if="row.unpriced" class="warning">{{ t('No price on this outlet’s price list.') }}</small></div><label class="copies">{{ t('Copies') }}<input v-model.number="row.qty" type="number" min="0" max="10000" /></label><button class="remove" :aria-label="t('Remove item')" @click="rows.splice(index,1)">×</button></div><details><summary>{{ t('Label details') }}</summary><div class="stack"><label v-if="row.selling_units?.length" class="field"><span>{{ t('Selling unit') }}</span><select :value="row.uom" class="cf-in" @change="changeUnit(row,$event.target.value)"><option :value="row.stock_uom">{{ row.stock_uom }}</option><option v-for="u in row.selling_units" :key="u.uom" :value="u.uom">{{ u.uom }}</option></select></label><label v-if="row.barcode_options?.length" class="field"><span>{{ t('Barcode') }}</span><select v-model="row.barcode" class="cf-in"><option :value="row.item_code">{{ row.item_code }}</option><option v-for="b in row.barcode_options.filter((b) => b.uom===row.uom)" :key="b.barcode" :value="b.barcode">{{ b.barcode }}</option></select></label><label v-for="f in detailFields" :key="f.key" class="field"><span>{{ t(f.label) }}</span><input v-model="row[f.key]" class="cf-in" :maxlength="f.key==='qr' ? 1000 : 500" /></label><div class="actions"><button class="text-btn" :disabled="index===0" @click="moveRow(index,-1)">{{ t('Move up') }}</button><button class="text-btn" :disabled="index===rows.length-1" @click="moveRow(index,1)">{{ t('Move down') }}</button></div></div></details></li></ol>
     </section>
-  </div>
+    <div class="work">
+      <section class="card preview-panel">
+        <div class="preview-toolbar"><div class="segmented"><button :class="{active:previewMode==='label'}" @click="previewMode='label'">{{ t('Label') }}</button><button :class="{active:previewMode==='media'}" @click="previewMode='media'">{{ t(stock.kind==='sheet' ? 'Sheet' : 'Roll') }}</button></div><label class="zoom">{{ t('Zoom') }}<input v-model.number="zoom" type="range" min="50" max="250" step="10" /><span>{{ zoom }}%</span></label></div>
+        <div class="preview-surface"><span class="caption">{{ stock.w }} × {{ stock.h }} mm / {{ stock.columns }} {{ t('across') }}</span>
+          <div v-if="previewMode==='label'" class="label-canvas" :style="{width:`${stock.w*3.7795*zoom/100}px`}" @pointermove="dragMove" @pointerup="drag=null" @pointercancel="drag=null"><div class="art" v-html="sampleScene.svg"></div><template v-if="advanced && tab==='design'"><button v-for="el in visibleElements" :key="el.id" class="element-hit" :class="{selected:selectedId===el.id}" :aria-label="`${t('Edit')} ${el.id}`" :style="hitStyle(el)" @pointerdown="dragStart($event,el)" @click="selectedId=el.id"><span>{{ el.id }}</span></button></template></div>
+          <div v-else class="art media-art" :style="{width:`${Math.min(1200,(previewJob.geometry.pageW || 58)*3.7795*zoom/100)}px`}" v-html="mediaSvg"></div><p v-if="!rows.length" class="hint sample-note">{{ t('Sample product. Add items to preview your actual labels.') }}</p>
+        </div>
+        <div class="preview-footer"><span>{{ job.pages.length }} {{ t(stock.kind==='sheet' ? 'pages' : 'rows') }} · {{ job.blanks }} {{ t('blank slots') }}</span><div v-if="previewMode==='media' && job.pages.length" class="actions"><button :disabled="pageIndex<=0" @click="pageIndex--" :aria-label="t('Previous page')">‹</button>{{ pageIndex+1 }}/{{ job.pages.length }}<button :disabled="pageIndex>=job.pages.length-1" @click="pageIndex++" :aria-label="t('Next page')">›</button></div><span v-if="job.length">{{ job.length }} mm</span></div>
+        <div v-if="checks.errors.length" class="message error" role="alert"><strong>{{ t('Before printing') }}</strong><p v-for="m in checks.errors.slice(0,6)" :key="m">{{ t(m) }}</p></div><div v-if="checks.warnings.length" class="message warning"><p v-for="m in checks.warnings" :key="m">{{ t(m) }}</p></div><div v-if="error" class="message error" role="alert">{{ error }}</div><div v-if="notice" class="message notice" role="status">{{ notice }}</div>
+        <div class="output-actions"><button class="btn btn-outline" :disabled="!canPrint" @click="output('pdf')">{{ t('Download PDF') }}</button><button class="btn btn-outline" :disabled="printing || !!checks.errors.length" @click="output('test')">{{ t('Print test row') }}</button><label class="field"><span>{{ t('Preview item') }}</span><select v-model.number="sampleIndex" class="cf-in"><option v-if="!rows.length" :value="0">{{ t('Sample product') }}</option><option v-for="(r,i) in rows" :key="r._id" :value="i">{{ r.item_name }}</option></select></label></div>
+      </section>
+      <section class="card settings-panel">
+        <div class="tabs" role="tablist" :aria-label="t('Label settings')"><button v-for="section in tabs" :key="section.key" role="tab" :aria-selected="tab===section.key" :class="{active:tab===section.key}" @click="tab=section.key">{{ t(section.label) }}</button></div>
+        <div class="settings-body">
+          <template v-if="tab==='stock'">
+            <div class="section-head"><h2>{{ t('Label stock') }}</h2><select v-model="stock.units" class="small-select" :aria-label="t('Measurement unit')"><option value="mm">mm</option><option value="in">in</option></select></div>
+            <label class="field"><span>{{ t('Size preset') }}</span><select v-model="presetKey" :aria-label="t('Size preset')" class="cf-in" @change="stock=stockForPreset(presetKey,stock)"><option v-for="p in PRESETS" :key="p.key" :value="p.key">{{ p.label }}</option></select></label>
+            <label class="field"><span>{{ t('Stock format') }}</span><select v-model="stock.kind" class="cf-in"><option value="roll">{{ t('Die-cut roll') }}</option><option value="continuous">{{ t('Continuous roll') }}</option><option value="black-mark">{{ t('Black-mark roll') }}</option><option value="sheet">{{ t('Sheet labels') }}</option></select></label>
+            <div class="number-grid"><NumberField v-model="stock.w" :label="t('Label width')" :unit="stock.units" :min=".01" /><NumberField v-model="stock.h" :label="t('Label height')" :unit="stock.units" :min=".01" /></div>
+            <div class="field"><span>{{ t('Labels across') }}</span><div class="column-choices"><button v-for="n in [1,2,3]" :key="n" :class="{active:+stock.columns===n}" @click="stock.columns=n">{{ t(['Single','Double','Triple'][n-1]) }}<small>{{ n }} {{ t('across') }}</small></button></div></div>
+            <div class="number-grid"><NumberField v-model="stock.columns" :label="t('Columns')" :min="1" :max="100" :step="1" /><NumberField v-if="stock.kind==='sheet'" v-model="stock.rows" :label="t('Rows per sheet')" :min="1" :max="100" :step="1" /><NumberField v-model="stock.gapX" :label="t('Horizontal gap')" :unit="stock.units" :min="0" /><NumberField v-model="stock.gapY" :label="t(stock.kind==='sheet' ? 'Vertical gap' : 'Feed gap')" :unit="stock.units" :min="0" /></div>
+            <div v-if="stock.kind==='sheet'" class="actions wrap"><button v-for="p in PAPERS" :key="p.key" class="text-btn" @click="stock.pageW=p.w;stock.pageH=p.h">{{ p.label }}</button><button class="text-btn" @click="[stock.pageW,stock.pageH]=[stock.pageH,stock.pageW]">{{ t('Rotate page') }}</button></div><label v-else class="check"><input v-model="stock.autoWidth" type="checkbox" />{{ t('Calculate liner width from labels and gaps') }}</label>
+            <div class="number-grid"><NumberField v-if="stock.kind==='sheet' || !stock.autoWidth" v-model="stock.pageW" :label="t(stock.kind==='sheet' ? 'Page width' : 'Liner width')" :unit="stock.units" :min="1" /><NumberField v-if="stock.kind==='sheet'" v-model="stock.pageH" :label="t('Page height')" :unit="stock.units" :min="1" /><NumberField v-for="m in margins" :key="m.key" v-model="stock[m.key]" :label="t(m.label)" :unit="stock.units" :min="0" /></div>
+            <label v-if="stock.kind!=='sheet'" class="field"><span>{{ t('Feed gap handling') }}</span><select v-model="stock.feedMode" class="cf-in"><option value="driver">{{ t('Printer advances the gap') }}</option><option value="pitch">{{ t('Include gap in page length') }}</option></select></label><p class="hint">{{ t('Match the stock and sensor mode in your printer driver. Use a test row to check alignment.') }}</p>
+            <details><summary>{{ t('Shape, order and used labels') }}</summary><div class="stack"><label class="field"><span>{{ t('Shape guide') }}</span><select v-model="stock.shape" class="cf-in"><option value="rectangle">{{ t('Rectangle') }}</option><option value="rounded">{{ t('Rounded corners') }}</option><option value="oval">{{ t('Oval / round') }}</option></select></label><NumberField v-model="stock.start" :label="t('Empty slots before first label')" :min="0" :step="1" /><label class="field"><span>{{ t('Skip used slots (1, 3-5)') }}</span><input v-model="stock.skip" class="cf-in" maxlength="10000" /></label><label v-if="stock.kind==='sheet'" class="field"><span>{{ t('Fill order') }}</span><select v-model="stock.order" class="cf-in"><option value="row">{{ t('Across, then down') }}</option><option value="column">{{ t('Down, then across') }}</option></select></label></div></details>
+          </template>
+          <template v-if="tab==='design'">
+            <div class="section-head"><h2>{{ t('Label design') }}</h2><label class="check"><input v-model="advanced" type="checkbox" />{{ t('Advanced') }}</label></div>
+            <div class="design-gallery"><button v-for="d in DESIGNS" :key="d.key" :class="{active:design.key===d.key}" :title="t(d.description)" @click="chooseDesign(d.key)"><svg viewBox="0 0 100 54" aria-hidden="true"><rect x="1" y="1" width="98" height="52" rx="3" fill="white" stroke="currentColor" opacity=".5"/><rect v-for="(el,i) in templateElements(d.key).slice(0,5)" :key="i" :x="5+el.x*.9" :y="4+el.y*.46" :width="el.w*.9" :height="Math.max(2,el.h*.33)" fill="currentColor" :opacity="el.type==='barcode' ? .7 : .3" /></svg><span>{{ t(d.label) }}</span></button></div>
+            <div class="number-grid"><NumberField v-model="design.scale" :label="t('Design scale (%)')" :min="10" :max="300" :step="1" /><NumberField v-model="design.padding" :label="t('Safe padding')" unit="mm" :min="0" /><NumberField v-model="design.nameSize" :label="t('Name font')" unit="mm" :min="1" /><NumberField v-model="design.priceSize" :label="t('Price font')" unit="mm" :min="1" /><NumberField v-model="design.textSize" :label="t('Other text font')" unit="mm" :min="1" /></div>
+            <label class="field"><span>{{ t('Font') }}</span><select v-model="design.font" class="cf-in"><option>Arial</option><option>Tahoma</option><option>Georgia</option><option>monospace</option></select></label><div class="field"><span>{{ t('On the label') }}</span><div class="field-checks"><label v-for="f in fieldChoices" :key="f.key" class="check"><input v-model="design.show[f.key]" type="checkbox" @change="ensureElement(f.key)" />{{ t(f.label) }}</label></div></div>
+            <details :open="design.show.logo"><summary>{{ t('Company logo') }}</summary><div class="stack"><label class="field"><span>{{ t('Logo source') }}</span><select v-model="design.logoSource" class="cf-in"><option value="receipt">{{ t('Use this outlet’s receipt logo') }}</option><option value="company">{{ t('Company master logo') }}</option><option value="custom">{{ t('Custom label logo') }}</option></select></label><label v-if="design.logoSource==='custom'" class="field"><span>{{ t('Logo image') }}</span><input type="file" accept="image/png,image/jpeg,image/webp" @change="uploadLogo" /></label><p class="hint">{{ t('Logo proportions are preserved. Use Advanced to position or resize it.') }}</p></div></details>
+            <details><summary>{{ t('Barcode settings') }}</summary><div class="stack"><label class="field"><span>{{ t('Format') }}</span><select v-model="design.barcodeFormat" class="cf-in"><option value="AUTO">{{ t('Automatic') }}</option><option value="EAN13">EAN-13</option><option value="UPCA">UPC-A</option><option value="CODE128">Code 128</option></select></label><NumberField v-model="design.module" :label="t('Narrowest bar width')" unit="mm" :min=".1" :step=".01" /><label class="check"><input v-model="design.retail" type="checkbox" />{{ t('Require standard retail barcode height') }}</label></div></details>
+            <div v-if="advanced" class="editor stack"><div class="section-head"><h3>{{ t('Elements') }}</h3><button class="text-btn" :disabled="designHistory.length<2" @click="undoDesign">{{ t('Undo') }}</button><button class="text-btn" :disabled="!designFuture.length" @click="redoDesign">{{ t('Redo') }}</button><button class="text-btn" @click="design.elements=templateElements(design.key)">{{ t('Reset layout') }}</button></div><select v-model="selectedId" class="cf-in" :aria-label="t('Selected element')"><option v-for="el in design.elements" :key="el.id" :value="el.id">{{ el.id }}</option></select><div class="actions"><select v-model="newType" class="cf-in" :aria-label="t('New element type')"><option value="static">{{ t('Text') }}</option><option value="qr">QR</option><option value="line">{{ t('Line') }}</option><option value="box">{{ t('Border') }}</option></select><button class="btn btn-outline" @click="addElement">{{ t('Add') }}</button></div>
+              <template v-if="selectedElement"><label v-if="selectedElement.type==='static'" class="field"><span>{{ t('Text') }}</span><input v-model="selectedElement.text" class="cf-in" maxlength="500" /></label><label v-if="selectedElement.type==='text'" class="field"><span>{{ t('Field') }}</span><select v-model="selectedElement.binding" class="cf-in"><option v-for="f in BINDINGS" :key="f.key" :value="f.key">{{ t(f.label) }}</option></select></label><div class="number-grid"><NumberField v-for="f in elementDimensions" :key="f.key" :model-value="elementMm(f.key)" :label="t(f.label)" unit="mm" :min="0" @update:model-value="setElementMm(f.key,$event)" /></div><label class="field"><span>{{ t('Rotation') }}</span><select v-model.number="selectedElement.rotation" class="cf-in"><option v-for="angle in [0,90,180,270]" :key="angle" :value="angle">{{ angle }}°</option></select></label><label class="field"><span>{{ t('Text alignment') }}</span><select v-model="selectedElement.align" class="cf-in"><option value="left">{{ t('Left') }}</option><option value="center">{{ t('Center') }}</option><option value="right">{{ t('Right') }}</option></select></label><label class="check"><input v-model="selectedElement.bold" type="checkbox" />{{ t('Bold') }}</label><label class="check"><input v-model="selectedElement.locked" type="checkbox" />{{ t('Lock position') }}</label><div class="actions"><button class="text-btn" @click="duplicateElement">{{ t('Duplicate') }}</button><button class="text-btn error" @click="deleteElement">{{ t('Delete element') }}</button></div></template>
+            </div>
+          </template>
+          <template v-if="tab==='printer'">
+            <h2>{{ t('Printer and calibration') }}</h2><label class="field"><span>{{ t('Print with') }}</span><select v-model="printer.route" :aria-label="t('Print with')" class="cf-in"><option value="browser">{{ t('Browser print window') }}</option><option value="qz">{{ t('QZ Tray label printer') }}</option></select></label><template v-if="printer.route==='qz'"><button class="btn btn-outline" :disabled="busy" @click="discoverPrinters">{{ t('Find label printers') }}</button><label class="field"><span>{{ t('Label printer') }}</span><select v-model="printer.name" :aria-label="t('Label printer')" class="cf-in"><option value="">{{ t('Choose a printer') }}</option><option v-for="p in printerNames" :key="p">{{ p }}</option></select></label><p class="hint">{{ t('This selection is separate from your receipt printer.') }}</p></template>
+            <div class="number-grid"><NumberField v-model="printer.dpi" :label="t('Actual resolution (DPI)')" :min="100" :max="1200" /><NumberField v-model="printer.maxWidth" :label="t('Usable width')" unit="mm" :min="1" /></div><label class="check"><input v-model="printer.monochrome" type="checkbox" />{{ t('Monochrome PDF output') }}</label>
+            <div class="editor stack"><h3>{{ t('Align a test row') }}</h3><p class="hint">{{ t('Match the driver stock, print a test row, then adjust the displacement. Positive offsets move right and down.') }}</p><div class="number-grid"><NumberField v-model="printer.offsetX" :label="t('Horizontal offset')" unit="mm" :min="-50" /><NumberField v-model="printer.offsetY" :label="t('Vertical offset')" unit="mm" :min="-50" /><NumberField v-model="printer.scaleX" :label="t('Width correction (%)')" :min="90" :max="110" /><NumberField v-model="printer.scaleY" :label="t('Height correction (%)')" :min="90" :max="110" /></div><div class="actions wrap"><button class="btn btn-outline" :disabled="printing || !!checks.errors.length" @click="output('test')">{{ t('Print test row') }}</button><button class="text-btn" @click="saveCalibration">{{ t('Save alignment') }}</button><button class="text-btn" @click="printer.offsetX=0;printer.offsetY=0;printer.scaleX=100;printer.scaleY=100">{{ t('Reset') }}</button></div></div><p class="hint">{{ t('Use matching paper, no margins and 100% scale in the print window. Alignment is saved per device, stock and output route.') }}</p>
+            <details><summary>{{ t('Native thermal files') }}</summary><div class="stack"><p class="hint">{{ t('Download a bitmap command file for a compatible ZPL or TSPL printer. Check its language and stock settings before sending the file.') }}</p><button class="btn btn-outline" :disabled="!canPrint || stock.kind==='sheet'" @click="output('zpl')">{{ t('Download ZPL') }}</button><button class="btn btn-outline" :disabled="!canPrint || stock.kind==='sheet'" @click="output('tspl')">{{ t('Download TSPL') }}</button></div></details>
+          </template>
+          <template v-if="tab==='saved'">
+            <h2>{{ t('Saved setups') }}</h2><p class="hint">{{ t('Reuse stock, designs and printer recommendations. Printer alignment stays on this device.') }}</p><label class="field"><span>{{ t('Save as') }}</span><select v-model="saveKind" class="cf-in"><option value="Stock">{{ t('Label stock') }}</option><option value="Design">{{ t('Label design') }}</option><option value="Printer">{{ t('Printer settings') }}</option><option value="Defaults">{{ t('Complete setup') }}</option></select></label><label class="field"><span>{{ t('Name') }}</span><input v-model="saveTitle" class="cf-in" maxlength="100" /></label><button class="btn btn-outline" :disabled="!saveTitle.trim() || !!checks.errors.length" @click="saveLocal">{{ t('Save on this device') }}</button><button v-if="canManage" class="btn btn-primary" :disabled="!saveTitle.trim() || !!checks.errors.length || busy || needsMigration" @click="saveShared">{{ t('Save for this outlet') }}</button>
+            <h3>{{ t('This device') }}</h3><div class="saved-list"><div v-for="(p,i) in localPresets" :key="p.id"><button @click="applySaved(p)"><strong>{{ p.title }}</strong><small>{{ t(p.kind) }}</small></button><button :aria-label="t('Delete saved setup')" @click="localPresets.splice(i,1)">×</button></div><p v-if="!localPresets.length" class="hint">{{ t('No saved setups yet.') }}</p></div><h3>{{ t('Shared with this outlet') }}</h3><div class="saved-list"><button v-for="p in sharedPresets" :key="p.name" @click="applySaved(p)"><strong>{{ p.title }}</strong><small>{{ t(p.kind) }}</small></button></div><p v-if="needsMigration" class="warning">{{ t('Run the site migration to enable shared presets and print-job records.') }}</p>
+          </template>
+        </div>
+      </section>
+    </div>
+  </main>
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed,onMounted,onBeforeUnmount,ref,watch,nextTick } from 'vue'
 import { call } from '../api'
-import { t, locale } from '../i18n'
+import { t } from '../i18n'
 import { money } from '../format'
 import { useSessionStore } from '../stores/session'
-import { PRESETS, sizeOf, pageHtml } from '../labels'
+import { PRESETS,PAPERS,DEFAULT_STOCK,DEFAULT_PRINTER,clone,stockForPreset,migrateOptions,layoutJob,calibrationKey,round } from '../labels/stock.js'
+import { DESIGNS,BINDINGS,DEFAULT_DESIGN,designFor,templateElements,visibleElement } from '../labels/design.js'
+import { labelScene,pageSvg,validateJob,elementBox } from '../labels/render.js'
+import { browserPrint,download,pdfDocument,nativeDocument,resizeLogo,imageData,jobSvgs,printQzLabels } from '../labels/printing.js'
+import { findQzPrinters } from '../qzPrinting'
 import Icon from '../components/Icon.vue'
-
-const session = useSessionStore()
-const DOCTYPES = ['Purchase Receipt', 'Stock Entry', 'Purchase Invoice']
-const STORE_KEY = 'esafepos-labels'
-
-const rows = ref([])
-const query = ref('')
-const found = ref([])
-const searchInput = ref(null)
-const docType = ref(DOCTYPES[0])
-const docSearch = ref('')
-const docs = ref([])
-const since = ref('')
-const busy = ref(false)
-const printing = ref(false)
-const error = ref('')
-
-// The device remembers its label size and fields, a convenience only.
-function stored() {
-  try {
-    return JSON.parse(localStorage.getItem(STORE_KEY) || 'null') || {}
-  } catch {
-    return {}
-  }
+import NumberField from '../components/labels/LabelNumberField.vue'
+const session=useSessionStore(),DOCTYPES=['Purchase Receipt','Stock Entry','Purchase Invoice']
+const storageKey=computed(() => `esafepos-labels-v2:${session.user || 'user'}:${session.posProfile || ''}`)
+function read(key,fallback){try{return JSON.parse(localStorage.getItem(key)||'null') || fallback}catch{return fallback}}
+const error=ref(''),notice=ref('')
+function write(key,value){try{localStorage.setItem(key,JSON.stringify(value))}catch{notice.value=t('Device storage is full or unavailable.')}}
+const saved=migrateOptions(read(storageKey.value,read('esafepos-labels',{})))
+const stock=ref({...DEFAULT_STOCK,...saved.stock}),design=ref({...clone(DEFAULT_DESIGN),...saved.design,show:{...DEFAULT_DESIGN.show,...saved.design?.show}})
+if(!design.value.elements?.length)design.value.elements=templateElements(design.value.key)
+const printer=ref({...DEFAULT_PRINTER,...saved.printer}),presetKey=ref(stock.value.key || '58x40')
+const rows=ref([]),query=ref(''),found=ref([]),docs=ref([]),docType=ref(DOCTYPES[0]),docSearch=ref(''),since=ref(''),searchInput=ref(null)
+const busy=ref(false),printing=ref(false),tab=ref('stock'),previewMode=ref('label'),zoom=ref(130),sampleIndex=ref(0),pageIndex=ref(0),advanced=ref(false),selectedId=ref('name'),newType=ref('static'),bulkQty=ref(1)
+const localPresets=ref(saved.presets || []),sharedPresets=ref([]),canManage=ref(false),needsMigration=ref(false),receiptLogo=ref(session.settings.receipt_logo || ''),printerNames=ref(printer.value.name ? [printer.value.name] : []),saveKind=ref('Defaults'),saveTitle=ref('')
+const companyLogo=ref('')
+const tabs=[{key:'stock',label:'Stock'},{key:'design',label:'Design'},{key:'printer',label:'Printer'},{key:'saved',label:'Saved'}]
+const margins=computed(() => [{key:'left',label:'Left margin'},{key:'right',label:'Right margin'},...(stock.value.kind==='sheet' ? [{key:'top',label:'Top margin'},{key:'bottom',label:'Bottom margin'}] : [])])
+const fieldChoices=[{key:'shop',label:'Company name'},{key:'logo',label:'Company logo'},{key:'name',label:'Item name'},{key:'price',label:'Price'},{key:'barcode',label:'Barcode'},{key:'digits',label:'Barcode digits'},{key:'code',label:'Item code'},{key:'equivalent',label:'Other currencies'},{key:'uom',label:'Unit'},{key:'brand',label:'Brand'},{key:'batch',label:'Batch'},{key:'expiry',label:'Expiry'},{key:'serial',label:'Serial'},{key:'note',label:'Second name / note'}]
+const detailFields=[{key:'note',label:'Second name / note'},{key:'batch_no',label:'Batch number'},{key:'serial_no',label:'Serial number'},{key:'qr',label:'QR value / link'}]
+const elementDimensions=[{key:'x',label:'X position'},{key:'y',label:'Y position'},{key:'w',label:'Width'},{key:'h',label:'Height'}]
+const sample={item_code:'ITEM-1001',item_name:'Sample product',barcode:'ITEM-1001',qty:1,price_with_tax:450,currency:'LKR',uom:'Nos',brand:'Brand',note:'Second product name',batch_no:'BATCH-01',expiry_date:'2027-12-31'}
+function printable(list){return list.map((r) => ({...r,shop:session.company || 'Your company',logo:logoFor(design.value),price_text:money(r.price_with_tax,r.currency),equivalent_text:(r.equivalents || []).map((e) => money(e.amount,e.currency)).join(' · ')}))}
+const printRows=computed(() => printable(rows.value)),previewRows=computed(() => rows.value.length ? printRows.value : printable([sample]))
+const sampleRow=computed(() => previewRows.value[Math.min(sampleIndex.value,previewRows.value.length-1)] || printable([sample])[0])
+const sampleScene=computed(() => labelScene(sampleRow.value,stock.value,design.value,printer.value))
+const job=computed(() => layoutJob(printRows.value,stock.value)),previewJob=computed(() => rows.value.length ? job.value : layoutJob(printable([{...sample,qty:+stock.value.columns || 1}]),stock.value))
+const checks=computed(() => validateJob(previewRows.value,stock.value,design.value,printer.value))
+const canPrint=computed(() => job.value.total>0 && !printing.value && !busy.value && !checks.value.errors.length)
+const mediaSvg=computed(() => previewJob.value.errors.length ? '' : pageSvg(previewJob.value.pages[Math.min(pageIndex.value,previewJob.value.pages.length-1)] || [],previewJob.value.geometry,design.value,printer.value,true))
+const selectedElement=computed(() => design.value.elements.find((e) => e.id===selectedId.value)),visibleElements=computed(() => design.value.elements.filter((e) => visibleElement(e,design.value)))
+watch([stock,design,printer,localPresets],() => write(storageKey.value,{version:2,stock:stock.value,design:design.value,printer:printer.value,presets:localPresets.value}),{deep:true})
+watch(() => job.value.pages.length,() => pageIndex.value=Math.min(pageIndex.value,Math.max(0,job.value.pages.length-1)))
+watch(() => calibrationKey(stock.value,printer.value),(key) => Object.assign(printer.value,read(storageKey.value+':alignment',{})[key] || {offsetX:0,offsetY:0,scaleX:100,scaleY:100}))
+function saveCalibration(){const key=storageKey.value+':alignment',c=read(key,{});c[calibrationKey(stock.value,printer.value)]={offsetX:printer.value.offsetX,offsetY:printer.value.offsetY,scaleX:printer.value.scaleX,scaleY:printer.value.scaleY};write(key,c);notice.value=t('Alignment saved for this device and stock.')}
+function logoFor(d){return d.logoSource==='receipt' ? receiptLogo.value : d.logoSource==='company' ? companyLogo.value : d.logo}
+function changeUnit(row,unit){return run(async()=>{const data=await call('esafepos.api.labels.items',{pos_profile:session.posProfile,items:[{item_code:row.item_code,qty:row.qty,uom:unit}]});if(data.rows?.[0])Object.assign(row,data.rows[0])})}
+function chooseDesign(key){design.value=designFor(key,design.value);selectedId.value=design.value.elements[0]?.id}
+function ensureElement(key){if(['logo','shop'].includes(key) && design.value.key==='classic' && design.value.show[key]){const base=templateElements('classic');for(const el of base){if(el.id==='logo'){Object.assign(el,{x:0,y:0,w:22,h:14})}else if(el.id==='shop'){Object.assign(el,{x:25,y:0,w:75,h:12})}else{el.y=15+el.y*.85;el.h*=.85}}design.value.elements=base;return}if(design.value.show[key] && !design.value.elements.some((e) => e.id===key))design.value.elements.push({id:key,type:key==='logo' ? 'image' : key==='barcode' ? 'barcode' : 'text',binding:key,x:0,y:0,w:100,h:15,rotation:0,align:'center'})}
+function elementMm(key){const el=selectedElement.value,dim=key==='x'||key==='w' ? +stock.value.w : +stock.value.h;return el ? round(+el[key]/100*(dim-2*design.value.padding)) : 0}
+function setElementMm(key,value){const dim=key==='x'||key==='w' ? +stock.value.w : +stock.value.h;if(selectedElement.value && dim>2*design.value.padding)selectedElement.value[key]=round(value/(dim-2*design.value.padding)*100)}
+function addElement(){const id=`custom-${Date.now()}`;design.value.elements.push({id,type:newType.value,binding:'name',text:t('Your text'),x:10,y:10,w:60,h:20,rotation:0,align:'center'});selectedId.value=id;previewMode.value='label'}
+function duplicateElement(){if(selectedElement.value){const copy={...selectedElement.value,id:`custom-${Date.now()}`};design.value.elements.push(copy);selectedId.value=copy.id}}
+function deleteElement(){design.value.elements=design.value.elements.filter((e) => e.id!==selectedId.value);selectedId.value=design.value.elements[0]?.id}
+function hitStyle(el){const b=elementBox(el,stock.value,design.value);return {left:`${b.x/stock.value.w*100}%`,top:`${b.y/stock.value.h*100}%`,width:`${b.w/stock.value.w*100}%`,height:`${b.h/stock.value.h*100}%`}}
+const designHistory=ref([JSON.stringify(design.value)]),designFuture=ref([])
+let historyTimer,restoring=false
+watch(design,()=>{if(restoring)return;clearTimeout(historyTimer);historyTimer=setTimeout(()=>{const value=JSON.stringify(design.value);if(designHistory.value.at(-1)!==value){designHistory.value.push(value);designHistory.value=designHistory.value.slice(-25);designFuture.value=[]}},160)},{deep:true})
+async function undoDesign(){clearTimeout(historyTimer);const current=JSON.stringify(design.value);if(designHistory.value.at(-1)!==current)designHistory.value.push(current);if(designHistory.value.length<2)return;designFuture.value.push(designHistory.value.pop());restoring=true;design.value=JSON.parse(designHistory.value.at(-1));await nextTick();restoring=false}
+async function redoDesign(){if(!designFuture.value.length)return;restoring=true;const value=designFuture.value.pop();designHistory.value.push(value);design.value=JSON.parse(value);await nextTick();restoring=false}
+let drag=null
+function dragStart(event,el){selectedId.value=el.id;if(el.locked)return;event.preventDefault();event.currentTarget.setPointerCapture(event.pointerId);drag={el,x:event.clientX,y:event.clientY,startX:+el.x,startY:+el.y,rect:event.currentTarget.parentElement.getBoundingClientRect()}}
+function dragMove(event){if(!drag)return;const iw=(stock.value.w-2*design.value.padding)/stock.value.w,ih=(stock.value.h-2*design.value.padding)/stock.value.h,s=design.value.scale/100;drag.el.x=round(Math.max(0,Math.min(100-drag.el.w,drag.startX+(event.clientX-drag.x)/drag.rect.width/iw/s*100)));drag.el.y=round(Math.max(0,Math.min(100-drag.el.h,drag.startY+(event.clientY-drag.y)/drag.rect.height/ih/s*100)))}
+function setCopies(){if(Number.isInteger(bulkQty.value)&&bulkQty.value>=0&&bulkQty.value<=10000)rows.value.forEach((r) => r.qty=bulkQty.value)}
+function moveRow(index,delta){const [row]=rows.value.splice(index,1);rows.value.splice(index+delta,0,row)}
+async function run(fn){error.value='';busy.value=true;try{await fn()}catch(e){error.value=e.message || String(e)}finally{busy.value=false}}
+function merge(list){for(const row of list || []){const have=rows.value.find((r) => r.item_code===row.item_code && r.uom===row.uom && (r.batch_no||'')===(row.batch_no||'') && (r.serial_no||'')===(row.serial_no||''));if(have)have.qty=+have.qty+(+row.qty||1);else rows.value.push({...row,_id:crypto.randomUUID()})}}
+async function fetchItems(list){const data=await call('esafepos.api.labels.items',{pos_profile:session.posProfile,items:list});merge(data.rows);found.value=[];query.value='';searchInput.value?.focus()}
+function addItems(list){return run(() => fetchItems(list))}
+let searchTimer,docTimer,searchSequence=0
+function scheduleSearch(){clearTimeout(searchTimer);searchTimer=setTimeout(search,250)}
+async function search(){const q=query.value.trim(),seq=++searchSequence;if(q.length<2){found.value=[];return}try{const data=await call('esafepos.api.catalog.get_items',{pos_profile:session.posProfile,search:q,limit:12});if(seq===searchSequence)found.value=data.items || []}catch{if(seq===searchSequence)found.value=[]}}
+function scanOrPick(){clearTimeout(searchTimer);const q=query.value.trim();if(!q)return;return run(async()=>{const hit=await call('esafepos.api.catalog.resolve_scan',{pos_profile:session.posProfile,code:q});if(hit?.found&&hit.item)return fetchItems([{item_code:hit.item.item_code,qty:1}]);await search();if(found.value.length===1)return fetchItems([{item_code:found.value[0].item_code,qty:1}]);if(!found.value.length)error.value=t('No item matches {query}.',{query:q})})}
+function loadDocuments(){return run(async()=>{docs.value=await call('esafepos.api.labels.documents',{pos_profile:session.posProfile,doctype:docType.value,search:docSearch.value})})}
+function scheduleDocuments(){clearTimeout(docTimer);docTimer=setTimeout(loadDocuments,300)}
+function fromDocument(name){return run(async()=>{const data=await call('esafepos.api.labels.from_document',{pos_profile:session.posProfile,doctype:docType.value,name});merge(data.rows);notice.value=data.quantity_note || ''})}
+function priceChanges(){return run(async()=>{const data=await call('esafepos.api.labels.price_changes',{pos_profile:session.posProfile,since:since.value});merge(data.rows)})}
+function uploadLogo(event){return run(async()=>{const file=event.target.files[0];if(file){if(file.size>5000000)throw new Error(t('Choose a logo smaller than 5 MB.'));design.value.logo=await resizeLogo(file);design.value.logoSource='custom';design.value.show.logo=true;ensureElement('logo')}})}
+function discoverPrinters(){return run(async()=>{const data=await findQzPrinters({pos_profile:session.posProfile});printerNames.value=data.printers || []})}
+function configuration(kind='Defaults'){const clean={...clone(printer.value),name:'',offsetX:0,offsetY:0,scaleX:100,scaleY:100};return kind==='Stock' ? {stock:clone(stock.value)} : kind==='Design' ? {design:clone(design.value)} : kind==='Printer' ? {printer:clean} : {stock:clone(stock.value),design:clone(design.value),printer:clean}}
+function saveLocal(){localPresets.value.unshift({id:crypto.randomUUID(),title:saveTitle.value.trim(),kind:saveKind.value,configuration:configuration(saveKind.value)});localPresets.value=localPresets.value.slice(0,30);notice.value=t('Setup saved on this device.')}
+function applySaved(p){try{const c=typeof p.configuration==='string' ? JSON.parse(p.configuration) : p.configuration;if(c.stock)stock.value={...DEFAULT_STOCK,...clone(c.stock)};if(c.design)design.value={...clone(DEFAULT_DESIGN),...clone(c.design),show:{...DEFAULT_DESIGN.show,...c.design.show}};if(c.printer){const {name,offsetX,offsetY,scaleX,scaleY}=printer.value;printer.value={...printer.value,...c.printer,name,offsetX,offsetY,scaleX,scaleY}};notice.value=t('Saved setup applied.')}catch{error.value=t('This saved setup could not be read.')}}
+function saveShared(){return run(async()=>{await call('esafepos.api.labels.save_preset',{pos_profile:session.posProfile,title:saveTitle.value.trim(),kind:saveKind.value,configuration:configuration(saveKind.value)});await loadWorkspace();notice.value=t('Setup saved for this outlet.')})}
+async function loadWorkspace(){const data=await call('esafepos.api.labels.workspace',{pos_profile:session.posProfile});sharedPresets.value=data.presets || [];canManage.value=data.can_manage;needsMigration.value=data.needs_migration;receiptLogo.value=data.logo || '';companyLogo.value=data.company_logo || ''}
+async function output(action){
+  if(printing.value)return
+  error.value='';notice.value='';printing.value=true
+  let record=null,submitted=0
+  const outlet=session.posProfile,company=session.company
+  try{
+    const test=action==='test',selected=test ? [{...sampleRow.value,qty:+stock.value.columns}] : printRows.value.filter((r) => +r.qty>0)
+    if(!selected.length)throw new Error(t('Add items to print their labels.'))
+    const config={stock:clone(stock.value),design:clone(design.value),printer:clone(printer.value)}
+    if(test){config.stock.start=0;config.stock.skip=''}
+    const frozenLogo=logoFor(config.design)
+    let actualRows
+    if(test && !rows.value.length)actualRows=selected
+    else{record=await call('esafepos.api.labels.prepare_job',{pos_profile:outlet,rows:selected.map((r) => ({item_code:r.item_code,qty:r.qty,uom:r.uom,barcode:r.barcode,batch_no:r.batch_no,serial_no:r.serial_no,note:r.note,qr:r.qr})),configuration:config,request_id:crypto.randomUUID()});actualRows=printable(record.snapshot.rows).map((r) => ({...r,shop:company}))}
+    if(record && actualRows.some((r,i) => +r.price_with_tax!==+selected[i].price_with_tax || r.currency!==selected[i].currency || r.item_name!==selected[i].item_name)){
+      for(const fresh of actualRows){const row=rows.value.find((r) => r.item_code===fresh.item_code && r.uom===fresh.uom && (r.batch_no || '')===(fresh.batch_no || '') && (r.serial_no || '')===(fresh.serial_no || ''));if(row){const qty=row.qty;Object.assign(row,fresh,{qty})}}
+      await call('esafepos.api.labels.job_result',{pos_profile:outlet,name:record.name,status:'Canceled',detail:'Item data refreshed before dispatch.'})
+      notice.value=t('Item details or prices changed. Review the refreshed labels, then print again.');return
+    }
+    if(config.design.show.logo){const logo=await imageData(frozenLogo);actualRows=actualRows.map((r) => ({...r,logo}))}
+    const validated=validateJob(actualRows,config.stock,config.design,config.printer)
+    if(validated.errors.length)throw new Error(validated.errors.join('\n'))
+    if(validated.pages.length>500)throw new Error(t('Split this job into batches of at most 500 pages or roll rows.'))
+    const svgs=jobSvgs(validated,config.design,config.printer,test)
+    if(action==='pdf')download(await pdfDocument(svgs,validated.geometry,config.printer.dpi,config.printer.monochrome),'labels.pdf')
+    else if(['zpl','tspl'].includes(action))download(await nativeDocument(svgs,validated.geometry,config.printer,action),`labels.${action}`)
+    else if(config.printer.route==='qz'){
+      if(!record)throw new Error(t('Add an actual item before testing through QZ Tray.'))
+      await printQzLabels(svgs,validated.geometry,config.printer,{pos_profile:outlet,job:record.name},(n) => {submitted=n;notice.value=t('{n} rows sent to the printer.',{n})})
+    }else await browserPrint(svgs,validated.geometry)
+    const status=['pdf','zpl','tspl'].includes(action) ? 'Exported' : config.printer.route==='qz' ? 'Submitted' : 'Dialog opened'
+    if(record)await call('esafepos.api.labels.job_result',{pos_profile:outlet,name:record.name,status})
+    notice.value=status==='Exported' ? t('Label file downloaded.') : status==='Submitted' ? t('Labels sent to the print queue. Check the printer for completion.') : t('Print window opened. Check the printer before printing again.')
+  }catch(e){error.value=e.message || String(e);if(record){try{await call('esafepos.api.labels.job_result',{pos_profile:outlet,name:record.name,status:'Outcome unknown',detail:`${submitted} rows acknowledged. ${error.value}`})}catch{}}}
+  finally{printing.value=false}
 }
-const saved = stored()
-const opts = ref({
-  size: saved.size || PRESETS[0].key,
-  w: saved.w || 50,
-  h: saved.h || 30,
-  show: { shop: false, name: true, price: true, equivalent: false, barcode: true, code: false, ...(saved.show || {}) },
-})
-watch(opts, (v) => {
-  try {
-    localStorage.setItem(STORE_KEY, JSON.stringify(v))
-  } catch {
-    /* private window: the defaults next time */
-  }
-}, { deep: true })
-
-const hasEquivalents = computed(() => rows.value.some((r) => (r.equivalents || []).length))
-const fieldChoices = computed(() => [
-  { key: 'shop', label: 'Shop name' },
-  { key: 'name', label: 'Item name' },
-  { key: 'price', label: 'Price' },
-  ...(hasEquivalents.value ? [{ key: 'equivalent', label: 'Price in other currencies' }] : []),
-  { key: 'barcode', label: 'Barcode' },
-  { key: 'code', label: 'Item code' },
-])
-const size = computed(() => sizeOf(opts.value.size, { w: opts.value.w, h: opts.value.h }))
-const total = computed(() => rows.value.reduce((n, r) => n + Math.max(0, Math.floor(+r.qty || 0)), 0))
-
-// What a label says, as text: the price in the outlet's money, the other
-// currencies beside it.
-function printable(list) {
-  return list.map((r) => ({
-    ...r,
-    shop: session.company,
-    price_text: money(r.price_with_tax, r.currency),
-    equivalent_text: (r.equivalents || []).map((e) => money(e.amount, e.currency)).join(' · '),
-  }))
-}
-const previewHtml = computed(() => {
-  const sample = printable(rows.value.slice(0, 6).map((r) => ({ ...r, qty: 1 })))
-  return pageHtml(sample, opts.value.show, size.value, { title: t('Labels'), rtl: locale.value === 'ar' || locale.value === 'fa' })
-})
-
-function merge(list) {
-  for (const row of list || []) {
-    const have = rows.value.find((r) => r.item_code === row.item_code)
-    if (have) have.qty = (+have.qty || 0) + (+row.qty || 1)
-    else rows.value.push({ ...row })
-  }
-}
-
-async function run(fn) {
-  error.value = ''
-  busy.value = true
-  try {
-    await fn()
-  } catch (e) {
-    error.value = e.message || String(e)
-  } finally {
-    busy.value = false
-  }
-}
-
-function addItems(list) {
-  return run(async () => {
-    const data = await call('esafepos.api.labels.items', { pos_profile: session.posProfile, items: list })
-    merge(data.rows)
-    found.value = []
-    query.value = ''
-    searchInput.value?.focus()
-  })
-}
-
-let searchTimer = null
-function debouncedSearch() {
-  clearTimeout(searchTimer)
-  searchTimer = setTimeout(search, 300)
-}
-async function search() {
-  const q = query.value.trim()
-  if (q.length < 2) {
-    found.value = []
-    return
-  }
-  try {
-    const data = await call('esafepos.api.catalog.get_items', { pos_profile: session.posProfile, search: q, limit: 12 })
-    found.value = (data.items || []).map((i) => ({ item_code: i.item_code, item_name: i.item_name }))
-  } catch {
-    found.value = []
-  }
-}
-
-// Enter: a scanned barcode adds its item at once, a typed word picks the only match.
-async function scanOrPick() {
-  const q = query.value.trim()
-  if (!q) return
-  clearTimeout(searchTimer)
-  await run(async () => {
-    const hit = await call('esafepos.api.catalog.resolve_scan', { pos_profile: session.posProfile, code: q })
-    if (hit && hit.found && hit.item) return addItems([{ item_code: hit.item.item_code, qty: 1 }])
-    await search()
-    if (found.value.length === 1) return addItems([{ item_code: found.value[0].item_code, qty: 1 }])
-    if (!found.value.length) error.value = t('No item matches {query}.', { query: q })
-  })
-}
-
-let docTimer = null
-function debouncedDocuments() {
-  clearTimeout(docTimer)
-  docTimer = setTimeout(loadDocuments, 300)
-}
-function loadDocuments() {
-  return run(async () => {
-    docs.value = await call('esafepos.api.labels.documents', { pos_profile: session.posProfile, doctype: docType.value, search: docSearch.value })
-  })
-}
-function fromDocument(name) {
-  return run(async () => {
-    const data = await call('esafepos.api.labels.from_document', { pos_profile: session.posProfile, doctype: docType.value, name })
-    merge(data.rows)
-    if (!data.rows.length) error.value = t('{doc} has no items to label.', { doc: name })
-  })
-}
-function priceChanges() {
-  return run(async () => {
-    const data = await call('esafepos.api.labels.price_changes', { pos_profile: session.posProfile, since: since.value })
-    merge(data.rows)
-    if (!data.rows.length) error.value = t('No price changed since that date.')
-  })
-}
-
-function remove(row) {
-  rows.value = rows.value.filter((r) => r !== row)
-}
-
-// The print: a page of its own in a hidden frame, sized to the label, so the
-// browser's print window sends exactly that to the printer.
-async function print() {
-  if (!total.value) return
-  printing.value = true
-  try {
-    const frame = document.createElement('iframe')
-    frame.setAttribute('aria-hidden', 'true')
-    frame.style.cssText = 'position:fixed;width:0;height:0;border:0;right:0;bottom:0'
-    frame.srcdoc = pageHtml(printable(rows.value), opts.value.show, size.value, { title: t('Labels'), rtl: locale.value === 'ar' || locale.value === 'fa' })
-    document.body.appendChild(frame)
-    await new Promise((resolve) => frame.addEventListener('load', resolve, { once: true }))
-    frame.contentWindow.focus()
-    frame.contentWindow.print()
-    setTimeout(() => frame.remove(), 60000)
-  } finally {
-    printing.value = false
-  }
-}
-
-onMounted(() => {
-  if (session.permissions.print_labels) loadDocuments()
-})
+watch(storageKey,(key) => {const c=migrateOptions(read(key,{}));stock.value={...DEFAULT_STOCK,...c.stock};design.value={...clone(DEFAULT_DESIGN),...c.design,show:{...DEFAULT_DESIGN.show,...c.design?.show}};if(!design.value.elements?.length)design.value.elements=templateElements(design.value.key);printer.value={...DEFAULT_PRINTER,...c.printer};localPresets.value=c.presets || [];rows.value=[];error.value='';notice.value='';designHistory.value=[JSON.stringify(design.value)];designFuture.value=[];loadWorkspace().catch((e) => error.value=e.message)})
+onMounted(()=>{if(session.permissions.print_labels)run(async()=>{await loadWorkspace();docs.value=await call('esafepos.api.labels.documents',{pos_profile:session.posProfile,doctype:docType.value})})})
+onBeforeUnmount(()=>{clearTimeout(searchTimer);clearTimeout(docTimer);clearTimeout(historyTimer)})
 </script>
 
 <style scoped>
-.labels { flex: 1; min-width: 0; display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(280px, 1fr); gap: 14px; padding: 14px; overflow: auto; align-items: start }
-.pick, .setup { padding: 0; overflow: hidden }
-.add-row { padding: 12px 14px 0 }
-.search-box { display: flex; align-items: center; gap: 6px; border: 1px solid var(--border); border-radius: 8px; padding: 0 9px; background: var(--card-bg) }
-.search-box :deep(svg) { width: 16px; height: 16px; color: var(--text-muted) }
-.search-box input { flex: 1; border: 0; padding: 9px 0; font: inherit; background: transparent; color: var(--text); outline: none; min-width: 0 }
-.found, .doc-list { margin: 6px 14px 0; border: 1px solid var(--border); border-radius: 8px; max-height: 220px; overflow: auto }
-.found-row { width: 100%; display: flex; justify-content: space-between; gap: 10px; padding: 8px 10px; background: transparent; border: 0; border-bottom: 1px solid var(--border); text-align: start; font: inherit; color: var(--text); cursor: pointer }
-.found-row:last-child { border-bottom: 0 }
-.found-row:hover { background: var(--surface-2) }
-.sources { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px 14px }
-.source { display: flex; flex-direction: column; gap: 6px; min-width: 0 }
-.source .doc-list { margin: 0 }
-.src-title { font-size: 12.5px; font-weight: 700; color: var(--text-muted) }
-.src-row { display: flex; gap: 6px; min-width: 0 }
-.grow { flex: 1; min-width: 0 }
-.err { padding: 0 14px 8px }
-.neg { color: var(--danger, #d33) }
-.warn { color: var(--amber, #b26a00) }
-.empty { padding: 26px; text-align: center }
-.wrap { overflow-x: auto; border-top: 1px solid var(--border) }
-.rt { width: 100%; border-collapse: collapse; font-size: 13.5px }
-.rt th, .rt td { padding: 8px 12px; border-bottom: 1px solid var(--border); text-align: start; vertical-align: top }
-.rt th { font-size: 12px; color: var(--text-muted); font-weight: 600 }
-.rt .num { text-align: end; white-space: nowrap }
-.qty { width: 64px; padding: 5px 6px; border: 1px solid var(--border); border-radius: 6px; background: var(--card-bg); color: var(--text); font: inherit; text-align: end }
-.setup-body { display: flex; flex-direction: column; gap: 10px; padding: 14px }
-.field { display: flex; flex-direction: column; gap: 5px; font-size: 13px }
-.field > span { font-weight: 600; color: var(--text-muted); font-size: 12.5px }
-.custom { display: grid; grid-template-columns: 1fr 1fr; gap: 8px }
-.check { display: flex; align-items: center; gap: 7px; font-weight: 500 }
-.preview-head { padding: 0 14px 6px }
-.preview { width: 100%; height: 360px; border: 0; border-top: 1px solid var(--border); background: #f2f4f7 }
-.small { font-size: 12px }
-@media (max-width: 900px) {
-  .labels { grid-template-columns: 1fr }
-  .sources { grid-template-columns: 1fr }
-}
-@media (max-width: 520px) {
-  .labels { padding: 8px; gap: 10px }
-  .rt th, .rt td { padding: 7px 5px }
-  .rt td:first-child { overflow-wrap: anywhere }
-  .qty { width: 46px; padding: 5px 4px }
-  .rt .btn-ghost { padding: 4px }
-}
+.labels{flex:1;min-width:0;overflow:auto;padding:20px;display:grid;grid-template-columns:300px minmax(0,1fr);gap:18px;align-content:start;align-items:start}.heading{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:16px}h1,h2,h3,p{margin:0}h1{font-size:23px;letter-spacing:-.5px}h2{font-size:15px}h3{font-size:13px}.heading p{color:var(--text-muted);font-size:13px;margin-top:5px}.actions{display:flex;align-items:center;gap:10px}.actions>span{font-size:12px;color:var(--text-muted);white-space:nowrap}.wrap{flex-wrap:wrap}.card{padding:0;overflow:hidden;border:1px solid var(--border);box-shadow:var(--shadow)}.section-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.queue>.section-head{padding:18px 14px}.queue-pad{padding:0 14px}.text-btn{font-size:12px;color:var(--brand-dark);padding:4px}.search{display:flex;align-items:center;gap:7px;border:1px solid var(--border);border-radius:8px;padding:9px;background:var(--input-bg)}.search svg{width:16px;height:16px;flex-shrink:0;color:var(--text-muted)}.search input{width:100%;min-width:0;border:0;outline:none;background:transparent;color:var(--text);font:inherit;font-size:12px}.found{max-height:170px;overflow:auto}.found button{display:flex;flex-direction:column;align-items:flex-start;text-align:start;padding:8px 3px;width:100%;border-bottom:1px solid var(--border);font-size:12px;gap:4px}.found small{color:var(--text-muted)}details{font-size:12px;color:var(--text-muted)}.queue-pad>details{margin:16px 0}summary{cursor:pointer;line-height:1.5}.stack{display:flex;flex-direction:column;gap:12px}.stack:not(.editor){margin-top:12px}.empty{padding:35px 24px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:12px}.empty>svg{width:32px;height:32px;color:var(--brand)}.empty p{font-size:12px;line-height:1.65;color:var(--text-muted)}.bulk{display:flex;justify-content:space-between;align-items:center;font-size:12px;margin:10px 0}.bulk input{width:60px}.queue-list{list-style:none;padding:0;margin:0}.queue-list>li{border-top:1px solid var(--border);padding:14px}.queue-row{display:flex;align-items:flex-start;gap:7px}.item{display:flex;flex-direction:column;gap:5px;flex:1;min-width:0}.item>bdi{font-size:13px;font-weight:600;overflow-wrap:anywhere}.item small{font-size:10px;color:var(--text-muted);overflow-wrap:anywhere}.item strong{font-size:12px}.copies{display:flex;flex-direction:column;gap:4px;font-size:10px;color:var(--text-muted)}.copies input{width:53px}.copies input,.bulk input{padding:6px;border:1px solid var(--border);border-radius:6px;font:inherit;font-size:13px;background:var(--input-bg);color:var(--text)}.remove{padding:2px 5px;color:var(--text-muted);font-size:18px}.queue-list details{font-size:11px;margin-top:12px}.work{display:grid;grid-template-columns:minmax(0,1fr) 350px;gap:18px;align-items:start;min-width:0}.preview-panel{position:sticky;top:0;min-width:0}.preview-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px;border-bottom:1px solid var(--border)}.segmented{display:flex;background:var(--page-bg);padding:3px;border-radius:7px}.segmented button{padding:6px 11px;font-size:12px;border-radius:5px;color:var(--text-muted)}.segmented .active{background:var(--card-bg);color:var(--text);box-shadow:var(--shadow)}.zoom{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-muted)}.zoom input{width:50px;accent-color:var(--brand)}.zoom span{min-width:32px}.preview-surface{background:var(--page-bg);min-height:330px;overflow:auto;padding:35px 24px 24px;display:flex;flex-direction:column;align-items:safe center;gap:20px;background-image:radial-gradient(var(--border) .7px,transparent .7px);background-size:12px 12px}.caption{font-size:11px;color:var(--text-muted);white-space:nowrap}.label-canvas{position:relative;flex-shrink:0;max-width:none;box-shadow:0 4px 18px #00000014;background:white}.art :deep(svg){width:100%;height:auto;display:block}.media-art{flex-shrink:0;box-shadow:0 4px 18px #00000014}.sample-note{text-align:center;max-width:260px}.preview-footer{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:12px 14px;border-top:1px solid var(--border);font-size:11px;color:var(--text-muted)}.preview-footer button{padding:3px 8px;border:1px solid var(--border);border-radius:4px}.output-actions{padding:14px;display:flex;flex-wrap:wrap;align-items:center;gap:8px}.output-actions .btn{font-size:11px;padding:8px 10px}.output-actions .field{flex:1;min-width:110px}.message{padding:12px 14px;font-size:12px;line-height:1.6;border-top:1px solid var(--border);white-space:pre-line}.message p+p{margin-top:5px}.error{color:var(--red)}.warning{color:var(--amber)}.notice{color:var(--brand-dark)}.tabs{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--border)}.tabs button{font-size:12px;padding:15px 5px;color:var(--text-muted);border-bottom:2px solid transparent}.tabs .active{color:var(--brand-dark);border-bottom-color:var(--brand);font-weight:600}.settings-body{padding:17px;display:flex;flex-direction:column;gap:15px}.small-select{padding:4px 7px;background:var(--input-bg);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:11px}.field{display:flex;flex-direction:column;gap:5px;min-width:0;font-size:12px}.field>span{color:var(--text-muted)}.cf-in{width:100%;min-width:0;font-size:12px;padding:8px 9px}.number-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.check{display:flex;align-items:center;gap:7px;font-size:11px;line-height:1.5}.check input{accent-color:var(--brand);flex-shrink:0}.hint{font-size:11px;color:var(--text-muted);line-height:1.65}.column-choices{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.column-choices button{display:flex;flex-direction:column;align-items:center;gap:5px;padding:10px 5px;border:1px solid var(--border);border-radius:7px;font-size:12px}.column-choices small{font-size:10px;color:var(--text-muted)}.column-choices .active{border-color:var(--brand);color:var(--brand-dark);background:var(--surface-2)}.field-checks{display:grid;grid-template-columns:1fr 1fr;gap:8px}.design-gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;max-height:285px;overflow:auto;padding:1px}.design-gallery button{display:flex;flex-direction:column;gap:6px;align-items:center;border:1px solid var(--border);border-radius:7px;padding:8px 5px;color:var(--text-muted);font-size:10px}.design-gallery button.active{border-color:var(--brand);color:var(--brand-dark);background:var(--surface-2)}.design-gallery svg{width:100%;max-width:80px}.editor{border-top:1px solid var(--border);padding-top:15px}.element-hit{position:absolute;border:1px solid transparent;border-radius:0;padding:0;touch-action:none;background:transparent;cursor:move}.element-hit:hover,.element-hit.selected{border:1px dashed var(--brand)}.element-hit span{display:none;position:absolute;top:-15px;inset-inline-start:0;font-size:9px;background:var(--brand-dark);color:white;padding:2px}.element-hit.selected span{display:block}.saved-list>div{display:flex;align-items:center;border-bottom:1px solid var(--border);gap:6px}.saved-list>button,.saved-list>div>button:first-child{display:flex;flex-direction:column;gap:5px;flex:1;text-align:start;padding:10px 0;font-size:12px}.saved-list small{color:var(--text-muted);font-size:10px}button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--brand);outline-offset:2px}button:disabled{opacity:.45;cursor:default}
+@media(max-width:1380px){.labels{grid-template-columns:280px minmax(0,1fr);padding:16px;gap:14px}.work{grid-template-columns:minmax(0,1fr);gap:14px}.preview-panel{position:static}.design-gallery{grid-template-columns:repeat(5,1fr);max-height:230px}.preview-surface{min-height:300px}}
+@media(max-width:850px){.labels{grid-template-columns:1fr}.heading{align-items:flex-start}.queue-list{max-height:340px;overflow:auto}.empty{padding:24px}.work{grid-column:1}.empty p{max-width:340px}.preview-surface{min-height:280px}.heading p{max-width:240px}}
+@media(max-width:520px){.labels{padding:10px;gap:12px}.heading{gap:10px}h1{font-size:20px}.heading p{font-size:11px}.heading>.actions{gap:7px;flex-direction:column;align-items:flex-end}.heading .btn{font-size:11px;padding:9px 11px}.preview-toolbar{padding:10px}.design-gallery{grid-template-columns:repeat(3,1fr)}.preview-surface{padding:24px 12px}.settings-body{padding:14px}.zoom input{width:45px}.segmented button{padding:6px 9px}}
 </style>

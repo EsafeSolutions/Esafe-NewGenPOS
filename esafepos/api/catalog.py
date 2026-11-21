@@ -404,6 +404,10 @@ def resolve_scan(pos_profile: str, code: str, customer_group: str | None = None,
         if profile.warehouse
         else 0
     )
+    _set_quantity_rules([item])
+    from esafepos.item_units import add_options
+
+    add_options([item], profile.selling_price_list)
     return {"found": True, "item": item, "serial": serial, "qty": scanned_qty}
 
 

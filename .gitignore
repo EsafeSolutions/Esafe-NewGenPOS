@@ -6,6 +6,7 @@ tags
 node_modules
 __pycache__
 frontend/dist
+artifacts/labels/
 .vscode
 
 # Internal working documents, never committed to the public repository.

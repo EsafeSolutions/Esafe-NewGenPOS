@@ -91,6 +91,9 @@
             <span class="bundle-price">{{ money(bundle.bundle_price) }}</span>
             <button class="btn btn-primary" @click="addBundleToCart(bundle)">{{ t('Add') }}</button>
           </div>
+          <button v-if="bundle.items.length === 1" class="btn btn-outline bundle-loose" @click="sellBundleLoose(bundle)">
+            {{ t('Sell loose') }}
+          </button>
         </div>
         <div v-if="!session.bundles.length" class="muted">{{ t('No bundles configured') }}</div>
       </div>
@@ -169,7 +172,7 @@ import { customerDisplayUrl, displayContactRequest, displayReceipt, requestDispl
 import { money } from '../format'
 import { useSessionStore } from '../stores/session'
 import { scaleBarcodeOptions, useCatalogStore } from '../stores/catalog'
-import { searchCatalog } from '../offline'
+import { getCatalogItems, searchCatalog } from '../offline'
 import { useCartStore } from '../stores/cart'
 import ProductGrid from '../components/ProductGrid.vue'
 import CartPanel from '../components/CartPanel.vue'
@@ -395,6 +398,25 @@ async function addBundleToCart(bundle) {
     session.notify(t('{title} added to cart', { title: bundle.title }))
   } catch (e) {
     session.notify(e.message, true)
+  }
+}
+
+async function sellBundleLoose(bundle) {
+  try {
+    const code = bundle.items[0].item_code
+    let item = catalog.items.find((row) => row.item_code === code)
+      || (await getCatalogItems([code]))[0]
+    if (!session.offline) {
+      const result = await call('esafepos.api.catalog.resolve_scan', {
+        pos_profile: session.posProfile, code,
+        customer_group: cart.customer?.customer_group || null, app_type: cart.appType,
+      })
+      item = result.found ? result.item : null
+    }
+    if (!item) throw new Error(t('Item details are unavailable. Refresh the catalog online.'))
+    inspectItem(item)
+  } catch (error) {
+    session.notify(error.message, true)
   }
 }
 
@@ -715,4 +737,5 @@ function onDiscountApproved(result) {
   align-items: center;
 }
 .bundle-price { font-weight: 800; font-size: 16px; color: var(--brand-dark); }
+.bundle-loose { margin-top: 10px; }
 </style>

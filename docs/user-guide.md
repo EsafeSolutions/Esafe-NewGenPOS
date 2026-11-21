@@ -132,6 +132,8 @@ Turn **Weight-embedded scale barcodes** on or off in **Settings → General → 
 
 To sell the same item loose and in packs, keep one ERPNext Item with **Kg** as its stock unit. Add an alternate **Pack** unit and set its conversion factor in ERPNext. For a 500 g pack, use `0.5`. In POS, open **Items**, find the product by name, item code or barcode, and set separate prices for Kg and Pack on the outlet's selling price list. Tap the product on Sell, choose the selling unit, and enter the quantity. Selling 1.25 kg and two 500 g packs uses 2.25 kg from the same stock. Quick Add and weight barcodes use the stock unit.
 
+For feed purchased in **25 kg and 50 kg bags**, use two distinct alternate UOMs, such as **25 kg Pack** (conversion `25`) and **50 kg Pack** (conversion `50`), on the same Kg-stock item. Mark these pack UOMs as whole-number units and give each a selling price in **Items**. Purchase Receipts can use the matching pack UOM in ERPNext; POS **Selling unit** offers Kg and the priced pack units, with the stock conversion shown beside each pack. For example, two 50 kg packs and 1.25 kg loose use **101.25 kg**. Existing single-product bundles can remain pack shortcuts: **Add** sells the configured pack, while **Sell loose** opens the underlying item's quantity/unit editor at its normal loose price. Bundle pricing does not carry over to a loose sale.
+
 In **Items**, combine the category and brand filters with item name, code or barcode search. Users with ERPNext Item write access can edit the display name and upload a JPEG, PNG or WebP product photo up to 5 MB. **Save changes** attaches the image to the ERPNext Item and refreshes the POS catalog.
 
 **Edit item selling prices** is available to System Managers and EsafePOS Managers by default. To delegate access, add a role or person under **Settings → General → Approvals and permissions**. The user also needs ERPNext read access to Item, Price List and Item Price, plus Item Price write permission to change an existing price or create permission to add one. Use **Selling price list** to choose which enabled selling list to edit. A shared price list carries the same edit to every outlet using it. Alternate-unit checkout uses an online sale on the outlet's regular price list in its own currency. Holds use the stock unit. Return alternate-unit sales from online Sales History.
@@ -148,7 +150,7 @@ To connect an already posted walk-in sale to a customer, turn on **Settings → 
 
 Linked sales and their refunds appear in the linked customer's POS transactions and purchase totals. ERPNext keeps the sale on its original billing account for accounting, credit and loyalty. For future purchases that should be billed directly to the new account, select that customer before tapping **Pay**.
 
-Use **Item view** to switch between **List**, **Images**, and **Images and full descriptions**. The till remembers your choice on that browser. Scroll or select **Load more items** to continue through the catalog. Each item has an **Add** button for quick entry. Tap the item itself to enlarge its image, read its description, and edit the quantity, price or discount. Quantity uses the item's configured ERPNext stock unit. Price and discount edits follow the till's existing permissions and approval limits.
+Use **Item view** to switch between **List**, **Images**, and **Images and full descriptions**. The till remembers your choice on that browser. Scroll or select **Load more items** to continue through the catalog. Each item has an **Add** button for quick entry. Tap the item itself to enlarge its image, read its description, and edit the quantity, price or discount. Quantity uses the selected stock or pack selling unit. Price and discount edits follow the till's existing permissions and approval limits.
 
 Select **Display** to open the [customer screen](customer-display.md). It follows the basket and payment, highlights savings, and shows the completed receipt and rewards.
 
@@ -167,8 +169,10 @@ Lines show `item code · ▮ barcode` under the name.
 - **💡 Suggestions** appear *under the specific line* they relate to
   ("Add 1 more, get at 50% off"). Click one to find the suggested product.
   Basket-level suggestions (Spend & Save) show above the totals.
-- **🎁 Bundle lines** are locked (no qty edit / manual discount); expanding
-  offers *Remove bundle*, which removes the whole bundle instance.
+- **🎁 Bundle lines:** expand the first component to adjust **Packs / Bundles**
+  and apply a **Bundle discount** (%) or **Discount per bundle** (Direct).
+  Quantity changes multiply every component together; zero or *Remove bundle*
+  removes the group. Repeated **Add** taps increase the existing bundle quantity.
 - **Serialized lines** show serial chips; qty always equals scanned serials.
 
 ### Customer
@@ -248,9 +252,15 @@ a label printer (a roll) or on an A4 sheet of labels.
   label can show the price in them as well, at today's rate.
 - **The barcode** is the item's own (an EAN-13 or UPC-A first, from the item's Barcodes table); an item without
   one prints its item code as a Code 128 barcode, which the till scans too.
-- **Label size:** rolls of 50 x 25, 40 x 30, 58 x 40 or 38 x 25 mm, A4 sheets of 3 x 8 or 4 x 10, or a custom size.
-  Pick what prints (shop name, item name, price, other currencies, barcode, item code). The device remembers
-  your choice. In the print window choose the label printer, margins none, scale 100%.
+- **Stock:** choose an editable metric/inch preset or enter the measured width/height. Exact inch stock remains distinct from rounded metric stock. Select Single, Double, Triple or custom columns, then enter horizontal and feed gaps separately. Liner width can be calculated or measured explicitly. Sheets support A4/A5/Letter/Legal/custom paper, rows, margins and gaps. **Empty slots before first label** and **Skip used slots** support partially used stock; slot numbers start at 1.
+- **Design:** choose one of 15 layouts, including left/right/rotated barcodes, large price, company logo, shelf, batch/expiry, second name, QR/dual code and split tags. Choose the fields to include. Logos can come from the outlet receipt, Company master or a PNG/JPEG/WebP upload. **Advanced** exposes element positions/dimensions in mm, rotation, alignment, bold, position locking, duplicate/delete and undo/redo. Drag elements or use numeric inputs. Name, price and other text have independent font sizes. Screen zoom does not change printed size.
+- **Preview:** Label shows the selected product; Roll/Sheet shows actual copies, gaps and final blank slots. Page arrows inspect the whole job. Test rows include boundaries and measurement ticks. Shape choices guide placement on existing stock; they do not cut stock. If text/barcodes cannot fit, printing is blocked with a reason. Standard retail barcode height can be required in Barcode settings.
+- **Unit and traceability:** an item's **Label details** provides configured selling-unit/barcode selection, second name/note, batch, serial and QR value. Preparation validates batch/serial ownership and reads expiry from the Batch record. Document sources preserve traceability rows. Fractional stock quantities round up; review copies, especially for loose goods.
+- **Printer:** browser printing remains available. QZ Tray discovers/selects a separate label printer without changing the receipt printer. Set actual resolution and usable width, match driver stock/sensor settings, then use **Print test row** and horizontal/vertical offsets. **Save alignment** applies only to this device/stock/printer/route combination. Normally select **Printer advances the gap**; include it in page length only when the tested driver requires that. In the print window choose matching paper, no margins and 100% scale.
+- **Files:** Download PDF creates exact-size raster pages at the chosen resolution. Native thermal files exports ZPL/TSPL bitmap commands for compatible die-cut/continuous-roll printers with printer-controlled gap advancement. These files require matching language/device setup and are not sent automatically. Sheet output uses browser/PDF/driver routes.
+- **Saved:** save Stock, Design, Printer or complete setups locally. Managers can save reusable presets for the current outlet after migration. Shared printer recommendations exclude local printer names and measured offsets. Select a saved setup to apply it.
+- **Preparation/results:** fresh prices and names are checked before dispatch; changes require reviewing the refreshed preview and printing again. A job supports up to 500 item rows/10,000 copies and at most 500 output pages/roll rows per dispatch; split larger jobs. A browser dialog or accepted QZ submission does not prove physical completion. Check the printer after uncertain output before deliberately printing again; jobs are not replayed automatically.
+- **Upgrade:** run `bench --site <site> migrate` to create **EsafePOS Label Preset** and **EsafePOS Label Print Job**. Shared presets are outlet-scoped and manager-editable; job APIs check owner/outlet access. First use still needs measured alignment and a real barcode scan. GS1-specific formats, additional encoders, automatic offer labels and automatic raw command dispatch remain later integrations.
 - **Settings, General, Features, Barcode and price labels** switches the screen off; **Approvals and access,
   Permissions, Print labels** limits who may print (open to everyone until you name someone).
 
@@ -788,6 +798,10 @@ On the sell screen the **🎁 Bundles** chip shows bundle cards; **Add** puts
 every component in the cart as **separate lines** (each individually
 returnable, the point of the design), highlighted with a 🎁 chip and priced
 together. Removing any line removes the whole instance.
+
+Expand the first component to change the number of complete **Packs** (single-product bundles) or **Bundles** (multi-product sets). Quantities must be whole numbers; all component quantities and allocated prices scale together. Apply a percentage discount to the bundle's selling price, or choose **Direct** and enter a discount **per bundle** in the sale currency. For two LKR 8,750 packs, a direct LKR 250 discount per pack gives LKR 17,000 total. Bundle discounts follow the same cashier permissions and manager-approval limits as item discounts. Automatic promotions and order discounts still exclude bundle lines. Parked and offline bundle sales retain the count and discount; alternate selling UOMs continue to require an online connection.
+
+Single-product bundle cards also offer **Sell loose**. Enter a decimal Kg quantity in the item editor, or choose a configured pack UOM. A loose line and a pack line can appear together and use the same underlying stock. A 50 kg bundle pack consumes 50 Kg; two packs consume 100 Kg. Multi-product bundle cards have no loose shortcut because their components are different products.
 
 **Price split:** by default the bundle saving is split across the lines
 **proportionally to their regular prices** (cent-correct, so line totals sum

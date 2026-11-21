@@ -132,7 +132,7 @@ try {
     assert.equal(geometry.mode, 'CSS1Compat', 'Table fonts must inherit in standards mode')
     assert.equal(geometry.barcode, 'ACC-PSINV-2026-00004')
     assert.ok(geometry.barcodeWidth > 0 && geometry.barcodeWidth < geometry.width)
-    assert.equal(geometry.footer.split('\n').filter((line) => line === 'ESAFE ERP+POS - pos.esafe.lk').length, 1)
+    assert.equal(geometry.footer.split('\n').filter((line) => line === 'ESAFE ERP+POS - pos.esafe.lk | +94 7777 567 52').length, 1)
     if (config.customFooter) assert.match(geometry.footer, /Visit again!/)
     if (config.template === 'Table') assert.deepEqual(geometry.grid, ['solid', 'rgb(181, 181, 181)'])
     assert.ok(!geometry.counts?.includes('999999'), 'Fractional quantity sums must not print floating-point noise')

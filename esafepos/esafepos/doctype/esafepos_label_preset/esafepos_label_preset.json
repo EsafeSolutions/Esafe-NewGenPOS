@@ -1,0 +1,70 @@
+{
+  "doctype": "DocType",
+  "name": "EsafePOS Label Preset",
+  "module": "EsafePOS",
+  "autoname": "hash",
+  "engine": "InnoDB",
+  "field_order": [
+    "title",
+    "kind",
+    "company",
+    "pos_profile",
+    "configuration"
+  ],
+  "fields": [
+    {
+      "fieldname": "title",
+      "fieldtype": "Data",
+      "label": "Title",
+      "reqd": 1
+    },
+    {
+      "fieldname": "kind",
+      "fieldtype": "Select",
+      "label": "Kind",
+      "options": "Stock\nDesign\nPrinter\nDefaults",
+      "reqd": 1
+    },
+    {
+      "fieldname": "company",
+      "fieldtype": "Link",
+      "label": "Company",
+      "options": "Company",
+      "reqd": 1
+    },
+    {
+      "fieldname": "pos_profile",
+      "fieldtype": "Link",
+      "label": "POS Profile",
+      "options": "POS Profile",
+      "reqd": 1
+    },
+    {
+      "fieldname": "configuration",
+      "fieldtype": "Long Text",
+      "label": "Configuration (JSON)",
+      "reqd": 1
+    }
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "report": 1,
+      "create": 1,
+      "write": 1,
+      "delete": 1
+    },
+    {
+      "role": "EsafePOS Manager",
+      "read": 1,
+      "report": 1,
+      "create": 1,
+      "write": 1,
+      "delete": 1
+    }
+  ],
+  "track_changes": 1,
+  "sort_field": "modified",
+  "sort_order": "DESC"
+}

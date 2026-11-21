@@ -14,7 +14,7 @@
         <div class="item-edit">
           <label v-if="units.length > 1">{{ t('Selling unit') }}
             <select v-model="selectedUnit" @change="resetUnit">
-              <option v-for="unit in units" :key="unit.uom" :value="unit.uom">{{ unit.uom }}</option>
+              <option v-for="unit in units" :key="unit.uom" :value="unit.uom">{{ unit.uom }}{{ unit.factor !== 1 ? ` (${unit.factor} ${stockUnit})` : '' }}</option>
             </select>
           </label>
           <label>{{ t('Quantity') }}<span v-if="selectedUnit"> ({{ selectedUnit }})</span>
@@ -33,6 +33,7 @@
             <input v-model.number="discount" type="number" min="0" :max="method === 'percent' ? 100 : undefined" step="any" required :disabled="!canDiscount" />
           </label>
         </div>
+        <p v-if="option.factor !== 1" class="muted">{{ t('Stock used: {qty} {unit}', { qty: Math.round(qty * option.factor * 10000) / 10000, unit: stockUnit }) }}</p>
         <p v-if="item.has_serial_no" class="muted">{{ t('Quantity follows the scanned serial numbers.') }}</p>
       </div>
       <footer class="modal-footer">

@@ -291,7 +291,7 @@ def _build_sale_invoice(
     erp_pricing_rules = feature_enabled("enable_erp_pricing_rules")
     bundle_discounts, bundle_applied = _apply_bundles(payload["items"], lines, profile.name)
 
-    # Promotions never touch bundle lines, bundle pricing is final.
+    # Promotions exclude bundle lines; manual bundle discounts follow below.
     non_bundle_idx = [
         i for i, row in enumerate(payload["items"]) if not row.get("bundle_key")
     ]
@@ -1472,9 +1472,9 @@ def _check_discount_passcode(payload):
 
 def _apply_bundles(payload_items, lines, pos_profile=None):
     """Validate and price bundle instances. Items arrive as separate lines
-    tagged with bundle_key ('BNDL-0001#2'); each instance must contain
-    exactly the bundle's components, and the saving (natural total minus
-    bundle price) is split across the lines cent-correct, so every line
+    tagged with bundle_key; each group must contain an integer number of
+    complete bundles. The saving (natural total minus quantity * bundle
+    price) is split across the lines cent-correct, so every line
     stays individually returnable at its discounted rate."""
     groups = {}
     for i, row in enumerate(payload_items):
@@ -1506,13 +1506,23 @@ def _apply_bundles(payload_items, lines, pos_profile=None):
         if not scope.applies_to(bundle.get("company"), [r.pos_profile for r in (bundle.pos_profiles or [])], pos_profile):
             frappe.throw(_("Bundle {0} is not offered at {1}").format(bundle.title, pos_profile))
 
-        expected = {row.item_code: flt(row.qty) for row in bundle.items}
+        first = payload_items[idxs[0]]
+        quantity = flt(first.get("bundle_qty", 1))
+        if not math.isfinite(quantity) or quantity < 1 or quantity != int(quantity):
+            frappe.throw(_("Enter a whole bundle quantity of at least 1."))
+        fields = ("bundle_qty", "bundle_discount_method", "bundle_discount_amount", "bundle_discount_percent")
+        defaults = (1, "percent", 0, 0)
+        signature = tuple(first.get(field, default) for field, default in zip(fields, defaults))
+        if any(tuple(payload_items[i].get(field, default) for field, default in zip(fields, defaults)) != signature
+               for i in idxs):
+            frappe.throw(_("Bundle quantity and discount must match on every component."))
+        expected = {row.item_code: flt(row.qty) * quantity for row in bundle.items}
         actual = {}
         for i in idxs:
             actual[lines[i]["item_code"]] = actual.get(lines[i]["item_code"], 0) + flt(
                 lines[i]["qty"]
             )
-        if actual != expected:
+        if actual != expected or len(idxs) != len(expected):
             frappe.throw(
                 _("Bundle {0} is incomplete, it needs exactly: {1}").format(
                     bundle.title,
@@ -1521,7 +1531,7 @@ def _apply_bundles(payload_items, lines, pos_profile=None):
             )
 
         natural = sum(lines[i]["price"] * lines[i]["qty"] for i in idxs)
-        saving = flt(natural - flt(bundle.bundle_price), 2)
+        saving = flt(natural - flt(bundle.bundle_price) * quantity, 2)
         allocations = {
             row.item_code: flt(row.allocated_amount)
             for row in bundle.items
@@ -1533,7 +1543,7 @@ def _apply_bundles(payload_items, lines, pos_profile=None):
             for i in idxs:
                 discounts[i] += flt(
                     lines[i]["price"] * lines[i]["qty"]
-                    - allocations.get(lines[i]["item_code"], 0),
+                    - allocations.get(lines[i]["item_code"], 0) * quantity,
                     2,
                 )
         elif saving > 0:
@@ -1733,6 +1743,10 @@ def _discount_breakdown(payload, lines, promo_result, bundle_discounts, factor=1
     settings = frappe.get_cached_doc("EsafePOS Settings")
     rows = [dict(line,
                  bundle_key=payload["items"][i].get("bundle_key"),
+                 bundle_qty=payload["items"][i].get("bundle_qty", 1),
+                 bundle_discount_method=payload["items"][i].get("bundle_discount_method"),
+                 bundle_discount_amount=payload["items"][i].get("bundle_discount_amount"),
+                 bundle_discount_percent=payload["items"][i].get("bundle_discount_percent"),
                  manual_discount_method=payload["items"][i].get("manual_discount_method"),
                  manual_discount_amount=payload["items"][i].get("manual_discount_amount"),
                  manual_discount_percent=payload["items"][i].get("manual_discount_percent"))

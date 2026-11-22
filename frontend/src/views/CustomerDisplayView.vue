@@ -141,6 +141,7 @@ const tenders = computed(() => [
   { label: t('Exchange credit'), amount: snap.value.exchangeCredit },
 ].filter((row) => row.amount))
 const rewards = computed(() => [
+  { label: t('Change saved as points'), amount: snap.value.savedChangePoints || '' },
   { label: t('Points earned'), amount: snap.value.earnedPoints || '' },
   { label: t('Points balance'), amount: snap.value.pointsBalance },
   { label: t('Cashback'), amount: snap.value.cashback },

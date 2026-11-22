@@ -97,6 +97,7 @@
           </div>
         </template>
         <div v-if="receipt.loyalty_amount" class="row"><span>{{ t('Loyalty points') }} ({{ receipt.loyalty_points_redeemed }})</span><span>{{ money(receipt.loyalty_amount) }}</span></div>
+        <div v-if="receipt.loyalty_change_amount" class="row"><span>{{ t('Change saved as points') }} ({{ receipt.loyalty_change_points }})</span><span>{{ m(receipt.loyalty_change_amount) }}</span></div>
         <div v-if="receipt.change_amount" class="row"><span>{{ t('Change') }}</span><span>{{ foreign && receipt.change_currency !== receipt.currency ? money(receipt.base_change_amount, receipt.company_currency) : m(receipt.change_amount) }}</span></div>
         <template v-if="receipt.on_account && !receipt.is_return">
           <div class="row total owed"><span>{{ t('Owed on this sale') }}</span><span>{{ m(receipt.on_account.owed_on_sale) }}</span></div>
@@ -220,6 +221,9 @@
       <div v-if="receipt.loyalty_amount" class="row">
         <span>{{ t('Loyalty points') }} ({{ receipt.loyalty_points_redeemed }})</span>
         <span>{{ money(receipt.loyalty_amount) }}</span>
+      </div>
+      <div v-if="receipt.loyalty_change_amount" class="row">
+        <span>{{ t('Change saved as points') }} ({{ receipt.loyalty_change_points }})</span><span>{{ m(receipt.loyalty_change_amount) }}</span>
       </div>
       <div v-if="receipt.change_amount" class="row">
         <span>{{ t('Change') }}</span>

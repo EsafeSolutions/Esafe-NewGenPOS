@@ -31,7 +31,7 @@
       <div class="amount-due">
         <div class="due-label">{{ remaining > 0 ? t('Remaining') : t('Change') }}</div>
         <div class="due-value" :class="{ change: remaining < 0 }">
-          {{ remaining < 0 && sale.foreign && !changeInSale ? money(localChange, local) : money(Math.abs(remaining), sale.currency) }}
+          {{ remaining < 0 && sale.foreign && !changeInSale ? money(localChange, local) : money(remaining < 0 ? cashChange : remaining, sale.currency) }}
         </div>
         <!-- A sale in another currency: what is left in local money, and the
              change: in local money from the main drawer, or in the sale's own
@@ -44,6 +44,20 @@
         </div>
         <div v-if="sale.foreign" class="rate-note">
           {{ t('Rate for this shift: {rate}', { rate: rateLine(sale.currency, sale.rate, local) }) }}
+        </div>
+      </div>
+
+      <div v-if="remaining < 0 && !exchange && !sale.foreign && sale.currency === 'LKR'" class="change-points card">
+        <label v-if="maxChangePoints > 0" class="change-points-choice">
+          <input type="checkbox" v-model="saveChange" :disabled="cart.submitting" />
+          <span>
+            <strong>{{ t('Save {amount} as {points} points', { amount: money(maxChangePoints, sale.currency), points: maxChangePoints }) }}</strong>
+            <span class="muted small">{{ t('1 LKR = 1 point. Use these points on a later sale.') }}</span>
+          </span>
+        </label>
+        <p v-else class="muted small">{{ changePointsReason }}</p>
+        <div v-if="savedChange > 0" class="change-points-result">
+          <span>{{ t('Cash change to give') }}</span><strong>{{ money(cashChange, sale.currency) }}</strong>
         </div>
       </div>
 
@@ -72,7 +86,8 @@
         <div v-if="wallet.loyalty_points > 0" class="wallet-row">
           <span><Icon name="star" /> {{ t('{points} loyalty points (worth {value})', { points: wallet.loyalty_points, value: money(wallet.loyalty_points * wallet.conversion_factor) }) }}</span>
           <span class="redeem">
-            <input type="number" min="0" :max="maxRedeemablePoints" v-model.number="redeemPoints" />
+            <input type="number" min="0" step="1" :max="maxRedeemablePoints" :aria-label="t('Loyalty points to use')" v-model.number="redeemPoints" />
+            <button class="btn btn-outline" :disabled="maxRedeemablePoints <= 0" @click="redeemPoints = maxRedeemablePoints">{{ t('Use points') }}</button>
             <span class="muted">{{ t('pts = {value}', { value: money(loyaltyAmount) }) }}</span>
           </span>
         </div>
@@ -285,6 +300,7 @@ const session = useSessionStore()
 const payments = ref([])
 const amount = ref(0)
 const redeemPoints = ref(0)
+const saveChange = ref(false)
 const amountInput = ref(null)
 const giftCardOpen = ref(false)
 const giftCardNo = ref('')
@@ -356,12 +372,12 @@ const total = computed(() => (serverTotal.value != null ? serverTotal.value : ca
 
 const loyaltyAmount = computed(() => {
   if (!wallet.value || redeemPoints.value <= 0) return 0
-  const points = Math.min(redeemPoints.value, wallet.value.loyalty_points)
-  return round2(Math.min(points * wallet.value.conversion_factor, total.value))
+  const points = Math.min(Math.max(Math.floor(Number(redeemPoints.value) || 0), 0), maxRedeemablePoints.value)
+  return round2(points * wallet.value.conversion_factor)
 })
 
 const maxRedeemablePoints = computed(() => {
-  if (!wallet.value?.conversion_factor) return 0
+  if (!wallet.value?.conversion_factor || wallet.value.loyalty_redemption_enabled === false) return 0
   return Math.min(
     wallet.value.loyalty_points,
     Math.floor(total.value / wallet.value.conversion_factor)
@@ -381,6 +397,28 @@ const payable = computed(() => round2(Math.max(total.value - exchangeCredit.valu
 // posts) and what the tender really took, in its own money, for the screen.
 const paid = computed(() => payments.value.reduce((sum, p) => sum + p.amount, 0))
 const remaining = computed(() => round2(payable.value - paid.value - loyaltyAmount.value))
+const maxChangePoints = computed(() => {
+  if (!cart.customer?.name || !wallet.value?.change_to_loyalty?.enabled || exchange.value ||
+      session.offline || sale.value.foreign || sale.value.currency !== 'LKR' ||
+      payments.value.some((p) => p.mode_of_payment === session.creditMode)) return 0
+  const cash = payments.value.filter((p) => session.paymentModes.some((m) =>
+    m.mode_of_payment === p.mode_of_payment && m.type === 'Cash')).reduce((sum, p) => sum + p.amount, 0)
+  return Math.max(Math.floor(Math.min(round2(-remaining.value), round2(cash))), 0)
+})
+const savedChange = computed(() => saveChange.value ? maxChangePoints.value : 0)
+const cashChange = computed(() => round2(Math.max(-remaining.value - savedChange.value, 0)))
+const changePointsReason = computed(() => {
+  if (session.offline) return t('Reconnect to save change as loyalty points.')
+  if (!cart.customer?.name) return t('Select a customer on the sale to save this change as points.')
+  if (wallet.value?.change_to_loyalty?.reason) return wallet.value.change_to_loyalty.reason
+  if (!wallet.value?.loyalty_program) return t('Enroll this customer in an ERPNext Loyalty Program to save change.')
+  return t('Only whole LKR cash change can be saved as points.')
+})
+watchEffect(() => {
+  if (!maxChangePoints.value) saveChange.value = false
+  const points = Math.min(Math.max(Math.floor(Number(redeemPoints.value) || 0), 0), maxRedeemablePoints.value)
+  if (redeemPoints.value !== points) redeemPoints.value = points
+})
 
 // The change in local money, as ERPNext books it: the tenders' local value
 // less the sale's. The screen shows it unless the change is given in the
@@ -400,7 +438,8 @@ watchEffect(() => {
     paid: money(paid.value, currency),
     due: remaining.value > 0 ? money(remaining.value, currency) : '',
     change: remaining.value < 0 ? (changeInSale.value
-      ? money(-remaining.value, currency) : money(localChange.value, local.value)) : '',
+      ? money(cashChange.value, currency) : money(sale.value.foreign ? localChange.value : cashChange.value, local.value)) : '',
+    savedChangePoints: savedChange.value,
     redeemed: loyaltyAmount.value ? money(loyaltyAmount.value, currency) : '',
     exchangeCredit: exchangeCredit.value ? money(exchangeCredit.value, currency) : '',
     cashback: cashbackEarn.value > 0 ? money(cashbackEarn.value, local.value) : '',
@@ -499,6 +538,7 @@ async function switchCurrency(code) {
     await cart.setSaleCurrency(code)
     payments.value = []
     redeemPoints.value = 0
+    saveChange.value = false
     tenderCurrency.value = null
     giftCardOpen.value = false
     await loadQuote()
@@ -832,7 +872,7 @@ async function complete() {
       emit('done', result.sale)
       return
     }
-    const receipt = await cart.submit(payments.value, redeemPoints.value, giftCards)
+    const receipt = await cart.submit(payments.value, redeemPoints.value, giftCards, savedChange.value)
     session.notify(receipt.offline ? t('Sale queued (offline)') : t('Sale completed'))
     if (session.settings?.enable_customer_display) displayReceipt.value = receiptSnapshot(receipt, itemImages, itemGroups)
     emit('done', receipt)
@@ -847,6 +887,12 @@ function round2(n) {
 </script>
 
 <style scoped>
+.change-points { padding: 16px; }
+.change-points-choice { display: flex; align-items: center; gap: 12px; cursor: pointer; }
+.change-points-choice input { width: 22px; height: 22px; flex: 0 0 auto; accent-color: var(--brand); }
+.change-points-choice span span { display: block; margin-top: 4px; }
+.change-points p { margin: 0; }
+.change-points-result { display: flex; justify-content: space-between; gap: 12px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
 .method.blocked { opacity: 0.4; cursor: not-allowed; }
 .split-ref {
   grid-column: 1 / -1;
@@ -959,6 +1005,7 @@ function round2(n) {
 .wallet { padding: 6px 16px; }
 .wallet-row {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
   gap: 12px;
@@ -979,7 +1026,7 @@ function round2(n) {
   font-weight: 700;
   font-size: 14px;
 }
-.redeem { display: flex; align-items: center; gap: 8px; }
+.redeem { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .redeem input { width: 90px; text-align: center; padding: 7px 8px; }
 .tender { display: flex; flex-direction: column; gap: 10px; }
 .tender-input {

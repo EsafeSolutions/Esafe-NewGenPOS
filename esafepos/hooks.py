@@ -78,8 +78,10 @@ doc_events = {
         "before_insert": "esafepos.demo_data.apply_demo_stamp",
         # ERPNext 16 leaves loyalty points owing on a POS Invoice (see there).
         "before_submit": "esafepos.erpnext_compat.settle_points_outstanding",
+        "before_cancel": "esafepos.loyalty_change.cancel_invoice",
     },
     "Sales Invoice": {
+        "before_cancel": "esafepos.loyalty_change.cancel_invoice",
         "before_insert": [
             "esafepos.demo_data.apply_demo_stamp",
             # The close's merged invoice keeps no "paid in" figures (esafepos.paid_in).
@@ -92,6 +94,7 @@ doc_events = {
     "POS Opening Entry": {"before_insert": "esafepos.demo_data.apply_demo_stamp"},
     "POS Closing Entry": {"before_insert": "esafepos.demo_data.apply_demo_stamp"},
     "Payment Entry": {"before_insert": "esafepos.demo_data.apply_demo_stamp"},
+    "Journal Entry": {"before_cancel": "esafepos.loyalty_change.guard_funding_cancel"},
 }
 
 # The till's service worker has to come from the site ROOT to be allowed to

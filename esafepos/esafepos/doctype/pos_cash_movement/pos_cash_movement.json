@@ -12,9 +12,17 @@
   "recorded_at",
   "recorded_by",
   "approved_by",
-  "approval_request"
+  "approval_request",
+  "loyalty_change_entry"
  ],
  "fields": [
+  {
+   "fieldname": "loyalty_change_entry",
+   "fieldtype": "Data",
+   "label": "Loyalty Change Funding Entry",
+   "read_only": 1,
+   "no_copy": 1
+  },
   {
    "fieldname": "movement_type",
    "fieldtype": "Select",

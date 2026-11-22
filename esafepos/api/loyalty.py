@@ -37,6 +37,7 @@ def get_wallet(customer: str, company: str):
         "loyalty_program": None,
         "loyalty_points": 0,
         "conversion_factor": 0,
+        "change_to_loyalty": {"enabled": False, "reason": None},
         # What this company's outlets accept (esafepos.inter_company).
         "store_credit": get_balance(customer, company),
         "cashback": _cashback_balance(customer, company),
@@ -53,11 +54,15 @@ def get_wallet(customer: str, company: str):
         ) not in (None, "", company):
             details = None
         if details and details.get("loyalty_program"):
+            from esafepos.loyalty_change import enabled, setup
+
             wallet.update(
                 {
                     "loyalty_program": details.loyalty_program,
                     "loyalty_points": int(details.loyalty_points or 0),
                     "conversion_factor": flt(details.conversion_factor),
+                    "change_to_loyalty": setup(details, company),
+                    "loyalty_redemption_enabled": enabled(),
                 }
             )
     except Exception:

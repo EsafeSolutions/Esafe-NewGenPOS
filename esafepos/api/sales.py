@@ -1038,6 +1038,9 @@ def submit_sale(payload: dict | str):
             if row.mode_of_payment in pin_accounts:
                 row.account = pin_accounts[row.mode_of_payment]
 
+    from esafepos import loyalty_change
+
+    change_plan = loyalty_change.prepare(invoice, profile, payload)
     _lock_open_session(session["name"])
     t_build = _perf_now()
     posted = _insert_once(invoice, key)
@@ -1050,6 +1053,9 @@ def submit_sale(payload: dict | str):
     currency.check_change(invoice)
     invoice.submit()
     t_submit = _perf_now()
+
+    loyalty_change.complete_redemption(invoice)
+    loyalty_change.book(invoice, change_plan)
 
     # The customer's debt for the part on account, in this same transaction:
     # if it cannot be booked, the sale does not stand either.
@@ -2063,6 +2069,11 @@ def _apply_loyalty_redemption(invoice, customer, company, payload):
         frappe.throw(_("Select a loyalty customer to redeem points."))
     from esafepos.erpnext_compat import loyalty_details
 
+    from esafepos.loyalty_change import enabled, lock_customer
+
+    if not enabled():
+        frappe.throw(_("Enable Loyalty Point Program in ERPNext Accounts Settings to redeem points."))
+    lock_customer(customer)
     details = loyalty_details(customer, company)
     if not details or not details.get("loyalty_program"):
         frappe.throw(_("Customer {0} is not enrolled in a loyalty program").format(customer))
@@ -2385,7 +2396,7 @@ def get_receipt(invoice: str):
     doc.check_permission("read")
     earned_points = frappe.db.get_value(
         "Loyalty Point Entry",
-        {"invoice": doc.name, "loyalty_points": [">", 0]},
+        {"invoice_type": doc.doctype, "invoice": doc.name, "loyalty_points": [">", 0]},
         "loyalty_points",
     )
     # ERPNext remains the source of truth for customer loyalty.  Fetching the
@@ -2585,7 +2596,11 @@ def get_receipt(invoice: str):
         "grand_total": doc.grand_total,
         "rounded_total": doc.rounded_total,
         "paid_amount": doc.paid_amount,
-        "change_amount": doc.change_amount,
+        # The ERPNext invoice retains its full change; the separately funded
+        # points reduce only the cash actually handed back to the customer.
+        "change_amount": flt(flt(doc.change_amount) - flt(doc.get("esafepos_loyalty_change_amount")), 2),
+        "loyalty_change_amount": flt(doc.get("esafepos_loyalty_change_amount")),
+        "loyalty_change_points": cint(doc.get("esafepos_loyalty_change_amount")),
         "payments": [tender(p) for p in (doc.payments or []) if p.amount],
         # The part on account and what is still owed (esafepos.credit_sales).
         "on_account": credit_sales.receipt_facts(doc),

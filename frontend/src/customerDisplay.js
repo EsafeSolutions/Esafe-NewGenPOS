@@ -99,6 +99,7 @@ export function receiptSnapshot(receipt, images = {}, groups = {}) {
     })),
     redeemed: receipt.loyalty_amount > 0 ? show(receipt.loyalty_amount) : '',
     earnedPoints: receipt.loyalty_points_earned || 0,
+    savedChangePoints: receipt.loyalty_change_points || 0,
     pointsBalance: receipt.loyalty?.balance,
   }
 }

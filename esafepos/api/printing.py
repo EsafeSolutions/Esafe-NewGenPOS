@@ -176,6 +176,8 @@ def build_receipt_bytes(receipt, open_drawer=0):
         out += _text(_pad(payment["mode_of_payment"], shown)) + b"\n"
     if receipt.get("loyalty_amount"):
         out += _text(_pad("Loyalty points", _num(receipt["loyalty_amount"]))) + b"\n"
+    if receipt.get("loyalty_change_amount"):
+        out += _text(_pad("Change saved as points", _num(receipt["loyalty_change_amount"]))) + b"\n"
     if receipt.get("change_amount"):
         if foreign and receipt.get("change_currency") != receipt.get("currency"):
             change = f"{local} {_num(receipt.get('base_change_amount'))}"
@@ -303,6 +305,8 @@ def _retail_receipt_body(receipt, width, lined=False):
         out += _text(_pad(payment.get("mode_of_payment") or "PAID", _num(payment.get("amount")), width)) + b"\n"
     if receipt.get("loyalty_amount"):
         out += _text(_pad("LOYALTY REDEEMED", _num(receipt.get("loyalty_amount")), width)) + b"\n"
+    if receipt.get("loyalty_change_amount"):
+        out += _text(_pad("CHANGE SAVED AS POINTS", _num(receipt.get("loyalty_change_amount")), width)) + b"\n"
     if receipt.get("change_amount"):
         out += _text(_pad("CHANGE", _num(receipt.get("change_amount")), width)) + b"\n"
     out += _text(_pad("ITEMS", receipt.get("item_count") or len(receipt.get("items") or []), width)) + b"\n"

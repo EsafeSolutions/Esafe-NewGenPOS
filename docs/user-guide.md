@@ -897,6 +897,38 @@ Uses ERPNext's native **Loyalty Program**. EsafePOS adds the setup and till UX:
   capped at their real balance, validated server-side.
 - The receipt shows points earned and redeemed.
 
+**Save small cash change as points:** on the payment screen, below **Change**,
+tick **Save LKR 8.00 as 8 points** (the amount follows the sale). For example,
+a LKR 1,602 sale paid with LKR 1,610 can save the LKR 8 balance as 8 points,
+with no cash change to give. This is optional and requires a selected customer
+and an online LKR sale. Whole rupees become points; any remaining cents are
+returned as cash. Exchanges and sales on account do not offer this option.
+On a later sale, select the same customer and tap **Use points**, or enter a
+smaller whole number in the loyalty box. Cash/card can pay the rest.
+
+ERPNext setup: use an active **Loyalty Program** for the outlet's company with
+**Conversion Factor = 1**, a valid LKR expense ledger, cost center and the
+desired expiry duration. The normal purchase **Collection Factor** remains
+independent of saved change. Enable **Loyalty Point Program** in **Accounts Settings** where that
+switch exists. For ERPNext versions that require it, enable **Allow Partial
+Payment** on the POS Profile to redeem points; EsafePOS still requires full
+settlement of each sale. The main cash drawer must use the profile's **Account
+for Change Amount**. EsafePOS checks these settings and does not overwrite them.
+Run `bench --site <site> migrate` after this upgrade to add the funding references.
+
+The [ERPNext Loyalty Program configuration](https://docs.frappe.io/erpnext/loyalty-program)
+remains the source of truth for balances and redemption values.
+
+The receipt and customer display distinguish saved change from purchase
+rewards. ERPNext keeps its normal invoice change; a separate Journal Entry
+debits the drawer and credits the program's redemption expense account, with
+native Loyalty Point Entries and a linked register cash-in movement. Saved
+change has zero purchase amount, so it does not earn extra purchase rewards.
+Returning goods leaves the saved cash points in the wallet. Cancelling the
+original sale while its register is open reverses its saved points, funding
+and cash-in together; spent saved points must first be restored by cancelling
+the redemption sales.
+
 **Several companies:** ERPNext ties a loyalty program to one company. Points
 are earned at any outlet but redeemed only at the outlets of the program's
 company, and only points earned there, so the till offers points to spend only

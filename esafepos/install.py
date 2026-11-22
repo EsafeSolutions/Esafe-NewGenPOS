@@ -897,6 +897,23 @@ def make_custom_fields():
             read_only=1,
             no_copy=1,
         ),
+        dict(
+            fieldname="esafepos_loyalty_change_amount",
+            label="Change Saved as Loyalty Points",
+            fieldtype="Currency",
+            insert_after="esafepos_credit_entry",
+            read_only=1,
+            no_copy=1,
+        ),
+        dict(
+            fieldname="esafepos_loyalty_change_entry",
+            label="Loyalty Change Funding Entry",
+            fieldtype="Link",
+            options="Journal Entry",
+            insert_after="esafepos_loyalty_change_amount",
+            read_only=1,
+            no_copy=1,
+        ),
         # Delivery-app channel data is written to the site's OWN fields when
         # present, custom_app_type (Select), pick_order_no (Data),
         # pick_customer (Check), is_exchange (Check). EsafePOS does not create

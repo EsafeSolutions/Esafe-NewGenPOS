@@ -1120,12 +1120,13 @@ export const useCartStore = defineStore('cart', {
       }
     },
 
-    async submit(payments, redeemLoyaltyPoints = 0, giftCards = []) {
+    async submit(payments, redeemLoyaltyPoints = 0, giftCards = [], loyaltyChangeAmount = 0) {
       const payload = {
         ...this._basePayload(),
         gift_cards: giftCards,
         payments,
         redeem_loyalty_points: redeemLoyaltyPoints || 0,
+        loyalty_change_amount: loyaltyChangeAmount,
         discount_passcode: this.discountPasscode,
         discount_request: this.discountRequest,
         idempotency_key: this._keyForSale(),
@@ -1149,6 +1150,9 @@ export const useCartStore = defineStore('cart', {
 
     async _queueOffline(payload, payments) {
       const session = useSessionStore()
+      if (payload.loyalty_change_amount > 0) {
+        throw new Error('Saving change as loyalty points needs a connection. Reconnect and retry.')
+      }
       if (payments.some((p) => p.mode_of_payment === session.creditMode)) {
         throw new Error('A sale on account needs a connection.')
       }

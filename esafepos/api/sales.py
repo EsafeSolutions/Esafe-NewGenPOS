@@ -655,6 +655,7 @@ def quote_sale(payload: dict | str):
     # `rounded_total or grand_total`, so quote the same.
     payable = invoice.rounded_total or invoice.grand_total
     from esafepos.api.catalog import blocked_payment_modes
+    erp_pricing = getattr(invoice.flags, "esafepos_erp_pricing", {"enabled": False, "discount_total": 0, "rules": []})
 
     return {
         # The sale's currency and the shift's rate (esafepos.currency); every
@@ -666,7 +667,7 @@ def quote_sale(payload: dict | str):
         "net_total": flt(invoice.net_total, prec),
         "total_taxes": flt(invoice.total_taxes_and_charges, prec),
         "cashback_earn": flt(_cashback_estimate(invoice, profile, payload), prec),
-        "erp_pricing": getattr(invoice.flags, "esafepos_erp_pricing", {"enabled": False, "discount_total": 0, "rules": []}),
+        "erp_pricing": erp_pricing,
         "tax_breakdown": {
             "exclusive": [
                 {"description": row.description, "amount": flt(row.tax_amount, prec)}
@@ -679,7 +680,7 @@ def quote_sale(payload: dict | str):
                 if cint(row.get("included_in_print_rate")) and flt(row.tax_amount)
             ],
             "exclusiveTotal": flt(sum(flt(row.tax_amount) for row in invoice.taxes or [] if not cint(row.get("included_in_print_rate"))), prec),
-        } if erp_pricing_rules else None,
+        } if erp_pricing.get("enabled") else None,
         # Which tenders this basket may not be paid with, answered here rather
         # than in a second request: on a till in Riyadh talking to a server in
         # Mumbai the round trip costs far more than the query.
@@ -2378,6 +2379,8 @@ def link_receipt_customer(invoice: str, customer: str | None = None, new_custome
 
 @frappe.whitelist()
 def get_receipt(invoice: str):
+    from esafepos.print_config import defaults as print_defaults
+
     doc = frappe.get_doc(_doctype_of(invoice), invoice)
     doc.check_permission("read")
     earned_points = frappe.db.get_value(
@@ -2517,6 +2520,8 @@ def get_receipt(invoice: str):
         "name": doc.name,
         "doctype": doc.doctype,  # so the client prints the right doc via a Print Format
         "pos_profile": doc.get("pos_profile"),
+        "printing_defaults": print_defaults(
+            frappe.get_cached_doc("POS Profile", doc.pos_profile) if doc.get("pos_profile") else {}),
         "receipt_settings": receipt_settings,
         "custom_fields": resolve_receipt_custom_fields(doc),
         "note": _get_custom(doc, ("esafepos_note",)) or "",

@@ -55,6 +55,7 @@ export const useCartStore = defineStore('cart', {
     _saleKey: null,
     _invoiceKey: null,
     _quoteCache: null, // {signature, at, promise} see quote()
+    quoteError: '',
     serverQuote: null,
     serverQuoteSignature: '',
     _quoteTimer: null,
@@ -1031,13 +1032,17 @@ export const useCartStore = defineStore('cart', {
       if (!fresh && cached && cached.signature === signature && Date.now() - cached.at < 60000) {
         return cached.promise
       }
+      this.quoteError = ''
       const promise = call('esafepos.api.sales.quote_sale', { payload }).then((result) => {
         if (result && JSON.stringify(this._basePayload()) === signature) {
           this.serverQuote = result
           this.serverQuoteSignature = signature
         }
         return result
-      }).catch(() => null)
+      }).catch((error) => {
+        if (JSON.stringify(this._basePayload()) === signature) this.quoteError = error.message
+        return null
+      })
       this._quoteCache = { signature, at: Date.now(), promise }
       // A failed quote is not an answer, don't keep it (the till falls back to
       // its own total and tries again next time).

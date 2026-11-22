@@ -157,6 +157,9 @@
           </a>
         </div>
       </header>
+      <div v-if="appUpdatePending" class="update-notice" role="status">
+        <Icon name="refresh" /> {{ t('Update ready. Finish this task to update automatically.') }}
+      </div>
       <StorageWarning v-if="!session.reportsOnly" />
       <main class="content" :inert="navOpen">
         <!-- The reports alone: no other screen mounts, not even for the moment
@@ -196,6 +199,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { call } from './api'
+import { safeToUpdate, startAppUpdates } from './appUpdates'
 import { useSessionStore } from './stores/session'
 import { useCatalogStore } from './stores/catalog'
 import { useCartStore } from './stores/cart'
@@ -203,6 +207,8 @@ import { money, shiftClock, isolate } from './format'
 import { displayContactRequest, displayCustomerName, displayPayment, displayReceipt, publishCart, onDisplayRequest, requestDisplayContact } from './customerDisplay'
 import { connectTillContact } from './displayContact'
 import { ensurePersistentStorage } from './offline'
+import { printManager } from './printing/index.js'
+onBeforeUnmount(() => printManager.dispose())
 import { t, locale, setLocale, offeredLanguages, LANGUAGES } from './i18n'
 import { theme, toggleTheme } from './theme'
 import PosBrandMark from './components/PosBrandMark.vue'
@@ -243,6 +249,12 @@ async function switchOutlet(event) {
 const route = useRoute()
 const router = useRouter()
 const isDisplay = computed(() => route.path === '/display')
+const appUpdatePending = ref(false)
+let appUpdater = null
+onBeforeUnmount(() => appUpdater?.stop())
+watch(() => [cart.lines.length, cart.submitting, session.syncing, route.path], () => {
+  if (appUpdatePending.value) appUpdater?.check()
+}, { flush: 'post' })
 const navOpen = ref(false)
 const navToggle = ref(null)
 
@@ -411,6 +423,12 @@ const pageTitle = computed(
 )
 
 onMounted(async () => {
+  appUpdater = startAppUpdates({
+    currentRevision: window.esafepos_shell_revision,
+    readRevision: () => call('esafepos.api.session.app_revision', {}, { timeout: 5000 }),
+    canReload: () => safeToUpdate({ session, cart, route, document, jobs: printManager.state.jobs }),
+    onPending: (pending) => { appUpdatePending.value = pending },
+  })
   // The display talks to its till window, with no bootstrap, catalog or shell.
   if (isDisplay.value) return
 
@@ -420,6 +438,7 @@ onMounted(async () => {
   ensurePersistentStorage()
   session.watchConnection()
   await session.bootstrap()
+  printManager.resume().catch(() => {})
   if (session.loaded && !session.error && session.reportsOnly) return
   if (session.loaded && !session.error) {
     catalog.fetch()
@@ -471,6 +490,16 @@ function setupAutoLock() {
 </script>
 
 <style scoped>
+.update-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  color: var(--text);
+  background: var(--card-bg);
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
 .shell {
   display: flex;
   height: 100vh;

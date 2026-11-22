@@ -55,11 +55,15 @@ const browser = await chromium.launch({ headless: true, ...(process.env.CHROME_P
 try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } })
   const errors = []
-  page.on('pageerror', (error) => errors.push(error.message))
+  page.on('pageerror', (error) => { errors.push(error.message); console.error(error.message) })
   let available = 1000
   let reason = null
   let offlineSubmit = false
   let quoteCalls = 0
+  let creditCalls = 0
+  let omitQuoteCredit = false
+  let failQuote = false
+  let failCredit = false
   let submitted = null
   let lastReceipt = null
   const quote = () => ({ payable: 195, currency: 'LKR', rate: 1, foreign: false, blocked_modes: {},
@@ -69,7 +73,13 @@ try {
     let message = {}
     if (method === 'esafepos.api.sales.quote_sale') {
       quoteCalls++
+      if (failQuote) return route.fulfill({ status: 417, contentType: 'application/json', body: JSON.stringify({ exception: 'Pricing quote failed' }) })
       message = quote()
+      if (omitQuoteCredit) delete message.on_account
+    } else if (method === 'esafepos.api.credit.checkout_credit') {
+      creditCalls++
+      if (failCredit) return route.fulfill({ status: 417, contentType: 'application/json', body: JSON.stringify({ exception: 'Credit check failed' }) })
+      message = quote().on_account
     } else if (method === 'esafepos.api.sales.submit_sale') {
       if (offlineSubmit) return route.abort('failed')
       submitted = route.request().postDataJSON().payload
@@ -86,17 +96,19 @@ try {
     await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ message }) })
   })
   const url = `http://127.0.0.1:${server.httpServer.address().port}/checkout-check.html`
-  async function openCheckout({ cached = false } = {}) {
+  async function openCheckout({ cached = false, error = false, staleSettings = false } = {}) {
     await page.goto(url)
     await page.waitForFunction(() => window.ready)
-    await page.evaluate(async ({ cached, answer }) => {
+    await page.evaluate(async ({ cached, answer, staleSettings }) => {
       // Mount after initializing the basket so the quote describes the sale.
       cart.customer = { name: 'CUSTOMER', customer_name: 'Test customer' }
       cart.lines = [{ item_code: 'POT', item_name: '27cm Flower Pot -Black', qty: 1, price: 195 }]
+      if (staleSettings) session.settings.credit_sales_enabled = 0
       if (cached) cart._quoteCache = { signature: JSON.stringify(cart._basePayload()), at: Date.now(), promise: Promise.resolve(answer) }
       startCheckout()
-    }, { cached, answer: quote() })
-    await page.locator('.oa-btn').waitFor({ state: reason ? 'hidden' : 'visible' })
+    }, { cached, answer: quote(), staleSettings })
+    if (error) await page.getByRole('alert').waitFor()
+    else await page.locator('.oa-btn').waitFor({ state: reason ? 'hidden' : 'visible' })
     await page.waitForFunction(() => document.querySelector('.due-value')?.textContent.includes('195.00'))
   }
   await openCheckout()
@@ -148,6 +160,30 @@ try {
   console.log('PASS customer credit refusal')
   reason = null
   available = 1000
+  omitQuoteCredit = true
+  await openCheckout({ staleSettings: true })
+  assert.ok(creditCalls > 0)
+  assert.equal(await page.locator('.oa-btn').isEnabled(), true)
+  console.log('PASS account checkout with missing quote credit and stale bootstrap settings')
+  failCredit = true
+  await openCheckout({ error: true })
+  assert.match(await page.getByRole('alert').textContent(), /Credit check failed/)
+  assert.equal(await page.locator('.oa-btn').count(), 0)
+  if (output) await page.screenshot({ path: path.join(output, 'credit-retry-mobile.png') })
+  failCredit = false
+  await page.getByRole('button', { name: 'Retry', exact: true }).click()
+  await page.locator('.oa-btn').waitFor()
+  console.log('PASS visible failed credit check and successful retry')
+  failQuote = true
+  await openCheckout({ error: true })
+  assert.match(await page.getByRole('alert').textContent(), /Pricing quote failed/)
+  assert.equal(await page.locator('.oa-btn').count(), 0)
+  failQuote = false
+  await page.getByRole('button', { name: 'Retry', exact: true }).click()
+  await page.locator('.oa-btn').waitFor()
+  assert.equal(await page.locator('.oa-btn').isEnabled(), true)
+  console.log('PASS pricing failure is visible and account tender waits for a confirmed total')
+  omitQuoteCredit = false
   await openCheckout()
   await page.getByRole('button', { name: /Put.*195.00.*on account/ }).click()
   offlineSubmit = true
@@ -164,7 +200,10 @@ try {
   assert.match(await page.locator('.retail-totals .total').first().textContent(), /175.50/)
   assert.deepEqual(errors, [])
   console.log('PASS partial-discount receipt and no browser errors')
+} catch (error) {
+  console.error(error)
+  throw error
 } finally {
   await browser.close()
-  await server.close()
+  await Promise.race([server.close(), new Promise((resolve) => setTimeout(resolve, 3000))])
 }

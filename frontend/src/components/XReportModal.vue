@@ -87,7 +87,8 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-outline" @click="print">{{ t('Print') }}</button>
+        <button class="btn btn-outline" :disabled="printing" @click="print()">{{ t('Print') }}</button>
+        <button v-if="silentPrinting(session)" class="btn btn-outline" :disabled="printing" @click="print(true)">{{ t('Browser print') }}</button>
         <button class="btn btn-primary" @click="$emit('close')">{{ t('Close') }}</button>
       </div>
     </div>
@@ -96,10 +97,12 @@
 
 <script setup>
 import Icon from './Icon.vue'
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { t } from '../i18n'
 import { money, rateLine, shortTime } from '../format'
 import { useSessionStore } from '../stores/session'
+import { nativeElement, printStatusMessage, silentPrinting } from '../printing/index.js'
+import { newId } from '../offline'
 
 const props = defineProps({ summary: { type: Object, required: true } })
 defineEmits(['close'])
@@ -120,8 +123,18 @@ function drawerCurrency(drawer) {
   return row?.currency || mode?.account_currency || local.value
 }
 const printedAt = new Date().toLocaleString()
+const printing = ref(false), printKey = newId()
 
-function print() {
+async function print(forceBrowser = false) {
+  if (printing.value) return
+  if (!forceBrowser && silentPrinting(session)) {
+    printing.value = true
+    try { session.notify(t(printStatusMessage(await nativeElement(document.getElementById('xreport-print'), {doctype:'POS Register Session',name:props.summary.session}, {role:'report',title:`X-report ${props.summary.session}`,key:printKey})))) }
+    catch (error) { session.notify(error.message, true) }
+    finally { printing.value = false }
+    return
+  }
+  if (forceBrowser && !window.confirm(t('Check the native print queue before making another browser copy. Continue?'))) return
   window.print()
 }
 </script>

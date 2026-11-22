@@ -38,6 +38,18 @@ def _company_allowed(company):
 
 
 @frappe.whitelist()
+def checkout_credit(pos_profile: str, customer: str | None = None):
+    """Fresh checkout eligibility, independent of basket pricing and open items."""
+    from esafepos.api.sales import _require_sell
+    from esafepos import walk_in
+
+    _require_sell()
+    permissions.assert_outlet(pos_profile)
+    profile = frappe.get_cached_doc("POS Profile", pos_profile)
+    return credit_sales.facts(walk_in.billing_customer(profile, customer), profile.company)
+
+
+@frappe.whitelist()
 def customer_credit(customer: str, company: str):
     """The customer's account at this company: may they buy on account, the
     limit, what they owe and each debt still open, oldest first."""

@@ -68,6 +68,7 @@ def save_receipt_defaults(config, custom_fields=None):
 @frappe.whitelist()
 def get_printer_settings(pos_profile):
     doc = _profile(pos_profile)
+    from esafepos.print_config import defaults, FIELDS
     doctype = doc.get("esafepos_invoice_mode") or "POS Invoice"
     formats = frappe.get_list("Print Format", filters={"doc_type": doctype, "disabled": 0}, pluck="name", order_by="name", limit_page_length=0)
     return {
@@ -79,7 +80,36 @@ def get_printer_settings(pos_profile):
         "invoice_doctype": doctype,
         "can_write": bool(doc.has_permission("write")),
         "needs_migration": not all(doc.meta.has_field(f) for f in ("esafepos_printer_ip", "esafepos_printer_port")),
+        "esafe": defaults(doc),
+        "esafe_needs_migration": not all(doc.meta.has_field(f) for f in FIELDS.values()),
     }
+
+
+@frappe.whitelist(methods=["POST"])
+def save_esafe_defaults(pos_profile, values):
+    from esafepos.print_config import FIELDS, validate
+    from esafepos.api import audit
+
+    doc = _profile(pos_profile, write=True)
+    if not all(doc.meta.has_field(f) for f in FIELDS.values()):
+        frappe.throw(_("Run the site migration before enabling Esafe silent printing."))
+    if isinstance(values, str):
+        values = json.loads(values)
+    try:
+        config = validate(values)
+    except ValueError as error:
+        frappe.throw(_(str(error)))
+    for key, field in FIELDS.items():
+        doc.set(field, config[key])
+    doc.save()
+    audit.log(audit.SETTINGS_CHANGE, detail="Esafe silent-printing defaults updated", pos_profile=pos_profile)
+    return config
+
+
+@frappe.whitelist(methods=["POST"])
+def authorize_workstation_setup(pos_profile):
+    _profile(pos_profile, write=True)
+    return {"allowed": True}
 
 
 def _destination(host, port):

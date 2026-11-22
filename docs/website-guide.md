@@ -256,11 +256,13 @@ Cashback is on by default but earns nothing until you create a rule, and it can 
 
 ## Receipts and printing
 
-You have three ways to print, and EsafePOS picks the best available automatically:
+Esafe Printer Manager is available under **Printing → Printers** for approved local Windows queues and silent HTML/PDF/raw receipts, labels, A4 documents and reports. Optional automatic receipts start after a successful sale. Setup and printer assignments are per workstation; see the [deployment and cashier guide](esafe-print-manager.md). The supplied 0.1.0 native installer is an unsigned development release requiring qualification. Browser printing remains an explicit option.
+
+With Esafe silent printing disabled, the existing print routes are:
 
 1. **Thermal printer (ESC/POS).** Configure a printer IP and port on the POS Profile. The Frappe server prints to it directly and can kick the cash drawer. (On cloud-hosted sites the printer needs to be reachable from the server; otherwise EsafePOS falls back to browser printing.)
 2. **Your own ERPNext Print Format.** Set a Print Format on the POS Profile and it takes over, full control over layout, bilingual receipts, QR blocks, anything a Print Format can do.
-3. **The built-in receipt designer.** In **Settings → Receipt**, choose a template (Compact, Standard, Detailed), pick what to show (item code, barcode, serial number, unit price, payment methods, note, tax ID, address, terms), and add a logo, header and footer. A live preview shows your changes as you make them.
+3. **The built-in receipt designer.** In **Printing → Receipt**, choose a template (Compact, Standard, Detailed), pick what to show (item code, barcode, serial number, unit price, payment methods, note, tax ID, address, terms), and add a logo, header and footer. A live preview shows your changes as you make them.
 
 ### A different receipt per outlet
 

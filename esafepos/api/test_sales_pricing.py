@@ -56,6 +56,8 @@ class Invoice(Record):
             row.amount = flt(row.qty * row.rate, 2)
         self.grand_total = flt(sum(row.amount for row in self.items), 2)
         self.rounded_total = self.grand_total
+        self.net_total = self.grand_total
+        self.total_taxes_and_charges = 0
 
 
 class SalesPricingTests(unittest.TestCase):
@@ -68,18 +70,23 @@ class SalesPricingTests(unittest.TestCase):
         self.ctx = Record(foreign=False, factor=1, currency="LKR")
         catalog = ModuleType("esafepos.api.catalog")
         catalog.internal_item_codes = lambda: set()
+        catalog.blocked_payment_modes = lambda *args: {}
         features = ModuleType("esafepos.features")
         features.enabled = lambda name: self.erp
         self.modules = patch.dict(sys.modules, {"esafepos.api.catalog": catalog, "esafepos.features": features})
         self.modules.start()
         self.addCleanup(self.modules.stop)
         self.credit = Mock(MODE_OF_PAYMENT="Credit Sale", EPSILON=0.005, assert_sale=Mock())
+        self.credit.enabled.return_value = True
+        self.credit.facts.return_value = dict(enabled=1, can_sell=1, available=10000)
         self.credit.on_account_part.side_effect = lambda doc: sum(
             row.amount for row in doc.payments if row.mode_of_payment == "Credit Sale")
         self.currency = Mock()
         self.currency.sale_context.side_effect = lambda *args: self.ctx
         self.currency.own_list_prices.return_value = {}
         self.currency.company_currency.return_value = "LKR"
+        self.currency.public.return_value = dict(currency="LKR", rate=1)
+        self.frappe.get_cached_doc.return_value = self.profile
         self.namespace = dict(
             frappe=self.frappe, _=lambda text: text, json=json, flt=flt, cint=lambda value: int(value or 0),
             currency=self.currency, credit_sales=self.credit,
@@ -99,10 +106,13 @@ class SalesPricingTests(unittest.TestCase):
             _compute_return_groups=lambda items, *args: [None] * len(items),
             _validate_line_serials=Mock(return_value=[]), salespeople=Mock(for_sale=Mock(return_value=None)),
             _apply_service_charge=Mock(), discount_breakdown=discount_breakdown,
+            _require_sell=Mock(), _quote_session=Mock(return_value=None), _cashback_estimate=Mock(return_value=0),
         )
         tree = ast.parse(Path(__file__).with_name("sales.py").read_text(encoding="utf-8"))
-        names = {"_build_sale_invoice", "_discount_breakdown", "_reconcile_payment", "_assert_on_account", "_set_payment"}
+        names = {"_build_sale_invoice", "_discount_breakdown", "_reconcile_payment", "_assert_on_account", "_set_payment", "quote_sale"}
         selected = [node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name in names]
+        for node in selected:
+            node.decorator_list = []
         exec(compile(ast.Module(body=selected, type_ignores=[]), "sales.py", "exec"), self.namespace)
 
     def build(self, qty=1, **discounts):
@@ -114,13 +124,24 @@ class SalesPricingTests(unittest.TestCase):
         self.assertEqual(doc.grand_total, 195)
         self.assertEqual(doc.items[0].discount_amount, 0)
 
+    def test_quote_endpoint_returns_payable_credit_and_native_tax_breakdown(self):
+        for erp in (False, True):
+            with self.subTest(erp_pricing=erp):
+                self.erp = erp
+                self.invoice = Invoice()
+                result = self.namespace["quote_sale"](dict(pos_profile="Till", items=[dict(item_code="POT", qty=1)]))
+                self.assertEqual(result["payable"], 195)
+                self.assertEqual(result["on_account"]["available"], 10000)
+                self.assertEqual(result["erp_pricing"]["enabled"], erp)
+                self.assertEqual(result["tax_breakdown"], dict(exclusive=[], included=[], exclusiveTotal=0) if erp else None)
+
     def test_erp_pricing_without_a_rule_does_not_make_every_item_free(self):
         self.erp = True
         doc = self.build(qty=2)
         self.assertEqual(doc.grand_total, 390)
         self.assertEqual(doc.items[0].discount_percentage, 0)
         self.assertEqual(doc.flags.esafepos_erp_pricing["discount_total"], 0)
-        self.assertEqual([call[2]["ignore"] for call in self.namespace["_ensure_ignore_pricing_rule"].call_args_list],
+        self.assertEqual([call[-1]["ignore"] for call in self.namespace["_ensure_ignore_pricing_rule"].call_args_list],
                          [False, True])
 
     def test_erp_percentage_rule_is_resolved_before_manual_discount(self):

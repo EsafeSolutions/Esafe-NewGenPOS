@@ -1,16 +1,10 @@
 # POS Print Manager and Windows Print Bridge Plan
 
-**Status:** Proposed architecture and delivery plan; no Print Manager or custom Windows bridge is implemented by this document.
+**Status — 2026-11-22:** The POS integration is implemented with the supplied private `@esafe/printer-manager` **0.1.0** SDK and the independently developed Rust/Tauri Windows manager. See [implemented behavior, deployment, cashier setup, testing and rollback](esafe-print-manager.md). Native acceptance is distinct from physical paper output; the unsigned development installer and real printers still require qualification.
 
-**Reviewed:** 2026-11-20.
-
-**Initial target:** A Windows till running the POS in Chrome or Edge, with an installed ESAFE Print Bridge.
+The original proposal below is retained as historical planning. Its suggested .NET bridge, server-signed intent protocol, proposed records and signed-installer assumptions are not the implemented SDK contract. The POS uses SDK browser identity/signing, secure loopback ports 17651–17660, exact printer scopes and the existing Printing workspace. It does not implement an alternate WebSocket protocol or new browser IP discovery. QZ was removed from this POS before integration.
 
 **Related work:** [Label Printing Module plan](label-printing-module-plan.md).
-
-**Scope update — 2026-11-22:** QZ Tray setup, dispatch, signing endpoints and bundled connector have been removed from the POS. The separate Print Manager is being developed independently and will be integrated later. This document describes that future integration; it does not add a replacement setup flow now. Current routes are browser/ERPNext Print Format printing, existing server-network receipts and label file exports.
-
-**Current POS workspace — 2026-11-22:** The navigation entry is now **Printing** (`/printing`) with Labels, Receipt and Printers sections. Receipt design/defaults/outlet overrides have moved out of General Settings. Printers edits the existing POS Profile network host/port and sale-document Print Format, and can submit a bounded diagnostic receipt. Future bridge setup belongs in this same Printers section; do not add a separate navigation entry for it.
 
 ## 1. Recommended solution
 

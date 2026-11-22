@@ -138,10 +138,12 @@
         <button v-if="!receipt.offline" class="btn btn-outline" @click="toggleShare">
           <Icon name="globe" /> {{ t('Send e-invoice') }}
         </button>
-        <button v-if="!isReprint || mayReprint" class="btn btn-outline" data-tour="receipt-print" :disabled="printing" @click="print">
+        <button v-if="!isReprint || mayReprint" class="btn btn-outline" data-tour="receipt-print" :disabled="printing" @click="print()">
           {{ printing ? t('Printing…') : t('Print receipt') }}
         </button>
-        <span v-else class="muted small reprint-note">{{ t('Printing it again is kept to whoever may reprint a receipt.') }}</span>
+        <button v-if="useSilent && (!isReprint || mayReprint)" class="btn btn-outline" :disabled="printing" @click="print(true)">{{ t('Browser print') }}</button>
+        <button v-if="useSilent && printManager.state.connection!=='connected'" class="btn btn-outline" :disabled="printing" @click="connectManager">{{ t('Connect Esafe Print Manager') }}</button>
+        <span v-if="isReprint && !mayReprint" class="muted small reprint-note">{{ t('Printing it again is kept to whoever may reprint a receipt.') }}</span>
         <button class="btn btn-primary" @click="$emit('close')">
           {{ receipt.is_return ? t('Done') : t('New Sale') }}
         </button>
@@ -156,12 +158,13 @@
 import Icon from './Icon.vue'
 import ReceiptView from './ReceiptView.vue'
 import CustomerModal from './CustomerModal.vue'
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { call } from '../api'
 import { useSessionStore } from '../stores/session'
 import { money } from '../format'
 import { t } from '../i18n'
 import { printReceipt } from '../receiptPrint'
+import { nativeReceipt, printManager, printStatusMessage, silentPrinting } from '../printing/index.js'
 
 const props = defineProps({
   showOpenInHistory: { type: Boolean, default: false },
@@ -170,6 +173,7 @@ const props = defineProps({
   canExchange: { type: Boolean, default: false },
   // Opened later, from History or Customers: printing it again is a reprint.
   reprint: { type: Boolean, default: false },
+  autoPrint: { type: Boolean, default: false },
 })
 const emit = defineEmits(['close', 'refund', 'exchange', 'open-in-history', 'updated'])
 
@@ -413,13 +417,43 @@ async function emailReceipt() {
 const printedOnce = ref(false)
 const isReprint = computed(() => props.reprint || printedOnce.value)
 const mayReprint = computed(() => session.permissions?.can_reprint !== false)
+const nativeConfig = computed(() => props.receipt.printing_defaults || session.settings.esafe_printing || {})
+const useSilent = computed(() => !!nativeConfig.value.silent && !session.offline && !props.receipt.offline)
 
-async function print() {
+async function connectManager() {
+  printing.value = true
+  try { await printManager.resume(); await printManager.connect({ explicit: true }) }
+  catch (error) { session.notify(error.message, true) }
+  finally { printing.value = false }
+}
+onMounted(async () => {
+  if (props.autoPrint && !props.reprint && nativeConfig.value.automatic_receipt && useSilent.value) {
+    await nextTick()
+    await print(false, true)
+  }
+})
+async function print(forceBrowser = false, automatic = false) {
+  if (printing.value) return
   const again = isReprint.value
   if (again && !mayReprint.value) {
     session.notify(t('You are not allowed to reprint a receipt'), true)
     return
   }
+  if (!forceBrowser && useSilent.value) {
+    printing.value = true
+    try {
+      await nextTick()
+      const result = await nativeReceipt(props.receipt, document.getElementById('receipt-print'), { reprint: again, automatic })
+      if (result) {
+        printedOnce.value = !!result.agentJobId || result.state === 'unknown'
+        session.notify(t(printStatusMessage(result)), ['failed', 'unknown'].includes(result.state))
+      }
+    } catch (error) { session.notify(error.message, true) }
+    finally { printing.value = false }
+    return
+  }
+  if (forceBrowser && printManager.state.jobs.some((job) => job.reference?.name === props.receipt.name && job.state === 'unknown') &&
+      !window.confirm(t('An Esafe print may already have reached the printer. Continue with an additional browser copy?'))) return
   // Asked of the server before anything prints, and kept in the audit log.
   // Offline it cannot be asked: the permission the till holds decides.
   if (again && !props.receipt.offline && !session.offline) {
@@ -432,7 +466,7 @@ async function print() {
   }
   // Priority: ESC/POS network printer -> the POS Profile's Print Format
   // (ERPNext print view) -> the built-in receipt via the browser dialog.
-  if (session.printerConfigured && !props.receipt.offline && !session.offline) {
+  if (!forceBrowser && session.printerConfigured && !props.receipt.offline && !session.offline) {
     printing.value = true
     try {
       await call('esafepos.api.printing.print_receipt', {

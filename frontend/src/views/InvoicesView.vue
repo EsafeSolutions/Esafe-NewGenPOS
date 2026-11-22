@@ -86,6 +86,7 @@
 <script setup>
 import { computed, onUnmounted, ref } from 'vue'
 import { call } from '../api'
+import { nativeDocument, printStatusMessage, silentPrinting } from '../printing/index.js'
 import { money } from '../format'
 import { newId } from '../offline'
 import { useSessionStore } from '../stores/session'
@@ -170,8 +171,9 @@ function removeItem(line) {
 
 async function createInvoice() {
   if (!canCreate.value) return
-  const tab = window.open('about:blank', '_blank')
-  if (!tab) {
+  const native = silentPrinting(session)
+  const tab = native ? null : window.open('about:blank', '_blank')
+  if (!native && !tab) {
     session.notify(t('Allow pop-ups to open the invoice.'), true)
     return
   }
@@ -193,7 +195,10 @@ async function createInvoice() {
       payload: { ...payload, idempotency_key: invoiceAttempt.key },
     })
     invoiceAttempt = null
-    tab.location.replace(`/printview?doctype=Sales%20Invoice&name=${encodeURIComponent(invoice.name)}&no_letterhead=0`)
+    if (native) {
+      try { session.notify(t(printStatusMessage(await nativeDocument('Sales Invoice', invoice.name)))) }
+      catch (error) { session.notify(t('Invoice saved. Printing needs attention: {error}', { error: error.message }), true) }
+    } else tab.location.replace(`/printview?doctype=Sales%20Invoice&name=${encodeURIComponent(invoice.name)}&no_letterhead=0`)
     session.notify(t('Sales Invoice {name} created', { name: invoice.name }))
     invoiceLines.value = []
     note.value = ''
@@ -201,7 +206,7 @@ async function createInvoice() {
     salesPerson.value = ''
     clearCustomer()
   } catch (e) {
-    tab.close()
+    tab?.close()
     session.notify(e.message, true)
   } finally {
     creating.value = false

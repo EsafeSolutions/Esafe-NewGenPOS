@@ -22,6 +22,15 @@ def ping():
 
 
 @frappe.whitelist()
+def app_revision():
+    """Current deployed shell, including rebuilt assets within the same release."""
+    from esafepos import __version__
+    from esafepos.www.pos import _shell_revision
+
+    return {"version": __version__, "revision": _shell_revision(__version__)}
+
+
+@frappe.whitelist()
 def get_bootstrap(pos_profile: str | None = None):
     """Everything the POS needs to start: profile, payment modes, item groups,
     promotions, currency and the current register session."""
@@ -573,6 +582,9 @@ def _client_settings(profile_name=None):
         from esafepos.api.settings import effective_receipt
 
         data.update(effective_receipt(profile_name))
+        from esafepos.print_config import defaults as print_defaults
+
+        data["esafe_printing"] = print_defaults(frappe.get_cached_doc("POS Profile", profile_name))
     return data
 
 

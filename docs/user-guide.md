@@ -259,6 +259,7 @@ a label printer (a roll) or on an A4 sheet of labels.
 - **Printer:** labels open in the browser print window; choose the installed label printer there. Set actual resolution and usable width, match driver stock/sensor settings, then use **Print test row** and horizontal/vertical offsets. **Save alignment** applies only to this device/stock/output configuration. Older connector setups use browser printing and reset connector-specific alignment; print a new test row before saving alignment. Normally select **Printer advances the gap**; include it in page length only when the tested driver requires that. In the print window choose matching paper, no margins and 100% scale. PDF and native command-file downloads remain available. Integration with the separate Print Manager is planned for later.
 - **Files:** Download PDF creates exact-size raster pages at the chosen resolution. Native thermal files exports ZPL/TSPL bitmap commands for compatible die-cut/continuous-roll printers with printer-controlled gap advancement. These files require matching language/device setup and are not sent automatically. Sheet output uses browser/PDF/driver routes.
 - **Saved:** save Stock, Design, Printer or complete setups locally. Managers can save reusable presets for the current outlet after migration. Shared printer recommendations exclude local printer names and measured offsets. Select a saved setup to apply it.
+- **Esafe output:** when silent printing is enabled, Labels uses the approved local label queue and one exact-size PDF intent for the prepared job. Assign the queue in Printers and recalibrate its stock. Browser print and file exports remain explicit alternatives.
 - **Preparation/results:** fresh prices and names are checked before dispatch; changes require reviewing the refreshed preview and printing again. A job supports up to 500 item rows/10,000 copies and at most 500 output pages/roll rows per dispatch; split larger jobs. A browser dialog does not prove physical completion. Check the printer after uncertain output before deliberately printing again; jobs are not replayed automatically.
 - **Upgrade:** run `bench --site <site> migrate` to create **EsafePOS Label Preset** and **EsafePOS Label Print Job**. Shared presets are outlet-scoped and manager-editable; job APIs check owner/outlet access. First use still needs measured alignment and a real barcode scan. GS1-specific formats, additional encoders, automatic offer labels and automatic raw command dispatch remain later integrations.
 - **Settings, General, Features, Barcode and price labels** switches the screen off; **Approvals and access,
@@ -270,9 +271,13 @@ a label printer (a roll) or on an A4 sheet of labels.
 
 - **Receipt:** choose a template, paper width, logo, header/contact/footer, visible fields and custom fields. The live preview follows changes. Use **Save default receipt** for all outlets, or select an outlet and use **Save for this outlet**. **Reset to default** removes that outlet's override. **Print preview** prints the sample receipt through the browser; it does not post a sale. Receipt editing is no longer under General Settings.
 - **Printers:** select an outlet, enter its ESC/POS network printer host/port or leave the address empty for browser/Print Format printing, choose an ERPNext Print Format for the outlet's sale document type, and use **Save printer settings**. These choices remain stored on the existing POS Profile. Saving the active outlet updates the current till immediately. Save changes before **Print test receipt**; a successful submission does not prove paper output.
-- **Permissions:** receipt and printer setup require access to edit EsafePOS Settings. Saving/testing a profile's printer also requires POS Profile write permission. Cashiers with only Print labels access see only Labels. A connection is required for configuration changes.
+- **Permissions:** receipt and printer setup require access to edit EsafePOS Settings. Saving/testing a profile's printer also requires POS Profile write permission. Cashiers with only Print labels access see Labels; those using silent printing can also inspect their own Print jobs and connect their browser. An ERP connection is required for configuration changes.
 
-USB and installed Windows printers are selected in the browser print dialog. Existing network receipt printing runs from the ERPNext server, so the printer must be reachable from that server. The separate Print Manager will be integrated later; QZ Tray setup is not included.
+**Esafe silent printing:** in **Printers**, click **Connect / reconnect**, approve the ERP website in the native Windows manager, select installed queues for receipts/labels/A4/reports, then **Approve and save workstation printers**. Install the manager's local certificate through its native Settings and allow browser local-network access when requested. Assignments belong to this browser/workstation and outlet. Set receipt output, copies and document paper; use Preview test and Silent test receipt before enabling silent printing and optional automatic receipts after a successful sale. Both switches default off. Existing profile IP/port and Print Format are preserved.
+
+**Print jobs** shows native acceptance/status, explicit identical retry and authorized new-copy reprints. Unknown jobs are never replayed automatically. Browser fallback is an explicit choice; check the printer before making another copy. The supplied Esafe 0.1.0 installer is an unsigned development build requiring administrator qualification. See the [complete setup, migration and rollback guide](esafe-print-manager.md).
+
+With silent printing disabled, USB/Windows queues remain selectable in the browser dialog. Existing server-network receipts require the printer to be reachable from the ERPNext server. QZ Tray setup is not included.
 
 ### Stock take with the EsafePOS Stock app (0.68.0)
 **EsafePOS Stock** is a phone app for stock work. On a EsafePOS site it talks to EsafePOS directly (no other app
@@ -681,16 +686,9 @@ currency list need permission to change EsafePOS Settings.
 ### After the sale
 The receipt modal shows totals, taxes, payments, change, applied promotions
 (★) and bundles (🎁), loyalty earned/redeemed, gift card info.
-**Print receipt** uses, in order:
-1. the **ESC/POS network printer** (if configured on the profile, incl. cash-drawer kick),
-2. the profile's **Print Format** via ERPNext print view,
-3. the built-in receipt via the browser dialog.
+When Esafe silent printing is enabled for the sale's outlet, **Print receipt** uses its approved workstation receipt queue and configured HTML/PDF/raw output. Optional automatic printing starts only after successful checkout. Native failure does not repeat the sale or payment. Repeated original callbacks share an intent; deliberate reprints create a new authorized copy. **Printing → Print jobs** distinguishes acceptance/spooler status from paper output. Unknown jobs require an operator decision. Use the explicit Browser print button if needed, after checking the original queue.
 
-The configured network printer must be reachable from the Frappe server.
-For USB printers or shop-network printers that a cloud server cannot reach,
-use the browser dialog and select the installed Windows printer. The separate
-Print Manager will be integrated later. The POS no longer includes QZ Tray
-setup, local discovery, certificate upload or QZ dispatch.
+With silent printing off, **Print receipt** uses the profile's server-network ESC/POS printer, then its ERPNext Print Format, then the built-in browser receipt. The network printer must be reachable from the Frappe server. Offline receipts retain their existing browser route; the bridge does not make ERP operations available offline. Esafe setup and qualification are described in the [printing guide](esafe-print-manager.md). The POS makes no QZ connection/signing requests.
 
 The built-in browser receipt uses the **58mm / 80mm paper width** saved in
 Printing → Receipt (including the sale outlet's override). It prints a separate,

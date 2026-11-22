@@ -130,7 +130,7 @@
     <PaymentOverlay v-if="paymentOpen" @close="paymentOpen = false" @done="onSaleDone" />
     <HoldModal v-if="holdOpen" @close="holdOpen = false" @done="onHeld" />
     <ParkedSalesModal v-if="parkedOpen" @close="parkedOpen = false" />
-    <ReceiptModal v-if="receipt" :receipt="receipt" @close="receipt = null" @updated="receipt = $event" />
+    <ReceiptModal v-if="receipt" :receipt="receipt" :auto-print="true" @close="receipt = null" @updated="receipt = $event" />
     <SerialModal
       v-if="serialItem"
       :item="serialItem"
@@ -180,6 +180,7 @@ import PaymentOverlay from '../components/PaymentOverlay.vue'
 import ParkedSalesModal from '../components/ParkedSalesModal.vue'
 import HoldModal from '../components/HoldModal.vue'
 import ReceiptModal from '../components/ReceiptModal.vue'
+import { nativeDocument, printStatusMessage, silentPrinting } from '../printing/index.js'
 import SerialModal from '../components/SerialModal.vue'
 import PasscodeModal from '../components/PasscodeModal.vue'
 import PriceCheckModal from '../components/PriceCheckModal.vue'
@@ -498,17 +499,21 @@ function onSaleDone(saleReceipt) {
 }
 
 async function createQuotation() {
-  const tab = window.open('about:blank', '_blank')
-  if (!tab) {
+  const native = silentPrinting(session)
+  const tab = native ? null : window.open('about:blank', '_blank')
+  if (!native && !tab) {
     session.notify(t('Allow pop-ups to open the quotation.'), true)
     return
   }
   try {
     const quote = await cart.createQuotation()
-    tab.location.replace(`/printview?doctype=Quotation&name=${encodeURIComponent(quote.name)}&no_letterhead=0`)
+    if (native) {
+      try { session.notify(t(printStatusMessage(await nativeDocument('Quotation', quote.name)))) }
+      catch (error) { session.notify(t('Quotation saved. Printing needs attention: {error}', { error: error.message }), true) }
+    } else tab.location.replace(`/printview?doctype=Quotation&name=${encodeURIComponent(quote.name)}&no_letterhead=0`)
     session.notify(t('Quotation {name} created', { name: quote.name }))
   } catch (e) {
-    tab.close()
+    tab?.close()
     session.notify(e.message, true)
   }
 }
@@ -518,17 +523,21 @@ async function createCustomerInvoice() {
     session.notify(t('Pick the salesperson first'), true)
     return
   }
-  const tab = window.open('about:blank', '_blank')
-  if (!tab) {
+  const native = silentPrinting(session)
+  const tab = native ? null : window.open('about:blank', '_blank')
+  if (!native && !tab) {
     session.notify(t('Allow pop-ups to open the invoice.'), true)
     return
   }
   try {
     const invoice = await cart.createCustomerInvoice()
-    tab.location.replace(`/printview?doctype=Sales%20Invoice&name=${encodeURIComponent(invoice.name)}&no_letterhead=0`)
+    if (native) {
+      try { session.notify(t(printStatusMessage(await nativeDocument('Sales Invoice', invoice.name)))) }
+      catch (error) { session.notify(t('Invoice saved. Printing needs attention: {error}', { error: error.message }), true) }
+    } else tab.location.replace(`/printview?doctype=Sales%20Invoice&name=${encodeURIComponent(invoice.name)}&no_letterhead=0`)
     session.notify(t('Sales Invoice {name} created', { name: invoice.name }))
   } catch (e) {
-    tab.close()
+    tab?.close()
     session.notify(e.message, true)
   }
 }

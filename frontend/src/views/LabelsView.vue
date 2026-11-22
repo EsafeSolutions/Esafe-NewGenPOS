@@ -22,7 +22,7 @@
         </div>
         <div class="preview-footer"><span>{{ job.pages.length }} {{ t(stock.kind==='sheet' ? 'pages' : 'rows') }} · {{ job.blanks }} {{ t('blank slots') }}</span><div v-if="previewMode==='media' && job.pages.length" class="actions"><button :disabled="pageIndex<=0" @click="pageIndex--" :aria-label="t('Previous page')">‹</button>{{ pageIndex+1 }}/{{ job.pages.length }}<button :disabled="pageIndex>=job.pages.length-1" @click="pageIndex++" :aria-label="t('Next page')">›</button></div><span v-if="job.length">{{ job.length }} mm</span></div>
         <div v-if="checks.errors.length" class="message error" role="alert"><strong>{{ t('Before printing') }}</strong><p v-for="m in checks.errors.slice(0,6)" :key="m">{{ t(m) }}</p></div><div v-if="checks.warnings.length" class="message warning"><p v-for="m in checks.warnings" :key="m">{{ t(m) }}</p></div><div v-if="error" class="message error" role="alert">{{ error }}</div><div v-if="notice" class="message notice" role="status">{{ notice }}</div>
-        <div class="output-actions"><button class="btn btn-outline" :disabled="!canPrint" @click="output('pdf')">{{ t('Download PDF') }}</button><button class="btn btn-outline" :disabled="printing || !!checks.errors.length" @click="output('test')">{{ t('Print test row') }}</button><label class="field"><span>{{ t('Preview item') }}</span><select v-model.number="sampleIndex" class="cf-in"><option v-if="!rows.length" :value="0">{{ t('Sample product') }}</option><option v-for="(r,i) in rows" :key="r._id" :value="i">{{ r.item_name }}</option></select></label></div>
+        <div class="output-actions"><button class="btn btn-outline" :disabled="!canPrint" @click="output('pdf')">{{ t('Download PDF') }}</button><button v-if="silentPrinting(session)" class="btn btn-outline" :disabled="!canPrint" @click="output('browser')">{{ t('Browser print') }}</button><button class="btn btn-outline" :disabled="printing || !!checks.errors.length" @click="output('test')">{{ t('Print test row') }}</button><label class="field"><span>{{ t('Preview item') }}</span><select v-model.number="sampleIndex" class="cf-in"><option v-if="!rows.length" :value="0">{{ t('Sample product') }}</option><option v-for="(r,i) in rows" :key="r._id" :value="i">{{ r.item_name }}</option></select></label></div>
       </section>
       <section class="card settings-panel">
         <div class="tabs" role="tablist" :aria-label="t('Label settings')"><button v-for="section in tabs" :key="section.key" role="tab" :aria-selected="tab===section.key" :class="{active:tab===section.key}" @click="tab=section.key">{{ t(section.label) }}</button></div>
@@ -51,7 +51,7 @@
             </div>
           </template>
           <template v-if="tab==='printer'">
-            <h2>{{ t('Printer and calibration') }}</h2><p class="hint">{{ t('Labels open in your browser’s print window. Choose the printer there.') }}</p>
+            <h2>{{ t('Printer and calibration') }}</h2><template v-if="silentPrinting(session)"><p class="hint">{{ t('Silent labels use the workstation label printer selected in Printing → Printers. Recalibrate after changing the printer or output route.') }}</p><button v-if="printManager.state.connection!=='connected'" class="btn btn-outline" @click="run(()=>printManager.connect({explicit:true}))">{{ t('Connect Esafe Print Manager') }}</button></template><p v-else class="hint">{{ t('Labels open in your browser’s print window. Choose the printer there.') }}</p>
             <div class="number-grid"><NumberField v-model="printer.dpi" :label="t('Actual resolution (DPI)')" :min="100" :max="1200" /><NumberField v-model="printer.maxWidth" :label="t('Usable width')" unit="mm" :min="1" /></div><label class="check"><input v-model="printer.monochrome" type="checkbox" />{{ t('Monochrome PDF output') }}</label>
             <div class="editor stack"><h3>{{ t('Align a test row') }}</h3><p class="hint">{{ t('Match the driver stock, print a test row, then adjust the displacement. Positive offsets move right and down.') }}</p><div class="number-grid"><NumberField v-model="printer.offsetX" :label="t('Horizontal offset')" unit="mm" :min="-50" /><NumberField v-model="printer.offsetY" :label="t('Vertical offset')" unit="mm" :min="-50" /><NumberField v-model="printer.scaleX" :label="t('Width correction (%)')" :min="90" :max="110" /><NumberField v-model="printer.scaleY" :label="t('Height correction (%)')" :min="90" :max="110" /></div><div class="actions wrap"><button class="btn btn-outline" :disabled="printing || !!checks.errors.length" @click="output('test')">{{ t('Print test row') }}</button><button class="text-btn" @click="saveCalibration">{{ t('Save alignment') }}</button><button class="text-btn" @click="printer.offsetX=0;printer.offsetY=0;printer.scaleX=100;printer.scaleY=100">{{ t('Reset') }}</button></div></div><p class="hint">{{ t('Use matching paper, no margins and 100% scale in the print window. Alignment is saved per device, stock and output route.') }}</p>
             <details><summary>{{ t('Native thermal files') }}</summary><div class="stack"><p class="hint">{{ t('Download a bitmap command file for a compatible ZPL or TSPL printer. Check its language and stock settings before sending the file.') }}</p><button class="btn btn-outline" :disabled="!canPrint || stock.kind==='sheet'" @click="output('zpl')">{{ t('Download ZPL') }}</button><button class="btn btn-outline" :disabled="!canPrint || stock.kind==='sheet'" @click="output('tspl')">{{ t('Download TSPL') }}</button></div></details>
@@ -78,6 +78,7 @@ import { labelScene,pageSvg,validateJob,elementBox } from '../labels/render.js'
 import { browserPrint,download,pdfDocument,nativeDocument,resizeLogo,imageData,jobSvgs } from '../labels/printing.js'
 import Icon from '../components/Icon.vue'
 import NumberField from '../components/labels/LabelNumberField.vue'
+import { printManager, printStatusMessage, silentPrinting } from '../printing/index.js'
 const session=useSessionStore(),DOCTYPES=['Purchase Receipt','Stock Entry','Purchase Invoice']
 const storageKey=computed(() => `esafepos-labels-v2:${session.user || 'user'}:${session.posProfile || ''}`)
 function read(key,fallback){try{return JSON.parse(localStorage.getItem(key)||'null') || fallback}catch{return fallback}}
@@ -91,6 +92,9 @@ const rows=ref([]),query=ref(''),found=ref([]),docs=ref([]),docType=ref(DOCTYPES
 const busy=ref(false),printing=ref(false),tab=ref('stock'),previewMode=ref('label'),zoom=ref(130),sampleIndex=ref(0),pageIndex=ref(0),advanced=ref(false),selectedId=ref('name'),newType=ref('static'),bulkQty=ref(1)
 const localPresets=ref(saved.presets || []),sharedPresets=ref([]),canManage=ref(false),needsMigration=ref(false),receiptLogo=ref(session.settings.receipt_logo || ''),saveKind=ref('Defaults'),saveTitle=ref('')
 const companyLogo=ref('')
+const uncertainPrint=ref(false)
+async function syncPrintRoute(){const profile=session.posProfile;if(!silentPrinting(session)){printer.value.route='browser';printer.value.name='';return}const binding=await printManager.binding(profile);if(profile===session.posProfile){printer.value.route='esafe';printer.value.name=binding.labels || ''}}
+watch(()=>[session.posProfile,session.settings.esafe_printing?.silent],()=>{syncPrintRoute().catch(()=>{})})
 watch(() => session.settings.receipt_logo,(value) => {receiptLogo.value=value || ''})
 const tabs=[{key:'stock',label:'Stock'},{key:'design',label:'Design'},{key:'printer',label:'Printer'},{key:'saved',label:'Saved'}]
 const margins=computed(() => [{key:'left',label:'Left margin'},{key:'right',label:'Right margin'},...(stock.value.kind==='sheet' ? [{key:'top',label:'Top margin'},{key:'bottom',label:'Bottom margin'}] : [])])
@@ -151,6 +155,7 @@ function saveShared(){return run(async()=>{await call('esafepos.api.labels.save_
 async function loadWorkspace(){const data=await call('esafepos.api.labels.workspace',{pos_profile:session.posProfile});sharedPresets.value=data.presets || [];canManage.value=data.can_manage;needsMigration.value=data.needs_migration;receiptLogo.value=data.logo || '';companyLogo.value=data.company_logo || ''}
 async function output(action){
   if(printing.value)return
+  if(uncertainPrint.value && ['print','browser','test'].includes(action) && !window.confirm(t('A previous label job may have printed. Continue with another copy?')))return
   error.value='';notice.value='';printing.value=true
   let record=null
   const outlet=session.posProfile,company=session.company
@@ -175,7 +180,16 @@ async function output(action){
     const svgs=jobSvgs(validated,config.design,config.printer,test)
     if(action==='pdf')download(await pdfDocument(svgs,validated.geometry,config.printer.dpi,config.printer.monochrome),'labels.pdf')
     else if(['zpl','tspl'].includes(action))download(await nativeDocument(svgs,validated.geometry,config.printer,action),`labels.${action}`)
-    else await browserPrint(svgs,validated.geometry)
+    else if(action!=='browser' && silentPrinting(session)){
+      const pdf=await pdfDocument(svgs,validated.geometry,config.printer.dpi,config.printer.monochrome)
+      const result=await printManager.dispatch({key:record ? `labels:${record.name}` : crypto.randomUUID(),profile:outlet,role:'labels',format:'pdf',data:pdf,
+        title:record ? `Labels ${record.name}` : 'Label calibration',reference:record ? {doctype:'EsafePOS Label Print Job',name:record.name} : {doctype:'POS Profile',name:outlet,test_label:1},user:session.user,
+        options:{copies:1,size:{width:validated.geometry.pageW,height:validated.geometry.pageH},margins:0,scale:'actual'}})
+      uncertainPrint.value=result.state==='unknown'
+      const status=result.state==='unknown' ? 'Outcome unknown' : result.state==='failed' ? 'Canceled' : 'Submitted'
+      if(record)await call('esafepos.api.labels.job_result',{pos_profile:outlet,name:record.name,status,detail:result.error || ''})
+      notice.value=t(printStatusMessage(result));return
+    }else await browserPrint(svgs,validated.geometry)
     const status=['pdf','zpl','tspl'].includes(action) ? 'Exported' : 'Dialog opened'
     if(record)await call('esafepos.api.labels.job_result',{pos_profile:outlet,name:record.name,status})
     notice.value=status==='Exported' ? t('Label file downloaded.') : t('Print window opened. Check the printer before printing again.')
@@ -183,7 +197,7 @@ async function output(action){
   finally{printing.value=false}
 }
 watch(storageKey,(key) => {const c=migrateOptions(read(key,{}));stock.value={...DEFAULT_STOCK,...c.stock};design.value={...clone(DEFAULT_DESIGN),...c.design,show:{...DEFAULT_DESIGN.show,...c.design?.show}};if(!design.value.elements?.length)design.value.elements=templateElements(design.value.key);printer.value=normalizePrinter(c.printer);localPresets.value=c.presets || [];rows.value=[];error.value='';notice.value='';designHistory.value=[JSON.stringify(design.value)];designFuture.value=[];loadWorkspace().catch((e) => error.value=e.message)})
-onMounted(()=>{if(session.permissions.print_labels)run(async()=>{await loadWorkspace();docs.value=await call('esafepos.api.labels.documents',{pos_profile:session.posProfile,doctype:docType.value})})})
+onMounted(()=>{if(session.permissions.print_labels)run(async()=>{await syncPrintRoute();await loadWorkspace();docs.value=await call('esafepos.api.labels.documents',{pos_profile:session.posProfile,doctype:docType.value})})})
 onBeforeUnmount(()=>{clearTimeout(searchTimer);clearTimeout(docTimer);clearTimeout(historyTimer)})
 </script>
 

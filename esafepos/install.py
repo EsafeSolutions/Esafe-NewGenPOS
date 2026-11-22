@@ -975,6 +975,11 @@ def make_custom_fields():
                     insert_after="esafepos_printer_ip",
                     default="9100",
                 ),
+                dict(fieldname="esafepos_silent_printing", label="Esafe silent printing", fieldtype="Check", default="0", insert_after="esafepos_printer_port"),
+                dict(fieldname="esafepos_auto_print_receipt", label="Automatically print completed sale receipt", fieldtype="Check", default="0", insert_after="esafepos_silent_printing"),
+                dict(fieldname="esafepos_receipt_output", label="Esafe receipt output", fieldtype="Select", options="html\npdf\nraw", default="html", insert_after="esafepos_auto_print_receipt"),
+                dict(fieldname="esafepos_print_copies", label="Esafe print copies", fieldtype="Int", default="1", insert_after="esafepos_receipt_output"),
+                dict(fieldname="esafepos_document_paper", label="Esafe document paper", fieldtype="Select", options="A4\nLetter", default="A4", insert_after="esafepos_print_copies"),
             ],
             "POS Invoice": invoice_fields,
             "Sales Invoice": invoice_fields,  # legacy v0.1-0.3 sales keep working

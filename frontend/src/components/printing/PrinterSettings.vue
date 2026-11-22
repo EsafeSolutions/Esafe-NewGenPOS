@@ -9,16 +9,17 @@
     <p v-if="loading" class="notice" role="status">{{ t('Loading printer settings…') }}</p>
     <p v-else-if="!profile" class="notice">{{ t('No outlets are available for printer setup.') }}</p>
     <template v-if="loaded">
+      <EsafePrinterSetup :key="profile" :profile="profile" :defaults="esafeDefaults" :can-write="canWrite" :needs-migration="esafeNeedsMigration" :offline="session.offline" @saved="esafeDefaults=$event" />
       <fieldset :disabled="!canWrite || loading || saving || session.offline">
         <section class="setup-section">
-          <h3>{{ t('Receipt printer') }}</h3>
+          <h3>{{ t('Server network printer') }}</h3>
           <p>{{ t('Leave the network address empty to use the Print Format or browser print window.') }}</p>
           <div class="fields"><label class="field"><span>{{ t('Printer IP address or hostname') }}</span><input v-model="form.host" maxlength="253" autocomplete="off" placeholder="192.168.1.100" /></label><label class="field port"><span>{{ t('Printer port') }}</span><input v-model="form.port" type="number" min="1" max="65535" step="1" /></label></div>
           <p class="hint">{{ t('Network receipts use ESC/POS. The printer must be reachable from the ERPNext server; a cloud server may not reach your shop network.') }}</p>
           <p v-if="needsMigration" class="error">{{ t('Run the site migration before changing printer settings.') }}</p>
         </section>
         <section class="setup-section">
-          <h3>{{ t('Print Format') }}</h3><p>{{ t('Choose an ERPNext layout for this outlet’s sale documents. A configured network printer takes priority.') }}</p>
+          <h3>{{ t('Print Format') }}</h3><p>{{ t('Choose an ERPNext layout for PDF documents. Esafe uses the receipt output selected above. When silent printing is off, the server network printer takes priority.') }}</p>
           <label class="field format"><span>{{ t('Receipt and document format') }}</span><select v-model="form.print_format" :aria-label="t('Receipt and document format')"><option value="">{{ t('Built-in receipt') }}</option><option v-for="name in formatChoices" :key="name" :value="name">{{ name }}</option></select></label>
           <p class="hint">{{ t('Formats match the outlet’s sale document type: {doctype}.', {doctype:invoiceDoctype}) }}</p>
         </section>
@@ -26,21 +27,23 @@
       <p v-if="!canWrite" class="notice">{{ t('You need permission to edit this POS Profile to change its printer setup.') }}</p>
       <div class="actions"><button class="btn btn-primary" :disabled="!editable" @click="save">{{ saving ? t('Saving…') : t('Save printer settings') }}</button><button class="btn btn-outline" :disabled="!editable || !savedHost || dirty" @click="test">{{ t('Print test receipt') }}</button><span v-if="dirty && form.host" class="hint">{{ t('Save changes before printing a test.') }}</span></div>
     </template>
-    <section class="setup-section browser-section"><h3>{{ t('Browser and label printing') }}</h3><p>{{ t('For USB printers and other installed printers, choose the printer in the browser print window. Match the paper size, use 100% scale and turn off browser headers and footers.') }}</p><button v-if="session.settings.enable_labels && session.permissions.print_labels" class="text-btn" @click="$emit('labels')">{{ t('Open labels and calibration') }}</button><p class="hint">{{ t('The separate Print Manager will be connected here when it is ready.') }}</p></section>
+    <section class="setup-section browser-section"><h3>{{ t('Browser and label printing') }}</h3><p>{{ t('Browser printing remains an explicit option. Match the paper size, use 100% scale and turn off browser headers and footers. Esafe silent printing uses the workstation assignments above.') }}</p><button v-if="session.settings.enable_labels && session.permissions.print_labels" class="text-btn" @click="$emit('labels')">{{ t('Open labels and calibration') }}</button></section>
   </section>
 </template>
 <script setup>
 import { computed, onActivated, onMounted, ref } from 'vue'
+import EsafePrinterSetup from './EsafePrinterSetup.vue'
 import { call } from '../../api'
 import { t } from '../../i18n'
 import { useSessionStore } from '../../stores/session'
 defineEmits(['labels'])
 const session=useSessionStore(),profiles=ref([]),profile=ref(''),form=ref({host:'',port:9100,print_format:''}),formats=ref([])
 const loading=ref(false),saving=ref(false),loaded=ref(false),error=ref(''),notice=ref(''),canWrite=ref(false),needsMigration=ref(false),invoiceDoctype=ref(''),snapshot=ref(''),savedHost=ref('')
+const esafeDefaults=ref({}),esafeNeedsMigration=ref(false)
 const formatChoices=computed(() => [...new Set([...formats.value,form.value.print_format].filter(Boolean))])
 const dirty=computed(() => JSON.stringify(form.value)!==snapshot.value)
 const editable=computed(() => canWrite.value && loaded.value && !loading.value && !saving.value && !session.offline && !needsMigration.value)
-function apply(data){form.value={host:data.host || '',port:data.port || 9100,print_format:data.print_format || ''};formats.value=data.formats || [];canWrite.value=!!data.can_write;needsMigration.value=!!data.needs_migration;invoiceDoctype.value=data.invoice_doctype;snapshot.value=JSON.stringify(form.value);savedHost.value=form.value.host;loaded.value=true}
+function apply(data){form.value={host:data.host || '',port:data.port || 9100,print_format:data.print_format || ''};formats.value=data.formats || [];canWrite.value=!!data.can_write;needsMigration.value=!!data.needs_migration;esafeDefaults.value=data.esafe || {};esafeNeedsMigration.value=!!data.esafe_needs_migration;invoiceDoctype.value=data.invoice_doctype;snapshot.value=JSON.stringify(form.value);savedHost.value=form.value.host;loaded.value=true}
 async function loadProfile(){
   if(!profile.value || session.offline)return
   loading.value=true;loaded.value=false;error.value='';notice.value=''

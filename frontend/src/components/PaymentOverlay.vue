@@ -88,15 +88,20 @@
 
       <!-- A sale on account (esafepos.credit_sales, 0.60.0): what the customer
            does not pay now stays owed on their account. -->
-      <div v-if="onAccount" class="on-account card" data-tour="pay-on-account">
+      <div v-if="showOnAccount" class="on-account card" data-tour="pay-on-account">
         <div class="oa-row">
           <span class="oa-title"><Icon name="clock" /> {{ t('On account') }}</span>
-          <span class="muted small">
+          <span v-if="onAccount" class="muted small">
             {{ t('Owes {amount}', { amount: money(onAccount.owed, onAccount.currency) }) }}<template v-if="onAccount.held > 0">&nbsp;· {{ t('{amount} in holds and orders', { amount: money(onAccount.held, onAccount.currency) }) }}</template><template v-if="onAccount.available != null">&nbsp;· {{ t('{amount} left of the limit', { amount: money(onAccount.available, onAccount.currency) }) }}</template>
           </span>
         </div>
-        <p v-if="onAccount.reason" class="muted small oa-why">{{ onAccount.reason }}</p>
-        <button v-else class="btn btn-outline oa-btn" :disabled="onAccountRoom <= 0" @click="addOnAccount">
+        <p v-if="creditLoading" class="muted small" role="status">{{ t('Checking customer credit…') }}</p>
+        <template v-else-if="creditError">
+          <p class="muted small oa-why" role="alert">{{ creditError }}</p>
+          <button class="btn btn-outline" @click="loadQuote">{{ t('Retry') }}</button>
+        </template>
+        <p v-else-if="onAccount?.reason" class="muted small oa-why">{{ onAccount.reason }}</p>
+        <button v-else-if="onAccount" class="btn btn-outline oa-btn" :disabled="onAccountRoom <= 0" @click="addOnAccount">
           {{ t('Put {amount} on account', { amount: money(onAccountRoom, sale.currency) }) }}
         </button>
       </div>
@@ -318,9 +323,15 @@ const cashbackEarn = ref(0)
 // account, online, in the company's currency, never on an exchange. `reason`
 // says why this customer may not (the server's words, in the till's language).
 const creditFacts = ref(null)
+const creditLoading = ref(false)
+const creditError = ref('')
+const creditContext = computed(() => Boolean(cart.customer?.name && !session.offline && !sale.value.foreign && !cart.exchange))
+const showOnAccount = computed(() => creditContext.value && Boolean(
+  onAccount.value || (session.settings?.credit_sales_enabled && (creditLoading.value || creditError.value))
+))
 const onAccount = computed(() => {
   const f = creditFacts.value
-  if (!f || !f.enabled || !f.can_sell || !cart.customer || session.offline || sale.value.foreign || cart.exchange) {
+  if (!f || !f.enabled || !f.can_sell || !creditContext.value) {
     return null
   }
   return f
@@ -329,7 +340,7 @@ const onAccount = computed(() => {
 // leaves (less what this screen already put on account).
 const onAccountRoom = computed(() => {
   const f = onAccount.value
-  if (!f || f.reason) return 0
+  if (!f || f.reason || creditLoading.value || creditError.value || serverTotal.value == null) return 0
   const due = Math.max(remaining.value, 0)
   if (f.available == null) return round2(due)
   const used = payments.value.filter((p) => p.mode_of_payment === session.creditMode).reduce((sum, p) => sum + p.amount, 0)
@@ -567,7 +578,15 @@ onMounted(async () => {
 // one request, not two. The cart usually has the answer waiting already (it
 // quotes ahead).
 async function loadQuote() {
-  const q = await cart.quote({ fresh: Boolean(session.settings?.credit_sales_enabled) })
+  creditError.value = ''
+  creditLoading.value = creditContext.value
+  // Eligibility must not disappear because a pricing quote omitted credit facts
+  // or the page bootstrapped before account selling was enabled elsewhere.
+  const creditRequest = creditContext.value
+    ? call('esafepos.api.credit.checkout_credit', { pos_profile: session.posProfile, customer: cart.customer.name })
+      .then((facts) => ({ facts }), (error) => ({ error }))
+    : Promise.resolve({ facts: null })
+  const q = await cart.quote({ fresh: creditContext.value || Boolean(session.settings?.credit_sales_enabled) })
   if (q && typeof q.payable === 'number') {
     serverTotal.value = q.payable
     quoted.value = q.currency
@@ -579,7 +598,13 @@ async function loadQuote() {
     quoted.value = null
   }
   cashbackEarn.value = q && typeof q.cashback_earn === 'number' ? q.cashback_earn : 0
-  creditFacts.value = (q && q.on_account) || null
+  const creditResult = await creditRequest
+  creditFacts.value = creditResult.facts || q?.on_account || null
+  if (creditContext.value) {
+    if (serverTotal.value == null) creditError.value = cart.quoteError || t('Could not confirm the sale total. Please retry.')
+    else if (!creditFacts.value && creditResult.error) creditError.value = creditResult.error.message
+  }
+  creditLoading.value = false
   if (q && q.blocked_modes) blockedModes.value = q.blocked_modes
   else loadBlockedModes() // quote failed (offline), ask on its own
 }

@@ -8,6 +8,7 @@
     "build": "vite build"
   },
   "dependencies": {
+    "@esafe/printer-manager": "file:vendor/esafe-printer-manager-0.1.0.tgz",
     "@lucide/vue": "^1.73.0",
     "pinia": "^2.1.7",
     "qrcode-generator": "2.0.4",

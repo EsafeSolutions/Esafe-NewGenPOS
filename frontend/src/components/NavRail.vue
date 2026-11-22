@@ -38,7 +38,7 @@
       <span class="rail-label">{{ t('Items') }}</span>
     </router-link>
     <!-- Barcode and price labels (0.67.0): the shop's switch and the person's permission. -->
-    <router-link v-if="session.permissions.settings || (!session.reportsOnly && session.settings.enable_labels && session.permissions.print_labels)" to="/printing" class="rail-item" :title="t('Printing')" active-class="active" data-tour="labels-rail">
+    <router-link v-if="session.permissions.settings || (!session.reportsOnly && (session.settings.esafe_printing?.silent || session.settings.enable_labels && session.permissions.print_labels))" to="/printing" class="rail-item" :title="t('Printing')" active-class="active" data-tour="labels-rail">
       <svg viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18H3V9h18v9h-3M6 14h12v7H6zM17 12h1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <span class="rail-label">{{ t('Printing') }}</span>
     </router-link>

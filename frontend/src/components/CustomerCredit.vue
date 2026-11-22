@@ -135,7 +135,8 @@
         <footer class="pr-brand muted small">{{ RECEIPT_BRAND }}</footer>
       </div>
       <div class="cr-actions">
-        <button class="btn btn-outline" @click="printPayment"><Icon name="download" /> {{ t('Print') }}</button>
+        <button class="btn btn-outline" :disabled="paymentPrinting" @click="printPayment()"><Icon name="download" /> {{ t('Print') }}</button>
+        <button v-if="silentPrinting(session)" class="btn btn-outline" :disabled="paymentPrinting" @click="printPayment(true)">{{ t('Browser print') }}</button>
         <button class="btn btn-outline" @click="paid = null">{{ t('Done') }}</button>
       </div>
     </div>
@@ -151,6 +152,7 @@ import { money, parseMoney } from '../format'
 import { RECEIPT_BRAND } from '../receiptOptions'
 import { t } from '../i18n'
 import { newId } from '../offline'
+import { nativeElement, printStatusMessage, silentPrinting } from '../printing/index.js'
 
 const props = defineProps({
   customer: { type: String, required: true },
@@ -292,7 +294,17 @@ async function take() {
   }
 }
 
-function printPayment() {
+const paymentPrinting = ref(false)
+async function printPayment(forceBrowser = false) {
+  if (paymentPrinting.value) return
+  if (!forceBrowser && silentPrinting(session)) {
+    paymentPrinting.value = true
+    try { session.notify(t(printStatusMessage(await nativeElement(document.getElementById('payment-print'), {doctype:'Journal Entry',name:paid.value.name}, {role:'report',title:`Payment ${paid.value.name}`,key:`payment:${paid.value.name}`})))) }
+    catch (error) { session.notify(error.message, true) }
+    finally { paymentPrinting.value = false }
+    return
+  }
+  if (forceBrowser && !window.confirm(t('Check the native print queue before making another browser copy. Continue?'))) return
   window.print()
 }
 

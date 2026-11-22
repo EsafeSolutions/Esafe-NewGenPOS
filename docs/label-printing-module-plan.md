@@ -8,11 +8,11 @@
 
 **Scope:** Product, price, shelf, batch and stock labels under **Printing → Labels** (`/printing`), with thermal rolls prioritized and basic sheet/PDF output included. The former `/labels` route redirects to this section.
 
-**Workspace update — 2026-11-22:** Printing now also hosts the receipt editor previously in General Settings and the outlet's network printer/Print Format setup. Label drafts, presets and calibration retain their existing permissions and data model. Receipt/printer configuration requires Settings write access, with POS Profile write access for printer changes; no separate manager/connector is integrated yet.
+**Workspace update — 2026-11-22:** Printing now also hosts the receipt editor previously in General Settings and the outlet's network printer/Print Format setup. Label drafts, presets and calibration retain their existing permissions and data model. Receipt/printer configuration requires Settings write access, with POS Profile write access for printer changes; the Esafe 0.1.0 integration now provides local printer roles and silent output; see the [deployment guide](esafe-print-manager.md).
 
 ## Printing integration update — 2026-11-22
 
-QZ Tray setup, receipt/label dispatch, signing endpoints and bundled connector have been removed. Labels use the browser print window, exact-size PDF or native command-file downloads. Existing connector profiles are normalized to the browser route, with connector-specific alignment reset so it can be measured again. Integration with the separately developed Print Manager is deferred; see the [Print Manager integration plan](print-manager-and-windows-bridge-plan.md). The original roadmap below is updated to follow that boundary.
+QZ Tray setup, receipt/label dispatch, signing endpoints and bundled connector have been removed. Labels use an approved Esafe label queue with exact-size PDF when silent printing is enabled, or explicit browser/PDF/native command-file output. Existing connector profiles are normalized to the browser route, with connector-specific alignment reset so it can be measured again. Esafe uses the actual supplied SDK, durable intents and explicit uncertain-job recovery; see the [implemented integration guide](esafe-print-manager.md). The original roadmap below is updated to follow that boundary.
 
 ## Implementation status — 2026-11-20
 

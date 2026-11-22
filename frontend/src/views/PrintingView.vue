@@ -26,14 +26,16 @@ import Icon from '../components/Icon.vue'
 import LabelsView from './LabelsView.vue'
 import ReceiptSettings from '../components/printing/ReceiptSettings.vue'
 import PrinterSettings from '../components/printing/PrinterSettings.vue'
+import EsafeJobs from '../components/printing/EsafeJobs.vue'
 
 const session=useSessionStore(),route=useRoute(),router=useRouter()
 const sections=computed(() => [
   ...(!session.reportsOnly && session.settings.enable_labels && session.permissions.print_labels ? [{key:'labels',label:'Labels',icon:'tag'}] : []),
   ...(session.permissions.settings ? [{key:'receipt',label:'Receipt',icon:'image'},{key:'printers',label:'Printers',icon:'printer'}] : []),
+  ...(session.settings.esafe_printing?.silent ? [{key:'jobs',label:'Print jobs',icon:'list'}] : []),
 ])
 const activeSection=computed(() => sections.value.some((s) => s.key===route.query.section) ? route.query.section : sections.value[0]?.key)
-const activeComponent=computed(() => ({labels:LabelsView,receipt:ReceiptSettings,printers:PrinterSettings})[activeSection.value])
+const activeComponent=computed(() => ({labels:LabelsView,receipt:ReceiptSettings,printers:PrinterSettings,jobs:EsafeJobs})[activeSection.value])
 function selectSection(section){if(sections.value.some((s) => s.key===section))router.replace({path:'/printing',query:{section}})}
 function tabKey(event,key){
   if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return

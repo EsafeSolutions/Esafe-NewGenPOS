@@ -349,8 +349,7 @@ def _build_sale_invoice(
     # ERPNext POS can re-read this flag from the POS Profile during validation.
     # Set the document flag for preview/build; the final resolved invoice values
     # are frozen below so submit cannot apply a second discount.
-    if not erp_pricing_rules:
-        _ensure_ignore_pricing_rule(profile, ignore=True)
+    _ensure_ignore_pricing_rule(profile, ignore=not erp_pricing_rules)
 
     invoice = erpnext_compat.new_doc(_sale_doctype(profile))
     invoice.update(
@@ -426,6 +425,11 @@ def _build_sale_invoice(
     invoice.set_missing_values()
     currency.apply_to_invoice(invoice, ctx)
     invoice.flags.esafepos_currency = ctx
+    if erp_pricing_rules:
+        # set_missing_values populates list prices and rule discounts, but can
+        # leave rate at zero until totals run. Resolve it before freezing it:
+        # otherwise a normal priced item becomes a 100% discount on every sale.
+        invoice.run_method("calculate_taxes_and_totals")
 
     # Every line keeps the profile's warehouse (set in the row build above), it
     # belongs to the profile's company. Do NOT clear it for non-stock lines:
@@ -434,11 +438,9 @@ def _build_sale_invoice(
     # Company …"). A warehouse on a non-stock line is harmless (no stock moves).
 
     # Apply discounts AFTER set_missing_values (it resets them otherwise).
-    # CRITICAL: with Pricing Rules off, ERPNext's calculate_taxes_and_totals
-    # honours ONLY discount_percentage (it recomputes discount_amount from
-    # it). Setting discount_amount alone is silently ignored and the full
-    # price is posted. So express every discount as a percentage and clear
-    # rate so ERPNext recalculates it from the percentage on each pass.
+    # Keep the resolved rate, percentage and amount consistent. ERPNext versions
+    # differ in when they infer rate from discounts; zero is a real free price,
+    # not a safe placeholder for an unresolved normal selling rate.
     auto_discount_total = 0.0
     erp_line_discounts = [0.0] * len(lines)
     applied_erp_rules = set()
@@ -486,13 +488,13 @@ def _build_sale_invoice(
             item_row.margin_type = ""
             item_row.margin_rate_or_amount = 0
             item_row.rate_with_margin = 0
-            item_row.rate = 0
+            item_row.rate = flt(final_rate, item_row.precision("rate"))
             item_row.pricing_rules = ""
             item_row.is_free_item = 0
             item_row.discount_percentage = (
                 flt((base_rate - final_rate) / base_rate * 100, 6) if base_rate > 0 else 0
             )
-            item_row.discount_amount = 0
+            item_row.discount_amount = flt(base_rate - item_row.rate, item_row.precision("discount_amount"))
             continue
         # The only conversion: the row's list price in the sale's currency. The
         # discount below is a percentage, so it carries over unchanged.
@@ -500,7 +502,7 @@ def _build_sale_invoice(
         item_row.margin_type = ""
         item_row.margin_rate_or_amount = 0
         item_row.rate_with_margin = 0
-        item_row.rate = 0  # force recompute from discount_percentage
+        item_row.rate = flt(max((price - per_unit) * ctx.factor, 0), item_row.precision("rate"))
         # EsafePOS prices (price books + its own promotion engine) are
         # authoritative. set_missing_values can stamp an ERPNext Pricing Rule on
         # the row; if left, ERPNext RE-APPLIES it on submit and overrides the
@@ -513,7 +515,7 @@ def _build_sale_invoice(
             item_row.discount_percentage = flt(min(per_unit, price) / price * 100, 6)
         else:
             item_row.discount_percentage = 0
-        item_row.discount_amount = 0
+        item_row.discount_amount = flt(item_row.price_list_rate - item_row.rate, item_row.precision("discount_amount"))
 
     if erp_pricing_rules:
         # The discounts/rates have already been calculated by ERPNext above.
@@ -2144,12 +2146,15 @@ def _build_lines(items, profile, customer_group=None, app_price_list=None):
         factor = 1
         if unit != detail.stock_uom:
             factor = factors.get((detail.name, unit))
-            price = alternate_prices.get((detail.name, unit))
+            alternate_price = alternate_prices.get((detail.name, unit))
+            base_price = price
+            base_standard_price = standard_price
+            price = alternate_price or base_price * (factor or 0)
             if not factor or not price or detail.has_serial_no or row.get("bundle_key"):
                 frappe.throw(_("{0} has no selling price or conversion for {1}.").format(detail.item_name, unit))
             if unit in whole_units and qty != int(qty):
                 frappe.throw(_("Enter a whole quantity for {0}.").format(unit))
-            standard_price = price
+            standard_price = alternate_price or base_standard_price * factor
         lines.append(
             {
                 "item_code": detail.name,

@@ -46,6 +46,15 @@ class LabelConfigurationTests(unittest.TestCase):
         result = validate_configuration({"stock": self.stock})
         self.assertEqual(result["stock"]["w"], 50.8)
 
+    def test_rejects_retired_and_unknown_printer_routes(self):
+        for route in ("qz", "bridge", "tcp"):
+            with self.subTest(route=route), self.assertRaises(ValueError):
+                validate_configuration({"printer": {"route": route}})
+
+    def test_accepts_browser_printer_configuration(self):
+        config = {"printer": {"route": "browser", "dpi": 300, "offsetX": 2}}
+        self.assertEqual(validate_configuration(config), config)
+
 
 if __name__ == "__main__":
     unittest.main()

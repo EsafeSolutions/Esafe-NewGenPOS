@@ -15,7 +15,7 @@ import HoldsView from './views/HoldsView.vue'
 import RegisterView from './views/RegisterView.vue'
 import InsightsView from './views/InsightsView.vue'
 import SettingsView from './views/SettingsView.vue'
-import LabelsView from './views/LabelsView.vue'
+import PrintingView from './views/PrintingView.vue'
 import ItemsView from './views/ItemsView.vue'
 import StockCountView from './views/StockCountView.vue'
 import InvoicesView from './views/InvoicesView.vue'
@@ -33,7 +33,8 @@ const router = createRouter({
     { path: '/register', component: RegisterView },
     { path: '/insights', component: InsightsView },
     { path: '/settings', component: SettingsView },
-    { path: '/labels', component: LabelsView },
+    { path: '/printing', component: PrintingView },
+    { path: '/labels', redirect: { path: '/printing', query: { section: 'labels' } } },
     { path: '/items', component: ItemsView },
     { path: '/count', component: StockCountView },
     // Second-screen customer-facing display, chrome-free, no bootstrap.

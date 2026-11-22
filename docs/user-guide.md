@@ -240,7 +240,7 @@ a Sales Invoice without the Sales Team, and those reports read no POS Invoice
 (ERPNext 13 to 16). The Salespeople page reads the till's own invoices.
 
 ### Barcode and price labels (0.67.0)
-The **Labels** screen (on the left rail) prints labels with the item's name, its price and its barcode, on
+Open **Printing → Labels** from the left rail to print labels with the item's name, its price and its barcode, on
 a label printer (a roll) or on an A4 sheet of labels.
 
 - **Add items** by scanning a barcode or searching; with **From a document**, every item a Purchase Receipt,
@@ -256,13 +256,23 @@ a label printer (a roll) or on an A4 sheet of labels.
 - **Design:** choose one of 15 layouts, including left/right/rotated barcodes, large price, company logo, shelf, batch/expiry, second name, QR/dual code and split tags. Choose the fields to include. Logos can come from the outlet receipt, Company master or a PNG/JPEG/WebP upload. **Advanced** exposes element positions/dimensions in mm, rotation, alignment, bold, position locking, duplicate/delete and undo/redo. Drag elements or use numeric inputs. Name, price and other text have independent font sizes. Screen zoom does not change printed size.
 - **Preview:** Label shows the selected product; Roll/Sheet shows actual copies, gaps and final blank slots. Page arrows inspect the whole job. Test rows include boundaries and measurement ticks. Shape choices guide placement on existing stock; they do not cut stock. If text/barcodes cannot fit, printing is blocked with a reason. Standard retail barcode height can be required in Barcode settings.
 - **Unit and traceability:** an item's **Label details** provides configured selling-unit/barcode selection, second name/note, batch, serial and QR value. Preparation validates batch/serial ownership and reads expiry from the Batch record. Document sources preserve traceability rows. Fractional stock quantities round up; review copies, especially for loose goods.
-- **Printer:** browser printing remains available. QZ Tray discovers/selects a separate label printer without changing the receipt printer. Set actual resolution and usable width, match driver stock/sensor settings, then use **Print test row** and horizontal/vertical offsets. **Save alignment** applies only to this device/stock/printer/route combination. Normally select **Printer advances the gap**; include it in page length only when the tested driver requires that. In the print window choose matching paper, no margins and 100% scale.
+- **Printer:** labels open in the browser print window; choose the installed label printer there. Set actual resolution and usable width, match driver stock/sensor settings, then use **Print test row** and horizontal/vertical offsets. **Save alignment** applies only to this device/stock/output configuration. Older connector setups use browser printing and reset connector-specific alignment; print a new test row before saving alignment. Normally select **Printer advances the gap**; include it in page length only when the tested driver requires that. In the print window choose matching paper, no margins and 100% scale. PDF and native command-file downloads remain available. Integration with the separate Print Manager is planned for later.
 - **Files:** Download PDF creates exact-size raster pages at the chosen resolution. Native thermal files exports ZPL/TSPL bitmap commands for compatible die-cut/continuous-roll printers with printer-controlled gap advancement. These files require matching language/device setup and are not sent automatically. Sheet output uses browser/PDF/driver routes.
 - **Saved:** save Stock, Design, Printer or complete setups locally. Managers can save reusable presets for the current outlet after migration. Shared printer recommendations exclude local printer names and measured offsets. Select a saved setup to apply it.
-- **Preparation/results:** fresh prices and names are checked before dispatch; changes require reviewing the refreshed preview and printing again. A job supports up to 500 item rows/10,000 copies and at most 500 output pages/roll rows per dispatch; split larger jobs. A browser dialog or accepted QZ submission does not prove physical completion. Check the printer after uncertain output before deliberately printing again; jobs are not replayed automatically.
+- **Preparation/results:** fresh prices and names are checked before dispatch; changes require reviewing the refreshed preview and printing again. A job supports up to 500 item rows/10,000 copies and at most 500 output pages/roll rows per dispatch; split larger jobs. A browser dialog does not prove physical completion. Check the printer after uncertain output before deliberately printing again; jobs are not replayed automatically.
 - **Upgrade:** run `bench --site <site> migrate` to create **EsafePOS Label Preset** and **EsafePOS Label Print Job**. Shared presets are outlet-scoped and manager-editable; job APIs check owner/outlet access. First use still needs measured alignment and a real barcode scan. GS1-specific formats, additional encoders, automatic offer labels and automatic raw command dispatch remain later integrations.
 - **Settings, General, Features, Barcode and price labels** switches the screen off; **Approvals and access,
-  Permissions, Print labels** limits who may print (open to everyone until you name someone).
+  Permissions, Print labels** limits who may print (open to everyone until you name someone). This controls the Labels section; managers can still open Receipt and Printers when labels are disabled. Existing `/labels` bookmarks open Printing → Labels.
+
+### Receipt adjustment and printer setup
+
+**Printing** groups label output, receipt adjustment and printer configuration in one workspace:
+
+- **Receipt:** choose a template, paper width, logo, header/contact/footer, visible fields and custom fields. The live preview follows changes. Use **Save default receipt** for all outlets, or select an outlet and use **Save for this outlet**. **Reset to default** removes that outlet's override. **Print preview** prints the sample receipt through the browser; it does not post a sale. Receipt editing is no longer under General Settings.
+- **Printers:** select an outlet, enter its ESC/POS network printer host/port or leave the address empty for browser/Print Format printing, choose an ERPNext Print Format for the outlet's sale document type, and use **Save printer settings**. These choices remain stored on the existing POS Profile. Saving the active outlet updates the current till immediately. Save changes before **Print test receipt**; a successful submission does not prove paper output.
+- **Permissions:** receipt and printer setup require access to edit EsafePOS Settings. Saving/testing a profile's printer also requires POS Profile write permission. Cashiers with only Print labels access see only Labels. A connection is required for configuration changes.
+
+USB and installed Windows printers are selected in the browser print dialog. Existing network receipt printing runs from the ERPNext server, so the printer must be reachable from that server. The separate Print Manager will be integrated later; QZ Tray setup is not included.
 
 ### Stock take with the EsafePOS Stock app (0.68.0)
 **EsafePOS Stock** is a phone app for stock work. On a EsafePOS site it talks to EsafePOS directly (no other app
@@ -672,28 +682,23 @@ currency list need permission to change EsafePOS Settings.
 The receipt modal shows totals, taxes, payments, change, applied promotions
 (★) and bundles (🎁), loyalty earned/redeemed, gift card info.
 **Print receipt** uses, in order:
-1. **QZ Tray** on this computer when a local printer is selected and the POS Profile uses the built-in receipt,
-2. the **ESC/POS network printer** (if configured on the profile, incl. cash-drawer kick),
-3. the profile's **Print Format** via ERPNext print view,
-4. the built-in receipt via the browser dialog.
+1. the **ESC/POS network printer** (if configured on the profile, incl. cash-drawer kick),
+2. the profile's **Print Format** via ERPNext print view,
+3. the built-in receipt via the browser dialog.
 
-For QZ Tray, install and run QZ Tray on every Windows till, then open
-**Settings → General → Receipt**, choose **Connect and find printers**, select
-the local receipt printer, and send a test receipt. QZ can show an approval
-prompt until signing is configured. A manager can upload the QZ digital
-certificate and matching PEM private key in the same section; EsafePOS stores
-the private key as an encrypted Password value and signs each request on the
-server. Use QZ's trusted production certificate for multiple tills; demo keys
-are intended for local development. A POS Profile ERPNext Print Format keeps
-using ERPNext's print view and is not sent through the QZ built-in receipt path.
+The configured network printer must be reachable from the Frappe server.
+For USB printers or shop-network printers that a cloud server cannot reach,
+use the browser dialog and select the installed Windows printer. The separate
+Print Manager will be integrated later. The POS no longer includes QZ Tray
+setup, local discovery, certificate upload or QZ dispatch.
 
 The built-in browser receipt uses the **58mm / 80mm paper width** saved in
-Settings → Receipt (including the sale outlet's override). It prints a separate,
+Printing → Receipt (including the sale outlet's override). It prints a separate,
 black-on-white receipt with a page length fitted to its contents. The **Retail**
 template includes item quantities, original prices, discounts and amounts, with
 the currency shown in the header.
 
-Choose **Settings → General → Receipt → Table** for the retail breakdown with
+Choose **Printing → Receipt → Table** for the retail breakdown with
 thin grid lines around item rows and columns. Browser receipts also outline
 the totals and loyalty sections. Choose **All outlets (default)** to use it
 site-wide, or select an outlet and save its own layout. Built-in POS receipts

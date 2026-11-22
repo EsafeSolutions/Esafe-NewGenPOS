@@ -14,9 +14,9 @@ try{decoder=require.resolve('@zxing/library/umd/index.min.js')}catch{decoder=new
 const root=path.dirname(fileURLToPath(import.meta.url)),out=process.env.LABEL_ARTIFACTS || path.join(root,'../artifacts/labels')
 await mkdir(out,{recursive:true})
 const html=`<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"></head><body><div id="app"></div><script type="module">
-import {createApp} from 'vue';import {createPinia} from 'pinia';import LabelsView from '/src/views/LabelsView.vue';import {useSessionStore} from '/src/stores/session.js';import '/src/styles.css';
+import {createApp} from 'vue';import {createPinia} from 'pinia';import LabelsView from '/src/views/LabelsView.vue';import SettingsView from '/src/views/SettingsView.vue';import {useSessionStore} from '/src/stores/session.js';import '/src/styles.css';
 import * as render from '/src/labels/render.js';import * as print from '/src/labels/printing.js';import * as stock from '/src/labels/stock.js';import * as design from '/src/labels/design.js';
-const pinia=createPinia(),session=useSessionStore(pinia);session.user='labels@example.com';session.company='Esafe Retail';session.posProfile='Main';session.permissions={print_labels:true};session.settings.receipt_logo='';createApp(LabelsView).use(pinia).mount('#app');
+const pinia=createPinia(),session=useSessionStore(pinia),settingsView=new URLSearchParams(location.search).get('view')==='settings';session.user='labels@example.com';session.company='Esafe Retail';session.posProfile='Main';session.permissions={print_labels:true,settings:true,is_manager:true};session.offline=settingsView;session.settings.receipt_logo='';createApp(settingsView ? SettingsView : LabelsView).use(pinia).mount('#app');
 window.labelTest={render,print,stock,design,session};window.print=()=>{window.printCalled=true};
 </script></body></html>`
 const server=await createServer({root,base:'/',server:{port:0,host:'127.0.0.1',open:false},plugins:[{name:'labels-test',configureServer(s){s.middlewares.use('/label-decoder.js',(req,res)=>{res.setHeader('Content-Type','text/javascript');res.end(readFileSync(decoder))});s.middlewares.use('/label-check.html',async(req,res)=>{res.setHeader('Content-Type','text/html');res.end(await s.transformIndexHtml('/label-check.html',html))})}}]})
@@ -26,6 +26,12 @@ const page=await browser.newPage({viewport:{width:1600,height:1000}}),errors=[],
 await page.route('https://fonts.googleapis.com/**',(route)=>route.abort())
 await page.route('https://fonts.gstatic.com/**',(route)=>route.abort())
 page.on('pageerror',(error)=>errors.push(error.message))
+await page.addInitScript(()=>{
+  window.print=()=>{window.printCalled=true}
+  const key='esafepos-labels-v2:labels@example.com:Main'
+  if(!localStorage.getItem(key))localStorage.setItem(key,JSON.stringify({version:2,printer:{route:'qz',name:'Old label printer',offsetX:4},presets:[{id:'legacy-printer',title:'Legacy printer setup',kind:'Printer',configuration:{printer:{route:'qz',name:'Old label printer',dpi:300,offsetX:4}}}]}))
+})
+page.on('websocket',(socket)=>{if(new URL(socket.url()).port!==String(server.httpServer.address().port))errors.push(`Unexpected printer connection: ${socket.url()}`)})
 const row={item_code:'LP1',item_name:'Ceylon tea 200 g',barcode:'LP1',qty:1,uom:'Nos',price_with_tax:450,price:450,currency:'LKR',equivalents:[]}
 await page.route('**/api/method/**',async(route)=>{
   const method=route.request().url().split('/').pop(),args=route.request().postDataJSON();calls.push({method,args})
@@ -109,26 +115,23 @@ try{
   await page.getByRole('button',{name:'Download PDF',exact:true}).click()
   await page.getByRole('status').filter({hasText:'Item details or prices changed.'}).waitFor()
   assert.ok(calls.some((c)=>c.method.endsWith('.job_result')&&c.args.status==='Canceled'))
-  await page.evaluate(()=>{
-    const q={count:0,failOn:0,security:{setCertificatePromise(){},setSignatureAlgorithm(){},setSignaturePromise(f){this.factory=f}},websocket:{isActive:()=>true},printers:{find:async()=>['Test label printer']},configs:{create:(name,options)=>({name,options})},print:async(config,data)=>{
-      q.count++;if(q.failOn===q.count)throw new Error('Simulated printer disconnect')
-      const request=JSON.stringify({call:'print',params:{printer:{name:config.name},options:config.options,data}})
-      await new Promise(q.security.factory(request));window.qzRequests ||= [];window.qzRequests.push(JSON.parse(request))
-    }};window.qz=q
-  })
-  await page.route('**/api/method/esafepos.api.qz_printing.get_signing_certificate',(route)=>route.fulfill({json:{message:{configured:true,certificate:'test certificate'}}}))
-  await page.getByRole('tab',{name:'Printer',exact:true}).click();await page.getByLabel('Print with',{exact:true}).selectOption('qz')
-  await page.getByRole('button',{name:'Find label printers',exact:true}).click();await page.getByLabel('Label printer',{exact:true}).selectOption('Test label printer')
+  await page.getByRole('tab',{name:'Saved',exact:true}).click()
+  await page.getByRole('button',{name:/Legacy printer setup/}).click()
+  await page.getByRole('tab',{name:'Printer',exact:true}).click()
+  assert.equal(await page.getByLabel('Actual resolution (DPI)',{exact:true}).inputValue(),'300')
+  assert.equal(await page.getByLabel(/^Horizontal offset/).inputValue(),'0')
+  assert.equal(await page.getByLabel('Print with',{exact:true}).count(),0)
+  assert.equal(await page.getByRole('button',{name:'Find label printers',exact:true}).count(),0)
+  await page.screenshot({path:path.join(out,'label-printer-desktop.png'),fullPage:true})
+  await page.setViewportSize({width:390,height:900})
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true)
+  await page.screenshot({path:path.join(out,'label-printer-mobile.png'),fullPage:true})
+  await page.setViewportSize({width:1600,height:1000})
   await page.getByRole('button',{name:'Print labels',exact:true}).click()
-  await page.getByRole('status').filter({hasText:'Labels sent to the print queue.'}).waitFor()
-  assert.equal(await page.evaluate(()=>window.qzRequests.length),2)
-  assert.ok(calls.some((c)=>c.method==='esafepos.api.labels.sign_request' && c.args.job==='JOB-1'))
-  await page.evaluate(()=>{window.qz.count=0;window.qz.failOn=2})
-  await page.getByRole('button',{name:'Print labels',exact:true}).click()
-  await page.getByRole('alert').filter({hasText:'Simulated printer disconnect'}).waitFor()
-  assert.equal(await page.evaluate(()=>window.qz.count),2)
-  assert.ok(calls.some((c)=>c.method.endsWith('.job_result')&&c.args.status==='Outcome unknown'&&c.args.detail.startsWith('1 rows acknowledged.')))
-  await page.getByLabel('Print with',{exact:true}).selectOption('browser')
+  await page.getByRole('status').filter({hasText:'Print window opened.'}).waitFor()
+  assert.ok(calls.some((c)=>c.method.endsWith('.job_result')&&c.args.status==='Dialog opened'))
+  assert.ok(calls.filter((c)=>c.method.endsWith('.prepare_job')).every((c)=>c.args.configuration.printer.route==='browser'&&c.args.configuration.printer.name===''))
+  assert.ok(!calls.some((c)=>/qz|sign_request/.test(c.method)))
   // Device setups persist, while zoom is deliberately excluded from saved print geometry.
   await page.getByRole('tab',{name:'Saved',exact:true}).click();await page.getByLabel('Name',{exact:true}).fill('Tea setup');await page.getByRole('button',{name:'Save on this device',exact:true}).click()
   await page.reload();await page.getByRole('tab',{name:'Saved',exact:true}).click();await page.getByRole('button',{name:'Tea setup',exact:false}).waitFor()
@@ -138,7 +141,16 @@ try{
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true)
     await page.screenshot({path:path.join(out,`labels-${width}.png`),fullPage:true})
   }
+  await page.setViewportSize({width:1440,height:1000})
+  await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/label-check.html?view=settings`)
+  assert.equal(await page.getByRole('button',{name:'Receipt',exact:true}).count(),0)
+  assert.equal(await page.locator('.qz-card').count(),0)
+  assert.equal(await page.getByText(/QZ Tray/).count(),0)
+  await page.screenshot({path:path.join(out,'receipt-settings-desktop.png'),fullPage:true})
+  await page.setViewportSize({width:390,height:900})
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true)
+  await page.screenshot({path:path.join(out,'receipt-settings-mobile.png'),fullPage:true})
   assert.deepEqual(errors,[])
   await writeFile(path.join(out,'verification.json'),JSON.stringify({pdfInfo,decoded,requests:calls.map((c)=>c.method),errors},null,2))
-  console.log('PASS label workspace desktop/tablet/mobile, copies, designs, editor, persisted setup, PDF workflow and three-column raster output')
-}finally{await browser.close();await server.close()}
+  console.log('PASS label workspace desktop/tablet/mobile, retired printer fallback, receipt Settings cleanup, copies, designs, editor, persisted setup, PDF workflow and three-column raster output')
+}catch(error){console.error(error);process.exitCode=1}finally{await browser.close();server.httpServer?.closeAllConnections();await server.close()}

@@ -145,6 +145,9 @@
   "receipt_show_unit_price",
   "receipt_show_payments",
   "receipt_show_note",
+  "receipt_show_cashier",
+  "receipt_show_terminal",
+  "receipt_show_invoice_barcode",
   "receipt_fields_col",
   "receipt_show_tax_id",
   "receipt_tax_id",
@@ -153,9 +156,6 @@
   "receipt_show_terms",
   "receipt_terms",
   "receipt_custom_fields",
-  "qz_signing_section",
-  "qz_signing_certificate",
-  "qz_signing_private_key",
   "insights_section",
   "enable_insights",
   "reports_in_insights",
@@ -989,23 +989,6 @@
    "label": "Receipt Fields"
   },
   {
-   "fieldname": "qz_signing_section",
-   "fieldtype": "Section Break",
-   "label": "QZ Tray Signing"
-  },
-  {
-   "description": "Public QZ digital certificate used to verify signed print requests.",
-   "fieldname": "qz_signing_certificate",
-   "fieldtype": "Long Text",
-   "label": "QZ digital certificate"
-  },
-  {
-   "description": "Stored as an encrypted Password value. Never sent to the browser.",
-   "fieldname": "qz_signing_private_key",
-   "fieldtype": "Password",
-   "label": "QZ signing private key"
-  },
-  {
    "default": "0",
    "fieldname": "receipt_show_item_code",
    "fieldtype": "Check",
@@ -1040,6 +1023,24 @@
    "fieldname": "receipt_show_note",
    "fieldtype": "Check",
    "label": "Show the sale note"
+  },
+  {
+   "default": "1",
+   "fieldname": "receipt_show_cashier",
+   "fieldtype": "Check",
+   "label": "Show cashier name"
+  },
+  {
+   "default": "1",
+   "fieldname": "receipt_show_terminal",
+   "fieldtype": "Check",
+   "label": "Show terminal or user"
+  },
+  {
+   "default": "1",
+   "fieldname": "receipt_show_invoice_barcode",
+   "fieldtype": "Check",
+   "label": "Show invoice barcode"
   },
   {
    "fieldname": "receipt_fields_col",

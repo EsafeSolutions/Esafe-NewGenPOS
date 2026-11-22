@@ -41,7 +41,10 @@ def add_options(items, price_list):
     }, pluck="name")) if units else set()
     for (code, unit), factor in units.items():
         item = details[code]
-        rate = rates.get((code, unit))
+        # Prefer a unit-specific Item Price when one exists. Otherwise price
+        # the pack from the active stock-unit rate and its ERPNext UOM
+        # conversion (e.g. 25 kg at 25 x the per-kg rate).
+        rate = rates.get((code, unit)) or flt(item.get("price")) * factor
         if rate:
             item.setdefault("selling_units", []).append({
                 "uom": unit, "factor": factor, "price": rate, "whole_qty": unit in whole,

@@ -1603,7 +1603,7 @@
             <input type="checkbox" class="setting-toggle" v-model="generalForm.enable_labels" :true-value="1" :false-value="0" />
             <span class="setting-text">
               <span class="setting-title">{{ t('Barcode and price labels') }}</span>
-              <span class="setting-desc">{{ t('A Labels screen prints barcode and price labels on a label printer or an A4 sheet: items from a search, a scan, a Purchase Receipt or Stock Entry, or the prices changed since a date. Who may print them is set under Permissions, Print labels.') }}</span>
+              <span class="setting-desc">{{ t('Printing → Labels prints barcode and price labels from items, scans, stock documents or changed prices. Permissions → Print labels controls access. Receipt and printer setup remain available in Printing to whoever may edit Settings.') }}</span>
             </span>
           </label>
           <label class="setting-row">
@@ -1858,151 +1858,6 @@
             <Icon name="play" /> {{ t('Take the tour now') }}
           </button>
         </p>
-      </div>
-
-      <!-- Receipt -->
-      <div class="sec-card" v-show="generalSection === 'receipt'">
-        <div class="sec-title"><Icon name="image" /> {{ t('Receipt') }}</div>
-        <p class="sec-note">{{ t('What the receipt shows and how it prints, shared or per outlet.') }}</p>
-        <QzTraySetup :can-manage="canManage" :print-format="session.printFormat" />
-        <p class="muted hint-row" style="padding: 0 0 10px">
-          {{ t('Design the receipt shown on screen and printed from the browser.') }}
-        </p>
-        <div v-if="session.printFormat" class="pf-banner">
-          <Icon name="report" />
-          <div>
-            <b>{{ t('Your own format is active:') }} {{ session.printFormat }}</b>
-            <div class="pf-sub">{{ t('A Print Format is set on this POS Profile, so printing uses it, the design below only styles the on-screen receipt. Clear the POS Profile’s Print Format field to print with this designer instead.') }}</div>
-          </div>
-        </div>
-        <p v-else class="muted hint-row" style="padding: 0 0 12px">
-          {{ t('Want your own layout? Set a Print Format on this POS Profile in ERPNext (any standard or custom Print Format for the sale document), it then takes over printing, and this designer keeps styling the on-screen receipt.') }}
-        </p>
-        <div class="rc-scope">
-          <span class="rc-scope-label">{{ t('Editing receipt for') }}</span>
-          <select class="rc-scope-select" v-model="receiptScope" @change="onReceiptScopeChange">
-            <option value="">{{ t('All outlets (default)') }}</option>
-            <option v-for="p in posProfiles" :key="p" :value="p">
-              {{ p }}{{ profileReceiptOverrides.includes(p) ? '  •' : '' }}
-            </option>
-          </select>
-          <template v-if="receiptScope">
-            <button class="btn btn-primary" @click="saveProfileReceipt">{{ t('Save for this outlet') }}</button>
-            <button v-if="receiptHasOverride" class="btn btn-outline" @click="resetProfileReceipt">{{ t('Reset to default') }}</button>
-            <span class="rc-scope-hint muted small">{{ receiptHasOverride ? t('This outlet has its own receipt.') : t('Customising from the default. Save to apply.') }}</span>
-          </template>
-          <span v-else class="rc-scope-hint muted small">{{ t('Saved with the main Save button. Pick an outlet to give it a different receipt.') }}</span>
-        </div>
-        <div class="receipt-config">
-          <div class="rc-controls">
-            <div class="seg-field">
-              <span class="seg-label">{{ t('Template') }}</span>
-              <div class="segmented">
-                <button
-                  v-for="tpl in RECEIPT_TEMPLATES"
-                  :key="tpl"
-                  class="seg-btn"
-                  :class="{ on: receiptForm.receipt_template === tpl }"
-                  @click="receiptForm.receipt_template = tpl"
-                >
-                  {{ t(tpl) }}
-                </button>
-              </div>
-            </div>
-
-            <label class="field" style="margin-top: 14px; max-width: 220px">
-              <span>{{ t('Thermal paper width') }}</span>
-              <select v-model="receiptForm.receipt_paper_width">
-                <option value="80mm">80 mm</option>
-                <option value="58mm">58 mm</option>
-              </select>
-              <span class="setting-desc">{{ t('Applies to browser and network-printer receipts. For browser printing, set the Windows printer paper type to Receipt or Continuous and margins to None; a fixed-length driver sheet cannot auto-cut to the receipt.') }}</span>
-            </label>
-
-            <div class="field-grid" style="margin-top: 14px">
-              <label class="field span-2">
-                <span>{{ t('Logo URL or path') }}</span>
-                <input v-model="receiptForm.receipt_logo" :placeholder="t('/files/logo.png or https://…')" />
-              </label>
-              <label class="field span-2">
-                <span>{{ t('Header line (under the company name)') }}</span>
-                <input v-model="receiptForm.receipt_header" :placeholder="t('e.g. Main Branch · 0500000000')" />
-              </label>
-              <label class="field span-2">
-                <span>{{ t('Shop contact number (above address)') }}</span>
-                <input v-model="receiptForm.receipt_shop_phone" :placeholder="t('e.g. +94 11 234 5678')" />
-              </label>
-              <label class="field span-2">
-                <span>{{ t('Custom footer line') }}</span>
-                <input v-model="receiptForm.receipt_footer" :placeholder="t('e.g. Thank you for shopping with us')" />
-              </label>
-            </div>
-
-            <div class="sub-label" style="margin-top: 14px">{{ t('Show on the receipt') }}</div>
-            <div class="rc-toggles">
-              <label class="inline-check"><input type="checkbox" v-model="receiptForm.receipt_show_item_code" :true-value="1" :false-value="0" /> {{ t('Item code') }}</label>
-              <label class="inline-check"><input type="checkbox" v-model="receiptForm.receipt_show_barcode" :true-value="1" :false-value="0" /> {{ t('Barcode') }}</label>
-              <label class="inline-check"><input type="checkbox" v-model="receiptForm.receipt_show_serial" :true-value="1" :false-value="0" /> {{ t('Serial numbers') }}</label>
-              <label class="inline-check"><input type="checkbox" v-model="receiptForm.receipt_show_unit_price" :true-value="1" :false-value="0" /> {{ t('Unit price (qty × rate)') }}</label>
-              <label class="inline-check"><input type="checkbox" v-model="receiptForm.receipt_show_payments" :true-value="1" :false-value="0" /> {{ t('Payment methods') }}</label>
-              <label class="inline-check"><input type="checkbox" v-model="receiptForm.receipt_show_note" :true-value="1" :false-value="0" /> {{ t('Sale note') }}</label>
-            </div>
-
-            <div class="rc-textfields">
-              <label class="inline-check"><input type="checkbox" v-model="receiptForm.receipt_show_tax_id" :true-value="1" :false-value="0" /> {{ t('Tax / VAT ID') }}</label>
-              <input v-if="receiptForm.receipt_show_tax_id" v-model="receiptForm.receipt_tax_id" :placeholder="t('e.g. 3001234567')" />
-              <label class="inline-check"><input type="checkbox" v-model="receiptForm.receipt_show_address" :true-value="1" :false-value="0" /> {{ t('Store address') }}</label>
-              <textarea v-if="receiptForm.receipt_show_address" v-model="receiptForm.receipt_address" rows="2" :placeholder="t('Street, city…')"></textarea>
-              <label class="inline-check"><input type="checkbox" v-model="receiptForm.receipt_show_terms" :true-value="1" :false-value="0" /> {{ t('Terms & conditions') }}</label>
-              <textarea v-if="receiptForm.receipt_show_terms" v-model="receiptForm.receipt_terms" rows="2" :placeholder="t('Return within 14 days with the receipt…')"></textarea>
-            </div>
-          </div>
-
-          <div class="rc-preview">
-            <div class="rc-preview-label muted small">{{ t('Live preview') }}</div>
-            <ReceiptView :receipt="previewReceipt" :settings="receiptForm" />
-          </div>
-        </div>
-
-        <!-- Dynamic custom fields, pull any field from the POS Profile or the
-             sale invoice onto the receipt (text or an image such as a ZATCA QR). -->
-        <div class="cf-section">
-          <div class="sub-label">{{ t('Custom fields') }}</div>
-          <p class="muted small" style="margin: 0 0 10px">
-            {{ receiptScope
-              ? t('Extra fields for this outlet, shown in addition to the global custom fields.')
-              : t('Add any field from the POS Profile or the sale invoice, e.g. a ZATCA QR image, a CR number, or a country-specific field. These apply to every outlet, pick an outlet above to add extras just for it.') }}
-          </p>
-          <div v-for="(row, i) in customFields" :key="i" class="cf-row">
-            <select class="cf-in" v-model="row.source" @change="onCfSource(row)">
-              <option value="Sale Invoice">{{ t('Sale invoice') }}</option>
-              <option value="POS Profile">{{ t('POS Profile') }}</option>
-            </select>
-            <select class="cf-in cf-field" v-model="row.fieldname">
-              <option value="">{{ t('Choose a field…') }}</option>
-              <option
-                v-for="o in (fieldOptions[row.source] || [])"
-                :key="o.fieldname"
-                :value="o.fieldname"
-              >{{ o.label }} · {{ o.fieldname }}</option>
-            </select>
-            <input class="cf-in" v-model="row.label" :placeholder="t('Label (optional)')" />
-            <select class="cf-in" v-model="row.render">
-              <option value="Text">{{ t('Text') }}</option>
-              <option value="Image">{{ t('Image / QR') }}</option>
-            </select>
-            <select class="cf-in" v-model="row.position">
-              <option value="Header">{{ t('Header') }}</option>
-              <option value="Footer">{{ t('Footer') }}</option>
-            </select>
-            <button class="btn-ghost" :title="t('Remove')" @click="customFields.splice(i, 1)">
-              <Icon name="close" />
-            </button>
-          </div>
-          <button class="btn btn-outline add-row" @click="addCustomField">
-            <Icon name="plus" /> {{ t('Add a field') }}
-          </button>
-        </div>
       </div>
 
       <!-- Company accounts (multi-company) -->
@@ -2619,7 +2474,6 @@
 
 <script setup>
 import Icon from '../components/Icon.vue'
-import QzTraySetup from '../components/QzTraySetup.vue'
 import OfflineLogModal from '../components/OfflineLogModal.vue'
 import { ref, computed, onMounted, watch } from 'vue'
 import { call } from '../api'
@@ -2631,7 +2485,6 @@ import { catalogCount, storagePersisted, customerCount } from '../offline'
 import LinkPicker from '../components/LinkPicker.vue'
 import ScopePicker from '../components/ScopePicker.vue'
 import PriceListEditor from '../components/PriceListEditor.vue'
-import ReceiptView from '../components/ReceiptView.vue'
 import ItemImageSearchSettings from '../components/ItemImageSearchSettings.vue'
 import { t, LANGUAGES } from '../i18n'
 
@@ -2909,25 +2762,6 @@ const generalForm = ref({
   auto_lock_minutes: 0,
   enable_quick_keys: 0,
   quick_keys: [],
-  receipt_template: 'Retail',
-  receipt_paper_width: '80mm',
-  receipt_logo: '',
-  receipt_header: '',
-  receipt_shop_phone: '',
-  receipt_footer: '',
-  receipt_show_item_code: 0,
-  receipt_show_barcode: 0,
-  receipt_show_serial: 1,
-  receipt_show_unit_price: 1,
-  receipt_show_payments: 1,
-  receipt_show_note: 1,
-  receipt_show_tax_id: 0,
-  receipt_tax_id: '',
-  receipt_show_address: 0,
-  receipt_address: '',
-  receipt_show_terms: 0,
-  receipt_terms: '',
-  receipt_custom_fields: [],
   company_settings: [],
   gift_card_expiry_days: 0,
   gift_card_mode_of_payment: '',
@@ -3017,7 +2851,6 @@ const generalSections = [
   { key: 'returns', label: 'Returns and refunds', icon: 'refresh' },
   { key: 'holds', label: 'Holds and deposits', icon: 'bookmark' },
   { key: 'credit', label: 'Sales on account', icon: 'clock' },
-  { key: 'receipt', label: 'Receipt', icon: 'image' },
   { key: 'image-search', label: 'Product image search', icon: 'image' },
   { key: 'languages', label: 'Languages', icon: 'globe' },
   { key: 'help', label: 'Help for staff', icon: 'help' },
@@ -3277,174 +3110,6 @@ const companyRow = computed(
     }
 )
 
-// ---- receipt designer ----
-const RECEIPT_TEMPLATES = ['Retail', 'Compact', 'Standard', 'Detailed', 'Table']
-const sampleReceipt = {
-  name: 'INV-2026-00042',
-  company: session.company || 'Your Store',
-  currency: 'LKR',
-  customer_name: 'Walk-in Customer',
-  customer_phone: '077 123 4567',
-  cashier: 'Cashier',
-  terminal: 'Till 02',
-  sales_person: 'Cashier',
-  posting_date: '2026-06-30',
-  posting_time: '14:32:00',
-  note: 'Gift wrap requested',
-  is_return: false,
-  items: [
-    { item_code: 'BACKPACK', item_name: 'Backpack', barcode: '6291041500213', serial_no: null, qty: 1, price_list_rate: 500, rate: 450, amount: 450, gross_amount: 500, line_discount_amount: 50 },
-    { item_code: 'CAMERA-DSLR', item_name: 'DSLR Camera', barcode: '6291041500220', serial_no: 'SN-00123', qty: 1, price_list_rate: 900, rate: 810, amount: 810, gross_amount: 900, line_discount_amount: 90 },
-  ],
-  discount_amount: 0,
-  gross_total: 1400,
-  item_discount_total: 140,
-  total_savings: 140,
-  rounding_adjustment: 0,
-  item_count: 2,
-  total_qty: 2,
-  taxes: [],
-  grand_total: 1260,
-  rounded_total: 1260,
-  payments: [{ mode_of_payment: 'Cash', amount: 1260 }],
-  loyalty_amount: 0,
-  change_amount: 0,
-  applied_promotions: [],
-  loyalty_points_earned: 14,
-  loyalty: { program: 'Rewards', balance: 184, conversion_factor: 0.1 },
-}
-
-// ---- per-outlet receipt overrides ----
-const RECEIPT_KEYS = [
-  'receipt_template', 'receipt_paper_width', 'receipt_logo', 'receipt_header', 'receipt_shop_phone', 'receipt_footer',
-  'receipt_show_item_code', 'receipt_show_barcode', 'receipt_show_serial',
-  'receipt_show_unit_price', 'receipt_show_payments', 'receipt_show_note',
-  'receipt_show_tax_id', 'receipt_tax_id', 'receipt_show_address',
-  'receipt_address', 'receipt_show_terms', 'receipt_terms',
-]
-const posProfiles = computed(() => settingsInfo.value.pos_profiles || [])
-const profileReceiptOverrides = ref([])
-const receiptScope = ref('') // '' = global default, else a POS Profile name
-const profileReceiptForm = ref({})
-const receiptHasOverride = ref(false)
-// The designer + preview bind to this: the GLOBAL form by default, or a
-// per-outlet form when an outlet is selected. Editing an outlet never touches
-// the global form, so the main Save can never clobber the global receipt.
-const receiptForm = computed(() =>
-  receiptScope.value ? profileReceiptForm.value : generalForm.value
-)
-
-async function onReceiptScopeChange() {
-  if (!receiptScope.value) return // back to the global default form
-  try {
-    const res = await call('esafepos.api.settings.get_profile_receipt', {
-      pos_profile: receiptScope.value,
-    })
-    profileReceiptForm.value = res.config || {}
-    profileReceiptCustomFields.value = res.custom_fields || []
-    receiptHasOverride.value = !!res.has_override
-  } catch (e) {
-    session.notify(e.message, true)
-    receiptScope.value = ''
-  }
-}
-
-async function saveProfileReceipt() {
-  const profile = receiptScope.value
-  if (!profile) return
-  const config = {}
-  for (const k of RECEIPT_KEYS) config[k] = profileReceiptForm.value[k]
-  try {
-    await call('esafepos.api.settings.save_profile_receipt', {
-      pos_profile: profile,
-      config: JSON.stringify(config),
-      custom_fields: JSON.stringify(profileReceiptCustomFields.value),
-    })
-    if (!profileReceiptOverrides.value.includes(profile)) {
-      profileReceiptOverrides.value = [...profileReceiptOverrides.value, profile]
-    }
-    receiptHasOverride.value = true
-    session.notify(t('Receipt saved for {outlet}', { outlet: profile }))
-  } catch (e) {
-    session.notify(e.message, true)
-  }
-}
-
-async function resetProfileReceipt() {
-  const profile = receiptScope.value
-  if (!profile) return
-  try {
-    await call('esafepos.api.settings.clear_profile_receipt', { pos_profile: profile })
-    profileReceiptOverrides.value = profileReceiptOverrides.value.filter((p) => p !== profile)
-    await onReceiptScopeChange() // reload, now seeds from the global default
-    session.notify(t('{outlet} now uses the default receipt', { outlet: profile }))
-  } catch (e) {
-    session.notify(e.message, true)
-  }
-}
-
-// ---- receipt custom fields (dynamic, from POS Profile / sale invoice) ----
-const fieldOptions = ref({}) // source -> [{ fieldname, label, fieldtype }]
-const profileReceiptCustomFields = ref([]) // the selected outlet's extra fields
-// The list currently being edited: the global list (generalForm) at default
-// scope, or the outlet's extras when an outlet is picked in the scope selector.
-const customFields = computed(() =>
-  receiptScope.value
-    ? profileReceiptCustomFields.value
-    : generalForm.value.receipt_custom_fields || []
-)
-
-async function loadFieldOptions(source) {
-  if (!source || fieldOptions.value[source]) return
-  try {
-    const opts = await call('esafepos.api.settings.receipt_field_options', { source })
-    fieldOptions.value = { ...fieldOptions.value, [source]: opts }
-  } catch {
-    /* ignore, the picker just stays empty */
-  }
-}
-
-function addCustomField() {
-  customFields.value.push({
-    source: 'Sale Invoice',
-    fieldname: '',
-    label: '',
-    render: 'Text',
-    position: 'Footer',
-  })
-  loadFieldOptions('Sale Invoice')
-}
-
-function onCfSource(row) {
-  row.fieldname = ''
-  loadFieldOptions(row.source)
-}
-
-function cfLabel(row) {
-  if (row.label) return row.label
-  const o = (fieldOptions.value[row.source] || []).find((x) => x.fieldname === row.fieldname)
-  return (o && o.label) || row.fieldname
-}
-
-// A tiny placeholder image so the preview shows where an Image/QR field lands.
-const SAMPLE_CF_IMG =
-  'data:image/svg+xml;utf8,' +
-  encodeURIComponent(
-    '<svg xmlns="http://www.w3.org/2000/svg" width="88" height="88"><rect width="88" height="88" fill="#111"/><rect x="12" y="12" width="64" height="64" fill="#fff"/><rect x="24" y="24" width="40" height="40" fill="#111"/><rect x="36" y="36" width="16" height="16" fill="#fff"/></svg>'
-  )
-
-const previewReceipt = computed(() => ({
-  ...sampleReceipt,
-  custom_fields: customFields.value
-    .filter((r) => r.fieldname)
-    .map((r) => ({
-      label: cfLabel(r),
-      value: r.render === 'Image' ? SAMPLE_CF_IMG : t('Sample value'),
-      render: r.render,
-      position: r.position,
-    })),
-}))
-
 // ---- audit log viewer ----
 const AUDIT_ACTIONS = [
   'Sale', 'Return', 'Over-limit discount', 'Price edit', 'Item selling price updated in POS',
@@ -3583,9 +3248,6 @@ async function load() {
   const info = await call('esafepos.api.settings.get_settings')
   settingsInfo.value = info
   reasonKeys.value = [...(info.variance_reasons || []), ...(info.return_reasons || [])]
-  profileReceiptOverrides.value = info.profile_receipt_overrides || []
-  loadFieldOptions('Sale Invoice')
-  loadFieldOptions('POS Profile')
   loadRateRows(info)
   generalForm.value = {
     till_languages: [...(info.till_languages || [])],
@@ -3700,25 +3362,6 @@ async function load() {
     auto_lock_minutes: info.auto_lock_minutes || 0,
     enable_quick_keys: info.enable_quick_keys || 0,
     quick_keys: (info.quick_keys || []).map((r) => ({ item_code: r.item_code, label: r.label || '' })),
-    receipt_template: info.receipt_template || 'Retail',
-    receipt_paper_width: info.receipt_paper_width || '80mm',
-    receipt_logo: info.receipt_logo || '',
-    receipt_header: info.receipt_header || '',
-    receipt_shop_phone: info.receipt_shop_phone || '',
-    receipt_footer: info.receipt_footer || '',
-    receipt_show_item_code: info.receipt_show_item_code || 0,
-    receipt_show_barcode: info.receipt_show_barcode || 0,
-    receipt_show_serial: info.receipt_show_serial ?? 1,
-    receipt_show_unit_price: info.receipt_show_unit_price ?? 1,
-    receipt_show_payments: info.receipt_show_payments ?? 1,
-    receipt_show_note: info.receipt_show_note ?? 1,
-    receipt_show_tax_id: info.receipt_show_tax_id || 0,
-    receipt_tax_id: info.receipt_tax_id || '',
-    receipt_show_address: info.receipt_show_address || 0,
-    receipt_address: info.receipt_address || '',
-    receipt_show_terms: info.receipt_show_terms || 0,
-    receipt_terms: info.receipt_terms || '',
-    receipt_custom_fields: JSON.parse(JSON.stringify(info.receipt_custom_fields || [])),
     company_settings: (info.company_settings || []).map((r) => ({ ...r })),
     gift_card_expiry_days: info.gift_card_expiry_days || 0,
     gift_card_mode_of_payment: info.gift_card_mode_of_payment || '',
@@ -4443,7 +4086,6 @@ async function saveGeneral() {
       payload: generalForm.value,
     })
     settingsInfo.value = info
-    profileReceiptOverrides.value = info.profile_receipt_overrides || []
     generalForm.value.discount_passcode = ''
     session.settings.delivery_apps = info.delivery_apps
     session.settings.discount_limit_percent = info.discount_limit_percent
@@ -4505,9 +4147,6 @@ async function saveGeneral() {
     session.settings.layaway_days = info.layaway_days || 0
     session.settings.layaway_min_percent = info.layaway_min_percent || 0
     session.settings.deposit_with_tax = info.deposit_with_tax || 0
-    for (const k of Object.keys(info)) {
-      if (k.startsWith('receipt_')) session.settings[k] = info[k]
-    }
     // Other currencies: a new one was just set up (walk-in customer, drawer on
     // the outlet), so the till reloads its payment methods and rates.
     for (const r of info.sale_currencies || []) {

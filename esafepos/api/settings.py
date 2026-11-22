@@ -181,6 +181,9 @@ def get_settings():
         "receipt_show_unit_price": 1 if doc.get("receipt_show_unit_price") else 0,
         "receipt_show_payments": 1 if doc.get("receipt_show_payments") else 0,
         "receipt_show_note": 1 if doc.get("receipt_show_note") else 0,
+        "receipt_show_cashier": 1 if doc.get("receipt_show_cashier") is None or doc.get("receipt_show_cashier") else 0,
+        "receipt_show_terminal": 1 if doc.get("receipt_show_terminal") is None or doc.get("receipt_show_terminal") else 0,
+        "receipt_show_invoice_barcode": 1 if doc.get("receipt_show_invoice_barcode") is None or doc.get("receipt_show_invoice_barcode") else 0,
         "receipt_show_tax_id": 1 if doc.get("receipt_show_tax_id") else 0,
         "receipt_tax_id": doc.get("receipt_tax_id") or "",
         "receipt_show_address": 1 if doc.get("receipt_show_address") else 0,
@@ -433,28 +436,9 @@ def save_settings(payload: dict | str):
                 "quick_keys",
                 {"item_code": code, "label": (row.get("label") or "").strip() or None},
             )
-    doc.receipt_template = payload.get("receipt_template") or "Retail"
-    doc.receipt_paper_width = (
-        payload.get("receipt_paper_width")
-        if payload.get("receipt_paper_width") in ("58mm", "80mm")
-        else "80mm"
-    )
-    doc.receipt_logo = payload.get("receipt_logo") or None
-    doc.receipt_header = payload.get("receipt_header") or None
-    doc.receipt_shop_phone = payload.get("receipt_shop_phone") or None
-    doc.receipt_footer = payload.get("receipt_footer") or None
-    doc.receipt_show_item_code = 1 if payload.get("receipt_show_item_code") else 0
-    doc.receipt_show_barcode = 1 if payload.get("receipt_show_barcode") else 0
-    doc.receipt_show_serial = 1 if payload.get("receipt_show_serial") else 0
-    doc.receipt_show_unit_price = 1 if payload.get("receipt_show_unit_price") else 0
-    doc.receipt_show_payments = 1 if payload.get("receipt_show_payments") else 0
-    doc.receipt_show_note = 1 if payload.get("receipt_show_note") else 0
-    doc.receipt_show_tax_id = 1 if payload.get("receipt_show_tax_id") else 0
-    doc.receipt_tax_id = payload.get("receipt_tax_id") or None
-    doc.receipt_show_address = 1 if payload.get("receipt_show_address") else 0
-    doc.receipt_address = payload.get("receipt_address") or None
-    doc.receipt_show_terms = 1 if payload.get("receipt_show_terms") else 0
-    doc.receipt_terms = payload.get("receipt_terms") or None
+    # Receipt editing lives in Printing. A General save must preserve it when
+    # the current client sends no receipt keys; older clients still work.
+    _apply_receipt_payload(doc, payload)
     if "receipt_custom_fields" in payload:
         doc.receipt_custom_fields = json.dumps(
             _clean_custom_fields(payload.get("receipt_custom_fields"))
@@ -816,6 +800,7 @@ RECEIPT_FIELDS = [
     "receipt_template", "receipt_paper_width", "receipt_logo", "receipt_header", "receipt_shop_phone", "receipt_footer",
     "receipt_show_item_code", "receipt_show_barcode", "receipt_show_serial",
     "receipt_show_unit_price", "receipt_show_payments", "receipt_show_note",
+    "receipt_show_cashier", "receipt_show_terminal", "receipt_show_invoice_barcode",
     "receipt_show_tax_id", "receipt_tax_id", "receipt_show_address",
     "receipt_address", "receipt_show_terms", "receipt_terms",
 ]
@@ -823,7 +808,13 @@ RECEIPT_FIELDS = [
 _RECEIPT_BOOL = {
     "receipt_show_item_code", "receipt_show_barcode", "receipt_show_serial",
     "receipt_show_unit_price", "receipt_show_payments", "receipt_show_note",
+    "receipt_show_cashier", "receipt_show_terminal", "receipt_show_invoice_barcode",
     "receipt_show_tax_id", "receipt_show_address", "receipt_show_terms",
+}
+_RECEIPT_BOOL_DEFAULTS = {
+    "receipt_show_cashier": 1,
+    "receipt_show_terminal": 1,
+    "receipt_show_invoice_barcode": 1,
 }
 
 
@@ -836,7 +827,7 @@ def receipt_config(source):
     for f in RECEIPT_FIELDS:
         v = get(f)
         if f in _RECEIPT_BOOL:
-            out[f] = 1 if v else 0
+            out[f] = 1 if v or (v is None and _RECEIPT_BOOL_DEFAULTS.get(f)) else 0
         elif f == "receipt_template":
             out[f] = v or "Retail"
         elif f == "receipt_paper_width":
@@ -844,6 +835,13 @@ def receipt_config(source):
         else:
             out[f] = v or ""
     return out
+
+
+def _apply_receipt_payload(doc, payload):
+    config = receipt_config(payload)
+    for field in RECEIPT_FIELDS:
+        if field in payload:
+            doc.set(field, config[field])
 
 
 def profile_receipt(pos_profile):

@@ -74,6 +74,6 @@ def validate_configuration(config):
             number(printer.get(key, 0), -50, 50, key)
         for key in ("scaleX", "scaleY"):
             number(printer.get(key, 100), 90, 110, key)
-        if printer.get("route", "browser") not in ("browser", "qz"):
+        if printer.get("route", "browser") != "browser":
             raise ValueError("Unsupported output route")
     return config

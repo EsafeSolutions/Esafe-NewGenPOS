@@ -51,7 +51,7 @@
             </div>
           </template>
           <template v-if="tab==='printer'">
-            <h2>{{ t('Printer and calibration') }}</h2><label class="field"><span>{{ t('Print with') }}</span><select v-model="printer.route" :aria-label="t('Print with')" class="cf-in"><option value="browser">{{ t('Browser print window') }}</option><option value="qz">{{ t('QZ Tray label printer') }}</option></select></label><template v-if="printer.route==='qz'"><button class="btn btn-outline" :disabled="busy" @click="discoverPrinters">{{ t('Find label printers') }}</button><label class="field"><span>{{ t('Label printer') }}</span><select v-model="printer.name" :aria-label="t('Label printer')" class="cf-in"><option value="">{{ t('Choose a printer') }}</option><option v-for="p in printerNames" :key="p">{{ p }}</option></select></label><p class="hint">{{ t('This selection is separate from your receipt printer.') }}</p></template>
+            <h2>{{ t('Printer and calibration') }}</h2><p class="hint">{{ t('Labels open in your browser’s print window. Choose the printer there.') }}</p>
             <div class="number-grid"><NumberField v-model="printer.dpi" :label="t('Actual resolution (DPI)')" :min="100" :max="1200" /><NumberField v-model="printer.maxWidth" :label="t('Usable width')" unit="mm" :min="1" /></div><label class="check"><input v-model="printer.monochrome" type="checkbox" />{{ t('Monochrome PDF output') }}</label>
             <div class="editor stack"><h3>{{ t('Align a test row') }}</h3><p class="hint">{{ t('Match the driver stock, print a test row, then adjust the displacement. Positive offsets move right and down.') }}</p><div class="number-grid"><NumberField v-model="printer.offsetX" :label="t('Horizontal offset')" unit="mm" :min="-50" /><NumberField v-model="printer.offsetY" :label="t('Vertical offset')" unit="mm" :min="-50" /><NumberField v-model="printer.scaleX" :label="t('Width correction (%)')" :min="90" :max="110" /><NumberField v-model="printer.scaleY" :label="t('Height correction (%)')" :min="90" :max="110" /></div><div class="actions wrap"><button class="btn btn-outline" :disabled="printing || !!checks.errors.length" @click="output('test')">{{ t('Print test row') }}</button><button class="text-btn" @click="saveCalibration">{{ t('Save alignment') }}</button><button class="text-btn" @click="printer.offsetX=0;printer.offsetY=0;printer.scaleX=100;printer.scaleY=100">{{ t('Reset') }}</button></div></div><p class="hint">{{ t('Use matching paper, no margins and 100% scale in the print window. Alignment is saved per device, stock and output route.') }}</p>
             <details><summary>{{ t('Native thermal files') }}</summary><div class="stack"><p class="hint">{{ t('Download a bitmap command file for a compatible ZPL or TSPL printer. Check its language and stock settings before sending the file.') }}</p><button class="btn btn-outline" :disabled="!canPrint || stock.kind==='sheet'" @click="output('zpl')">{{ t('Download ZPL') }}</button><button class="btn btn-outline" :disabled="!canPrint || stock.kind==='sheet'" @click="output('tspl')">{{ t('Download TSPL') }}</button></div></details>
@@ -72,11 +72,10 @@ import { call } from '../api'
 import { t } from '../i18n'
 import { money } from '../format'
 import { useSessionStore } from '../stores/session'
-import { PRESETS,PAPERS,DEFAULT_STOCK,DEFAULT_PRINTER,clone,stockForPreset,migrateOptions,layoutJob,calibrationKey,round } from '../labels/stock.js'
+import { PRESETS,PAPERS,DEFAULT_STOCK,normalizePrinter,clone,stockForPreset,migrateOptions,layoutJob,calibrationKey,round } from '../labels/stock.js'
 import { DESIGNS,BINDINGS,DEFAULT_DESIGN,designFor,templateElements,visibleElement } from '../labels/design.js'
 import { labelScene,pageSvg,validateJob,elementBox } from '../labels/render.js'
-import { browserPrint,download,pdfDocument,nativeDocument,resizeLogo,imageData,jobSvgs,printQzLabels } from '../labels/printing.js'
-import { findQzPrinters } from '../qzPrinting'
+import { browserPrint,download,pdfDocument,nativeDocument,resizeLogo,imageData,jobSvgs } from '../labels/printing.js'
 import Icon from '../components/Icon.vue'
 import NumberField from '../components/labels/LabelNumberField.vue'
 const session=useSessionStore(),DOCTYPES=['Purchase Receipt','Stock Entry','Purchase Invoice']
@@ -87,11 +86,12 @@ function write(key,value){try{localStorage.setItem(key,JSON.stringify(value))}ca
 const saved=migrateOptions(read(storageKey.value,read('esafepos-labels',{})))
 const stock=ref({...DEFAULT_STOCK,...saved.stock}),design=ref({...clone(DEFAULT_DESIGN),...saved.design,show:{...DEFAULT_DESIGN.show,...saved.design?.show}})
 if(!design.value.elements?.length)design.value.elements=templateElements(design.value.key)
-const printer=ref({...DEFAULT_PRINTER,...saved.printer}),presetKey=ref(stock.value.key || '58x40')
+const printer=ref(normalizePrinter(saved.printer)),presetKey=ref(stock.value.key || '58x40')
 const rows=ref([]),query=ref(''),found=ref([]),docs=ref([]),docType=ref(DOCTYPES[0]),docSearch=ref(''),since=ref(''),searchInput=ref(null)
 const busy=ref(false),printing=ref(false),tab=ref('stock'),previewMode=ref('label'),zoom=ref(130),sampleIndex=ref(0),pageIndex=ref(0),advanced=ref(false),selectedId=ref('name'),newType=ref('static'),bulkQty=ref(1)
-const localPresets=ref(saved.presets || []),sharedPresets=ref([]),canManage=ref(false),needsMigration=ref(false),receiptLogo=ref(session.settings.receipt_logo || ''),printerNames=ref(printer.value.name ? [printer.value.name] : []),saveKind=ref('Defaults'),saveTitle=ref('')
+const localPresets=ref(saved.presets || []),sharedPresets=ref([]),canManage=ref(false),needsMigration=ref(false),receiptLogo=ref(session.settings.receipt_logo || ''),saveKind=ref('Defaults'),saveTitle=ref('')
 const companyLogo=ref('')
+watch(() => session.settings.receipt_logo,(value) => {receiptLogo.value=value || ''})
 const tabs=[{key:'stock',label:'Stock'},{key:'design',label:'Design'},{key:'printer',label:'Printer'},{key:'saved',label:'Saved'}]
 const margins=computed(() => [{key:'left',label:'Left margin'},{key:'right',label:'Right margin'},...(stock.value.kind==='sheet' ? [{key:'top',label:'Top margin'},{key:'bottom',label:'Bottom margin'}] : [])])
 const fieldChoices=[{key:'shop',label:'Company name'},{key:'logo',label:'Company logo'},{key:'name',label:'Item name'},{key:'price',label:'Price'},{key:'barcode',label:'Barcode'},{key:'digits',label:'Barcode digits'},{key:'code',label:'Item code'},{key:'equivalent',label:'Other currencies'},{key:'uom',label:'Unit'},{key:'brand',label:'Brand'},{key:'batch',label:'Batch'},{key:'expiry',label:'Expiry'},{key:'serial',label:'Serial'},{key:'note',label:'Second name / note'}]
@@ -144,16 +144,15 @@ function scheduleDocuments(){clearTimeout(docTimer);docTimer=setTimeout(loadDocu
 function fromDocument(name){return run(async()=>{const data=await call('esafepos.api.labels.from_document',{pos_profile:session.posProfile,doctype:docType.value,name});merge(data.rows);notice.value=data.quantity_note || ''})}
 function priceChanges(){return run(async()=>{const data=await call('esafepos.api.labels.price_changes',{pos_profile:session.posProfile,since:since.value});merge(data.rows)})}
 function uploadLogo(event){return run(async()=>{const file=event.target.files[0];if(file){if(file.size>5000000)throw new Error(t('Choose a logo smaller than 5 MB.'));design.value.logo=await resizeLogo(file);design.value.logoSource='custom';design.value.show.logo=true;ensureElement('logo')}})}
-function discoverPrinters(){return run(async()=>{const data=await findQzPrinters({pos_profile:session.posProfile});printerNames.value=data.printers || []})}
 function configuration(kind='Defaults'){const clean={...clone(printer.value),name:'',offsetX:0,offsetY:0,scaleX:100,scaleY:100};return kind==='Stock' ? {stock:clone(stock.value)} : kind==='Design' ? {design:clone(design.value)} : kind==='Printer' ? {printer:clean} : {stock:clone(stock.value),design:clone(design.value),printer:clean}}
 function saveLocal(){localPresets.value.unshift({id:crypto.randomUUID(),title:saveTitle.value.trim(),kind:saveKind.value,configuration:configuration(saveKind.value)});localPresets.value=localPresets.value.slice(0,30);notice.value=t('Setup saved on this device.')}
-function applySaved(p){try{const c=typeof p.configuration==='string' ? JSON.parse(p.configuration) : p.configuration;if(c.stock)stock.value={...DEFAULT_STOCK,...clone(c.stock)};if(c.design)design.value={...clone(DEFAULT_DESIGN),...clone(c.design),show:{...DEFAULT_DESIGN.show,...c.design.show}};if(c.printer){const {name,offsetX,offsetY,scaleX,scaleY}=printer.value;printer.value={...printer.value,...c.printer,name,offsetX,offsetY,scaleX,scaleY}};notice.value=t('Saved setup applied.')}catch{error.value=t('This saved setup could not be read.')}}
+function applySaved(p){try{const c=typeof p.configuration==='string' ? JSON.parse(p.configuration) : p.configuration;if(c.stock)stock.value={...DEFAULT_STOCK,...clone(c.stock)};if(c.design)design.value={...clone(DEFAULT_DESIGN),...clone(c.design),show:{...DEFAULT_DESIGN.show,...c.design.show}};if(c.printer){const {offsetX,offsetY,scaleX,scaleY}=printer.value;printer.value=normalizePrinter({...printer.value,...c.printer,offsetX,offsetY,scaleX,scaleY})};notice.value=t('Saved setup applied.')}catch{error.value=t('This saved setup could not be read.')}}
 function saveShared(){return run(async()=>{await call('esafepos.api.labels.save_preset',{pos_profile:session.posProfile,title:saveTitle.value.trim(),kind:saveKind.value,configuration:configuration(saveKind.value)});await loadWorkspace();notice.value=t('Setup saved for this outlet.')})}
 async function loadWorkspace(){const data=await call('esafepos.api.labels.workspace',{pos_profile:session.posProfile});sharedPresets.value=data.presets || [];canManage.value=data.can_manage;needsMigration.value=data.needs_migration;receiptLogo.value=data.logo || '';companyLogo.value=data.company_logo || ''}
 async function output(action){
   if(printing.value)return
   error.value='';notice.value='';printing.value=true
-  let record=null,submitted=0
+  let record=null
   const outlet=session.posProfile,company=session.company
   try{
     const test=action==='test',selected=test ? [{...sampleRow.value,qty:+stock.value.columns}] : printRows.value.filter((r) => +r.qty>0)
@@ -176,17 +175,14 @@ async function output(action){
     const svgs=jobSvgs(validated,config.design,config.printer,test)
     if(action==='pdf')download(await pdfDocument(svgs,validated.geometry,config.printer.dpi,config.printer.monochrome),'labels.pdf')
     else if(['zpl','tspl'].includes(action))download(await nativeDocument(svgs,validated.geometry,config.printer,action),`labels.${action}`)
-    else if(config.printer.route==='qz'){
-      if(!record)throw new Error(t('Add an actual item before testing through QZ Tray.'))
-      await printQzLabels(svgs,validated.geometry,config.printer,{pos_profile:outlet,job:record.name},(n) => {submitted=n;notice.value=t('{n} rows sent to the printer.',{n})})
-    }else await browserPrint(svgs,validated.geometry)
-    const status=['pdf','zpl','tspl'].includes(action) ? 'Exported' : config.printer.route==='qz' ? 'Submitted' : 'Dialog opened'
+    else await browserPrint(svgs,validated.geometry)
+    const status=['pdf','zpl','tspl'].includes(action) ? 'Exported' : 'Dialog opened'
     if(record)await call('esafepos.api.labels.job_result',{pos_profile:outlet,name:record.name,status})
-    notice.value=status==='Exported' ? t('Label file downloaded.') : status==='Submitted' ? t('Labels sent to the print queue. Check the printer for completion.') : t('Print window opened. Check the printer before printing again.')
-  }catch(e){error.value=e.message || String(e);if(record){try{await call('esafepos.api.labels.job_result',{pos_profile:outlet,name:record.name,status:'Outcome unknown',detail:`${submitted} rows acknowledged. ${error.value}`})}catch{}}}
+    notice.value=status==='Exported' ? t('Label file downloaded.') : t('Print window opened. Check the printer before printing again.')
+  }catch(e){error.value=e.message || String(e);if(record){try{await call('esafepos.api.labels.job_result',{pos_profile:outlet,name:record.name,status:'Outcome unknown',detail:error.value})}catch{}}}
   finally{printing.value=false}
 }
-watch(storageKey,(key) => {const c=migrateOptions(read(key,{}));stock.value={...DEFAULT_STOCK,...c.stock};design.value={...clone(DEFAULT_DESIGN),...c.design,show:{...DEFAULT_DESIGN.show,...c.design?.show}};if(!design.value.elements?.length)design.value.elements=templateElements(design.value.key);printer.value={...DEFAULT_PRINTER,...c.printer};localPresets.value=c.presets || [];rows.value=[];error.value='';notice.value='';designHistory.value=[JSON.stringify(design.value)];designFuture.value=[];loadWorkspace().catch((e) => error.value=e.message)})
+watch(storageKey,(key) => {const c=migrateOptions(read(key,{}));stock.value={...DEFAULT_STOCK,...c.stock};design.value={...clone(DEFAULT_DESIGN),...c.design,show:{...DEFAULT_DESIGN.show,...c.design?.show}};if(!design.value.elements?.length)design.value.elements=templateElements(design.value.key);printer.value=normalizePrinter(c.printer);localPresets.value=c.presets || [];rows.value=[];error.value='';notice.value='';designHistory.value=[JSON.stringify(design.value)];designFuture.value=[];loadWorkspace().catch((e) => error.value=e.message)})
 onMounted(()=>{if(session.permissions.print_labels)run(async()=>{await loadWorkspace();docs.value=await call('esafepos.api.labels.documents',{pos_profile:session.posProfile,doctype:docType.value})})})
 onBeforeUnmount(()=>{clearTimeout(searchTimer);clearTimeout(docTimer);clearTimeout(historyTimer)})
 </script>

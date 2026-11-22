@@ -1,7 +1,6 @@
 // Copyright (c) 2026 Esafe (PVT) LTD
 // SPDX-License-Identifier: AGPL-3.0-only
 import { documentHtml, pageSvg, safeImage } from './render.js'
-import { connectQz } from '../qzPrinting.js'
 
 export function download(blob,name) {
   const url=URL.createObjectURL(blob),a=document.createElement('a')
@@ -104,19 +103,5 @@ export async function nativeDocument(svgs,g,printer,language) {
     }
   }
   return new Blob(chunks,{type:'application/octet-stream'})
-}
-function toBase64(blob) { return new Promise((resolve,reject) => {const reader=new FileReader();reader.onload=() => resolve(reader.result.split(',')[1]);reader.onerror=reject;reader.readAsDataURL(blob)}) }
-export async function printQzLabels(svgs,g,printer,context,onProgress=()=>{}) {
-  if (!printer.name) throw new Error('Select a label printer first.')
-  // Prepare every bounded part before dispatch, so a large later page cannot cause partial output.
-  const data=[]
-  for (const svg of svgs) {
-    const base64=await toBase64(await pdfDocument([svg],g,printer.dpi,printer.monochrome))
-    if (base64.length>112000) throw new Error('A label page is too large for QZ signing. Reduce resolution, simplify the logo or export PDF.')
-    data.push(base64)
-  }
-  const {qz}=await connectQz(context)
-  const config=qz.configs.create(printer.name,{units:'mm',size:{width:g.pageW,height:g.pageH,custom:true},margins:0,scaleContent:false,copies:1,jobName:`Labels:${context.job}`})
-  for(let i=0;i<data.length;i++) {await qz.print(config,[{type:'pixel',format:'pdf',flavor:'base64',data:data[i]}]);onProgress(i+1,data.length)}
 }
 export function jobSvgs(job,design,printer,guides=false) {return job.pages.map((page) => pageSvg(page,job.geometry,design,printer,guides))}

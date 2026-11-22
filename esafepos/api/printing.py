@@ -252,9 +252,9 @@ def _retail_receipt_body(receipt, width, lined=False):
     customer = " / ".join(value for value in (name if name != code else "", phone if phone != name else "") if value)
     if customer:
         out += _text(_pad("CUSTOMER", customer, width)) + b"\n"
-    if receipt.get("cashier"):
+    if settings.get("receipt_show_cashier", 1) and receipt.get("cashier"):
         out += _text(_pad("CASHIER", receipt["cashier"], width)) + b"\n"
-    if receipt.get("terminal"):
+    if settings.get("receipt_show_terminal", 1) and receipt.get("terminal"):
         out += _text(_pad("TERMINAL", receipt["terminal"], width)) + b"\n"
     if receipt.get("return_against"):
         out += _text(_pad("AGAINST", receipt["return_against"], width)) + b"\n"
@@ -331,7 +331,11 @@ def _retail_receipt_body(receipt, width, lined=False):
 
 def _receipt_footer_bytes(settings, width, invoice_id):
     out = bytearray(ALIGN_CENTER + b"\n")
-    barcode = invoice_raster(invoice_id, 384 if width == 32 else 512)
+    barcode = (
+        invoice_raster(invoice_id, 384 if width == 32 else 512)
+        if settings.get("receipt_show_invoice_barcode", 1)
+        else None
+    )
     if barcode:
         out += barcode + _text(invoice_id) + b"\n"
     out += b"Thank you!\n"

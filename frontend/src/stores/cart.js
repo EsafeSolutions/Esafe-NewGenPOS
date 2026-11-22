@@ -1024,11 +1024,11 @@ export const useCartStore = defineStore('cart', {
     // Mumbai every request costs about 190 ms before any work happens. The
     // answer is kept against the exact basket that produced it, and only for a
     // minute, because a promotion can start or end in between.
-    async quote() {
+    async quote({ fresh = false } = {}) {
       const payload = this._basePayload()
       const signature = JSON.stringify(payload)
       const cached = this._quoteCache
-      if (cached && cached.signature === signature && Date.now() - cached.at < 60000) {
+      if (!fresh && cached && cached.signature === signature && Date.now() - cached.at < 60000) {
         return cached.promise
       }
       const promise = call('esafepos.api.sales.quote_sale', { payload }).then((result) => {
@@ -1144,6 +1144,9 @@ export const useCartStore = defineStore('cart', {
 
     async _queueOffline(payload, payments) {
       const session = useSessionStore()
+      if (payments.some((p) => p.mode_of_payment === session.creditMode)) {
+        throw new Error('A sale on account needs a connection.')
+      }
       if (session.settings?.enable_erp_pricing_rules) {
         throw new Error('ERPNext automatic discounts need a connection so the till can confirm the current Pricing Rules')
       }

@@ -38,9 +38,9 @@
       <span class="rail-label">{{ t('Items') }}</span>
     </router-link>
     <!-- Barcode and price labels (0.67.0): the shop's switch and the person's permission. -->
-    <router-link v-if="!session.reportsOnly && session.settings.enable_labels && session.permissions.print_labels" to="/labels" class="rail-item" :title="t('Labels')" active-class="active" data-tour="labels-rail">
-      <svg viewBox="0 0 24 24"><path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9-9-9zM7.5 7.5h.01" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      <span class="rail-label">{{ t('Labels') }}</span>
+    <router-link v-if="session.permissions.settings || (!session.reportsOnly && session.settings.enable_labels && session.permissions.print_labels)" to="/printing" class="rail-item" :title="t('Printing')" active-class="active" data-tour="labels-rail">
+      <svg viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18H3V9h18v9h-3M6 14h12v7H6zM17 12h1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span class="rail-label">{{ t('Printing') }}</span>
     </router-link>
     <!-- Stock count (0.69.0): the switches, the capability and ERPNext create on Stock Reconciliation. -->
     <router-link v-if="!session.reportsOnly && session.permissions.stock_count" to="/count" class="rail-item" :title="t('Stock count')" active-class="active" data-tour="count-rail">

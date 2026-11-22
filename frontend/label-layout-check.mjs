@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { DEFAULT_STOCK,DEFAULT_PRINTER,geometry,layoutJob,stockForPreset,mm,calibrationKey,migrateOptions } from './src/labels/stock.js'
+import { DEFAULT_STOCK,DEFAULT_PRINTER,geometry,layoutJob,stockForPreset,mm,calibrationKey,migrateOptions,normalizePrinter } from './src/labels/stock.js'
 import { DEFAULT_DESIGN,designFor } from './src/labels/design.js'
 import { labelScene,validateJob,barcodeMetrics,pageSvg,safeImage } from './src/labels/render.js'
 const item={item_code:'LP1',item_name:'Tea',barcode:'LP1',price_text:'LKR 450',qty:25}
@@ -13,6 +13,12 @@ assert.equal(geometry({...triple,columns:0}).capacity,0)
 assert.ok(geometry({...triple,gapX:NaN}).errors.length)
 assert.equal(mm(2,'in'),50.8);assert.notEqual(stockForPreset('in-2x1').w,stockForPreset('50x25').w)
 assert.equal(migrateOptions({size:'custom',w:28,h:13}).stock.w,28)
+const legacyPrinter={route:'qz',name:'Old label printer',dpi:300,maxWidth:110,offsetX:4,offsetY:-2,scaleX:102,scaleY:99}
+const browserPrinter=normalizePrinter(legacyPrinter)
+assert.deepEqual(browserPrinter,{...DEFAULT_PRINTER,dpi:300,maxWidth:110})
+assert.equal(legacyPrinter.route,'qz','Migrating a printer must not mutate the saved setup')
+assert.deepEqual(migrateOptions({version:2,stock:triple,printer:legacyPrinter}).printer,browserPrinter)
+assert.equal(normalizePrinter({...DEFAULT_PRINTER,offsetX:2}).offsetX,2,'Keep existing browser calibration')
 assert.equal(geometry({...triple,feedMode:'pitch'}).pageH,23)
 assert.equal(geometry({...triple,feedMode:'driver'}).pageH,20)
 const skipped=layoutJob([{...item,qty:3}],{...triple,start:1,skip:'3-4'})

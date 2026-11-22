@@ -162,7 +162,6 @@ import { useSessionStore } from '../stores/session'
 import { money } from '../format'
 import { t } from '../i18n'
 import { printReceipt } from '../receiptPrint'
-import { printQzReceipt, selectedQzPrinter } from '../qzPrinting'
 
 const props = defineProps({
   showOpenInHistory: { type: Boolean, default: false },
@@ -429,24 +428,6 @@ async function print() {
     } catch (e) {
       session.notify(e.message, true)
       return
-    }
-  }
-  const qzPrinter = selectedQzPrinter()
-  if (qzPrinter && !session.printFormat && !props.receipt.offline && !session.offline) {
-    printing.value = true
-    try {
-      const job = await call('esafepos.api.qz_printing.receipt_data', {
-        invoice: props.receipt.name,
-      })
-      const result = await printQzReceipt(qzPrinter, job?.data)
-      session.notify(result.signed ? t('Receipt sent silently to {printer}', { printer: qzPrinter }) : t('Receipt sent to {printer}', { printer: qzPrinter }))
-      printedOnce.value = true
-      return
-    } catch (e) {
-      session.notify(t('QZ Tray could not print to {printer}: {error}. Check the printer in Settings.', { printer: qzPrinter, error: e.message }), true)
-      return
-    } finally {
-      printing.value = false
     }
   }
   // Priority: ESC/POS network printer -> the POS Profile's Print Format

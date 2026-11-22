@@ -403,7 +403,7 @@ const pageTitle = computed(
       '/holds': t('Holds'),
       '/register': t('Register'),
       '/insights': t('Insights'),
-      '/labels': t('Labels'),
+      '/printing': t('Printing'),
       '/items': t('Items'),
       '/count': t('Stock count'),
       '/settings': t('Settings'),

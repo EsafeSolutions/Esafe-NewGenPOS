@@ -567,7 +567,7 @@ onMounted(async () => {
 // one request, not two. The cart usually has the answer waiting already (it
 // quotes ahead).
 async function loadQuote() {
-  const q = await cart.quote()
+  const q = await cart.quote({ fresh: Boolean(session.settings?.credit_sales_enabled) })
   if (q && typeof q.payable === 'number') {
     serverTotal.value = q.payable
     quoted.value = q.currency

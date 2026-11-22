@@ -14,7 +14,7 @@
         <div class="item-edit">
           <label v-if="units.length > 1">{{ t('Selling unit') }}
             <select v-model="selectedUnit" @change="resetUnit">
-              <option v-for="unit in units" :key="unit.uom" :value="unit.uom">{{ unit.uom }}{{ unit.factor !== 1 ? ` (${unit.factor} ${stockUnit})` : '' }}</option>
+              <option v-for="unit in units" :key="unit.uom" :value="unit.uom">{{ unitLabel(unit) }}</option>
             </select>
           </label>
           <label>{{ t('Quantity') }}<span v-if="selectedUnit"> ({{ selectedUnit }})</span>
@@ -47,7 +47,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import Icon from './Icon.vue'
-import { plainText } from '../format'
+import { money, plainText } from '../format'
 import { t } from '../i18n'
 import { useCartStore } from '../stores/cart'
 import { useSessionStore } from '../stores/session'
@@ -64,6 +64,10 @@ const units = computed(() => [
 ])
 const selectedUnit = ref(stockUnit)
 const option = computed(() => units.value.find((unit) => unit.uom === selectedUnit.value) || units.value[0])
+function unitLabel(unit) {
+  const pack = unit.factor !== 1 ? ` (${unit.factor} ${stockUnit})` : ''
+  return `${unit.uom}${pack} · ${money(cart.inSale(unit.price), cart.saleCurrency.currency)}`
+}
 const activeLine = computed(() => selectedUnit.value === stockUnit ? props.line :
   cart.lines.find((line) => !line.bundle_key && line.item_code === props.item.item_code && line.selling_uom === selectedUnit.value))
 const quantityStep = computed(() => option.value.whole_qty ? 1 : 0.0001)

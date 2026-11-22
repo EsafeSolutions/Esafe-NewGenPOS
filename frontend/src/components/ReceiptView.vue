@@ -35,10 +35,10 @@
         <div v-if="customerLabel" class="retail-meta-row">
           <span>{{ t('Customer') }}</span><span>{{ customerLabel }}</span>
         </div>
-        <div v-if="receipt.cashier || receipt.sales_person" class="retail-meta-row">
+        <div v-if="s.receipt_show_cashier !== 0 && (receipt.cashier || receipt.sales_person)" class="retail-meta-row">
           <span>{{ t('Cashier') }}</span><span>{{ receipt.cashier || receipt.sales_person }}</span>
         </div>
-        <div v-if="receipt.terminal" class="retail-meta-row">
+        <div v-if="s.receipt_show_terminal !== 0 && receipt.terminal" class="retail-meta-row">
           <span>{{ t('Terminal') }}</span><span>{{ receipt.terminal }}</span>
         </div>
         <div v-if="receipt.return_against" class="retail-meta-row">
@@ -153,7 +153,7 @@
       <div class="muted small" v-if="receipt.return_against">{{ t('against') }} {{ receipt.return_against }}</div>
       <div v-if="receipt.walk_in_code" class="muted small">{{ t('Customer code') }} {{ receipt.walk_in_code }}</div>
       <div v-if="customerLabel" class="muted small">{{ customerLabel }}</div>
-      <div class="muted small" v-if="receipt.sales_person">{{ t('Served by') }} {{ receipt.sales_person }}</div>
+      <div class="muted small" v-if="s.receipt_show_cashier !== 0 && receipt.sales_person">{{ t('Served by') }} {{ receipt.sales_person }}</div>
       <div class="muted small" v-if="receipt.app_type">
         {{ receipt.app_type }}<span v-if="receipt.order_id"> · {{ t('Order') }} {{ receipt.order_id }}</span>
       </div>
@@ -275,7 +275,7 @@
 
     </template>
     <footer class="receipt-foot muted small">
-      <div v-if="invoiceBarcode" class="receipt-barcode" role="img"
+      <div v-if="s.receipt_show_invoice_barcode !== 0 && invoiceBarcode" class="receipt-barcode" role="img"
         :aria-label="t('Barcode for invoice {invoice}', { invoice: receipt.name })">
         <div aria-hidden="true" v-html="invoiceBarcode"></div>
         <div class="mono" dir="ltr">{{ receipt.name }}</div>

@@ -84,15 +84,46 @@
               <option v-for="list in priceLists" :key="list.name" :value="list.name">{{ list.name }} · {{ list.currency }}</option>
             </select>
           </label>
-          <div class="unit-prices">
-            <label v-for="unit in draft.units" :key="unit.uom">
-              <span>{{ unit.uom }} <span v-if="unit.uom !== draft.stock_uom" class="muted">· {{ unit.factor }} {{ draft.stock_uom }}</span></span>
-              <input v-model.number="unit.price" type="number" min="0.000001" step="any" :readonly="!unit.editable" :placeholder="t('Selling price')" />
-              <small v-if="unit.active_price != null && unit.active_price !== unit.original" class="muted">
-                {{ t('Current price') }} {{ money(unit.active_price, draft.currency) }}
-              </small>
-            </label>
-          </div>
+          <section class="item-options-section">
+            <div class="section-heading"><h3>{{ t('Selling units and prices') }}</h3>
+              <button v-if="draft.can_edit_item && !draft.has_serial_no" type="button" class="btn btn-outline" @click="addSellingUnit">{{ t('Add UOM') }}</button>
+            </div>
+            <div class="unit-prices">
+              <div v-for="unit in draft.units" :key="unit._key || unit.uom" class="unit-price-row">
+                <label>{{ t('Selling unit') }}
+                  <select v-if="unit.is_new" v-model="unit.uom" @change="unitSelected(unit)">
+                    <option value="" disabled>{{ t('Choose a unit') }}</option>
+                    <option v-for="name in unitChoices(unit)" :key="name" :value="name">{{ name }}</option>
+                  </select>
+                  <input v-else :value="unit.uom" readonly />
+                </label>
+                <label>{{ t('Conversion factor') }}
+                  <input v-model.number="unit.factor" type="number" min="0.000001" step="any" :readonly="unit.uom === draft.stock_uom || (!unit.is_new && !draft.can_edit_item)" @input="unitFactorChanged(unit)" />
+                  <small class="muted">1 {{ unit.uom || t('Selling unit') }} = {{ unit.factor || 0 }} {{ draft.stock_uom }}</small>
+                </label>
+                <label>{{ t('Selling price') }} <small v-if="draft.currency" class="muted">({{ draft.currency }})</small>
+                  <input v-if="unit.editable" v-model.number="unit.price" type="number" min="0.000001" step="any" :placeholder="t('Selling price')" @input="unit.auto_price = false; updateAutoUnitPrices()" />
+                  <span v-else class="price-readonly">{{ unit.active_price != null ? money(unit.active_price, draft.currency) : t('No price') }}</span>
+                  <small v-if="unit.active_price != null" class="muted">{{ unit.has_explicit_price ? t('Current price') : t('Calculated from stock-unit price') }}: {{ money(unit.active_price, draft.currency) }}</small>
+                </label>
+                <button v-if="unit.uom !== draft.stock_uom && draft.can_edit_item" type="button" class="btn btn-outline unit-remove" :aria-label="t('Remove selling unit')" @click="removeSellingUnit(unit)">×</button>
+              </div>
+            </div>
+            <p v-if="!draft.can_edit_prices" class="muted">{{ t('Selling prices are read-only for your account.') }}</p>
+          </section>
+          <section v-if="draft.can_edit_item" class="item-options-section">
+            <div class="section-heading"><h3>{{ t('Barcodes') }}</h3>
+              <button type="button" class="btn btn-outline" @click="addBarcode">{{ t('Add barcode') }}</button>
+            </div>
+            <div v-for="(row, index) in draft.barcodes" :key="row._key" class="barcode-row">
+              <label>{{ t('Barcode') }}<input v-model.trim="row.barcode" maxlength="140" /></label>
+              <label>{{ t('Barcode unit') }}<select v-model="row.uom"><option :value="draft.stock_uom">{{ draft.stock_uom }}</option>
+                <option v-for="unit in draft.units.filter((entry) => entry.uom && entry.uom !== draft.stock_uom)" :key="unit.uom" :value="unit.uom">{{ unit.uom }}</option>
+              </select></label>
+              <button type="button" class="btn btn-outline" @click="row.barcode = generateItemBarcode()">{{ t('Generate') }}</button>
+              <button type="button" class="btn btn-outline" :aria-label="t('Remove barcode')" @click="draft.barcodes.splice(index, 1)">×</button>
+            </div>
+          </section>
           <small v-if="!draft.can_edit_prices" class="muted">{{ t('Your account cannot edit item selling prices.') }}</small>
           <small v-else-if="!draft.price_list" class="muted">{{ t('No selling price lists are available to your account.') }}</small>
           <button v-if="draft.can_edit_item || draft.units.some((unit) => unit.editable)" class="btn btn-primary">
@@ -115,6 +146,7 @@ import SearchSelect from '../components/SearchSelect.vue'
 import ItemCreateForm from '../components/ItemCreateForm.vue'
 import ItemWarehouseStock from '../components/ItemWarehouseStock.vue'
 import { money } from '../format'
+import { generateItemBarcode } from '../itemUtilities'
 import { t } from '../i18n'
 import { useCatalogStore } from '../stores/catalog'
 import { useCartStore } from '../stores/cart'
@@ -195,7 +227,63 @@ async function searchItems(append = false) {
 }
 
 function setDraft(item) {
-  draft.value = { ...item, originalName: item.item_name, units: item.units.map((unit) => ({ ...unit, original: unit.price })) }
+  draft.value = {
+    ...item,
+    originalName: item.item_name,
+    units: item.units.map((unit, index) => ({
+      ...unit, _key: `${unit.uom || 'unit'}-${index}`, auto_price: false,
+      original: unit.has_explicit_price ? unit.active_price : unit.price,
+    })),
+    barcodes: (item.barcodes || []).map((row, index) => ({ ...row, _key: `barcode-${index}` })),
+  }
+}
+
+function unitChoices(target) {
+  return (options.value.uoms || []).filter((name) => name !== draft.value?.stock_uom &&
+    (name === target.uom || !draft.value.units.some((unit) => unit !== target && unit.uom === name)))
+}
+
+function addSellingUnit() {
+  const choices = unitChoices({ uom: '' })
+  if (!choices.length) return session.notify(t('No unused UOMs are available.'), true)
+  draft.value.units.push({
+    uom: '', factor: 1, price: '', active_price: null, has_explicit_price: false,
+    editable: Boolean(draft.value.can_edit_prices), original: null, is_new: true,
+    _key: `new-${Date.now()}-${Math.random()}`,
+  })
+}
+
+function unitSelected(unit) {
+  unit.factor = 1
+  const base = draft.value.units.find((row) => row.uom === draft.value.stock_uom)
+  unit.price = Number(base?.price || 0) || ''
+  unit.auto_price = true
+  unit.original = null
+}
+
+function unitFactorChanged(unit) {
+  if (!unit.auto_price) return
+  const base = draft.value.units.find((row) => row.uom === draft.value.stock_uom)
+  const basePrice = Number(base?.price) || 0
+  unit.price = basePrice ? basePrice * (Number(unit.factor) || 0) : ''
+}
+
+function updateAutoUnitPrices() {
+  draft.value.units.forEach((unit) => {
+    if (unit.is_new && unit.auto_price) unitFactorChanged(unit)
+  })
+}
+
+function removeSellingUnit(unit) {
+  if (draft.value.barcodes.some((row) => row.uom === unit.uom && row.barcode)) {
+    session.notify(t('Move or remove this unit\'s barcode before removing the unit.'), true)
+    return
+  }
+  draft.value.units = draft.value.units.filter((row) => row !== unit)
+}
+
+function addBarcode() {
+  draft.value.barcodes.push({ barcode: '', uom: draft.value.stock_uom, _key: `barcode-${Date.now()}-${Math.random()}` })
 }
 
 function clearImage() {
@@ -307,6 +395,8 @@ function changePriceList(event) {
   event.target.value = draft.value.price_list
   if (draft.value.units.some((unit) => unit.price !== unit.original) &&
       !window.confirm(t('Discard unsaved prices and switch price list?'))) return
+  if (draft.value.units.some((unit) => unit.is_new) &&
+      !window.confirm(t('Discard unsaved selling units and switch price list?'))) return
   openItem(draft.value.item_code, choice, true)
 }
 
@@ -321,9 +411,16 @@ async function save() {
       pos_profile: profile, item_code: item.item_code,
       ...(item.can_edit_item && item.item_name !== item.originalName ? { item_name: item.item_name } : {}),
       price_list: item.price_list,
+      ...(item.can_edit_item && !item.has_serial_no ? { selling_units: JSON.stringify(item.units
+        .filter((unit) => unit.uom && unit.uom !== item.stock_uom)
+        .map(({ uom, factor }) => ({ uom, factor }))) } : {}),
+      ...(item.can_edit_item ? { barcodes: JSON.stringify(item.barcodes
+        .filter((row) => row.barcode?.trim())
+        .map(({ barcode, uom }) => ({ barcode: barcode.trim(), uom }))) } : {}),
       ...(image ? { image_content: image } : {}),
       ...(item.can_edit_item && imageLink.value ? { image_url: imageLink.value } : {}),
-      prices: item.units.filter((unit) => unit.editable && unit.price !== '' && unit.price != null && unit.price !== unit.original)
+      prices: item.units.filter((unit) => unit.editable && unit.price !== '' && unit.price != null &&
+        Number(unit.price) > 0 && Number(unit.price) !== Number(unit.original))
         .map(({ uom, price }) => ({ uom, price })),
     })
     if (session.posProfile !== profile) return
@@ -418,10 +515,21 @@ onBeforeUnmount(() => {
 .image-sources a { text-decoration: none; }
 .source-active { border-color: var(--brand); background: var(--surface-2); color: var(--brand-dark); }
 .unit-prices { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr)); gap: 12px; }
+.item-options-section { display: grid; gap: 10px; padding-top: 14px; border-top: 1px solid var(--border); min-width: 0; }
+.item-options-section h3 { margin: 0; font-size: 1rem; }
+.section-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.unit-prices { grid-template-columns: minmax(0, 1fr); }
+.unit-price-row, .barcode-row { display: grid; grid-template-columns: minmax(100px, .8fr) minmax(130px, .8fr) minmax(150px, 1fr) auto; align-items: end; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.unit-price-row label, .barcode-row label { min-width: 0; }
+.unit-price-row small, .barcode-row small { display: block; }
+.price-readonly { padding: 9px 0; display: block; }
+.barcode-row { grid-template-columns: minmax(120px, 1fr) minmax(130px, .65fr) auto auto; }
+.unit-remove { align-self: end; }
 @media (max-width: 720px) {
   .items-page { grid-template-columns: minmax(0, 1fr); align-content: start; }
   .item-results { max-height: 32vh; }
   .item-identity { grid-template-columns: 80px minmax(0, 1fr); }
   .image-preview { width: 80px; height: 80px; }
+  .unit-price-row, .barcode-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 }
 </style>

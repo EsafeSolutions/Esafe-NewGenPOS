@@ -6,13 +6,19 @@
 
 **Priority confirmed by the user:** Thermal roll printers first.
 
-**Scope:** Product, price, shelf, batch and stock labels in the existing EsafePOS `/labels` workspace, with thermal rolls prioritized and basic sheet/PDF output included.
+**Scope:** Product, price, shelf, batch and stock labels under **Printing → Labels** (`/printing`), with thermal rolls prioritized and basic sheet/PDF output included. The former `/labels` route redirects to this section.
+
+**Workspace update — 2026-11-22:** Printing now also hosts the receipt editor previously in General Settings and the outlet's network printer/Print Format setup. Label drafts, presets and calibration retain their existing permissions and data model. Receipt/printer configuration requires Settings write access, with POS Profile write access for printer changes; no separate manager/connector is integrated yet.
+
+## Printing integration update — 2026-11-22
+
+QZ Tray setup, receipt/label dispatch, signing endpoints and bundled connector have been removed. Labels use the browser print window, exact-size PDF or native command-file downloads. Existing connector profiles are normalized to the browser route, with connector-specific alignment reset so it can be measured again. Integration with the separately developed Print Manager is deferred; see the [Print Manager integration plan](print-manager-and-windows-bridge-plan.md). The original roadmap below is updated to follow that boundary.
 
 ## Implementation status — 2026-11-20
 
-Implemented: single/double/triple/custom columns, custom mm/inch sizes, explicit gaps/margins, continuous/black-mark driver setups, A4/A5/Letter/Legal/custom sheets, skipped slots, 15 designs, logo selection/upload, independent font/design scaling, positioned elements with rotation and undo/redo, full-copy previews, device alignment, browser/QZ printing, exact-size raster PDF and ZPL/TSPL bitmap-file export. Shape choices are guides for existing stock, not die cuts. Encoders are EAN-13, UPC-A, Code 128 and UTF-8 QR.
+Implemented: single/double/triple/custom columns, custom mm/inch sizes, explicit gaps/margins, continuous/black-mark driver setups, A4/A5/Letter/Legal/custom sheets, skipped slots, 15 designs, logo selection/upload, independent font/design scaling, positioned elements with rotation and undo/redo, full-copy previews, device alignment, browser printing, exact-size raster PDF and ZPL/TSPL bitmap-file export. Shape choices are guides for existing stock, not die cuts. Encoders are EAN-13, UPC-A, Code 128 and UTF-8 QR.
 
-Document sources preserve batch/serial details, including bundle entries where present. Fractional stock quantities round up with a review notice. Configured alternate selling units resolve their own price/barcode. Preparation reloads authorized current data, validates identifiers, records a bounded snapshot, and asks the operator to review changed names/prices before dispatch. Label QZ signing accepts bounded PDF-only requests under label permissions. Partial connector failures do not trigger replay.
+Document sources preserve batch/serial details, including bundle entries where present. Fractional stock quantities round up with a review notice. Configured alternate selling units resolve their own price/barcode. Preparation reloads authorized current data, validates identifiers, records a bounded snapshot, and asks the operator to review changed names/prices before dispatch. Browser dialog return does not prove physical output, and uncertain results do not trigger replay.
 
 Persistence uses **two** new DocTypes rather than the five proposed in section 11: `EsafePOS Label Preset` stores outlet-scoped Stock/Design/Printer/complete setups, and `EsafePOS Label Print Job` stores private snapshots/results. Shared saving is manager-only; device-local saving is also available. Alignment is keyed to physical stock/printer settings. Shared setups are explicitly selected; automatic company/outlet default inheritance is not implemented.
 
@@ -49,7 +55,7 @@ Changing a logo or text size must not change the physical stock. Changing the st
 | `frontend/src/labels.js` | Four roll sizes, two A4 grids, custom size, one stacked design | General geometry, explicit gaps/margins, pagination and a versioned design renderer |
 | `frontend/src/barcode.js` | SVG EAN-13, UPC-A and Code 128; shared with receipt printing and scan utilities | Explicit format selection, physical dimensions, format-specific quiet zones and rendering checks |
 | `esafepos/api/labels.py` | Outlet-gated label rows, selling prices with tax, currency equivalents, document lists | Saved configuration, richer authorized bindings, UOM/batch-aware rows and print snapshots |
-| `frontend/src/qzPrinting.js` and `esafepos/api/qz_printing.py` | QZ discovery, device-local receipt printer, signing and raw ESC/POS receipts | Separate label printer binding, label dispatch and label-authorized signing |
+| Separate Print Manager integration | Deferred; no local connector currently bundled | Future label-specific bindings and authorized dispatch, sharing existing label snapshots |
 | Settings/session receipt configuration | Global and POS Profile receipt logo and branding | Optional explicit reuse of branding plus separate label defaults |
 
 Current constraints to remove or account for:
@@ -60,7 +66,7 @@ Current constraints to remove or account for:
 - The existing preview samples at most six items with one copy each. The expanded preview must also show real quantities, order and final incomplete rows.
 - The current queue merges on item code. New UOM, barcode, batch and serial variations need distinct row identities.
 - Current barcode SVG uses a fixed ten-module blank area on both sides and is stretched to the available box. Validate physical symbol dimensions and use the blank areas required by each format. In particular, EAN-13 needs a different left quiet zone. See the official [GS1 size guidance](https://gs1.se/en/guides/how-to-guides/size-guide/).
-- QZ label support is new work. Existing ESC/POS receipt bytes are not a generic label-printer format.
+- Future manager label support needs a verified output adapter. Existing ESC/POS receipt bytes are not a generic label-printer format.
 
 ## 3. Stock formats and starter size catalog
 
@@ -296,17 +302,17 @@ Use the same validated geometry and data snapshot for preview and output. Previe
 | Route | Role | Delivery |
 |---|---|---|
 | Browser print | Accessible fallback using an installed driver and actual-size media form | First release |
-| QZ through the installed label driver | Primary desktop convenience where verified; reuse connection and certificate management | First release on tested printer/driver combinations |
-| PDF export / QZ PDF | Exact page-size output suitable for saving and a shared driver path | Dedicated export phase; bring forward if driver trials require it |
+| Separate Print Manager | Future desktop convenience through verified adapters | Deferred until the external manager is ready |
+| PDF export | Exact page-size output suitable for saving and printing through an installed driver | Implemented |
 | ZPL, TSPL and optional EPL/CPCL | Native thermal adapters for verified models/languages | Later, one adapter at a time |
 
 Use a separate label printer selection from the existing receipt selection. Printhead width, liner width, minimum label length, sensor support and firmware language belong to the capability record. Include presets for actual measured resolution, commonly around 203/300/600 DPI, with an exact dots/mm override when specified by the hardware.
 
-QZ supports custom page dimensions, margins and disabling automatic content scaling. However, its pixel path depends on a compatible printer driver. Test the route on the real device before marking that combination supported. See the official [QZ pixel-printing documentation](https://qz.io/docs/pixel). Treat printer DPI and API density units carefully; [QZ config options](https://qz.io/api/qz.configs) describes unit-dependent density and PDF rasterization behavior.
+Use matching custom page dimensions, no margins and actual-size scaling in the selected printer driver. Test the route on the real device before marking that combination supported. Future manager adapters must preserve the validated scene dimensions and explicitly document resolution and unit handling.
 
 Choose a driver output representation after a thermal proof-of-concept. HTML text/font support varies across renderers. A fixed-resolution image needs barcode-safe device-dot rendering; PDF should preserve vector symbols where supported. Document the tested adapter behavior rather than claiming identical rendering from arbitrary HTML across all print stacks.
 
-Native command adapters must be selected by actual supported language, with proper text escaping/encoding and image handling. A brand name alone is insufficient evidence of a printer language. QZ documents distinct raw languages in its [raw-printing guide](https://qz.io/docs/raw).
+Native command adapters must be selected by actual supported language, with proper text escaping/encoding and image handling. A brand name alone is insufficient evidence of a printer language. Use the printer manufacturer's language reference and verified firmware/media settings.
 
 ### 10.2 Calibration wizard
 
@@ -329,7 +335,7 @@ Proposed Frappe records, introduced only in their implementation phase:
 |---|---|
 | `EsafePOS Label Stock` | Reusable media geometry, units, shape/safe zones, supplier reference, scope and schema revision |
 | `EsafePOS Label Template` | Declarative design JSON, bindings, compatibility, branding choices and saved revisions |
-| `EsafePOS Label Printer Profile` | Shared output capabilities and recommended settings; never QZ private keys |
+| `EsafePOS Label Printer Profile` | Shared output capabilities and recommended settings; never connector private keys |
 | `EsafePOS Label Outlet Settings` | POS Profile/company-scoped default stock, design, branding and permitted printer profiles |
 | `EsafePOS Label Print Job` | Owner, outlet, frozen configuration/data, copies, source references, status, adapter result and explicit reprint links |
 
@@ -341,20 +347,17 @@ Keep `enable_labels` and `Print labels`. Add manager-controlled capabilities for
 
 Check feature switches, company/outlet scope, linked-document read access and record permissions on every relevant server call. Do not infer permission from visible dropdown choices. Custom fields and image files must be readable by the current user and safe for the selected output route; stored HTML/script and raw printer commands are not template content.
 
-QZ integration has two concrete prerequisites:
-
-- The current signing endpoint is gated by invoice-read permissions. Add a label-authorized flow tied to validated label jobs and permitted QZ operations, while preserving existing receipt checks. Do not fix this with an unrestricted signer.
-- The current signing request limit is 131,072 characters. Bound encoded job parts below the applicable limit, including envelopes/base64, or design an authorized short-lived asset route. Reject a single part that cannot fit; do not simply remove the limit to accommodate arbitrary image jobs.
+Future manager integration must authorize label operations separately from receipt operations, bind dispatch to validated jobs and limit payload sizes/quantities before any output. Do not reintroduce a generic request signer. The retired QZ signing endpoints and credentials are not part of that integration.
 
 ## 12. Job state, reprints and offline behavior
 
-Job states should distinguish prepared, awaiting print dialog, submitted to connector/spooler, failed, canceled when observable and outcome unknown. Report physical completion only when reliable device feedback exists. Browser dialog return and a resolved QZ call do not prove that labels emerged from the printer.
+Job states should distinguish prepared, awaiting print dialog, submitted to connector/spooler, failed, canceled when observable and outcome unknown. Report physical completion only when reliable device feedback exists. Browser dialog return and a connector acknowledgement do not prove that labels emerged from the printer.
 
 Disable repeated Print clicks during dispatch. Use stable job and part identifiers to avoid duplicate API job creation, but do not promise exactly-once physical printing. Never auto-replay a job after an uncertain connector failure or after reconnecting.
 
 For partial output, let an operator choose the unprinted row/page/slot range and create a linked reprint. Show the last known connector state and retain the original quantities. Reprinting a historical price snapshot and creating a new job with current prices are separate explicit actions; highlight when current data differs.
 
-First release should prepare fresh item/price jobs online. Cached designs can still be viewed offline. A later opt-in offline-print capability may use a previously authorized bounded snapshot, cached assets and an offline-capable adapter; display data age and honor the existing offline permission policy. Fresh QZ server signatures and current prices cannot be promised offline. Do not queue automatic physical printing for later reconnection.
+First release should prepare fresh item/price jobs online. Cached designs can still be viewed offline. A later opt-in offline-print capability may use a previously authorized bounded snapshot, cached assets and an offline-capable adapter; display data age and honor the existing offline permission policy. Fresh job authorization and current prices cannot be promised offline. Do not queue automatic physical printing for later reconnection.
 
 ## 13. Implementation structure
 
@@ -373,7 +376,7 @@ Keep the existing route and API namespace. Suggested boundaries:
 | `frontend/src/labels/presets.js` | Stable stock/design preset identities |
 | `frontend/src/labels.js` | Compatibility facade during migration |
 | `frontend/src/barcode.js` | Shared encoding; preserve receipt/scan compatibility when extending render options |
-| `frontend/src/qzPrinting.js` | Shared QZ connection/signing; keep receipt and label dispatch separate |
+| Future manager adapter | Authorized connector transport, with separate receipt and label operations |
 | `esafepos/api/labels.py` | Authorized product/source selection and narrow whitelisted label endpoints |
 | `esafepos/labels/` | Pure stock/design/job validation helpers where server/client parity is required |
 | `esafepos/esafepos/doctype/` | Saved label records and validation |
@@ -387,8 +390,8 @@ Initial job preparation should freeze authorized row data and referenced stock/d
 
 | Phase | Scope | Required completion evidence |
 |---|---|---|
-| 0. Thermal proof and schema | Measure actual target stock/printer, finalize stock/design/job schema, prove browser and QZ driver geometry, decide image/HTML/PDF transport | Single/double/triple test row, exact resolution/driver details and measured output recorded |
-| 1. Thermal foundation | Saved stock/templates/defaults/jobs; custom dimensions; 1/2/3/custom columns and gaps; first six designs; logo options; simple scale/field controls; label-specific browser/QZ dispatch; preview and calibration | Correct counts and incomplete rows; every column aligned/scannable; independent receipt/label printer choices; permission and migration checks pass |
+| 0. Thermal proof and schema | Measure actual target stock/printer, finalize stock/design/job schema, prove browser/driver geometry, decide image/HTML/PDF transport | Single/double/triple test row, exact resolution/driver details and measured output recorded |
+| 1. Thermal foundation | Saved stock/templates/defaults/jobs; custom dimensions; 1/2/3/custom columns and gaps; first six designs; logo options; simple scale/field controls; browser output; preview and calibration | Correct counts and incomplete rows; every column aligned/scannable; independent receipt/label output choices; permission and migration checks pass |
 | 2. Advanced designs and data | Positioned designer, revisions, richer bindings, UOM/batch/serial rows, rotated barcode, bilingual and specialty design zones | Long/missing values, languages, traceability and physical barcode tests pass |
 | 3. Sheets and exports | A4/A5/Letter/Legal/custom sheet presets, margins/gaps, occupied slots, page ordering and PDF export; QR if validated | Measured full-sheet alignment; skipped slots, pagination and exact PDF dimensions verified |
 | 4. Native/advanced thermal | ZPL/TSPL and other justified adapters, supported hardware actions, QR/GS1 integrations and optional variable-weight generation | Separate real-device/scanner support matrix for each enabled capability |
@@ -403,8 +406,8 @@ A phase is complete only when its documented capability works on the stated devi
 - Add focused `frontend/label-design-check.mjs` coverage for bounds, safe zones, long text, missing bindings/assets, barcode format selection, checksum errors and barcode size blockers.
 - Extend `frontend/barcode-check.mjs` when changing encoding/rendering, using independent references and decoder checks. Verify existing receipt barcode and scale-parser behavior.
 - Add `esafepos/api/test_labels.py` and pure-helper tests for permissions, document access, UOM/batch distinctions, source quantity policy, bounded job preparation, defaults and snapshots. Use bench-backed integration tests for ERPNext pricing and records that require Frappe.
-- Extend QZ tests for label-only permissions, receipt regression, bounded signed requests, failed/unknown dispatch and explicit reprints.
-- When production code changes, run `cd frontend && npm run build`, `cd frontend && node barcode-check.mjs` and the new label checks; run `cd frontend && node receipt-check.mjs` when shared barcode/QZ/receipt code changes.
+- Verify that retired connector setups use browser output without connector calls and reset incompatible alignment. Add bounded dispatch, permission and uncertain-outcome checks when the separate manager is integrated.
+- When production code changes, run `cd frontend && npm run build`, `cd frontend && node barcode-check.mjs` and the new label checks; run `cd frontend && node receipt-check.mjs` when shared barcode/printing/receipt code changes.
 - Rebuild and commit `esafepos/public/pos/` with frontend source changes. Run `git diff --check`. Update this plan, the user guide and project logbook with implemented scope and actual verification.
 
 ### Physical and browser acceptance
@@ -436,7 +439,7 @@ Capture desktop/mobile screenshots for the future UI PR and keep measured sample
 2. Map existing local `esafepos-labels` size, custom dimensions and field toggles to the Classic design and matching stock. Do not automatically share device preferences across users/outlets.
 3. Preserve existing roll and A4 choices while making their actual geometry visible. New measured stock definitions can replace inaccurate supplier assumptions.
 4. Keep the existing feature switch and printing capability; give shared-edit controls only to the intended management roles.
-5. Pilot browser and QZ output on a real single/double/triple thermal configuration, record verified profiles, then roll out to other devices.
+5. Pilot browser output on a real single/double/triple thermal configuration, record verified profiles, then roll out to other devices. Run a separate pilot when the external Print Manager is integrated.
 6. Publish setup steps and measured calibration guidance in `docs/user-guide.md` when behavior ships.
 
 No stock movements, Item Price updates or accounting documents are created by preparing or printing labels.
@@ -449,6 +452,6 @@ These details select the first verified profiles; they do not prevent implementi
 
 ## 18. Original planning validation
 
-Reviewed the existing label view/renderer, barcode implementation/check script, label API, session/settings branding, capability checks, QZ connection/signing path and project logbook. Checked the technical constraints against the official GS1 and QZ sources linked above. The optional UI Skills CLI catalog was unavailable in the local offline package cache; the workflow plan follows the repository's existing Vue/POS patterns.
+The original planning review covered the label view/renderer, barcode implementation/check script, label API, session/settings branding, capability checks, the then-present QZ path and project logbook. QZ was subsequently removed as recorded above. Barcode and device-output constraints were checked against the referenced standards/vendor documentation. The optional UI Skills CLI catalog was unavailable in the local offline package cache; the workflow follows the repository's existing Vue/POS patterns.
 
 The original planning change was documentation-only. The implementation and its completed software checks are recorded in the status section above; physical site/device verification remains required.

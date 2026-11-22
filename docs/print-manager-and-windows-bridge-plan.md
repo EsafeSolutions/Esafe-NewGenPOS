@@ -8,6 +8,10 @@
 
 **Related work:** [Label Printing Module plan](label-printing-module-plan.md).
 
+**Scope update — 2026-11-22:** QZ Tray setup, dispatch, signing endpoints and bundled connector have been removed from the POS. The separate Print Manager is being developed independently and will be integrated later. This document describes that future integration; it does not add a replacement setup flow now. Current routes are browser/ERPNext Print Format printing, existing server-network receipts and label file exports.
+
+**Current POS workspace — 2026-11-22:** The navigation entry is now **Printing** (`/printing`) with Labels, Receipt and Printers sections. Receipt design/defaults/outlet overrides have moved out of General Settings. Printers edits the existing POS Profile network host/port and sale-document Print Format, and can submit a bounded diagnostic receipt. Future bridge setup belongs in this same Printers section; do not add a separate navigation entry for it.
+
 ## 1. Recommended solution
 
 Build two cooperating modules:
@@ -15,7 +19,7 @@ Build two cooperating modules:
 1. **POS Print Manager:** Configure printing, assign printers to purposes, run tests, show connection problems and inspect print jobs inside the existing Vue POS.
 2. **ESAFE Print Bridge for Windows:** An installed tray application that accepts authorized jobs through a local WebSocket connection, enumerates Windows printer queues and prints through Windows or directly to an approved network printer.
 
-Make the custom bridge the preferred adapter for enrolled Windows tills after validation. Keep QZ Tray, browser printing and the existing server-network adapter available during migration. Select one adapter for each job and record it before dispatch.
+Make the separate manager's bridge the preferred adapter for enrolled Windows tills after validation. Keep browser printing and the existing server-network adapter available during migration. Select one adapter for each job and record it before dispatch.
 
 The bridge solves the cloud-to-shop connectivity problem: the POS browser talks to its own Windows computer, and that computer reaches USB or shop-network printers. Frappe continues to control permissions and supply authoritative business data.
 
@@ -23,17 +27,15 @@ The bridge solves the cloud-to-shop connectivity problem: the POS browser talks 
 
 ## 2. Current repository baseline
 
-This review includes in-progress changes present in the working tree; their presence is not a released-support claim.
+The baseline below reflects the QZ removal on 2026-11-22. The external manager and its POS integration are future work.
 
 | Existing module | Current behavior | Planned integration |
 |---|---|---|
-| `frontend/src/components/ReceiptModal.vue` | Chooses QZ for eligible built-in receipts, otherwise server-network or browser/ERPNext Print Format printing | Call one print-job coordinator; preserve receipt and reprint permission checks |
+| `frontend/src/components/ReceiptModal.vue` | Chooses server-network or browser/ERPNext Print Format printing | Call one print-job coordinator; preserve receipt and reprint permission checks |
 | `frontend/src/receiptPrint.js` | Browser receipt measurement and print rendering | Retain browser fallback and offline receipt printing |
-| `frontend/src/qzPrinting.js`, `QzTraySetup.vue` | QZ connection, local printer selection, test receipt and raw receipt submission | Wrap as an existing adapter and expose its status in Print Manager |
 | `esafepos/api/printing.py` | Builds ESC/POS receipts and sends TCP from the Frappe server | Reuse authoritative receipt rendering; retain explicitly configured server-network installations |
-| `esafepos/api/qz_printing.py` | Receipt bytes, QZ certificate/signatures and credential configuration | Keep QZ credentials separate from custom bridge trust and signing |
-| `frontend/src/labels/printing.js` | In-progress browser, PDF export, QZ PDF and native label-output helpers | Use Print Manager bindings and a bridge adapter without changing label geometry |
-| `esafepos/api/labels.py`, label preset/job DocTypes | In-progress scoped presets, frozen label jobs, results and label-specific QZ signing | Reuse label business records and authorization; link delivery records rather than duplicate snapshots |
+| `frontend/src/labels/printing.js` | Browser, PDF export and native label-output helpers | Use Print Manager bindings and a bridge adapter without changing label geometry |
+| `esafepos/api/labels.py`, label preset/job DocTypes | Scoped presets, frozen label jobs and results | Reuse label business records and authorization; link delivery records rather than duplicate snapshots |
 | POS Profile printer IP/port and Print Format | Existing outlet choices | Import as suggestions; explicitly select execution location and adapter |
 
 The existing TCP socket opens on the **Frappe server**, not the cashier computer. A private shop printer is normally unreachable from a cloud server. The new direct-IP adapter opens that socket on the Windows till instead.
@@ -62,7 +64,7 @@ Use a protocol and schema version independent of the POS release. Expose support
 
 ## 4. POS Print Manager workflow
 
-Provide a **Print Manager** navigation entry and a link from Settings. Use existing POS styles, translations, permission patterns and responsive navigation when implementing it.
+Integrate the separate manager into the existing **Printing → Printers** section. Keep Labels and Receipt available in the same workspace, using existing POS styles, translations, permission patterns and responsive navigation.
 
 | Area | Operator behavior |
 |---|---|
@@ -114,7 +116,7 @@ Keep **transport**, **printer language** and **document purpose** separate. A ne
 | Windows driver rendering | Validated label scenes rendered at known physical dimensions and device resolution | Next phase after geometry proof |
 | Windows document rendering | Server-generated PDF for ERPNext Print Formats and A4 documents | Document phase after renderer proof |
 | Native label output | Verified ZPL/TSPL and other justified languages through queue or IP | Later, one tested adapter at a time |
-| Existing QZ/browser/server-network | Existing supported workflows during migration | Retain |
+| Existing browser/server-network | Existing supported workflows during migration | Retain |
 
 Raw spooler output uses the appropriate `OpenPrinter` / `StartDocPrinter` / `WritePrinter` / `EndDocPrinter` lifecycle with cleanup, abort handling and correct partial-write processing. Raw data must already be in a language the destination understands. Arbitrary PDF/HTML is not a universal raw-print format; render documents through the selected driver path. See [WritePrinter](https://learn.microsoft.com/en-us/windows/win32/printdocs/writeprinter).
 
@@ -131,7 +133,7 @@ Only expose cut, feed, darkness, speed or cash-drawer controls when the selected
 Recommended implementation: **C# on .NET 10 LTS**, a small WinForms tray shell, ASP.NET Core/Kestrel for the local WebSocket endpoint, Winspool interop for raw queues and SQLite for the dispatch journal. .NET 10 is an active LTS line in the [Microsoft support policy](https://dotnet.microsoft.com/en-us/platform/support/policy/dotnet-core); select the current supported patch at build time.
 
 - Start with supported Windows 11 x64 configurations and current Chrome/Edge. Assess actual Windows 10 editions, servicing status, older till CPUs and x86/ARM64 needs before adding a support claim.
-- Ship a signed installer and self-contained runtime. Signing and distributing our bridge requires our own release process even though it removes QZ-specific requirements for that route.
+- Ship a signed installer and self-contained runtime. Signing and distributing the separate manager requires its own release process.
 - Run as the logged-in Windows user, with opt-in startup at login and no elevation for ordinary printing. This keeps access aligned with that user's printer queues and network-share credentials.
 - Initial deployment supports one active Windows user/session per till. Fast-user switching, RDP multi-session and shared services need a separate endpoint/identity design before support.
 - Tray controls: status, paired sites, pause accepting new jobs, local diagnostics, restart and remove pairing.
@@ -158,7 +160,7 @@ Chrome documents local-network/loopback permissions that also affect WebSockets.
 4. The bridge retrieves the site's bridge verification key through normal validated HTTPS from the confirmed origin and pins it for that pairing. Pairing cannot silently accept an arbitrary caller's key or a replacement key supplied with a print job.
 5. Frappe registers the device and permitted company/POS Profiles. The bridge stores the paired origin/key and approved bindings; removal or key rotation requires a defined authenticated procedure.
 
-Do not send ERPNext passwords, browser session cookies or reusable ERP API keys to the bridge. Keep bridge job-signing keys separate from QZ signing credentials. Use per-site server keys with key IDs, rotation and protected private-key storage.
+Do not send ERPNext passwords, browser session cookies or reusable ERP API keys to the bridge. Use purpose-specific per-site server signing keys with key IDs, rotation and protected private-key storage.
 
 ### Runtime connection
 
@@ -170,7 +172,7 @@ After connection, the bridge supplies a fresh nonce. The signed, short-lived ses
 
 Frappe creates each print intent after checking the feature switch, company/outlet scope, source-document access, operation permission and current device/binding approval. A caller-provided `reprint=false` flag cannot establish entitlement to an original receipt: enforce original issuance and additional-copy/reprint rules on the server, including concurrent tabs and requests through other adapters.
 
-Issue the original entitlement from the authorized sale-finalization flow, with an atomic uniqueness rule per source/purpose. Route new QZ/browser/server-network receipt attempts through that same coordinator as they migrate. Historical invoices without a delivery journal must use the existing reprint rule; absence of a journal row is not evidence that they have never been printed.
+Issue the original entitlement from the authorized sale-finalization flow, with an atomic uniqueness rule per source/purpose. Route new browser/server-network receipt attempts through that same coordinator as they migrate. Historical invoices without a delivery journal must use the existing reprint rule; absence of a journal row is not evidence that they have never been printed.
 
 Sign a bounded manifest covering the job ID, source revision/snapshot, purpose, user, site, POS Profile, device ID/key, binding and configuration revision, adapter, language/renderer version, ordered part hashes, exact quantities/copies, drawer/cutter intent, issuance/expiry times and nonce. The bridge independently verifies the signature, pairing, binding and limits before dispatch. Begin with a short authorization lifetime, such as 60 seconds, and reject expired new submissions; accepted jobs remain queryable after expiry.
 
@@ -217,7 +219,7 @@ Suggested states: **Prepared → Accepted → Dispatching → Submitted**, follo
 
 A completed TCP send, accepted spooler call or disappeared queue entry does not prove paper output. Microsoft explicitly describes `JOB_STATUS_COMPLETE` as sent to the printer but potentially not yet printed; see [JOB_INFO_2](https://learn.microsoft.com/en-us/windows/win32/printdocs/job-info-2).
 
-There is an unavoidable crash window between physical submission and journaling its acknowledgement. Deduplication limits repeated dispatch but cannot guarantee exactly-once physical printing. Do not automatically switch to browser, QZ or another printer after an ambiguous failure. An operator-approved reprint creates a new linked ID and follows existing receipt/label reprint rules.
+There is an unavoidable crash window between physical submission and journaling its acknowledgement. Deduplication limits repeated dispatch but cannot guarantee exactly-once physical printing. Do not automatically switch to the browser or another printer after an ambiguous failure. An operator-approved reprint creates a new linked ID and follows existing receipt/label reprint rules.
 
 On restart, replay result notifications, not print bytes from an interrupted dispatch. In the first release, unstarted jobs left across a restart require operator review rather than surprise printing. Use bounded journal storage, retain deduplication metadata across the authorization/recovery window and distinguish Windows' own continuing spooler queue from bridge resubmission.
 
@@ -245,7 +247,7 @@ Freeze business data once in the existing source job/document snapshot. Store de
 
 First custom-bridge release: preparing new bridge jobs requires online Frappe authorization. Preserve existing offline browser receipt printing and clearly show that adapter. Accepted bridge or Windows-spooled jobs may finish when internet access is lost; this is different from authorizing a fresh offline job.
 
-Do not silently defer physical printing until reconnection, automatically reprint an offline sale when it syncs or claim fresh QZ server signatures while disconnected. Offline receipt IDs and online invoice IDs must retain their linkage so synchronization does not create another original print entitlement.
+Do not silently defer physical printing until reconnection or automatically reprint an offline sale when it syncs. New online job signatures cannot be issued while disconnected. Offline receipt IDs and online invoice IDs must retain their linkage so synchronization does not create another original print entitlement.
 
 A later offline bridge phase may use a manager-enabled, device-bound, short-lived lease restricted to local offline sales, approved profiles, quantities and printer operations. It needs its own monotonic journal, tamper/replay controls, clock-rollback handling and reconciliation audit. Cached prices or labels must display data age. Defer this capability until those controls and the existing offline permission rules are tested.
 
@@ -261,12 +263,12 @@ A later offline bridge phase may use a manager-enabled, device-bound, short-live
 | `esafepos/api/print_manager.py` | Scoped enrollment, profiles/bindings, intent preparation, result ingestion and reprints |
 | `esafepos/printing/` | Pure manifest/schema validation, authorization policy helpers and output preparation |
 | `esafepos/esafepos/doctype/` | Proposed device, profile, binding and delivery-job records |
-| `print-bridge/windows/` | .NET tray host, loopback protocol, Windows/network adapters, journal and installer source |
+| Separate Print Manager project | Tray host, loopback protocol, Windows/network adapters, journal and installer; developed outside this POS integration change |
 | `docs/` | Installation, supported-device matrix, troubleshooting, protocol and logbook updates |
 
 Frappe endpoints should be purpose-specific: `prepare_receipt_job`, `prepare_label_delivery`, `prepare_document_job`, `prepare_test_job`, `enroll_device`, `save_binding`, `record_events` and `create_reprint`. Mutations require authenticated POST requests with normal Frappe protections. Python additions must preserve the repository's Python 3.7 syntax requirement.
 
-Document the bridge's license and renderer/dependency redistribution terms before packaging. Do not copy QZ implementation code or reuse its private credentials to stand up the custom bridge.
+Document the separate manager's license and renderer/dependency redistribution terms before packaging. Establish its own source and signing credentials.
 
 ## 14. Delivery phases and completion gates
 
@@ -290,7 +292,7 @@ Implementation checks must cover:
 - **Duplication:** Double click, two tabs, two request IDs for the same original receipt, reconnect, browser crash, bridge crash immediately before/after external submission and Windows reboot.
 - **Rendering:** 58/80 mm receipts, long item names, configured branding/footer, invoice barcode scans, required local-language text, label geometry/DPI/gaps and A4 pagination.
 - **Lifecycle:** Standard-user operation, correct account's queues, port conflict, certificate renewal/repair, upgrade interruption, bounded disk use, uninstall and secure pairing removal.
-- **Migration/offline:** Existing QZ selection, existing server IP configuration, ERPNext Print Formats, label presets, browser fallback and offline-sale synchronization without surprise copies.
+- **Migration/offline:** Retired connector selections normalize to browser printing; existing server IP configuration, ERPNext Print Formats, label presets, browser fallback and offline-sale synchronization must work without surprise copies.
 
 Use focused Python authorization/manifest tests, JS coordinator/protocol checks and .NET adapter/journal tests, including integration fault injection at the dispatch boundary. During implementation, run the affected suites and `cd frontend && npm run build`, commit regenerated `esafepos/public/pos/` assets, and attach desktop/mobile Print Manager screenshots. Record exact commands and physical-device results in the logbook.
 
@@ -304,4 +306,4 @@ These inputs select the first verified profiles. They do not prevent implementin
 
 ## 17. Verification of this planning change
 
-Reviewed current receipt, QZ, labels, settings and permission boundaries against the working tree, and checked official Microsoft and Chrome documentation linked above. This change is documentation only. Markdown/local links and diff whitespace were checked; no application tests, production bundle rebuild, Windows bridge prototype, browser setup or physical printer tests were performed.
+The original planning change reviewed receipt, QZ, labels, settings and permission boundaries against the working tree and checked official Microsoft and Chrome documentation linked above. No bridge was implemented or physically verified. The 2026-11-22 scope update removes QZ from the proposed integration baseline and leaves the separate manager for later; see the project logbook for verification of that removal.

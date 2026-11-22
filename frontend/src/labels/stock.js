@@ -12,6 +12,10 @@ export const PRESETS = [
 export const PAPERS = [{ key:'a4',label:'A4',w:210,h:297 },{ key:'a5',label:'A5',w:148,h:210 },{ key:'letter',label:'Letter',w:215.9,h:279.4 },{ key:'legal',label:'Legal',w:215.9,h:355.6 }]
 export const DEFAULT_STOCK = { kind:'roll',w:58,h:40,columns:1,rows:1,gapX:2,gapY:3,left:0,right:0,top:0,bottom:0,pageW:58,pageH:40,autoWidth:true,feedMode:'driver',shape:'rectangle',order:'row',start:0,skip:'',units:'mm' }
 export const DEFAULT_PRINTER = { route:'browser',name:'',dpi:203.2,maxWidth:108,offsetX:0,offsetY:0,scaleX:100,scaleY:100,monochrome:true }
+export function normalizePrinter(saved={}) {
+  const reset=saved.route && saved.route!=='browser' ? {offsetX:0,offsetY:0,scaleX:100,scaleY:100} : {}
+  return {...DEFAULT_PRINTER,...saved,...reset,route:'browser',name:''}
+}
 export const clone = (value) => JSON.parse(JSON.stringify(value))
 export const round = (value) => Math.round(value*10000)/10000
 export const mm = (value, units='mm') => round(Number(value)*(units === 'in' ? 25.4 : 1))
@@ -23,7 +27,7 @@ export function stockForPreset(key, previous=DEFAULT_STOCK) {
 }
 export function sizeOf(key, custom={}) { return {...stockForPreset(key),...custom} }
 export function migrateOptions(saved={}) {
-  if (saved.version === 2) return saved
+  if (saved.version === 2) return {...saved,printer:normalizePrinter(saved.printer)}
   return {version:2,stock:stockForPreset(saved.size || '58x40',{...DEFAULT_STOCK,...(saved.size === 'custom' ? {w:saved.w || 50,h:saved.h || 30} : {})}),design:{show:saved.show || {}}}
 }
 export function geometry(stock) {

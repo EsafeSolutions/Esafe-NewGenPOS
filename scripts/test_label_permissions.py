@@ -1,6 +1,5 @@
 """Standalone label API authorization tests. Frappe I/O is mocked, not a live site."""
 import importlib
-import json
 import pathlib
 import sys
 import types
@@ -85,22 +84,6 @@ class LabelPermissionTests(unittest.TestCase):
                 patch.object(labels.permissions, "is_manager", return_value=False):
             with self.assertRaises(PermissionError):
                 labels.save_preset("Main", "My stock", "Stock", {})
-
-    def test_label_signer_rejects_raw_and_remote_destinations(self):
-        job = types.SimpleNamespace(name="JOB", status="Prepared")
-        for params in ({"printer": {"host": "example.com"}},
-                       {"printer": {"name": "Thermal"}, "data": [{"type": "raw", "format": "command"}]}):
-            params["options"] = {"jobName": "Labels:JOB"}
-            with self.subTest(params=params), patch.object(labels, "_guard"), \
-                    patch.object(labels, "_owned_job", return_value=job), self.assertRaises(ValueError):
-                labels.sign_request("Main", json.dumps({"call": "print", "params": params}), "JOB")
-
-    def test_label_signer_rejects_device_control_and_oversized_requests(self):
-        with patch.object(labels, "_guard"):
-            with self.assertRaises(PermissionError):
-                labels.sign_request("Main", '{"call":"serial.sendData"}')
-            with self.assertRaises(ValueError):
-                labels.sign_request("Main", "x" * 131073)
 
 
 if __name__ == "__main__":

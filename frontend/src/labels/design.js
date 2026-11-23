@@ -12,7 +12,7 @@ export const DESIGNS = [
   ['carton','Carton / stock','Larger identification and quantity'],
 ].map(([key,label,description]) => ({key,label,description}))
 export const BINDINGS = [{key:'name',label:'Item name'},{key:'price',label:'Selling price'},{key:'shop',label:'Company name'},{key:'code',label:'Item code'},{key:'uom',label:'Unit'},{key:'brand',label:'Brand'},{key:'batch',label:'Batch'},{key:'expiry',label:'Expiry date'},{key:'serial',label:'Serial number'},{key:'equivalent',label:'Other currencies'},{key:'note',label:'Second name / note'},{key:'quantity',label:'Quantity'},{key:'date',label:'Print date'}]
-export const DEFAULT_DESIGN = {key:'classic',scale:100,padding:1.2,align:'center',font:'Arial',nameSize:3,priceSize:5,textSize:2.2,logo:'',logoSource:'receipt',barcodeFormat:'AUTO',module:.33,retail:false,show:{shop:false,logo:false,name:true,price:true,equivalent:false,barcode:true,digits:true,code:false,uom:false,brand:false,batch:false,expiry:false,serial:false,note:false},elements:[]}
+export const DEFAULT_DESIGN = {key:'classic',scale:100,padding:1.2,align:'center',font:'Arial',nameSize:3,priceSize:5,textSize:2.2,logo:'',logoSource:'receipt',barcodeFormat:'AUTO',autoFit:true,module:.33,retail:false,show:{shop:false,logo:false,name:true,price:true,equivalent:false,barcode:true,digits:true,code:false,uom:false,brand:false,batch:false,expiry:false,serial:false,note:false},elements:[]}
 const e = (id,type,binding,x,y,w,h,extra={}) => ({id,type,binding,x,y,w,h,rotation:0,align:'center',...extra})
 export function templateElements(key) {
   const name = e('name','text','name',0,0,100,17,{size:'nameSize',bold:true})

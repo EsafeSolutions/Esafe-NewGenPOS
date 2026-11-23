@@ -60,7 +60,7 @@ try{
   await page.getByRole('tab',{name:'Design',exact:true}).click()
   await page.getByRole('button',{name:'Classic',exact:true}).click()
   await page.getByText('Barcode settings',{exact:true}).click()
-  await page.getByLabel(/Narrowest bar width/).fill('0.19')
+  await page.getByLabel(/narrowest bar width/i).fill('0.19')
   await page.getByRole('button',{name:'Roll',exact:true}).click()
   await page.screenshot({path:path.join(out,'labels-desktop.png'),fullPage:true})
   // Return to a fitting single-column configuration and check the complete output flow.

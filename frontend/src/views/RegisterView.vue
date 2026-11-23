@@ -283,7 +283,7 @@
         </div>
       </div>
 
-      <div class="card panel">
+      <div class="card panel" v-if="!combinedDrawer">
         <div class="panel-head">
           {{ t('Close register') }}
           <button v-if="!loadingSummary" class="btn btn-outline" @click="load"><Icon name="refresh" /> {{ t('Refresh') }}</button>
@@ -342,6 +342,8 @@
                     inputmode="decimal"
                     class="count-input"
                     v-model="counted[row.mode_of_payment]"
+                    :aria-label="`${t('Counted')} ${row.mode_of_payment}`"
+                    @input="delete denominations[row.mode_of_payment]"
                   />
                 </td>
                 <td class="right" :class="diffClass(row)" :data-label="t('Difference')">{{ money(diff(row), row.currency || local) }}</td>
@@ -354,6 +356,7 @@
             </tbody>
           </table>
           </div>
+          <CashDenominationCounter v-for="row in countRows.filter(r => r.is_cash)" :key="`${session.registerSession.name}-${row.mode_of_payment}`" :currency="row.currency || local" v-model="denominations[row.mode_of_payment]" :disabled="closing" @count="counted[row.mode_of_payment] = $event" />
           <!-- A short or over: why, and what was done (esafepos.variance). -->
           <VarianceReason
             v-if="ownAsk.show"
@@ -365,12 +368,13 @@
             :missing="ownAsk.missing"
           />
           <input v-model="closingNote" :placeholder="t('Closing note (optional)')" style="width: 100%; margin-top: 12px" />
-          <button class="btn btn-danger btn-lg" data-tour="register-close" style="width: 100%; margin-top: 14px" :disabled="closing || !canClose || ownAsk.missing" @click="close">
+          <button class="btn btn-danger btn-lg" data-tour="register-close" style="width: 100%; margin-top: 14px" :disabled="closing || !canClose || ownAsk.missing || invalidDenominations(denominations)" @click="close">
             {{ closing ? t('Closing…') : t('Close Register') }}
           </button>
           <p v-if="!canClose" class="muted small">{{ t("You don't have permission to close the register.") }}</p>
         </div>
       </div>
+      <SharedDrawerPanel :key="session.registerSession.name" :session-name="session.registerSession.name" @changed="combinedDrawer = $event" @closed="sharedClosed" />
     </template>
 
     <!-- A manager closes a shift someone else left open at this outlet (each
@@ -405,7 +409,8 @@
             {{ t('Count the drawers of {name}, then close the shift.', { name: otherTarget.opened_by_name || otherTarget.opened_by }) }}
           </div>
           <p v-if="otherLoading" class="muted">{{ t('Loading session summary…') }}</p>
-          <template v-else>
+          <SharedDrawerPanel v-if="!otherLoading" :key="otherTarget.session" :session-name="otherTarget.session" @changed="otherCombinedDrawer = $event" @closed="sharedClosed" />
+          <template v-if="!otherLoading && !otherCombinedDrawer">
             <div v-if="otherError" class="summary-error">
               {{ t('⚠ Couldn\'t load the expected takings') }} ({{ otherError }}). {{ t('You can still close the register. Enter the counted amounts below.') }}
             </div>
@@ -422,7 +427,7 @@
                   </td>
                   <td class="right" :data-label="t('Expected')">{{ row.expected_amount != null ? money(row.expected_amount, row.currency || otherLocal) : '-' }}</td>
                   <td class="right" :data-label="t('Counted')">
-                    <input type="text" inputmode="decimal" class="count-input" v-model="otherCounted[row.mode_of_payment]" />
+                    <input type="text" inputmode="decimal" class="count-input" v-model="otherCounted[row.mode_of_payment]" :aria-label="`${t('Counted')} ${row.mode_of_payment}`" @input="delete otherDenominations[row.mode_of_payment]" />
                   </td>
                   <td class="right" :class="otherDiffClass(row)" :data-label="t('Difference')">{{ money(otherDiff(row), row.currency || otherLocal) }}</td>
                 </tr>
@@ -434,6 +439,7 @@
               </tbody>
             </table>
             </div>
+            <CashDenominationCounter v-for="row in otherRows.filter(r => r.is_cash)" :key="`${otherTarget.session}-${row.mode_of_payment}`" :currency="row.currency || otherLocal" v-model="otherDenominations[row.mode_of_payment]" :disabled="otherBusy" @count="otherCounted[row.mode_of_payment] = $event" />
             <VarianceReason
               v-if="otherAsk.show"
               v-model:reason="otherVarianceReason"
@@ -446,7 +452,7 @@
             <input v-model="otherNote" :placeholder="t('Closing note (optional)')" style="width: 100%; margin-top: 12px" />
             <div class="other-actions">
               <button class="btn btn-outline" :disabled="otherBusy" @click="otherTarget = null">{{ t('Cancel') }}</button>
-              <button class="btn btn-danger" :disabled="otherBusy || otherAsk.missing" @click="closeOther">
+              <button class="btn btn-danger" :disabled="otherBusy || otherAsk.missing || invalidDenominations(otherDenominations)" @click="closeOther">
                 {{ otherBusy ? t('Closing…') : t('Close this shift') }}
               </button>
             </div>
@@ -482,6 +488,10 @@
           <div v-if="past.variance_reason" class="muted small vr-line">
             {{ t('Reason for the difference') }}: <b>{{ t(past.variance_reason) }}</b>
             <template v-if="past.variance_action"> · {{ t('Action taken') }}: {{ past.variance_action }}</template>
+          </div>
+          <div v-if="past.combined_drawer" class="muted small">
+            {{ t('Combined cash drawer') }}: {{ past.combined_drawer }} · {{ t('Allocated count') }}
+            <a :href="`/app/pos-register-session/${encodeURIComponent(past.name)}`" target="_blank" class="entry-link">{{ t('View physical count and allocation') }}</a>
           </div>
           <div class="muted small">
             <!-- The ERPNext days closed while the shift sold on past midnight. -->
@@ -523,6 +533,8 @@
 
 <script setup>
 import CashDrawerButton from '../components/printing/CashDrawerButton.vue'
+import CashDenominationCounter from '../components/CashDenominationCounter.vue'
+import SharedDrawerPanel from '../components/SharedDrawerPanel.vue'
 import Icon from '../components/Icon.vue'
 import SalespeopleTable from '../components/SalespeopleTable.vue'
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
@@ -537,6 +549,11 @@ import { t } from '../i18n'
 const session = useSessionStore()
 const summary = ref(null)
 const counted = ref({})
+const denominations = ref({})
+const combinedDrawer = ref(null)
+function invalidDenominations(breakdown) {
+  return Object.values(breakdown).some(entry => entry.rows.some(r => !Number.isInteger(Number(r.quantity)) || Number(r.quantity) < 0 || Number(r.quantity) > 10000000))
+}
 const closingNote = ref('')
 const closing = ref(false)
 const uploading = ref(false)
@@ -680,6 +697,8 @@ const otherShifts = ref([])
 const otherTarget = ref(null)
 const otherSummary = ref(null)
 const otherCounted = ref({})
+const otherDenominations = ref({})
+const otherCombinedDrawer = ref(null)
 const otherNote = ref('')
 const otherError = ref('')
 const otherLoading = ref(false)
@@ -703,6 +722,8 @@ async function pickOther(row) {
   otherTarget.value = row
   otherSummary.value = null
   otherCounted.value = {}
+  otherDenominations.value = {}
+  otherCombinedDrawer.value = null
   otherNote.value = ''
   otherVarianceReason.value = ''
   otherVarianceAction.value = ''
@@ -710,6 +731,7 @@ async function pickOther(row) {
   otherLoading.value = true
   try {
     otherSummary.value = await call('esafepos.api.register.get_session_summary', { session: row.session })
+    otherCombinedDrawer.value = otherSummary.value.combined_drawer
     for (const r of otherSummary.value.expected) otherCounted.value[r.mode_of_payment] = null
   } catch (e) {
     // The drawers can still be counted: the close goes through and the
@@ -752,6 +774,7 @@ async function closeOther() {
     await call('esafepos.api.register.close_register', {
       session: target.session,
       counted: countedClean,
+      denomination_counts: otherDenominations.value,
       closing_note: otherNote.value || null,
       // Stale-closing-screen guard, as for this page's own close.
       expected_invoice_count: otherSummary.value ? otherSummary.value.sales_count : null,
@@ -775,6 +798,15 @@ async function loadHistory() {
   history.value = await call('esafepos.api.register.list_sessions', {
     pos_profile: session.posProfile,
   }).catch(() => [])
+}
+
+async function sharedClosed() {
+  await session.bootstrap(session.posProfile)
+  otherTarget.value = null
+  combinedDrawer.value = null
+  counted.value = {}
+  denominations.value = {}
+  await Promise.all([load(), loadHistory(), loadOtherShifts()])
 }
 
 // Poll the close/consolidation state until the shift reaches Closed or Failed.
@@ -880,6 +912,7 @@ async function load() {
     summary.value = await call('esafepos.api.register.get_session_summary', {
       session: session.registerSession.name,
     })
+    combinedDrawer.value = summary.value.combined_drawer
     for (const row of summary.value.expected) {
       if (!(row.mode_of_payment in counted.value)) counted.value[row.mode_of_payment] = null
     }
@@ -1034,6 +1067,7 @@ async function close() {
     closedResult.value = await call('esafepos.api.register.close_register', {
       session: closedSession,
       counted: countedClean,
+      denomination_counts: denominations.value,
       closing_note: closingNote.value || null,
       // Stale-closing-screen guard: the server rejects the close if more sales
       // landed after this screen loaded (see close_register).

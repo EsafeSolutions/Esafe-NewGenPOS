@@ -143,6 +143,8 @@ def ensure_setup():
     ensure_credit_sales()
     ensure_store_credit()
     ensure_walk_in_customer()
+    from esafepos import loyalty_defaults
+    loyalty_defaults.ensure_setup()
     ensure_hot_indexes()
 
 

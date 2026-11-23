@@ -54,6 +54,10 @@ def validate_configuration(config):
         number(design.get("scale", 100), 10, 300, "design scale")
         number(design.get("padding", 1.2), 0, 100, "padding")
         number(design.get("module", 0.33), 0.1, 2, "barcode width")
+        if design.get("barcodeFormat", "AUTO") not in ("AUTO", "CODE128", "CODE93", "EAN13", "UPCA", "DATAMATRIX", "QRCODE"):
+            raise ValueError("Unsupported barcode format")
+        if "autoFit" in design and not isinstance(design["autoFit"], bool):
+            raise ValueError("Barcode fitting must be enabled or disabled")
         elements = design.get("elements", [])
         if not isinstance(elements, list) or len(elements) > 80:
             raise ValueError("Use at most 80 design elements")

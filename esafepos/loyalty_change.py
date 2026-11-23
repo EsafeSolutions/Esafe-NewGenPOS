@@ -29,7 +29,7 @@ def setup(details, company, posting_date=None):
     reason = None
     date = getdate(posting_date)
     if not details or not details.get("loyalty_program"):
-        reason = _("Enroll this customer in an ERPNext Loyalty Program to save change.")
+        reason = _("No active default loyalty program is available for this company. Ask a manager to check loyalty setup.")
     elif frappe.get_cached_value("Company", company, "default_currency") != "LKR":
         reason = _("Saving change as points is available for LKR companies only.")
     elif details.get("company") != company:

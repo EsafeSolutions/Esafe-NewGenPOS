@@ -8,6 +8,7 @@
  "field_order": [
   "pos_profile",
   "opened_by",
+  "combined_drawer",
   "pos_opening_entry",
   "column_break_1",
   "status",
@@ -31,6 +32,8 @@
   "cash_movements",
   "counts_section",
   "payment_counts",
+  "denomination_counts",
+  "combined_count",
   "totals_section",
   "total_sales",
   "total_discounts",
@@ -41,6 +44,27 @@
   "overdue_notified"
  ],
  "fields": [
+  {
+   "fieldname": "combined_drawer",
+   "fieldtype": "Link",
+   "label": "Combined Cash Drawer",
+   "options": "POS Register Session",
+   "read_only": 1,
+   "description": "The anchor shift of a combined drawer. Sales and ERPNext closings stay on their original shifts."
+  },
+  {
+   "fieldname": "denomination_counts",
+   "fieldtype": "Long Text",
+   "label": "Note and Coin Count",
+   "read_only": 1
+  },
+  {
+   "fieldname": "combined_count",
+   "fieldtype": "Long Text",
+   "label": "Combined Drawer Closing Count",
+   "read_only": 1,
+   "description": "Physical shared count, member shifts and allocation. Member payment counts are allocated, not independently counted drawers."
+  },
   {
    "fieldname": "pos_profile",
    "fieldtype": "Link",

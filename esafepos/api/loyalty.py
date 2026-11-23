@@ -32,12 +32,13 @@ def _on_account(customer, company):
 def get_wallet(customer: str, company: str):
     """Loyalty points + store credit balance for the cart sidebar and the
     payment screen."""
+    from esafepos.loyalty_change import setup
     wallet = {
         "customer": customer,
         "loyalty_program": None,
         "loyalty_points": 0,
         "conversion_factor": 0,
-        "change_to_loyalty": {"enabled": False, "reason": None},
+        "change_to_loyalty": setup(None, company),
         # What this company's outlets accept (esafepos.inter_company).
         "store_credit": get_balance(customer, company),
         "cashback": _cashback_balance(customer, company),

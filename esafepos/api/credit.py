@@ -175,6 +175,10 @@ def receive_payment(
     session = get_open_session(pos_profile)
     if not session:
         frappe.throw(_("Open the register first: the payment goes into its drawer."), title=_("Take a payment"))
+    # Shared drawer closing freezes every member row. A payment started on
+    # another till must finish before its drawer's closing snapshot is read.
+    from esafepos.api.sales import _lock_open_session
+    _lock_open_session(session["name"])
     outlet_modes = {row.mode_of_payment for row in profile.payments or []}
     if mode_of_payment not in outlet_modes or mode_of_payment in _internal_modes():
         frappe.throw(_("{0} is not a payment method of this outlet.").format(mode_of_payment), title=_("Take a payment"))

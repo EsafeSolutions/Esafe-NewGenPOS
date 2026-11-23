@@ -68,6 +68,9 @@ def loyalty_details(customer, company, silent=True, include_expired_entry=False)
 
     program = frappe.db.get_value("Customer", customer, "loyalty_program")
     if not program:
+        from esafepos.loyalty_defaults import default_program
+        program = default_program(company)
+    if not program:
         # Not explicitly enrolled: fall back to any auto opt-in program whose
         # customer group and territory match, exactly as ERPNext does.
         try:

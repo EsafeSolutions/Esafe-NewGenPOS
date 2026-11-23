@@ -411,7 +411,7 @@ const changePointsReason = computed(() => {
   if (session.offline) return t('Reconnect to save change as loyalty points.')
   if (!cart.customer?.name) return t('Select a customer on the sale to save this change as points.')
   if (wallet.value?.change_to_loyalty?.reason) return wallet.value.change_to_loyalty.reason
-  if (!wallet.value?.loyalty_program) return t('Enroll this customer in an ERPNext Loyalty Program to save change.')
+  if (!wallet.value?.loyalty_program) return t('No active default loyalty program is available for this company. Ask a manager to check loyalty setup.')
   return t('Only whole LKR cash change can be saved as points.')
 })
 watchEffect(() => {

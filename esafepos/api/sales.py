@@ -2065,6 +2065,14 @@ def _cashback_estimate(invoice, profile, payload):
 def _apply_loyalty_redemption(invoice, customer, company, payload):
     points = cint(payload.get("redeem_loyalty_points"))
     if points <= 0:
+        # Existing customers need not be edited individually to enroll. Keep
+        # purchase rewards on the same company-scoped program as saved change.
+        from esafepos.loyalty_defaults import program_for_customer
+        from esafepos.loyalty_change import enabled
+        if customer != walk_in.FALLBACK_CUSTOMER and enabled():
+            program = program_for_customer(customer, company)
+            if program:
+                invoice.loyalty_program = program
         return
     if customer == walk_in.FALLBACK_CUSTOMER:
         frappe.throw(_("Select a loyalty customer to redeem points."))

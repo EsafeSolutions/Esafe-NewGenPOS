@@ -13,9 +13,13 @@ class POSRegisterSession(Document):
         # ("Closing") may coexist with a new open session. This is the safety
         # net behind esafepos.api.register.open_register's friendlier checks.
         if self.status == "Open" and self.is_new():
+            from esafepos.api.session import shift_scope
+            filters = {"pos_profile": self.pos_profile, "status": ["in", ["Open", "Closing"]]}
+            if shift_scope() == "Per cashier":
+                filters["opened_by"] = self.opened_by or frappe.session.user
             existing = frappe.db.get_value(
                 "POS Register Session",
-                {"pos_profile": self.pos_profile, "status": ["in", ["Open", "Closing"]]},
+                filters,
                 ["name", "status"],
                 as_dict=True,
             )
@@ -33,9 +37,13 @@ class POSRegisterSession(Document):
                 )
 
     def on_cancel(self):
+        if self.get("combined_drawer"):
+            frappe.throw(_("Close linked shifts together from Combined cash drawer."))
         self._cancel_opening_entry()
 
     def on_trash(self):
+        if self.get("combined_drawer"):
+            frappe.throw(_("A linked drawer shift must be retained for reconciliation."))
         # Deleting a shift that handled cash would leave its movements and its
         # native opening entry dangling with no way to reconcile them.
         if self.get("cash_movements"):

@@ -809,6 +809,9 @@ def add_cash_movement(
         frappe.throw(_("Enter an amount above zero."))
     doc = frappe.get_doc("POS Register Session", session)
     _assert_owner_or_manager(doc)
+    permissions.assert_outlet(doc.pos_profile)
+    frappe.db.get_value("POS Register Session", doc.name, "status", for_update=True)
+    doc = frappe.get_doc("POS Register Session", doc.name, for_update=True)
     if doc.status != "Open":
         frappe.throw(_("Register session is not open"))
     # Empty: the main drawer. Otherwise a drawer in another currency on this
@@ -886,6 +889,8 @@ def get_session_summary(session: str):
     if not frappe.has_permission("POS Register Session", "read"):
         frappe.throw(_("Not permitted"), frappe.PermissionError)
     doc = frappe.get_doc("POS Register Session", session)
+    from esafepos.api import permissions
+    permissions.assert_outlet(doc.pos_profile)
     # Which sale doctype this shift posted, by the profile's mode, NOT by whether
     # an opening entry exists (an SI shift can now have one for cash control).
     from esafepos.api.sales import _table_doctype
@@ -928,7 +933,7 @@ def get_session_summary(session: str):
         expected.append(row)
         seen.add(mode)
 
-    if drawer not in seen and (doc.opening_float or cash_in or cash_out):
+    if drawer and drawer not in seen:
         expected.append(
             {
                 "mode_of_payment": drawer or "Cash",
@@ -941,20 +946,20 @@ def get_session_summary(session: str):
         if mode in seen:
             continue
         f_in, f_out = _drawer_movements(doc, mode, drawer)
-        if floats.get(mode) or f_in or f_out:
-            expected.append(
-                {
-                    "mode_of_payment": mode,
-                    "expected_amount": flt(floats.get(mode, 0) + f_in - f_out, 2),
-                    "is_cash": 1,
-                    "currency": mode_ccy,
-                }
-            )
+        expected.append(
+            {
+                "mode_of_payment": mode,
+                "expected_amount": flt(floats.get(mode, 0) + f_in - f_out, 2),
+                "is_cash": 1,
+                "currency": mode_ccy,
+            }
+        )
 
     totals = _session_totals(doc.name, sale_doctype)
 
     return {
         "session": doc.name,
+        "combined_drawer": doc.get("combined_drawer"),
         "status": doc.status,
         "pos_opening_entry": doc.get("pos_opening_entry"),
         "opened_at": str(doc.opened_at),
@@ -1053,6 +1058,72 @@ def _has_expected_pending():
 # Closing
 # ---------------------------------------------------------------------------
 
+def _stage_close(doc, counted, summary, closing_note=None, variance_reason=None, variance_action=None, variance_applied=False):
+    """Prepare one close without committing; combined drawers stage all together."""
+    expected_map = {r["mode_of_payment"]: r for r in (summary or {}).get("expected") or []}
+
+    modes = sorted(set(expected_map) | set(counted or {}))
+    doc.payment_counts = []
+    for mode in modes:
+        row = expected_map.get(mode) or {}
+        expected_amount = flt(row.get("expected_amount"))
+        counted_amount = flt((counted or {}).get(mode))
+        doc.append(
+            "payment_counts",
+            {
+                "mode_of_payment": mode,
+                # Each drawer is counted in its own money (esafepos.currency).
+                "currency": row.get("currency") or _count_currency(doc, mode, summary),
+                "expected_amount": expected_amount,
+                "counted_amount": counted_amount,
+                # Without the figures no difference is claimed yet.
+                "difference": flt(counted_amount - expected_amount, 2) if summary else 0,
+            },
+        )
+
+    # A short or over: the shop's reason, checked BEFORE anything is saved, so
+    # a close refused for want of one leaves the shift open (0.59.0).
+    from esafepos import variance
+
+    if variance_applied:
+        doc.variance_reason = variance_reason
+        doc.variance_action = variance_action
+    else:
+        variance.apply(doc, variance_reason, variance_action, figures_known=bool(summary))
+
+    # Nothing unconfirmed survives the shift: void pending / approved-but-unused
+    # approval requests BEFORE the flip, so none can be spent on the next shift.
+    try:
+        from esafepos.api import approval_requests
+
+        approval_requests.expire_session_requests(doc.name)
+    except Exception:
+        frappe.log_error(title="EsafePOS: expiring shift requests failed",
+                         message=frappe.get_traceback())
+
+    doc.status = "Closing"
+    doc.closed_at = now_datetime()
+    doc.closing_started_at = now_datetime()
+    doc.closing_status = "Pending"
+    doc.closing_error = None
+    doc.closing_note = closing_note
+    doc.expected_pending = 0 if summary else 1
+    totals = summary
+    if not summary:
+        # The sales themselves are counted on their own, so the history never
+        # says "0 sales" for a shift that sold while its drawers wait.
+        try:
+            from esafepos.api.sales import _table_doctype
+
+            totals = _session_totals(doc.name, _table_doctype(doc.pos_profile))
+        except Exception:
+            totals = {}
+    doc.total_sales = flt(totals.get("total_sales"))
+    doc.total_discounts = flt(totals.get("total_discounts"))
+    doc.sales_count = cint(totals.get("sales_count"))
+    doc.save()
+
+
 @frappe.whitelist()
 def close_register(
     session: str,
@@ -1062,6 +1133,7 @@ def close_register(
     variance_reason: str | None = None,
     variance_action: str | None = None,
     expected_payment_count: int | str | None = None,
+    denomination_counts: dict | str | None = None,
 ):
     """Flip the session to 'Closing' (committed immediately, so it can never be
     sold-on or resumed again), then consolidate in a serialized background job.
@@ -1071,6 +1143,13 @@ def close_register(
         counted = json.loads(counted)
 
     doc = frappe.get_doc("POS Register Session", session)
+    from esafepos.api import permissions
+    permissions.assert_outlet(doc.pos_profile)
+    # Serialize with sales, cash movements, and linking/closing a shared drawer.
+    frappe.db.get_value("POS Register Session", doc.name, "status", for_update=True)
+    doc = frappe.get_doc("POS Register Session", doc.name, for_update=True)
+    if doc.get("combined_drawer"):
+        frappe.throw(_("Close all linked shifts from Combined cash drawer."))
     # A session with no POS Opening Entry (Sales Invoice mode / legacy) closes
     # directly, there is no POS Closing Entry to create or consolidate.
     needed = "POS Register Session" if not doc.get("pos_opening_entry") else "POS Closing Entry"
@@ -1139,64 +1218,15 @@ def close_register(
     except Exception:
         frappe.log_error(title="EsafePOS: shift figures failed at close", message=frappe.get_traceback())
         summary = None
-    expected_map = {r["mode_of_payment"]: r for r in (summary or {}).get("expected") or []}
-
-    modes = sorted(set(expected_map) | set(counted or {}))
-    doc.payment_counts = []
-    for mode in modes:
-        row = expected_map.get(mode) or {}
-        expected_amount = flt(row.get("expected_amount"))
-        counted_amount = flt((counted or {}).get(mode))
-        doc.append(
-            "payment_counts",
-            {
-                "mode_of_payment": mode,
-                # Each drawer is counted in its own money (esafepos.currency).
-                "currency": row.get("currency") or _count_currency(doc, mode, summary),
-                "expected_amount": expected_amount,
-                "counted_amount": counted_amount,
-                # Without the figures no difference is claimed yet.
-                "difference": flt(counted_amount - expected_amount, 2) if summary else 0,
-            },
-        )
-
-    # A short or over: the shop's reason, checked BEFORE anything is saved, so
-    # a close refused for want of one leaves the shift open (0.59.0).
-    from esafepos import variance
-
-    variance.apply(doc, variance_reason, variance_action, figures_known=bool(summary))
-
-    # Nothing unconfirmed survives the shift: void pending / approved-but-unused
-    # approval requests BEFORE the flip, so none can be spent on the next shift.
+    from esafepos.cash_count import clean_counts
     try:
-        from esafepos.api import approval_requests
-
-        approval_requests.expire_session_requests(doc.name)
-    except Exception:
-        frappe.log_error(title="EsafePOS: expiring shift requests failed",
-                         message=frappe.get_traceback())
-
-    doc.status = "Closing"
-    doc.closed_at = now_datetime()
-    doc.closing_started_at = now_datetime()
-    doc.closing_status = "Pending"
-    doc.closing_error = None
-    doc.closing_note = closing_note
-    doc.expected_pending = 0 if summary else 1
-    totals = summary
-    if not summary:
-        # The sales themselves are counted on their own, so the history never
-        # says "0 sales" for a shift that sold while its drawers wait.
-        try:
-            from esafepos.api.sales import _table_doctype
-
-            totals = _session_totals(doc.name, _table_doctype(doc.pos_profile))
-        except Exception:
-            totals = {}
-    doc.total_sales = flt(totals.get("total_sales"))
-    doc.total_discounts = flt(totals.get("total_discounts"))
-    doc.sales_count = cint(totals.get("sales_count"))
-    doc.save()
+        breakdown = clean_counts(denomination_counts, counted, {
+            r["mode_of_payment"]: r["currency"] for r in (summary or {}).get("expected", []) if r.get("is_cash")
+        })
+    except (ValueError, TypeError, AttributeError) as exc:
+        frappe.throw(str(exc))
+    doc.denomination_counts = json.dumps(breakdown)
+    _stage_close(doc, counted, summary, closing_note, variance_reason, variance_action)
     # Persist the "Closing" state NOW: from here the shift is neither sellable
     # nor resumable, whatever happens to the consolidation next. Intentional, 
     # the state must survive even if the consolidation step below fails.
@@ -2604,7 +2634,8 @@ def list_sessions(pos_profile: str, limit: int | str = 20):
             "pos_opening_entry", "pos_closing_entry",
         ] + (["expected_pending"] if _has_expected_pending() else [])
         + (["variance_reason", "variance_action"]
-           if frappe.get_meta("POS Register Session").has_field("variance_reason") else []),
+           if frappe.get_meta("POS Register Session").has_field("variance_reason") else [])
+        + (["combined_drawer"] if frappe.get_meta("POS Register Session").has_field("combined_drawer") else []),
         order_by="closed_at desc",
         limit_page_length=min(int(limit), 50),
     )

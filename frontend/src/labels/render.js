@@ -1,7 +1,8 @@
 // Copyright (c) 2026 Esafe (PVT) LTD
 // SPDX-License-Identifier: AGPL-3.0-only
 import qrcode from 'qrcode-generator'
-import { encode, formatOf } from '../barcode.js'
+import { barcodeMetrics, barcodeBox, symbolMarkup } from './symbols.js'
+export { barcodeMetrics } from './symbols.js'
 import { DEFAULT_DESIGN, templateElements, valueOf, visibleElement } from './design.js'
 import { DEFAULT_PRINTER, layoutJob, round } from './stock.js'
 // The upstream encoder's default byte conversion truncates non-Latin text.
@@ -43,15 +44,6 @@ export function elementBox(el,stock,design) {
   const y=stock.h/2+(padding+ +el.y/100*ih-stock.h/2)*scale
   return {x,y,w,h}
 }
-export function barcodeMetrics(code,design,printer) {
-  const detected=formatOf(code), requested=design.barcodeFormat || 'AUTO'
-  if (!detected || (requested !== 'AUTO' && requested !== 'CODE128' && detected !== requested)) return {error:'The barcode value is invalid for the selected format.'}
-  const encoded=encode(code,{code128:requested === 'CODE128'})
-  const retail=['EAN13','UPCA'].includes(encoded.format), dpmm=+printer.dpi/25.4
-  const module= Math.ceil(Math.max(+design.module,retail ? .264 : .19)*dpmm-.00001)/dpmm
-  const quiet=encoded.format === 'EAN13' ? [11,7] : encoded.format === 'UPCA' ? [9,9] : [10,10]
-  return {...encoded,module,quiet,width:(encoded.modules.length+quiet[0]+quiet[1])*module,retail,dpmm}
-}
 export function labelScene(row,stock,input={},printerInput={}) {
   const d={...DEFAULT_DESIGN,...input,show:{...DEFAULT_DESIGN.show,...input.show}},p={...DEFAULT_PRINTER,...printerInput}
   const errors=[],warnings=[],parts=[]
@@ -62,24 +54,22 @@ export function labelScene(row,stock,input={},printerInput={}) {
   const font=['Arial','Tahoma','Georgia','monospace'].includes(d.font) ? d.font : 'Arial'
   for (const el of elements) {
     if (!visibleElement(el,d)) continue
-    const b=elementBox(el,stock,d)
+    const code=String(row.barcode || row.item_code || '')
+    const b=barcodeBox(el,stock,d,elementBox(el,stock,d),code,p)
     if (![b.x,b.y,b.w,b.h].every(Number.isFinite) || b.w<=0 || b.h<=0 || b.x<-.001 || b.y<-.001 || b.x+b.w>stock.w+.001 || b.y+b.h>stock.h+.001) { errors.push('A design element extends outside the label.'); continue }
     if (![0,90,180,270].includes(+el.rotation)) { errors.push('Element rotation must be 0, 90, 180 or 270 degrees.'); continue }
     const rotated=+el.rotation === 90 || +el.rotation === 270, w=rotated ? b.h : b.w,h=rotated ? b.w : b.h
     const value=el.type === 'static' ? String(el.text || '') : valueOf(row,el.binding)
     let content=''
     if (el.type === 'barcode') {
-      const code=String(row.barcode || row.item_code || ''),m=barcodeMetrics(code,d,p)
+      const m=barcodeMetrics(code,d,p,{w,h})
       if (m.error) { errors.push(m.error); continue }
-      if (m.width>w+.001) { errors.push(`Barcode needs ${round(m.width)} mm width; its box has ${round(w)} mm.`); continue }
-      if (h<5) { errors.push('The barcode height must be at least 5 mm.'); continue }
+      if (!m.fits) { errors.push(`Barcode needs ${round(m.width)} mm width${m.matrix ? ` and ${round(m.height)} mm height` : ''}; its box has ${round(w)} × ${round(h)} mm. Try Make barcode fit or a 2D format.`); continue }
+      if (!m.matrix && h<5) { errors.push('The barcode height must be at least 5 mm.'); continue }
       if (m.retail && h<18.28) (d.retail ? errors : warnings).push('Retail EAN/UPC bars are below 18.28 mm. Use a taller barcode for standard retail scanning.')
-      const start=Math.floor((w-m.width)/2*m.dpmm)/m.dpmm+m.quiet[0]*m.module
-      for (let i=0;i<m.modules.length;) {
-        if (m.modules[i] === '0') { i++; continue }
-        let n=1; while (m.modules[i+n] === '1') n++
-        content+=`<rect x="${round(start+i*m.module)}" width="${round(n*m.module)}" height="${round(h)}"/>`; i+=n
-      }
+      if (m.matrix) warnings.push('This barcode format requires a 2D scanner. The encoded item value is unchanged.')
+      if (m.format==='CODE93') warnings.push('Enable Code 93 on your scanner before using this format.')
+      content=symbolMarkup(m,w,h,round)
     } else if (el.type === 'qr') {
       try {
         const payload=String(row.qr || row.barcode || row.item_code || '')

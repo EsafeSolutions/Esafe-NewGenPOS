@@ -3,6 +3,15 @@ from esafepos.label_config import number, validate_configuration
 
 
 class LabelConfigurationTests(unittest.TestCase):
+    def test_compact_barcode_options_are_declarative(self):
+        for name in ("AUTO", "CODE128", "CODE93", "EAN13", "UPCA", "DATAMATRIX", "QRCODE"):
+            with self.subTest(name=name):
+                config = validate_configuration({"design": {"barcodeFormat": name, "autoFit": True}})
+                self.assertEqual(config["design"]["barcodeFormat"], name)
+        for design in ({"barcodeFormat": "SCRIPT"}, {"autoFit": "false"}):
+            with self.subTest(design=design), self.assertRaises(ValueError):
+                validate_configuration({"design": design})
+
     def setUp(self):
         self.stock = {"kind": "roll", "w": 32, "h": 25, "columns": 3, "rows": 1,
                       "gapX": 2, "gapY": 3, "left": 2, "right": 2, "top": 0, "bottom": 0,

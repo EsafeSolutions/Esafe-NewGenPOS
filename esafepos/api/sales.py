@@ -924,6 +924,7 @@ def submit_sale(payload: dict | str):
     # only if that is the rate the shift sells at (esafepos.currency).
     currency.assert_till_rate(ctx, payload.get("currency_rate"))
     _set_custom(invoice, ("esafepos_session",), session["name"])
+    _set_custom(invoice, ("esafepos_queued_offline",), 1 if cint(payload.get("queued_offline")) else 0)
     if key:
         _set_custom(invoice, ("esafepos_idempotency_key",), key)
     walk_in.assign_receipt_code(invoice, payload.get("customer"))

@@ -69,6 +69,7 @@ def save_receipt_defaults(config, custom_fields=None):
 def get_printer_settings(pos_profile):
     doc = _profile(pos_profile)
     from esafepos.print_config import defaults, FIELDS
+    from esafepos.drawer_config import FIELD as DRAWER_FIELD
     doctype = doc.get("esafepos_invoice_mode") or "POS Invoice"
     formats = frappe.get_list("Print Format", filters={"doc_type": doctype, "disabled": 0}, pluck="name", order_by="name", limit_page_length=0)
     return {
@@ -81,7 +82,7 @@ def get_printer_settings(pos_profile):
         "can_write": bool(doc.has_permission("write")),
         "needs_migration": not all(doc.meta.has_field(f) for f in ("esafepos_printer_ip", "esafepos_printer_port")),
         "esafe": defaults(doc),
-        "esafe_needs_migration": not all(doc.meta.has_field(f) for f in FIELDS.values()),
+        "esafe_needs_migration": not all(doc.meta.has_field(f) for f in list(FIELDS.values()) + [DRAWER_FIELD]),
     }
 
 

@@ -1,10 +1,14 @@
 # Esafe Printer Manager integration
 
-Implemented in the POS; site migration and workstation qualification are required before enabling it. The supplied **0.1.0 Windows installer is an unsigned development release**. No physical printer output or live ERPNext migration was observed in this workspace.
+Implemented in the POS; site migration and workstation qualification are required before enabling it. The previously supplied **0.1.0 Windows installer was an unsigned development release**; the current 0.2.1 kit supplies SDK 0.2.0 and does not establish the newer installer’s signing status. No physical printer output or live ERPNext migration was observed in this workspace.
+
+## Cash drawer update — 2026-11-23
+
+The active private SDK is now **0.2.0**, supplied with the **manager 0.2.1 cash-drawer kit**. Printing → Printers includes default-off workstation drawer controls, validated connector/timing, an explicit physical test and optional authorized cash-payment opening. Pulses are separate five-byte, single-copy raw intents, independent of receipt copies. See [cash-drawer setup, migration, permissions, receipt submission gates and recovery](cash-drawer-controls.md). Native manager settings remain independent. The kit does not contain or install the native application.
 
 ## What connects
 
-The POS browser uses the actual private `@esafe/printer-manager` **0.1.0** SDK to connect to Esafe Printer Manager on that workstation. The SDK discovers **`wss://localhost:17651` through `17660`**, authenticates the browser identity and signs requests. The manager handles Windows queues, including installed USB, shared and IP-backed queues. Add/configure network printers in Windows or the native manager; this integration does not invent a browser IP discovery protocol.
+The POS browser uses the actual private `@esafe/printer-manager` **0.2.0** SDK to connect to Esafe Printer Manager on that workstation. The SDK discovers **`wss://localhost:17651` through `17660`**, authenticates the browser identity and signs requests. The manager handles Windows queues, including installed USB, shared and IP-backed queues. Add/configure network printers in Windows or the native manager; this integration does not invent a browser IP discovery protocol.
 
 The ERP server authorizes source documents, renders PDFs/raw receipts and stores print metadata. It never connects to its own loopback address to find cashier printers. Existing explicit server-network ESC/POS printing remains available with silent printing disabled.
 
@@ -15,7 +19,7 @@ The independently supplied manager is a Rust/Tauri application. The earlier .NET
 ## Administrator deployment
 
 1. Back up the site and record the previous app revision, POS Profile printer host/port, Print Format and receipt overrides. Use a restored staging site first.
-2. Deploy source and the committed production assets together. The SDK is pinned to `frontend/vendor/esafe-printer-manager-0.1.0.tgz` with a relative `file:` dependency and npm lockfile. There is no public-registry lookup for this private package.
+2. Deploy source and the committed production assets together. The SDK is pinned to `frontend/vendor/esafe-printer-manager-0.2.0.tgz` with a relative `file:` dependency and npm lockfile. There is no public-registry lookup for this private package.
 3. To reproduce assets, run `npm ci --offline --ignore-scripts --no-audit --no-fund` in `frontend` when the other locked dependencies are already cached, then `npm run build`. A normal connected `npm ci` also uses the vendored SDK.
 4. Run `bench --site <site> migrate`, then clear site/browser asset caches using the normal deployment process. The repeatable custom-field setup adds five POS Profile defaults; Frappe synchronizes **EsafePOS Print Intent**. Existing invoice/payment/stock records and existing printer/format preferences are preserved. Repeat migration on staging and verify saved values survive.
 5. Distribute the qualified native installer through your normal administrator channel. The 471 MB installer is not embedded in the POS bundle. The supplied installer `Esafe-Printer-Manager-0.1.0-windows-x64-setup.exe` has SHA-256 `515b6c4293ac71959593202f3f7ee21ce64f8ed5d82f871b4c6407bfc47bf45f`; its Authenticode status was `NotSigned`. Review the build/source and qualify drivers before production deployment.
@@ -62,7 +66,7 @@ Assignments are IndexedDB records scoped by ERP origin, browser profile/workstat
 
 HTML embeds images/styles and uses installed system fonts with complex-script shaping; native rendering cannot fetch external assets or scripts. A logo that cannot be safely embedded produces an error. Qualify Windows Sinhala/Tamil fonts. Use HTML/PDF for Sinhala, Tamil and other complex scripts; ESC/POS raw is only for an encoding verified on the actual printer. Raw SDK options contain **copies only**; the existing byte renderer owns layout/cutting. ZPL/TSPL exports remain files; no new EPL or automatic command-language route is invented.
 
-The existing server `print_receipt(open_drawer=...)` permission/byte path remains intact. No dedicated browser drawer-opening action was found, and its ordinary receipt call already defaults to no pulse. Esafe receipt rendering explicitly requests `open_drawer=0`; pairing, preview, recovery, tests and retries never add a pulse or request device permissions. If a site has a separate custom drawer workflow, qualify it separately before switching that site.
+The existing server `print_receipt(open_drawer=...)` permission/byte path remains intact. The new local drawer controls use the separate authorization/intent path described in the [drawer guide](cash-drawer-controls.md). Before the drawer update there was no dedicated browser drawer-opening action; ordinary receipt rendering still defaults to no pulse. Esafe receipt rendering explicitly requests `open_drawer=0`; pairing, preview, recovery, tests and retries never add a pulse or request device permissions. If a site has a separate custom drawer workflow, qualify it separately before switching that site.
 
 ## Jobs, uncertainty and privacy
 

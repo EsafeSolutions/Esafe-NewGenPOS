@@ -37,10 +37,11 @@ def _source(pos_profile, reference, role=None):
 
         doc = _owned_job(pos_profile, name)
     elif doctype == "POS Register Session":
-        from esafepos.api.register import get_session_summary
-
-        get_session_summary(name)
+        if role != "drawer":
+            from esafepos.api.register import get_session_summary
+            get_session_summary(name)
         doc = frappe.get_doc(doctype, name)
+        doc.check_permission("read")
     elif doctype == "Journal Entry":
         from esafepos.api.credit import payment_receipt
 
@@ -121,7 +122,7 @@ def document_printview(doctype, name):
 
 
 @frappe.whitelist(methods=["POST"])
-def register_intent(pos_profile, request_id, workstation, payload_hash, reference, role, output, reprint_of="", automatic=0):
+def register_intent(pos_profile, request_id, workstation, payload_hash, reference, role, output, reprint_of="", automatic=0, printer_id="", drawer=None):
     if isinstance(reference, str):
         reference = json.loads(reference)
     source = _source(pos_profile, reference, role=role)
@@ -129,39 +130,61 @@ def register_intent(pos_profile, request_id, workstation, payload_hash, referenc
         frappe.throw(_("Invalid print intent identity."))
     if not re.match(r"^[A-Za-z0-9+/]{43}=$", str(payload_hash)):
         frappe.throw(_("Invalid print payload hash."))
-    if role not in ("receipt", "labels", "document", "report") or output not in ("raw", "html", "pdf", "image"):
+    if role not in ("receipt", "labels", "document", "report", "drawer") or output not in ("raw", "html", "pdf", "image"):
         frappe.throw(_("Invalid print purpose or output."))
     allowed = {"receipt": ("POS Invoice", "Sales Invoice", "POS Profile"), "labels": ("EsafePOS Label Print Job", "POS Profile"),
-               "document": ("POS Invoice", "Sales Invoice", "Quotation"), "report": ("POS Register Session", "Journal Entry")}
+               "document": ("POS Invoice", "Sales Invoice", "Quotation"), "report": ("POS Register Session", "Journal Entry"),
+               "drawer": ("POS Profile", "POS Register Session", "POS Invoice", "Sales Invoice")}
     if source.doctype not in allowed[role]:
         frappe.throw(_("The source document does not match this print purpose."), frappe.PermissionError)
     if role == "document":
         source.check_permission("print")
-    if cint(automatic) and (role != "receipt" or source.get("docstatus") != 1 or cint(reference.get("reprint"))):
+    if cint(automatic) and role != "drawer" and (role != "receipt" or source.get("docstatus") != 1 or cint(reference.get("reprint"))):
         frappe.throw(_("Automatic receipts require a successfully submitted sale."), frappe.PermissionError)
     if not frappe.db.exists("DocType", DOCTYPE):
         frappe.throw(_("Run the site migration before using silent printing."))
     original_key = None
     if role == "receipt" and source.doctype in ("POS Invoice", "Sales Invoice") and not cint(reference.get("reprint")):
         original_key = hashlib.sha256((source.doctype + ":" + source.name + ":receipt").encode("utf-8")).hexdigest()
+    drawer_fields = {}
+    if role == "drawer":
+        from esafepos.api.cash_drawer import authorize
+        drawer = json.loads(drawer) if isinstance(drawer, str) else drawer
+        if output != "raw" or reprint_of or reference.get("reprint") or not isinstance(drawer, dict):
+            frappe.throw(_("A drawer opening requires its own pulse-only raw intent."), frappe.PermissionError)
+        already = frappe.db.get_value(DOCTYPE, {"request_id": request_id}, "name")
+        drawer_fields = authorize(pos_profile, workstation, printer_id, source, drawer, existing=bool(already))
+        if drawer_fields["drawer_mode"] == "payment":
+            original_key = hashlib.sha256((source.doctype + ":" + source.name + ":drawer").encode("utf-8")).hexdigest()
     existing = frappe.db.get_value(DOCTYPE, {"request_id": request_id}, "name")
     if not existing and original_key:
         existing = frappe.db.get_value(DOCTYPE, {"original_key": original_key}, "name")
     if existing:
         old = frappe.get_doc(DOCTYPE, existing)
-        if old.workstation != workstation or old.owner != frappe.session.user or old.request_id != request_id or old.payload_hash != payload_hash:
+        if (old.workstation != workstation or old.owner != frappe.session.user or old.request_id != request_id or old.payload_hash != payload_hash
+                or old.role != role or old.pos_profile != pos_profile or old.get("printer_id", "") != printer_id
+                or old.reference_doctype != source.doctype or old.reference_name != source.name or old.output != output
+                or old.get("original_key") != original_key or (old.get("reprint_of") or "") != (reprint_of or "")
+                or any(old.get(key) != value for key, value in drawer_fields.items())):
             frappe.throw(_("An original print intent already exists. Reconcile it or create an authorized reprint."), frappe.PermissionError)
         return {"name": old.name}
     if reprint_of:
         original = frappe.get_doc(DOCTYPE, reprint_of)
+        if original.role == "drawer" or original.role != role:
+            frappe.throw(_("Drawer intents cannot be reprinted or reused as another print purpose."), frappe.PermissionError)
         if original.reference_doctype != source.doctype or original.reference_name != source.name:
             frappe.throw(_("The reprint must reference the same document."), frappe.PermissionError)
     doc = frappe.get_doc({"doctype": DOCTYPE, "request_id": request_id, "original_key": original_key,
                           "workstation": workstation, "payload_hash": payload_hash, "pos_profile": pos_profile,
                           "company": source.get("company") or frappe.get_cached_value("POS Profile", pos_profile, "company"),
                           "reference_doctype": source.doctype, "reference_name": source.name,
-                          "role": role, "output": output, "state": "prepared", "reprint_of": reprint_of or None})
+                          "role": role, "output": output, "state": "prepared", "printer_id": printer_id,
+                          "reprint_of": reprint_of or None, **drawer_fields})
     doc.insert(ignore_permissions=True)
+    if role == "drawer":
+        from esafepos.api import audit
+        audit.log("Cash drawer pulse", reference_doctype=source.doctype, reference_name=source.name, pos_profile=pos_profile,
+                  detail="Intent {0}; workstation {1}; printer {2}; {3}".format(doc.name, workstation, printer_id, json.dumps(drawer_fields)))
     if cint(reference.get("reprint")):
         from esafepos.api import audit
 
@@ -192,4 +215,4 @@ def environment():
     import erpnext
 
     return {"frappe": frappe.__version__, "erpnext": erpnext.__version__, "esafepos": __version__,
-            "installed_apps": frappe.get_installed_apps(), "sdk": "0.1.0", "protocol": 1}
+            "installed_apps": frappe.get_installed_apps(), "sdk": "0.2.0", "protocol": 1}

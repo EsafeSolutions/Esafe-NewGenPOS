@@ -190,6 +190,7 @@
     <template v-if="session.registerOpen">
       <div class="card panel" data-tour="register-summary">
         <div class="panel-head">{{ t('Session') }} {{ session.registerSession.name }}</div>
+        <div class="panel-body"><CashDrawerButton /></div>
         <div class="panel-body" v-if="summary">
           <div class="stat-row">
             <div class="stat">
@@ -521,6 +522,7 @@
 </template>
 
 <script setup>
+import CashDrawerButton from '../components/printing/CashDrawerButton.vue'
 import Icon from '../components/Icon.vue'
 import SalespeopleTable from '../components/SalespeopleTable.vue'
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'

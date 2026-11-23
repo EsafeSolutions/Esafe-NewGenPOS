@@ -1,5 +1,5 @@
 import { reactive } from 'vue'
-import { EsafeClient, toBase64, fromBase64 } from '@esafe/printer-manager'
+import { EsafeClient, toBase64, fromBase64, encodeCashDrawerPulse } from '@esafe/printer-manager'
 import { printJournal, workstationId } from './journal.js'
 
 const DISCOVERY = { action: 'printers.list', resources: ['printers'] }
@@ -18,7 +18,7 @@ export function createEsafeService({ client = new EsafeClient(), journal = print
     if (!navigator.locks) throw new Error('Silent printing requires Web Locks. Use current Chrome or Edge.')
     return navigator.locks.request(key, action)
   }, authorize = async () => {}, report = async () => {}, now = () => Date.now(), wait = (ms) => new Promise((r) => setTimeout(r, ms)) } = {}) {
-  const state = reactive({ connection: 'disconnected', error: '', printers: [], defaultPrinter: null, capabilities: {}, jobs: [], documents: [], port: null, busy: false })
+  const state = reactive({ connection: 'disconnected', error: '', printers: [], printGrants: [], bindingRevision: 0, defaultPrinter: null, capabilities: {}, jobs: [], documents: [], port: null, busy: false })
   let connecting, reconnecting = false, stopped = false, pairing = false, initialized = false
   const off = []
   const busyKeys = new Map()
@@ -117,7 +117,11 @@ export function createEsafeService({ client = new EsafeClient(), journal = print
       const all = [...existing, value]
       const selectedIds = [...new Set(all.flatMap((b) => ['receipt', 'labels', 'document', 'report'].map((r) => b[r]).filter(Boolean)))].sort()
       await client.pair([DISCOVERY, ...(selectedIds.length ? [{ action: 'print', resources: selectedIds }] : [])], { timeoutMs: 120000 })
+      const previous = await binding(profile)
+      value.drawer = previous.drawer
       await journal.saveSetting(bindingKey(profile), value)
+      await journal.saveSetting('print-grants', selectedIds)
+      state.printGrants = selectedIds; state.bindingRevision++
       await journal.saveSetting('approved', true)
       state.connection = 'connected'; state.error = ''
       return value
@@ -159,14 +163,15 @@ export function createEsafeService({ client = new EsafeClient(), journal = print
     state.jobs = (await journal.list()).sort((a, b) => b.createdAt - a.createdAt).slice(0, 100)
     return state.jobs
   }
-  async function dispatch({ key, profile, role, format, data, options = {}, title, reference, user, reprintOf = '', automatic = false }) {
+  async function dispatch({ key, profile, role, format, data, options = {}, title, reference, user, reprintOf = '', automatic = false, drawer, beforeAuthorize }) {
     if (busyKeys.has(key)) return busyKeys.get(key)
     const pending = lock(`esafepos-print:${key}`, async () => {
       const existing = await journal.get(key)
       if (existing) { await refreshJobs(); return await journal.get(key) }
       if (!client.isConnected || !client.isPaired) await connect()
       if (!client.isConnected || !client.isPaired) throw new Error('Approve this website in Esafe Printer Manager first.')
-      const selected = await binding(profile), printerId = selected[role]
+      const selected = await binding(profile), printerId = selected[role === 'drawer' ? 'receipt' : role]
+      if (role === 'drawer' && (format !== 'raw' || options.copies !== 1 || !state.printGrants.includes(printerId))) throw new Error('Drawer pulses require one raw copy and the saved printer grant.')
       if (!printerId) throw new Error(`Choose a ${role} printer in Printing → Printers.`)
       await refreshPrinters()
       if (!state.printers.some((p) => p.id === printerId)) throw new Error('The assigned printer is missing or renamed. Choose a printer again; no other queue was selected.')
@@ -176,6 +181,10 @@ export function createEsafeService({ client = new EsafeClient(), journal = print
       const copies = options.copies ?? 1
       if (!Number.isInteger(copies) || copies < 1 || copies > Math.min(limits?.maxCopies || 999, 999)) throw new Error('The requested copy count is not supported by this printer.')
       const bytes = typeof data === 'string' ? new TextEncoder().encode(data) : data instanceof Blob ? new Uint8Array(await data.arrayBuffer()) : new Uint8Array(data)
+      if (role === 'drawer') {
+        const pulse = encodeCashDrawerPulse(drawer)
+        if (bytes.length !== pulse.length || bytes.some((byte, i) => byte !== pulse[i])) throw new Error('Drawer intents must contain only the validated five-byte pulse.')
+      }
       if (bytes.length > MAX_PAYLOAD) throw new Error('Split the print job: this POS allows at most 10 MiB per intent.')
       const records = await journal.list()
       if (records.filter((r) => r.request).length >= 1000) throw new Error('Resolve outstanding print intents before adding more documents.')
@@ -184,9 +193,9 @@ export function createEsafeService({ client = new EsafeClient(), journal = print
       const intentId = crypto.randomUUID(), jobTitle = `${String(title || reference?.name || 'POS print').slice(0, 190)} [POS:${intentId}]`
       const request = { printerId, format, options: format === 'raw' ? { copies } : options, title: jobTitle, idempotencyKey: intentId, dataBase64: toBase64(bytes) }
       const digest = toBase64(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(request)))))
-      const record = { key, intentId, title: jobTitle, profile, role, printerId, format, reference, user, reprintOf, automatic, workstation: await device(), payloadHash: digest, request, state: 'prepared', createdAt: now(), updatedAt: now() }
+      const record = { key, intentId, title: jobTitle, profile, role, printerId, format, reference, user, reprintOf, automatic, drawer, workstation: await device(), payloadHash: digest, request, state: 'prepared', createdAt: now(), updatedAt: now() }
       await journal.put(record) // Durable request and key BEFORE calling the bridge.
-      try { await authorize(record) }
+      try { if (beforeAuthorize) await beforeAuthorize(); await authorize(record) }
       catch (error) { await journal.put({ ...record, state: 'failed', error: error.message }); await refreshJobs().catch(() => {}); throw error }
       return submit(record)
     }).finally(() => busyKeys.delete(key))
@@ -237,6 +246,7 @@ export function createEsafeService({ client = new EsafeClient(), journal = print
   }
   async function createReprint(key) {
     const original = await journal.get(key)
+    if (original?.role === 'drawer') throw new Error('Drawer pulses cannot be reprinted. Use an explicit new opening with a reason.')
     if (!original?.agentJobId) throw new Error('Refresh the original job before requesting another copy.')
     await connect()
     const id = crypto.randomUUID()
@@ -271,6 +281,7 @@ export function createEsafeService({ client = new EsafeClient(), journal = print
     }
     state.jobs = (await journal.list()).sort((a, b) => b.createdAt - a.createdAt).slice(0, 100)
     state.documents = await journal.setting('document-fallbacks') || []
+    state.printGrants = await journal.setting('print-grants') || []
     if (await journal.setting('approved')) await connect().catch((e) => { state.error = recoveryMessage(e) })
   }
   async function reconnect() {
@@ -281,5 +292,43 @@ export function createEsafeService({ client = new EsafeClient(), journal = print
   }
   function disconnect() { stopped = true; client.disconnect(); state.connection = 'disconnected' }
   function dispose() { disconnect(); off.splice(0).forEach((f) => f()); initialized = false }
-  return { state, binding, saveBinding, rememberDocument, connect, refreshPrinters, capabilities, refreshJobs, dispatch, retry, reprint, cancel, preview, resume, disconnect, dispose }
+  async function saveDrawer(profile, config, save) {
+    return lock('esafepos-drawer-settings', async () => {
+      const value = await binding(profile)
+      if (!value.receipt || !state.printGrants.includes(value.receipt)) throw new Error('Approve and save the receipt printer first.')
+      // Safe permission probe: preview never creates a spooler job or sends a pulse.
+      try { await client.preview({ printerId: value.receipt, format: 'html', data: '<!doctype html><p>Cash drawer permission check</p>' }) }
+      catch (error) {
+        if (REFRESH_ERRORS.has(error.code)) {
+          state.printGrants = state.printGrants.filter((id) => id !== value.receipt)
+          await journal.saveSetting('print-grants', [...state.printGrants])
+        }
+        throw error
+      }
+      value.drawer = await save({ ...config, printerId: value.receipt }, await device())
+      await journal.saveSetting(bindingKey(profile), value); state.bindingRevision++
+      return value.drawer
+    })
+  }
+  async function waitSubmitted(record, timeoutMs = 20000) {
+    if (!record?.agentJobId || ['failed', 'cancelled', 'unknown'].includes(record.state)) throw new Error('Receipt submission is not confirmed; the drawer was not opened.')
+    if (['submitted', 'completed'].includes(record.state)) return record
+    return new Promise((resolve, reject) => {
+      let done = false
+      const stops = [], finish = (error, job) => {
+        if (done) return; done = true; clearTimeout(timer); stops.forEach((off) => off())
+        if (error) reject(error)
+        else observe(record, job).then(resolve, reject)
+      }
+      const check = (job) => {
+        if (job?.id !== record.agentJobId) return
+        if (['submitted', 'completed'].includes(job.state)) finish(null, job)
+        else if (['failed', 'cancelled', 'unknown'].includes(job.state)) finish(new Error('Receipt failed or is uncertain; the drawer was not opened.'))
+      }
+      const timer = setTimeout(() => finish(new Error('Receipt submission was not confirmed in time. The drawer was not opened.')), timeoutMs)
+      stops.push(client.on('job.changed', check), client.on('connection.closed', () => finish(new Error('Connection lost; automatic drawer opening was stopped.'))), client.on('resync', () => finish(new Error('Receipt events were interrupted; inspect the queue before opening the drawer.'))))
+      client.jobs.get(record.agentJobId).then(check, (e) => finish(e))
+    })
+  }
+  return { state, binding, saveBinding, saveDrawer, waitSubmitted, rememberDocument, connect, refreshPrinters, capabilities, refreshJobs, dispatch, retry, reprint, cancel, preview, resume, disconnect, dispose }
 }

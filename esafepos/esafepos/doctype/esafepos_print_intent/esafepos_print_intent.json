@@ -4,7 +4,7 @@
   "module": "EsafePOS",
   "autoname": "field:request_id",
   "engine": "InnoDB",
-  "field_order": ["request_id", "original_key", "workstation", "payload_hash", "company", "pos_profile", "reference_doctype", "reference_name", "role", "output", "state", "agent_job_id", "certainty", "result_detail", "reprint_of"],
+  "field_order": ["request_id","original_key","workstation","payload_hash","company","pos_profile","reference_doctype","reference_name","role","output","state","agent_job_id","certainty","result_detail","reprint_of","printer_id","drawer_mode","drawer_pin","drawer_on_ms","drawer_off_ms","drawer_reason","drawer_receipt"],
   "fields": [
     {"fieldname":"request_id","label":"Request ID","fieldtype":"Data","reqd":1,"unique":1,"read_only":1},
     {"fieldname":"original_key","label":"Original receipt identity","fieldtype":"Data","unique":1,"read_only":1},
@@ -20,8 +20,16 @@
     {"fieldname":"agent_job_id","label":"Esafe job ID","fieldtype":"Data","read_only":1},
     {"fieldname":"certainty","label":"Reported certainty","fieldtype":"Data","read_only":1},
     {"fieldname":"result_detail","label":"Reported result","fieldtype":"Small Text","read_only":1},
-    {"fieldname":"reprint_of","label":"Reprint of","fieldtype":"Link","options":"EsafePOS Print Intent","read_only":1}
+    {"fieldname":"reprint_of","label":"Reprint of","fieldtype":"Link","options":"EsafePOS Print Intent","read_only":1},
+    {"fieldname":"printer_id","label":"Workstation printer","fieldtype":"Small Text","read_only":1},
+    {"fieldname":"drawer_mode","label":"Drawer purpose","fieldtype":"Data","read_only":1},
+    {"fieldname":"drawer_pin","label":"Drawer SDK pin","fieldtype":"Int","read_only":1},
+    {"fieldname":"drawer_on_ms","label":"Pulse ON milliseconds","fieldtype":"Int","read_only":1},
+    {"fieldname":"drawer_off_ms","label":"Pulse OFF milliseconds","fieldtype":"Int","read_only":1},
+    {"fieldname":"drawer_reason","label":"Opening reason","fieldtype":"Small Text","read_only":1},
+    {"fieldname":"drawer_receipt","label":"Receipt intent","fieldtype":"Link","read_only":1,"options":"EsafePOS Print Intent"}
   ],
   "permissions": [{"role":"System Manager","read":1,"report":1},{"role":"EsafePOS Manager","read":1,"report":1}],
-  "sort_field":"creation","sort_order":"DESC"
+  "sort_field": "creation",
+  "sort_order": "DESC"
 }

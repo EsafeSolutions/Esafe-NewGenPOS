@@ -788,6 +788,7 @@ def make_custom_fields():
     (custom_app_type, pick_order_no, pick_customer, is_exchange) when they
     exist. EsafePOS does not create them (see esafepos.api.sales._set_custom)."""
     invoice_fields = [
+        dict(fieldname="esafepos_queued_offline", label="Created from offline queue", fieldtype="Check", default="0", read_only=1, no_copy=1),
         dict(
             fieldname="esafepos_section",
             label="EsafePOS",
@@ -997,6 +998,7 @@ def make_custom_fields():
                 dict(fieldname="esafepos_receipt_output", label="Esafe receipt output", fieldtype="Select", options="html\npdf\nraw", default="html", insert_after="esafepos_auto_print_receipt"),
                 dict(fieldname="esafepos_print_copies", label="Esafe print copies", fieldtype="Int", default="1", insert_after="esafepos_receipt_output"),
                 dict(fieldname="esafepos_document_paper", label="Esafe document paper", fieldtype="Select", options="A4\nLetter", default="A4", insert_after="esafepos_print_copies"),
+                dict(fieldname="esafepos_cash_drawers", label="Esafe workstation cash drawers", fieldtype="Long Text", hidden=1, read_only=1, insert_after="esafepos_document_paper"),
             ],
             "POS Invoice": invoice_fields,
             "Sales Invoice": invoice_fields,  # legacy v0.1-0.3 sales keep working

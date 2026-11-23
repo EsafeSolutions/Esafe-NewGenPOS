@@ -7,3 +7,5 @@ esafepos.patches.v0_60.keep_shift_scope
 esafepos.patches.v0_61.split_cash_capability
 esafepos.patches.brand_label
 esafepos.patches.v0_69.esafe_printing
+
+esafepos.patches.v0_69.cash_drawer

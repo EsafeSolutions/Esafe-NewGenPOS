@@ -22,14 +22,14 @@ page.on('pageerror',(error)=>errors.push(error.message))
 await page.route('https://fonts.googleapis.com/**',(r)=>r.abort());await page.route('https://fonts.gstatic.com/**',(r)=>r.abort())
 await page.addInitScript(()=>{
   const NativeSocket=window.WebSocket
-  const bridge=window.testBridge={approved:false,revoked:false,down:false,scopes:[],pairings:[],prints:[],jobs:[],signed:0,connections:[],printers:[{id:'receipt-id',name:'Counter receipt',isDefault:true},{id:'label-id',name:'Label printer'},{id:'office-id',name:'Office A4'}]}
+  const bridge=window.testBridge={approved:false,revoked:false,down:false,scopes:[],pairings:[],prints:[],jobs:[],sockets:[],signed:0,connections:[],printers:[{id:'receipt-id',name:'Counter receipt',isDefault:true},{id:'label-id',name:'Label printer'},{id:'office-id',name:'Office A4'}]}
   const encode=(bytes)=>btoa(String.fromCharCode(...new Uint8Array(bytes))),decode=(text)=>Uint8Array.from(atob(text),(c)=>c.charCodeAt(0))
   const canonical=(v)=>v===null || typeof v!=='object' ? JSON.stringify(v) : Array.isArray(v) ? '['+v.map(canonical).join(',')+']' : '{'+Object.keys(v).sort().map((k)=>JSON.stringify(k)+':'+canonical(v[k])).join(',')+'}'
   class Socket {
     constructor(url,...args){
       if(!String(url).startsWith('wss://localhost:'))return new NativeSocket(url,...args)
-      bridge.connections.push(String(url));this.url=String(url);this.readyState=0;this.seq=0;this.session=crypto.randomUUID();this.challenge='test-native-challenge';this.incoming=Promise.resolve()
-      setTimeout(()=>{if(bridge.down || new URL(url).port!=='17651'){this.onerror?.({});this.close();return}this.readyState=1;this.message({event:'hello',sessionId:this.session,challenge:this.challenge,protocol:1,version:'0.1.0'})},0)
+      bridge.sockets.push(this);bridge.connections.push(String(url));this.url=String(url);this.readyState=0;this.seq=0;this.session=crypto.randomUUID();this.challenge='test-native-challenge';this.incoming=Promise.resolve()
+      setTimeout(()=>{if(bridge.down || new URL(url).port!=='17651'){this.onerror?.({});this.close();return}this.readyState=1;this.message({event:'hello',sessionId:this.session,challenge:this.challenge,protocol:1,version:'0.2.1'})},0)
     }
     message(value){this.onmessage?.({data:JSON.stringify(value)})}
     send(value){this.incoming=this.incoming.then(()=>this.handle(JSON.parse(value))).catch((e)=>{window.nativeMockError=e.message;this.close()})}
@@ -75,6 +75,8 @@ await page.route('**/api/method/**',async(route)=>{
   else if(method.endsWith('.authorize_workstation_setup'))message={allowed:true}
   else if(method.endsWith('.register_intent'))message={name:args.request_id}
   else if(method.endsWith('.record_event'))message={ok:true}
+  else if(method.endsWith('.save_setup'))message={...args.values,printerId:args.printer_id}
+  else if(method.endsWith('.payment_eligibility'))message={eligible:true}
   else if(method.endsWith('.document_pdf')){
     if(failDocument)return route.fulfill({status:417,json:{exception:'PDF renderer unavailable'}})
     message={format:'pdf',data:Buffer.from('%PDF-1.4\nSDK transport fixture only').toString('base64')}
@@ -161,10 +163,53 @@ try{
   await isolated.waitForFunction(()=>window.ready)
   assert.equal(await isolated.evaluate(async()=>(await esafeTest.printManager.binding('Till A')).receipt),'','A second workstation/browser must not inherit assignments')
   await isolated.close()
+  await page.getByRole('tab',{name:'Printers',exact:true}).click()
+  await page.getByRole('heading',{name:'Cash drawer',exact:true}).waitFor()
+  assert.equal(await page.getByLabel('Enable cash drawer',{exact:true}).isChecked(),false)
+  assert.equal(await page.getByLabel('Open after a successful cash payment',{exact:true}).isChecked(),false)
+  await page.getByLabel('Enable cash drawer',{exact:true}).check()
+  await page.getByLabel('Drawer connector',{exact:true}).selectOption('1')
+  await page.getByLabel('Pulse ON milliseconds',{exact:true}).fill('3')
+  const savedBefore=apiCalls.filter((c)=>c.method.endsWith('.save_setup')).length
+  await page.getByRole('button',{name:'Save cash drawer settings',exact:true}).click()
+  await page.getByRole('alert').filter({hasText:'Pulse times must be even integers'}).waitFor()
+  assert.equal(apiCalls.filter((c)=>c.method.endsWith('.save_setup')).length,savedBefore)
+  await page.getByLabel('Pulse ON milliseconds',{exact:true}).fill('2')
+  await page.getByLabel('Pulse OFF milliseconds',{exact:true}).fill('510')
+  await page.getByRole('button',{name:'Save cash drawer settings',exact:true}).click()
+  await page.getByRole('status').filter({hasText:'Cash drawer settings saved for this workstation.'}).waitFor()
+  const beforePulse=await page.evaluate(()=>testBridge.prints.length)
+  page.once('dialog',(d)=>d.accept())
+  await page.getByRole('button',{name:'Test / open cash drawer',exact:true}).click()
+  await page.waitForFunction((n)=>testBridge.prints.length===n+1,beforePulse)
+  const pulse=await page.evaluate(()=>testBridge.prints.at(-1))
+  assert.deepEqual([...Buffer.from(pulse.dataBase64,'base64')],[27,112,1,1,255])
+  assert.deepEqual(pulse.options,{copies:1});assert.equal(pulse.format,'raw');assert.equal(pulse.printerId,'receipt-id')
+  await page.locator('.drawer-setup').screenshot({path:path.join(out,'drawer-desktop.png')})
+  await page.setViewportSize({width:390,height:900})
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true)
+  await page.getByRole('button',{name:'Test / open cash drawer',exact:true}).scrollIntoViewIfNeeded()
+  await page.screenshot({path:path.join(out,'drawer-mobile.png')})
+  await page.setViewportSize({width:1440,height:1100})
+  await page.getByLabel('Open after a successful cash payment',{exact:true}).check()
+  await page.getByRole('button',{name:'Save cash drawer settings',exact:true}).click()
+  await page.getByRole('status').filter({hasText:'Cash drawer settings saved for this workstation.'}).waitFor()
+  await page.evaluate(()=>{esafeTest.session.settings.esafe_printing.copies=3;esafeTest.receipt.name='INV-AUTO-DRAWER';return esafeTest.showReceipt()})
+  await page.waitForFunction((n)=>testBridge.prints.length===n+2,beforePulse)
+  assert.equal(await page.evaluate(()=>testBridge.prints.at(-1).format),'html')
+  assert.equal(await page.evaluate(()=>testBridge.prints.at(-1).options.copies),3)
+  await page.evaluate(()=>{const job=testBridge.jobs.at(-1);job.state='submitted';for(const socket of testBridge.sockets)if(socket.readyState===1)socket.message({event:'job.changed',data:job})})
+  await page.waitForFunction((n)=>testBridge.prints.length===n+3,beforePulse)
+  assert.deepEqual(await page.evaluate(()=>testBridge.prints.at(-1).options),{copies:1})
+  assert.ok(apiCalls.some((c)=>c.method.endsWith('.register_intent')&&c.args.role==='drawer'&&c.args.drawer.receiptIntent))
+  await page.evaluate(()=>esafeTest.showReceipt());await page.waitForTimeout(300)
+  assert.equal(await page.evaluate(()=>testBridge.prints.length),beforePulse+3,'Duplicate checkout callback must not pulse twice')
+  await page.evaluate(()=>esafeTest.printManager.refreshJobs())
+  assert.equal(await page.evaluate(()=>testBridge.prints.length),beforePulse+3,'Refreshing jobs must not pulse')
   assert.ok(!apiCalls.some((c)=>/submit_sale|take_payment|qz_printing|sign_request/.test(c.method)))
   assert.ok(await page.evaluate(()=>testBridge.signed>10))
   assert.ok(await page.evaluate(()=>!window.nativeMockError),await page.evaluate(()=>window.nativeMockError))
   assert.ok((await page.evaluate(()=>testBridge.connections)).every((url)=>/^wss:\/\/localhost:1765[1-9]|^wss:\/\/localhost:17660/.test(url)))
   assert.deepEqual(errors,[])
-  console.log('PASS actual Esafe 0.1.0 SDK authentication/signatures, discovery-before-print pairing, exact scopes, workstation/outlet isolation, silent setup/test, Unicode 58/80mm HTML, automatic-original dedupe, deliberate reprint, PDF document dispatch/failure fallback, revocation repair and responsive UI')
+  console.log('PASS actual Esafe 0.2.0 SDK authentication/signatures, discovery-before-print pairing, exact scopes, workstation/outlet isolation, silent setup/test, Unicode 58/80mm HTML, automatic-original dedupe, deliberate reprint, PDF document dispatch/failure fallback, revocation repair, drawer setup/validation/pin bytes, three-copy receipt submission gate and responsive UI')
 }catch(error){console.error(error);await page.screenshot({path:path.join(out,'failure.png')});console.error(errors);process.exitCode=1}finally{await browser.close();server.httpServer?.closeAllConnections();await server.close()}

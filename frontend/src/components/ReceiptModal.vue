@@ -144,6 +144,7 @@
         <button v-if="useSilent && (!isReprint || mayReprint)" class="btn btn-outline" :disabled="printing" @click="print(true)">{{ t('Browser print') }}</button>
         <button v-if="useSilent && printManager.state.connection!=='connected'" class="btn btn-outline" :disabled="printing" @click="connectManager">{{ t('Connect Esafe Print Manager') }}</button>
         <span v-if="isReprint && !mayReprint" class="muted small reprint-note">{{ t('Printing it again is kept to whoever may reprint a receipt.') }}</span>
+        <CashDrawerButton />
         <button class="btn btn-primary" @click="$emit('close')">
           {{ receipt.is_return ? t('Done') : t('New Sale') }}
         </button>
@@ -157,6 +158,7 @@
 <script setup>
 import Icon from './Icon.vue'
 import ReceiptView from './ReceiptView.vue'
+import CashDrawerButton from './printing/CashDrawerButton.vue'
 import CustomerModal from './CustomerModal.vue'
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { call } from '../api'
@@ -164,7 +166,7 @@ import { useSessionStore } from '../stores/session'
 import { money } from '../format'
 import { t } from '../i18n'
 import { printReceipt } from '../receiptPrint'
-import { nativeReceipt, printManager, printStatusMessage, silentPrinting } from '../printing/index.js'
+import { nativeReceipt, printManager, printStatusMessage, silentPrinting, cashDrawer } from '../printing/index.js'
 
 const props = defineProps({
   showOpenInHistory: { type: Boolean, default: false },
@@ -430,8 +432,16 @@ onMounted(async () => {
   if (props.autoPrint && !props.reprint && nativeConfig.value.automatic_receipt && useSilent.value) {
     await nextTick()
     await print(false, true)
+  } else if (props.autoPrint && !props.reprint) {
+    openAfterPayment()
   }
 })
+function openAfterPayment(receiptJob) {
+  cashDrawer.afterSale({ receipt: props.receipt, profile: props.receipt.pos_profile || session.posProfile,
+    user: session.user, offline: session.offline, reprint: props.reprint, receiptJob })
+    .then((result) => { if (result) session.notify(t(result.state === 'unknown' ? 'Drawer pulse outcome is unknown. Inspect the drawer and Print jobs; nothing is replayed automatically.' : result.state === 'failed' ? `Drawer pulse failed: ${result.error}` : 'Drawer pulse accepted. Check the physical drawer.')) })
+    .catch((error) => session.notify(error.message, true))
+}
 async function print(forceBrowser = false, automatic = false) {
   if (printing.value) return
   const again = isReprint.value
@@ -447,6 +457,7 @@ async function print(forceBrowser = false, automatic = false) {
       if (result) {
         printedOnce.value = !!result.agentJobId || result.state === 'unknown'
         session.notify(t(printStatusMessage(result)), ['failed', 'unknown'].includes(result.state))
+        if (automatic && !again) openAfterPayment(result)
       }
     } catch (error) { session.notify(error.message, true) }
     finally { printing.value = false }

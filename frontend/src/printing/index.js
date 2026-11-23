@@ -3,18 +3,22 @@ import { call } from '../api'
 import { useSessionStore } from '../stores/session'
 import { createEsafeService } from './esafe.js'
 import { selfContainedHtml } from './documents.js'
+import { createDrawerController } from './drawer.js'
 
 export const printManager = createEsafeService({
   authorize: (record) => call('esafepos.api.esafe_printing.register_intent', {
     pos_profile: record.profile, request_id: record.intentId, workstation: record.workstation,
     payload_hash: record.payloadHash, reference: record.reference, role: record.role, output: record.format,
     reprint_of: record.reprintOf || '', automatic: record.automatic ? 1 : 0,
+    printer_id: record.printerId, drawer: record.drawer || null,
   }),
   report: (record) => call('esafepos.api.esafe_printing.record_event', {
     request_id: record.intentId, state: record.state, job_id: record.agentJobId || '',
     certainty: record.certainty || '', detail: record.error || '',
   }),
 })
+export const cashDrawer = createDrawerController(printManager, (profile, doctype, name) =>
+  call('esafepos.api.cash_drawer.payment_eligibility', { pos_profile: profile, doctype, name }))
 export function silentPrinting(session = useSessionStore()) { return !!session.settings?.esafe_printing?.silent && !session.offline }
 export async function nativeReceipt(receipt, source, { reprint = false, automatic = false } = {}) {
   const session = useSessionStore(), config = receipt.printing_defaults || session.settings.esafe_printing || {}, profile = receipt.pos_profile || session.posProfile

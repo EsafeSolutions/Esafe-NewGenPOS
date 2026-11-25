@@ -3,36 +3,31 @@
      "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md. -->
 <template>
   <div class="register">
-    <!-- A shift that was closed but whose consolidation is still finishing or
-         failed. Until it reaches Closed, the register stays locked. -->
     <div v-if="pending && !closedResult" class="card panel">
-      <div class="panel-head">{{ t('Previous shift not finished') }}</div>
+      <div class="panel-head">{{ t('Previous shift') }} · {{ pending.session }}</div>
       <div class="panel-body">
-        <p>
-          {{ t('Session') }} <b>{{ pending.session }}</b> {{ t('was closed but its sales are still being consolidated') }}<span v-if="pending.closing_status === 'Failed'">&nbsp;{{ t('and the last attempt') }}
-          <b class="neg">{{ t('failed') }}</b></span>.
-        </p>
-        <pre v-if="pending.closing_error" class="err-detail">{{ plainText(pending.closing_error) }}</pre>
+        <ShiftClosingHelp :state="pending" :session-name="pending.session" :manager="session.permissions.is_manager" />
         <PeriodHint v-if="pending.closing_hint" :hint="pending.closing_hint" />
         <button
           v-if="session.permissions.close_register !== false"
           class="btn btn-primary"
-          :disabled="retrying === pending.session"
-          @click="retryClosing(pending.session, true)"
+          :disabled="!!retrying || session.offline"
+          @click="retryClosing(pending.session)"
         >
-          <Icon name="refresh" /> {{ retrying === pending.session ? t('Finalising…') : t('Retry closing') }}
+          <Icon name="refresh" /> {{ retrying === pending.session ? t('Checking…') : t('Check and retry closing') }}
         </button>
         <p class="muted small" style="margin-top: 8px">
-          {{ t('Safe to retry as often as needed. ERPNext rolls a failed attempt back fully, so nothing is ever double-posted.') }}
+          {{ t('Retries keep the saved counts and skip sales already posted.') }}
         </p>
-
-        <!-- Closing keeps FAILING, let the store keep trading. Opens a fresh shift
-             now; the failed one stays in the background and keeps retrying. -->
+        <p v-if="pending.new_shift_blocked" class="shift-note">
+          {{ t('This outlet must finish the previous closing before a new shift can start. Ask a manager to fix the issue above, then retry.') }}
+        </p>
+        <p v-if="!canClose" class="muted small">{{ t('Ask a manager to check and retry this closing.') }}</p>
         <div
-          v-if="pending.closing_status === 'Failed' && session.permissions.close_register !== false"
+          v-if="!pending.new_shift_blocked && canOpen"
           class="force-new-block"
         >
-          <div class="or-sep"><span>{{ t('or start a new shift anyway') }}</span></div>
+          <div class="or-sep"><span>{{ t('Start your next shift') }}</span></div>
           <label class="field-label">{{ t('Opening float for the new shift') }}</label>
           <input
             type="text"
@@ -42,12 +37,12 @@
             :disabled="opening"
           />
           <div style="margin-top: 10px">
-            <button class="btn btn-outline" :disabled="opening" @click="openRegister()">
-              <Icon name="play" /> {{ opening ? t('Opening…') : t('Start a new shift anyway') }}
+            <button class="btn btn-outline" :disabled="opening || session.offline || !!retrying" @click="openRegister()">
+              <Icon name="play" /> {{ opening ? t('Opening…') : t('Open a new shift') }}
             </button>
           </div>
           <p class="muted small" style="margin-top: 8px">
-            {{ t('Keep selling now, the failed shift stays in the background and keeps retrying until its invoices consolidate.') }}
+            {{ t('The previous shift keeps its own sales and closing count. A manager can finish posting it separately.') }}
           </p>
         </div>
       </div>
@@ -78,7 +73,7 @@
             <span class="muted"><Icon name="hourglass" /> {{ t('Consolidating invoices in the background… this usually takes a few seconds.') }}</span>
           </template>
         </p>
-        <pre v-if="closeState.closing_error" class="err-detail">{{ plainText(closeState.closing_error) }}</pre>
+        <ShiftClosingHelp v-if="closeState.status !== 'Closed'" :state="closeState" :session-name="closedResult.name" :manager="session.permissions.is_manager" />
         <PeriodHint v-if="closeState.closing_hint" :hint="closeState.closing_hint" />
         <div v-if="closedResult.expected_pending" class="summary-error">
           {{ t("The expected takings could not be worked out at the close. They are filled in from the shift's POS Closing Entry when it consolidates.") }}
@@ -86,10 +81,10 @@
         <button
           v-if="closeState.closing_status === 'Failed' && session.permissions.close_register !== false"
           class="btn btn-primary"
-          :disabled="retrying === closedResult.name"
+          :disabled="!!retrying || session.offline"
           @click="retryClosing(closedResult.name)"
         >
-          <Icon name="refresh" /> {{ retrying === closedResult.name ? t('Retrying…') : t('Retry closing') }}
+          <Icon name="refresh" /> {{ retrying === closedResult.name ? t('Checking…') : t('Check and retry closing') }}
         </button>
         <div class="count-wrap">
         <table class="count-table stack">
@@ -120,11 +115,12 @@
     <div v-if="!session.registerOpen && !closedResult && !pending" class="card panel" data-tour="register-open">
       <div class="panel-head">{{ t('Open register') }}</div>
       <div class="panel-body">
-        <p class="muted">{{ session.posProfile }}. {{ t('Enter the opening cash float to start selling.') }}</p>
+        <p class="muted">{{ session.posProfile }}. {{ t('Count the cash already in the drawer, then enter that amount to start your shift.') }}</p>
+        <p class="muted small">{{ t('Opening float is the change you start with. Enter 0 only if the drawer is empty.') }}</p>
         <label class="field-label">{{ t('Opening float') }}</label>
         <input type="text" inputmode="decimal" v-model="openFloat" style="width: 200px" :disabled="!canOpen" @keydown.enter="openRegister()" />
         <div style="margin-top: 14px">
-          <button class="btn btn-primary btn-lg" :disabled="opening || !canOpen" @click="openRegister()">
+          <button class="btn btn-primary btn-lg" :disabled="opening || !canOpen || session.offline" @click="openRegister()">
             {{ opening ? t('Opening…') : t('Open Register') }}
           </button>
           <p v-if="!canOpen" class="muted small">{{ t("You don't have permission to open a register.") }}</p>
@@ -190,7 +186,11 @@
     <template v-if="session.registerOpen">
       <div class="card panel" data-tour="register-summary">
         <div class="panel-head">{{ t('Session') }} {{ session.registerSession.name }}</div>
-        <div class="panel-body"><CashDrawerButton /></div>
+        <div class="panel-body">
+          <CashDrawerButton />
+          <p v-if="session.shiftComputerBlocked" class="summary-error">{{ t('This shift is assigned to another computer. Ask a manager to move it from the Register page.') }}</p>
+          <button v-if="session.settings.shift_multiple_computers === 0 && session.permissions.is_manager" class="btn btn-outline" :disabled="movingComputer || session.offline" @click="moveComputer">{{ movingComputer ? t('Moving…') : t('Use this computer for this shift') }}</button>
+        </div>
         <div class="panel-body" v-if="summary">
           <div class="stat-row">
             <div class="stat">
@@ -244,7 +244,7 @@
               <span v-else class="muted">{{ t('Posting…') }}</span>
             </div>
             <template v-if="failedDay">
-              <pre class="err-detail">{{ plainText(failedDay.closing_error) }}</pre>
+              <ShiftClosingHelp :state="failedDay" :session-name="session.registerSession.name" :manager="session.permissions.is_manager" />
               <PeriodHint v-if="failedDay.closing_hint" :hint="failedDay.closing_hint" />
               <button v-if="canClose" class="btn btn-outline" :disabled="retryingDays" @click="retryDays">
                 <Icon name="refresh" /> {{ t('Try again') }}
@@ -286,12 +286,18 @@
       <div class="card panel" v-if="!combinedDrawer">
         <div class="panel-head">
           {{ t('Close register') }}
-          <button v-if="!loadingSummary" class="btn btn-outline" @click="load"><Icon name="refresh" /> {{ t('Refresh') }}</button>
+          <button class="btn btn-outline" :disabled="preparing || closing || session.offline || loadingSummary" @click="prepareClose"><Icon name="refresh" /> {{ preparing ? t('Checking…') : t('Check and prepare') }}</button>
         </div>
         <div class="panel-body" v-if="loadingSummary">
           <p class="muted">{{ t('Loading session summary…') }}</p>
         </div>
         <div class="panel-body" v-else>
+          <ol class="closing-guide" :aria-label="t('Closing checklist')">
+            <li><b>{{ t('Upload sales') }}</b><span>{{ t('Check and prepare uploads waiting sales and refreshes your totals.') }}</span></li>
+            <li><b>{{ t('Count each payment') }}</b><span>{{ t('Cash: count everything in the drawer, including the opening float. Card: use the terminal total.') }}</span></li>
+            <li><b>{{ t('Review and close') }}</b><span>{{ t('Check any difference and add a reason. Close once; posting finishes automatically.') }}</span></li>
+          </ol>
+          <p v-if="session.offline" class="summary-error">{{ t('Connect to the internet before preparing or closing this shift.') }}</p>
           <!-- Queued offline sales belong to THIS shift's drawer. Closing before
                they upload would push them onto the next shift and leave both
                counts wrong, so block the close until they're in. -->
@@ -343,10 +349,13 @@
                     class="count-input"
                     v-model="counted[row.mode_of_payment]"
                     :aria-label="`${t('Counted')} ${row.mode_of_payment}`"
+                    :placeholder="t('Enter amount')"
+                    :disabled="closing || preparing"
+                    :aria-invalid="counted[row.mode_of_payment] != null && invalidCountModes([row], counted).length > 0"
                     @input="delete denominations[row.mode_of_payment]"
                   />
                 </td>
-                <td class="right" :class="diffClass(row)" :data-label="t('Difference')">{{ money(diff(row), row.currency || local) }}</td>
+                <td class="right" :class="diffClass(row)" :data-label="t('Difference')">{{ parseMoney(counted[row.mode_of_payment]) == null || row.expected_amount == null ? '—' : money(diff(row), row.currency || local) }}</td>
               </tr>
               <tr v-if="!countRows.length">
                 <td colspan="4" class="muted" style="text-align: center; padding: 14px">
@@ -356,6 +365,7 @@
             </tbody>
           </table>
           </div>
+          <p class="muted small count-progress" role="status">{{ t('{done} of {total} payment totals entered. Enter 0 only when that payment has no money to count.', { done: countRows.length - missingCounts.length, total: countRows.length }) }}</p>
           <CashDenominationCounter v-for="row in countRows.filter(r => r.is_cash)" :key="`${session.registerSession.name}-${row.mode_of_payment}`" :currency="row.currency || local" v-model="denominations[row.mode_of_payment]" :disabled="closing" @count="counted[row.mode_of_payment] = $event" />
           <!-- A short or over: why, and what was done (esafepos.variance). -->
           <VarianceReason
@@ -368,7 +378,7 @@
             :missing="ownAsk.missing"
           />
           <input v-model="closingNote" :placeholder="t('Closing note (optional)')" style="width: 100%; margin-top: 12px" />
-          <button class="btn btn-danger btn-lg" data-tour="register-close" style="width: 100%; margin-top: 14px" :disabled="closing || !canClose || ownAsk.missing || invalidDenominations(denominations)" @click="close">
+          <button class="btn btn-danger btn-lg" data-tour="register-close" style="width: 100%; margin-top: 14px" :disabled="closing || preparing || uploading || session.offline || missingCounts.length > 0 || !canClose || ownAsk.missing || invalidDenominations(denominations)" @click="close">
             {{ closing ? t('Closing…') : t('Close Register') }}
           </button>
           <p v-if="!canClose" class="muted small">{{ t("You don't have permission to close the register.") }}</p>
@@ -427,7 +437,7 @@
                   </td>
                   <td class="right" :data-label="t('Expected')">{{ row.expected_amount != null ? money(row.expected_amount, row.currency || otherLocal) : '-' }}</td>
                   <td class="right" :data-label="t('Counted')">
-                    <input type="text" inputmode="decimal" class="count-input" v-model="otherCounted[row.mode_of_payment]" :aria-label="`${t('Counted')} ${row.mode_of_payment}`" @input="delete otherDenominations[row.mode_of_payment]" />
+                    <input type="text" inputmode="decimal" class="count-input" v-model="otherCounted[row.mode_of_payment]" :placeholder="t('Enter amount')" :aria-label="`${t('Counted')} ${row.mode_of_payment}`" @input="delete otherDenominations[row.mode_of_payment]" />
                   </td>
                   <td class="right" :class="otherDiffClass(row)" :data-label="t('Difference')">{{ money(otherDiff(row), row.currency || otherLocal) }}</td>
                 </tr>
@@ -452,7 +462,7 @@
             <input v-model="otherNote" :placeholder="t('Closing note (optional)')" style="width: 100%; margin-top: 12px" />
             <div class="other-actions">
               <button class="btn btn-outline" :disabled="otherBusy" @click="otherTarget = null">{{ t('Cancel') }}</button>
-              <button class="btn btn-danger" :disabled="otherBusy || otherAsk.missing || invalidDenominations(otherDenominations)" @click="closeOther">
+              <button class="btn btn-danger" :disabled="otherBusy || session.offline || invalidCountModes(otherRows, otherCounted).length > 0 || otherAsk.missing || invalidDenominations(otherDenominations)" @click="closeOther">
                 {{ otherBusy ? t('Closing…') : t('Close this shift') }}
               </button>
             </div>
@@ -474,7 +484,7 @@
             {{ past.name }}
             <span class="muted small">· {{ shortTime(past.opened_at) }} → {{ shortTime(past.closed_at) }} · {{ past.opened_by }}</span>
             <span v-if="past.status === 'Closing'" class="pill-warn">
-              {{ past.closing_status === 'Failed' ? t('closing failed') : t('finalising') }}
+              {{ past.closing_status === 'Failed' ? t('needs attention') : t('finalising') }}
             </span>
           </div>
           <div class="muted small">
@@ -510,12 +520,16 @@
             <button
               v-else-if="past.status === 'Closing' && session.permissions.close_register !== false"
               class="btn btn-outline retry-closing"
-              :disabled="retrying === past.name"
+              :disabled="!!retrying || session.offline"
               @click="retryClosing(past.name)"
             >
-              <Icon name="refresh" /> {{ retrying === past.name ? t('Finalising…') : t('Retry closing') }}
+              <Icon name="refresh" /> {{ retrying === past.name ? t('Checking…') : t('Check and retry closing') }}
             </button>
           </div>
+          <details v-if="past.status === 'Closing' && past.closing_status === 'Failed' && past.name !== pending?.session" class="history-help">
+            <summary>{{ t('Help with this closing') }}</summary>
+            <ShiftClosingHelp :state="past" :session-name="past.name" :manager="session.permissions.is_manager" />
+          </details>
         </div>
       </div>
     </div>
@@ -540,8 +554,10 @@ import SalespeopleTable from '../components/SalespeopleTable.vue'
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { call } from '../api'
 import { useSessionStore } from '../stores/session'
-import { money, shortTime, parseMoney, plainText, isolate } from '../format'
+import { money, shortTime, parseMoney, isolate } from '../format'
 import PeriodHint from '../components/PeriodHint.vue'
+import ShiftClosingHelp from '../components/ShiftClosingHelp.vue'
+import { createClosingMonitor, invalidCountModes } from '../shiftHelp'
 import VarianceReason from '../components/VarianceReason.vue'
 import CashOutApproval from '../components/CashOutApproval.vue'
 import { t } from '../i18n'
@@ -557,6 +573,18 @@ function invalidDenominations(breakdown) {
 const closingNote = ref('')
 const closing = ref(false)
 const uploading = ref(false)
+const preparing = ref(false)
+const movingComputer = ref(false)
+async function moveComputer() {
+  if (!confirm(t('Move this shift to this POS browser? Other computers will no longer be able to sell on it while computer sharing is off.'))) return
+  movingComputer.value = true
+  try {
+    await call('esafepos.api.register.move_shift_to_this_computer', { session: session.registerSession.name })
+    await session.bootstrap(session.posProfile)
+    session.notify(t('Shift moved to this computer'))
+  } catch (e) { session.notify(e.message, true) }
+  finally { movingComputer.value = false }
+}
 // Cash in and cash out are two permissions since 0.61.0 (an older server
 // sends neither key: both allowed, as can_move_cash already said).
 const canCashIn = computed(() => session.permissions.can_cash_in !== false)
@@ -595,7 +623,6 @@ const closedResult = ref(null)
 const closeState = ref({ status: 'Closing', closing_status: 'Pending', pos_closing_entry: null, closing_error: null })
 const retrying = ref(null)
 const pending = ref(session.pendingClosing)
-let closingPoll = null
 
 const canOpen = computed(() => session.permissions.open_register !== false)
 const canClose = computed(() => session.permissions.close_register !== false)
@@ -647,10 +674,11 @@ const openFloat = ref(0)
 const opening = ref(false)
 
 async function openRegister() {
+  if (opening.value || session.offline || !canOpen.value) return
   // Read the float from the RAW text, never from a number input (which reports
   // empty for anything it can't parse in the browser's locale, e.g. "1,500").
   const float = parseMoney(openFloat.value)
-  if (float === null) {
+  if (float === null || float < 0) {
     session.notify(t('Enter the opening float as a number, e.g. 1500 or 1500.50'), true)
     return
   }
@@ -673,14 +701,18 @@ async function openRegister() {
   }
 }
 
-async function retryClosing(sessionName, isPending = false) {
+async function retryClosing(sessionName) {
+  if (retrying.value || session.offline || !canClose.value) return
   retrying.value = sessionName
   try {
-    await call('esafepos.api.register.retry_closing', { session: sessionName })
+    const result = await call('esafepos.api.register.retry_closing', { session: sessionName })
+    if (pending.value?.session === sessionName) pending.value = { ...pending.value, closing_status: result.closing_status || 'Queued' }
+    if (closedResult.value?.name === sessionName) closeState.value = { ...closeState.value, closing_status: result.closing_status || 'Queued' }
     session.notify(t('Finalising the shift…'))
     pollCloseState(sessionName)
   } catch (e) {
     session.notify(e.message, true)
+  } finally {
     retrying.value = null
   }
 }
@@ -746,7 +778,7 @@ async function pickOther(row) {
 const otherRows = computed(() => {
   if (otherSummary.value) return otherSummary.value.expected
   if (!otherError.value) return []
-  return (session.paymentModes || []).map((m) => ({ mode_of_payment: m.mode_of_payment, expected_amount: null }))
+  return (session.paymentModes || []).map((m) => ({ mode_of_payment: m.mode_of_payment, expected_amount: null, is_cash: m.type === 'Cash', currency: m.account_currency }))
 })
 
 function otherDiff(row) {
@@ -762,7 +794,11 @@ function otherDiffClass(row) {
 
 async function closeOther() {
   const target = otherTarget.value
-  if (!target) return
+  if (!target || otherBusy.value || session.offline) return
+  if (invalidCountModes(otherRows.value, otherCounted.value).length) {
+    session.notify(t('Enter every counted amount. Use 0 for an empty payment total; cash cannot be negative.'), true)
+    return
+  }
   const name = target.opened_by_name || target.opened_by
   if (!confirm(t('Close the shift of {name}? Nothing more can be sold on it.', { name }))) return
   otherBusy.value = true
@@ -809,47 +845,35 @@ async function sharedClosed() {
   await Promise.all([load(), loadHistory(), loadOtherShifts()])
 }
 
-// Poll the close/consolidation state until the shift reaches Closed or Failed.
-function pollCloseState(sessionName) {
-  clearInterval(closingPoll)
-  let tries = 0
-  closingPoll = setInterval(async () => {
-    tries += 1
-    try {
-      const res = await call('esafepos.api.register.closing_entry_status', { session: sessionName })
-      // keep the visible close panel in sync if it's this session
-      if (closedResult.value && closedResult.value.name === sessionName) {
-        closeState.value = res
-      }
-      if (res.status === 'Closed') {
-        clearInterval(closingPoll)
-        retrying.value = null
-        if (pending.value && pending.value.session === sessionName) {
-          pending.value = null
-          await session.bootstrap(session.posProfile)
-        }
-        session.notify(t('Shift closed and consolidated'))
-        loadHistory()
-      } else if (res.closing_status === 'Failed') {
-        clearInterval(closingPoll)
-        retrying.value = null
-        if (pending.value && pending.value.session === sessionName) {
-          pending.value = { ...pending.value, closing_status: 'Failed', closing_error: res.closing_error, closing_hint: res.closing_hint }
-        }
-        session.notify(t('Consolidation failed. Check the error and retry'), true)
-        loadHistory()
-      }
-    } catch {
-      /* keep polling */
+// Keep checking failed shifts too: the scheduler or manager may resolve one
+// while this cashier is looking at the screen. No repeat failure toasts.
+const closingMonitor = createClosingMonitor(
+  name => session.offline ? Promise.reject() : call('esafepos.api.register.closing_entry_status', { session: name }),
+  async (res, name) => {
+    if (closedResult.value?.name === name) closeState.value = res
+    if (pending.value?.session === name) {
+      pending.value = { ...pending.value, ...res }
+      session.pendingClosing = pending.value
     }
-    if (tries >= 60) {
-      clearInterval(closingPoll)
-      retrying.value = null
+    history.value = history.value.map(row => row.name === name ? { ...row, ...res } : row)
+    if (res.status === 'Closed' || res.closing_status === 'Failed') retrying.value = null
+    if (res.status !== 'Closed') return
+    if (pending.value?.session === name) {
+      pending.value = null
+      session.pendingClosing = null
+      await session.bootstrap(session.posProfile)
+      pending.value = session.pendingClosing
+      await load()
     }
-  }, 3000)
-}
-
-onBeforeUnmount(() => clearInterval(closingPoll))
+    await loadHistory()
+    const refreshed = history.value.find(row => row.name === name)
+    if (refreshed && closedResult.value?.name === name) closedResult.value = { ...closedResult.value, ...refreshed }
+    session.notify(t('Shift closed and consolidated'))
+    if (pending.value) pollCloseState(pending.value.session)
+  }
+)
+function pollCloseState(name) { closingMonitor.start(name) }
+onBeforeUnmount(() => closingMonitor.stop())
 
 const loadError = ref('')
 const loadingSummary = ref(true)
@@ -864,13 +888,14 @@ const countRows = computed(() => {
   if (loadError.value) {
     for (const mode of session.paymentModes) {
       if (!seen.has(mode.mode_of_payment)) {
-        rows.push({ mode_of_payment: mode.mode_of_payment, expected_amount: null })
+        rows.push({ mode_of_payment: mode.mode_of_payment, expected_amount: null, is_cash: mode.type === 'Cash', currency: mode.account_currency })
         seen.add(mode.mode_of_payment)
       }
     }
   }
   return rows
 })
+const missingCounts = computed(() => invalidCountModes(countRows.value, counted.value))
 
 // A reason for a short or over at the close (esafepos.variance, 0.59.0). The
 // threshold is in the company currency, a drawer in another one valued at its
@@ -1022,6 +1047,25 @@ async function retryDays() {
   }
 }
 
+async function prepareClose() {
+  if (preparing.value || session.offline || closing.value) return
+  preparing.value = true
+  try {
+    await session.refreshQueueCount()
+    if (waitingCount.value > 0) await session.flushQueue()
+    await session.refreshQueueCount()
+    await load()
+    if (failedDay.value && canClose.value) await retryDays()
+    session.notify(waitingCount.value > 0
+      ? t('Some sales still need to upload. Check the upload message before closing.')
+      : t('Checks complete. Review the refreshed totals and your counted amounts.'), waitingCount.value > 0)
+  } catch (e) {
+    session.notify(e.message, true)
+  } finally {
+    preparing.value = false
+  }
+}
+
 async function uploadQueued() {
   uploading.value = true
   try {
@@ -1037,6 +1081,11 @@ async function uploadQueued() {
 }
 
 async function close() {
+  if (closing.value || preparing.value || session.offline || !canClose.value) return
+  if (missingCounts.value.length) {
+    session.notify(t('Enter every counted amount. Use 0 for an empty payment total; cash cannot be negative.'), true)
+    return
+  }
   // Queued offline sales belong to THIS shift's drawer. Closing before they
   // upload would push them onto the NEXT shift and leave both counts wrong.
   // Sales the server refused are the exception: they may never go through on
@@ -1099,6 +1148,14 @@ async function close() {
 </script>
 
 <style scoped>
+.closing-guide { list-style: none; counter-reset: closing-step; margin: 0 0 18px; padding: 0; display: grid; gap: 12px; }
+.closing-guide li { counter-increment: closing-step; display: grid; grid-template-columns: 28px 1fr; column-gap: 10px; line-height: 1.5; }
+.closing-guide li::before { content: counter(closing-step); grid-row: span 2; background: var(--surface-2); color: var(--brand-dark); border-radius: 50%; width: 28px; height: 28px; display: grid; place-items: center; font-weight: 700; }
+.closing-guide span { grid-column: 2; color: var(--text-muted); font-size: 12px; }
+.count-progress, .shift-note { line-height: 1.6; }
+.shift-note { border-inline-start: 3px solid var(--amber); padding-inline-start: 12px; }
+.history-help { margin-top: 12px; }
+.history-help > summary { cursor: pointer; color: var(--brand-dark); margin-bottom: 10px; font-weight: 600; }
 .queued-block {
   display: flex;
   align-items: center;

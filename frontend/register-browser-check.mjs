@@ -112,6 +112,8 @@ try {
   await page.getByLabel('Counted Cash', { exact: true }).fill('1200')
   assert.equal(await page.getByLabel('LKR 1000 notes', { exact: true }).inputValue(), '')
   await page.getByLabel('LKR 1000 notes', { exact: true }).fill('2')
+  await page.getByLabel('Counted Store Credit', { exact: true }).fill('-3690')
+  await page.getByLabel('Counted Cash USD', { exact: true }).fill('7.25')
   await page.getByRole('button', { name: 'Close Register', exact: true }).click()
   await page.waitForFunction(() => !window.test.session.registerOpen)
   const single = calls.findLast(c => c.method.endsWith('close_register'))

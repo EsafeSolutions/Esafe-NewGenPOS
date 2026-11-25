@@ -9,3 +9,4 @@ esafepos.patches.brand_label
 esafepos.patches.v0_69.esafe_printing
 
 esafepos.patches.v0_69.cash_drawer
+esafepos.patches.shift_sharing_defaults

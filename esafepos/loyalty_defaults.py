@@ -29,7 +29,7 @@ def program_for_customer(customer, company):
 
 def ensure_setup():
     """Provision a general program once per company; preserve admin edits later."""
-    companies = sorted(set(frappe.get_all("POS Profile", {"disabled": 0}, pluck="company")) - {None, ""})
+    companies = sorted(set(frappe.get_all("POS Profile", filters={"disabled": 0}, pluck="company")) - {None, ""})
     for company in companies:
         flag = "esafepos_default_loyalty_" + company
         if frappe.db.get_default(flag):
@@ -43,7 +43,7 @@ def ensure_setup():
             if not program:
                 # Reuse an active unrestricted 1:1 program, even when its old
                 # configuration required staff to enroll customers individually.
-                available = frappe.get_all("Loyalty Program", {"company": company, "conversion_factor": 1},
+                available = frappe.get_all("Loyalty Program", filters={"company": company, "conversion_factor": 1},
                     fields=["name", "from_date", "to_date", "customer_group", "customer_territory"], order_by="creation asc")
                 today = getdate(nowdate())
                 available = [p for p in available if not p.customer_group and not p.customer_territory

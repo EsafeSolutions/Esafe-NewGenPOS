@@ -128,12 +128,20 @@ export const useSessionStore = defineStore('session', {
       receipt_header: '',
       receipt_shop_phone: '',
       receipt_footer: '',
+      receipt_branding_mode: 'Logo and name',
+      receipt_company_alignment: 'Center',
+      receipt_company_size: '16',
+      receipt_company_bold: 1,
+      receipt_show_discount: 1,
+      receipt_show_saved: 1,
       receipt_show_item_code: 0,
       receipt_show_barcode: 0,
       receipt_show_serial: 1,
       receipt_show_unit_price: 1,
       receipt_show_payments: 1,
       receipt_show_note: 1,
+      receipt_show_discount: 1,
+      receipt_show_saved: 1,
       receipt_show_cashier: 1,
       receipt_show_terminal: 1,
       receipt_show_invoice_barcode: 1,
@@ -246,6 +254,7 @@ export const useSessionStore = defineStore('session', {
       const owner = s.registerSession?.opened_by
       return owner && owner !== s.user ? owner : ''
     },
+    shiftComputerBlocked: (s) => s.registerSession?.workstation_allowed === false,
     // Cashier-facing return reasons (configured in Settings → Return Reasons).
     returnReasons: (s) => s.settings?.return_reasons || [],
     // Over-limit discount approval flow (Settings → Discount Approval).

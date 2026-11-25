@@ -9,8 +9,14 @@
   >
     <template v-if="retail">
       <div class="retail-head">
-        <img v-if="s.receipt_logo" :src="s.receipt_logo" class="receipt-logo" alt="" />
-        <div class="receipt-company">{{ receipt.company }}</div>
+        <template v-if="s.receipt_branding_mode === 'Name and logo'">
+          <div v-if="showCompanyName" class="receipt-company" :style="companyStyle">{{ receipt.company }}</div>
+          <img v-if="showReceiptLogo" :src="s.receipt_logo" class="receipt-logo" alt="" />
+        </template>
+        <template v-else>
+          <img v-if="showReceiptLogo" :src="s.receipt_logo" class="receipt-logo" alt="" />
+          <div v-if="showCompanyName" class="receipt-company" :style="companyStyle">{{ receipt.company }}</div>
+        </template>
         <div v-if="s.receipt_header" class="muted small receipt-extra">{{ s.receipt_header }}</div>
         <div v-if="s.receipt_shop_phone" class="muted small receipt-extra">{{ s.receipt_shop_phone }}</div>
         <div v-if="s.receipt_show_address && s.receipt_address" class="muted small receipt-extra">
@@ -56,32 +62,32 @@
         </template>
       </div>
 
-      <table class="retail-items">
+      <table class="retail-items" :class="{ 'without-discount': s.receipt_show_discount === 0 }">
         <thead>
           <tr>
-            <th class="retail-no">#</th><th>{{ t('Qty') }}</th><th>{{ t('MRP') }}</th><th>{{ t('Discount') }}</th><th>{{ t('Amount') }}</th>
+            <th class="retail-no">#</th><th>{{ t('Qty') }}</th><th>{{ t('MRP') }}</th><th v-if="s.receipt_show_discount !== 0">{{ t('Discount') }}</th><th>{{ t('Amount') }}</th>
           </tr>
         </thead>
         <tbody v-for="(item, i) in receipt.items" :key="i">
           <tr class="retail-item-name">
-            <td class="retail-no">{{ i + 1 }}</td><td colspan="4">{{ item.item_name }}</td>
+            <td class="retail-no">{{ i + 1 }}</td><td :colspan="s.receipt_show_discount !== 0 ? 4 : 3">{{ item.item_name }}</td>
           </tr>
           <tr v-if="(s.receipt_show_item_code && item.item_code) || (s.receipt_show_barcode && item.barcode) || (s.receipt_show_serial && item.serial_no)">
-            <td></td><td colspan="4" class="retail-item-meta">
+            <td></td><td :colspan="s.receipt_show_discount !== 0 ? 4 : 3" class="retail-item-meta">
               <span v-if="s.receipt_show_item_code && item.item_code">{{ item.item_code }}</span>
               <span v-if="s.receipt_show_barcode && item.barcode"><template v-if="s.receipt_show_item_code && item.item_code"> · </template>{{ item.barcode }}</span>
               <span v-if="s.receipt_show_serial && item.serial_no"><template v-if="(s.receipt_show_item_code && item.item_code) || (s.receipt_show_barcode && item.barcode)"> · </template>{{ t('SN') }} {{ String(item.serial_no).split('\n').join(', ') }}</span>
             </td>
           </tr>
           <tr class="retail-item-values">
-            <td></td><td>{{ qty(item.qty) }}<template v-if="receipt.has_alternate_units"> {{ item.uom }}</template></td><td>{{ itemMoney(originalRate(item)) }}</td><td>{{ itemMoney(lineSaving(item)) }}</td><td>{{ itemMoney(item.amount) }}</td>
+            <td></td><td>{{ qty(item.qty) }}<template v-if="receipt.has_alternate_units"> {{ item.uom }}</template></td><td>{{ itemMoney(originalRate(item)) }}</td><td v-if="s.receipt_show_discount !== 0">{{ itemMoney(lineSaving(item)) }}</td><td>{{ itemMoney(item.amount) }}</td>
           </tr>
         </tbody>
       </table>
 
       <div class="receipt-totals retail-totals">
         <div class="row"><span>{{ t('Gross total') }}</span><span>{{ m(grossTotal) }}</span></div>
-        <div v-if="totalSavings > 0 && !receipt.is_return" class="row discount"><span>{{ t('Discount') }}</span><span>-{{ m(totalSavings) }}</span></div>
+        <div v-if="s.receipt_show_discount !== 0 && totalSavings > 0 && !receipt.is_return" class="row discount"><span>{{ t('Discount') }}</span><span>-{{ m(totalSavings) }}</span></div>
         <div v-for="tax in receipt.taxes" :key="tax.description" class="row">
           <span>{{ tax.description }}</span><span>{{ m(tax.tax_amount) }}</span>
         </div>
@@ -112,7 +118,7 @@
       <div class="retail-counts">
         <span>{{ t('Total items') }}: <b>{{ itemCount }}</b></span><span>{{ t('Total qty') }}: <b>{{ qty(totalQty) }}</b></span>
       </div>
-      <div v-if="totalSavings > 0 && !receipt.is_return" class="retail-savings">
+      <div v-if="s.receipt_show_saved !== 0 && totalSavings > 0 && !receipt.is_return" class="retail-savings">
         <span>{{ t('You saved') }}</span><strong>{{ m(totalSavings) }}</strong>
       </div>
       <div v-if="loyaltyVisible" class="retail-loyalty">
@@ -122,7 +128,7 @@
         <div v-if="receipt.loyalty" class="row retail-loyalty-balance"><span>{{ t('Points balance') }}</span><strong>{{ receipt.loyalty.balance }}</strong></div>
       </div>
 
-      <div v-if="receipt.applied_promotions?.length" class="receipt-promos">
+      <div v-if="s.receipt_show_discount !== 0 && receipt.applied_promotions?.length" class="receipt-promos">
         <div v-for="promo in receipt.applied_promotions" :key="promo.name" class="muted small">★ {{ promo.title }} ({{ t('saved') }} {{ m(promo.savings) }})</div>
       </div>
       <div v-if="s.receipt_show_note && receipt.note" class="receipt-note small"><strong>{{ t('Note') }}:</strong> {{ receipt.note }}</div>
@@ -137,8 +143,14 @@
 
     <template v-else>
     <div class="receipt-head">
-      <img v-if="s.receipt_logo" :src="s.receipt_logo" class="receipt-logo" alt="" />
-      <div class="receipt-company">{{ receipt.company }}</div>
+      <template v-if="s.receipt_branding_mode === 'Name and logo'">
+        <div v-if="showCompanyName" class="receipt-company" :style="companyStyle">{{ receipt.company }}</div>
+        <img v-if="showReceiptLogo" :src="s.receipt_logo" class="receipt-logo" alt="" />
+      </template>
+      <template v-else>
+        <img v-if="showReceiptLogo" :src="s.receipt_logo" class="receipt-logo" alt="" />
+        <div v-if="showCompanyName" class="receipt-company" :style="companyStyle">{{ receipt.company }}</div>
+      </template>
       <div v-if="s.receipt_header" class="muted small receipt-extra">{{ s.receipt_header }}</div>
       <div v-if="s.receipt_shop_phone" class="muted small receipt-extra">{{ s.receipt_shop_phone }}</div>
       <div v-if="s.receipt_show_address && s.receipt_address" class="muted small receipt-extra">
@@ -192,7 +204,7 @@
     </table>
 
     <div class="receipt-totals">
-      <div v-if="receipt.discount_amount" class="row">
+      <div v-if="s.receipt_show_discount !== 0 && receipt.discount_amount" class="row">
         <span>{{ t('Discount') }}</span><span>-{{ m(receipt.discount_amount) }}</span>
       </div>
       <div v-for="tax in receipt.taxes" :key="tax.description" class="row">
@@ -252,7 +264,10 @@
       {{ t('Customer signature') }}
     </div>
 
-    <div v-if="receipt.applied_promotions?.length" class="receipt-promos">
+    <div v-if="s.receipt_show_saved !== 0 && totalSavings > 0 && !receipt.is_return" class="retail-savings">
+      <span>{{ t('You saved') }}</span><strong>{{ m(totalSavings) }}</strong>
+    </div>
+    <div v-if="s.receipt_show_discount !== 0 && receipt.applied_promotions?.length" class="receipt-promos">
       <div v-for="promo in receipt.applied_promotions" :key="promo.name" class="muted small">
         ★ {{ promo.title }} ({{ t('saved') }} {{ m(promo.savings) }})
       </div>
@@ -317,6 +332,13 @@ const s = computed(
 )
 const footer = computed(() => receiptFooter(s.value.receipt_footer || ''))
 const invoiceBarcode = computed(() => props.receipt.offline ? '' : barcodeSvg(props.receipt.name, { code128: true }))
+const showReceiptLogo = computed(() => Boolean(s.value.receipt_logo) && s.value.receipt_branding_mode !== 'Name only')
+const showCompanyName = computed(() => s.value.receipt_branding_mode !== 'Logo only' || !s.value.receipt_logo)
+const companyStyle = computed(() => ({
+  textAlign: ({ Left: 'left', Center: 'center', Right: 'right' })[s.value.receipt_company_alignment] || 'center',
+  fontSize: `${Math.min(28, Math.max(12, Number(s.value.receipt_company_size) || 16))}px`,
+  fontWeight: s.value.receipt_company_bold === 0 ? 500 : 800,
+}))
 
 // Amounts print in the sale's own currency (esafepos.currency). A sale in
 // another currency also shows its local value, the rate, each tender in its own
@@ -524,6 +546,10 @@ const paymentRows = computed(() =>
 .retail-items th:nth-child(3) { width: 24%; }
 .retail-items th:nth-child(4) { width: 27%; }
 .retail-items th:nth-child(5) { width: 31%; }
+.retail-items.without-discount th:nth-child(1) { width: 6%; }
+.retail-items.without-discount th:nth-child(2) { width: 14%; }
+.retail-items.without-discount th:nth-child(3) { width: 30%; }
+.retail-items.without-discount th:nth-child(4) { width: 50%; }
 .retail-items tbody { break-inside: avoid; }
 .retail-items td { padding: 1px; overflow-wrap: anywhere; }
 .retail-item-name td { padding-top: 6px; font-weight: 700; line-height: 1.2; }
@@ -556,6 +582,8 @@ const paymentRows = computed(() =>
 .tpl-table .retail-items th:nth-child(1) { width: 9%; }
 .tpl-table .retail-items th:nth-child(4) { width: 26%; }
 .tpl-table .retail-items th:nth-child(5) { width: 29%; }
+.tpl-table .retail-items.without-discount th:nth-child(3) { width: 36%; }
+.tpl-table .retail-items.without-discount th:nth-child(4) { width: 49%; }
 .tpl-table .retail-totals, .tpl-table .retail-loyalty { border: 1px solid var(--table-rule); padding: 0; }
 .tpl-table :is(.retail-totals, .retail-loyalty) .row {
   display: grid;

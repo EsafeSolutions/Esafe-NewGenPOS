@@ -50,7 +50,7 @@ CLOSING_LOCK = "esafepos_pos_closing"
 
 
 def _cash_modes():
-    return set(frappe.get_all("Mode of Payment", {"type": "Cash"}, pluck="name"))
+    return set(frappe.get_all("Mode of Payment", filters={"type": "Cash"}, pluck="name"))
 
 
 def _drawer_mode(pos_profile):
@@ -199,14 +199,19 @@ def _shift_rates(session_doc):
 
 
 def _is_manager():
-    return bool({"System Manager", "EsafePOS Manager"} & set(frappe.get_roles()))
+    from esafepos.api import permissions
+    return permissions.is_manager()
 
 
 def _assert_owner_or_manager(session_doc):
     """A cashier may only act on their OWN register; managers may act on any.
     Stops one cashier from closing/altering a colleague's live till."""
-    if session_doc.get("opened_by") != frappe.session.user and not _is_manager():
+    from esafepos import shift_access
+    from esafepos.api import permissions
+    permissions.assert_outlet(session_doc.pos_profile)
+    if session_doc.get("opened_by") != frappe.session.user and not _is_manager() and not shift_access.shared_management():
         frappe.throw(_("You can only manage your own register"), frappe.PermissionError)
+    shift_access.assert_workstation(session_doc)
 
 
 # ---------------------------------------------------------------------------
@@ -327,6 +332,8 @@ def open_register(pos_profile: str, opening_float: float | str = 0, resume_openi
                 "foreign_floats": _float_rows(pos_profile, floats),
             }
         )
+        from esafepos import shift_access
+        shift_access.tag_opening(sess)
         sess.insert()
         _pin_rates(sess.name, profile)
         _audit_register("open", sess.name, profile.name, opening_float)
@@ -561,6 +568,8 @@ def take_over_external_opening(opening_entry: str):
             "pos_opening_entry": opening.name,
         }
     )
+    from esafepos import shift_access
+    shift_access.tag_opening(session_doc)
     session_doc.insert()
     _pin_rates(session_doc.name, profile)
     note = _("Tracked ERPNext opening {0}; originally opened by {1}.").format(
@@ -637,6 +646,8 @@ def _create_fresh_session(profile, opening_float, bypass_live_guard=False, float
     )
     if bypass_live_guard:
         sess.flags.ignore_validate = True
+    from esafepos import shift_access
+    shift_access.tag_opening(sess)
     sess.insert()
     _pin_rates(sess.name, profile)
     _audit_register("open", sess.name, profile.name, opening_float)
@@ -1218,8 +1229,15 @@ def close_register(
     except Exception:
         frappe.log_error(title="EsafePOS: shift figures failed at close", message=frappe.get_traceback())
         summary = None
-    from esafepos.cash_count import clean_counts
+    from esafepos.cash_count import clean_counts, clean_payment_counts
     try:
+        expected = (summary or {}).get("expected", [])
+        if summary is None:
+            # Even without expected takings, validate the submitted numbers.
+            cash_modes = _cash_modes()
+            expected = [{"mode_of_payment": mode, "is_cash": mode in cash_modes}
+                        for mode in (counted if isinstance(counted, dict) else {})]
+        counted = clean_payment_counts(counted, expected)
         breakdown = clean_counts(denomination_counts, counted, {
             r["mode_of_payment"]: r["currency"] for r in (summary or {}).get("expected", []) if r.get("is_cash")
         })
@@ -1325,16 +1343,29 @@ def _enqueue_consolidation(session_name, counted=None, after_commit=True):
 @frappe.whitelist()
 def retry_closing(session: str):
     """Re-run consolidation for a session stuck in 'Closing' (manual retry)."""
+    from esafepos.api import permissions
+
     if not frappe.has_permission("POS Closing Entry", "create"):
         frappe.throw(_("You are not permitted to close a register"), frappe.PermissionError)
+    if not permissions.can_close_register():
+        frappe.throw(_("You are not allowed to close a register"), frappe.PermissionError)
     doc = frappe.get_doc("POS Register Session", session)
+    permissions.assert_outlet(doc.pos_profile)
+    frappe.db.get_value("POS Register Session", doc.name, "status", for_update=True)
+    doc = frappe.get_doc("POS Register Session", doc.name, for_update=True)
     # No ownership gate here: retry only re-runs consolidation of an
     # already-closed shift (no count changes, no live till), and the next
     # cashier on the register legitimately needs to clear a stuck close.
     if doc.status == "Closed":
         return {"status": "Closed", "pos_closing_entry": doc.get("pos_closing_entry")}
+    if doc.status != "Closing":
+        frappe.throw(_("This shift is still open. Count the drawer and close it first."))
+    # The old Failed flag made the browser report another failure before the
+    # queued worker had even started. Keep the saved error for manager details.
+    if doc.closing_status == "Failed":
+        frappe.db.set_value("POS Register Session", doc.name, "closing_status", "Queued")
     _enqueue_consolidation(doc.name)
-    return {"status": doc.status, "queued": True}
+    return {"status": doc.status, "closing_status": "Queued", "queued": True}
 
 
 def build_closing_entry(session_name, counted=None):
@@ -1367,6 +1398,8 @@ def _reconcile_session(session_name, counted):
     session = frappe.get_doc("POS Register Session", session_name)
     if session.status == "Closed":
         return session.get("pos_closing_entry")
+    if session.status != "Closing":
+        return None
 
     # The ERPNext days this shift closed while it sold on past midnight
     # (roll_day) reach the books first: a return in a later day may be of a
@@ -2412,6 +2445,7 @@ def _days_info(session_doc):
             "sales_count": cint(r.sales_count),
             "closing_status": r.closing_status,
             "closing_error": r.closing_error,
+            "closing_attempts": cint(r.closing_attempts),
             "closing_hint": _closing_hint(session_doc.pos_profile, r.closing_error)
             if r.closing_status == "Failed"
             else None,
@@ -2427,7 +2461,12 @@ def retry_days(session: str):
     retry_closing, and allowed to the same people."""
     if not frappe.has_permission("POS Closing Entry", "create"):
         frappe.throw(_("You are not permitted to close a register"), frappe.PermissionError)
+    from esafepos.api import permissions
+
+    if not permissions.can_close_register():
+        frappe.throw(_("You are not allowed to close a register"), frappe.PermissionError)
     doc = frappe.get_doc("POS Register Session", session)
+    permissions.assert_outlet(doc.pos_profile)
     for row in doc.get("erpnext_days") or []:
         if row.closing_status == "Failed":
             frappe.db.set_value("POS Session Day", row.name, "closing_attempts", 0, update_modified=False)
@@ -2463,19 +2502,16 @@ def reconcile_stuck_closings():
     stuck = frappe.get_all(
         "POS Register Session",
         filters={"status": "Closing"},
-        fields=["name", "closing_attempts", "closing_error"],
+        or_filters=[["closing_attempts", "<", 30], ["closing_attempts", "is", "not set"]],
+        fields=["name", "closing_attempts"],
         order_by="closing_started_at asc",
         limit_page_length=50,
     )
     for row in stuck:
         # Cap automatic retries so a genuinely broken shift surfaces for a human
-        # instead of looping forever; the manual retry button still works.
+        # instead of looping forever. System check keeps it visible; logging
+        # it on every scheduler tick only floods the Error Log with duplicates.
         if cint(row.closing_attempts) >= 30:
-            frappe.log_error(
-                title="EsafePOS register stuck, manual closing needed",
-                message=f"Session {row.name} has failed to consolidate {row.closing_attempts} times "
-                f"and is no longer auto-retried.\n\nLast error:\n{row.closing_error}",
-            )
             continue
         try:
             build_closing_entry(row.name)
@@ -2546,6 +2582,26 @@ def _release_lock():
 # Status + history
 # ---------------------------------------------------------------------------
 
+@frappe.whitelist(methods=["POST"])
+def move_shift_to_this_computer(session: str):
+    from esafepos import shift_access
+    from esafepos.api import permissions, audit
+
+    if not permissions.is_manager() or not frappe.has_permission("POS Register Session", "write"):
+        frappe.throw(_("A manager must move a shift between computers."), frappe.PermissionError)
+    doc = frappe.get_doc("POS Register Session", session)
+    permissions.assert_outlet(doc.pos_profile)
+    if frappe.db.get_value("POS Register Session", doc.name, "status", for_update=True) != "Open":
+        frappe.throw(_("Only an open shift can be moved to another computer."))
+    current = shift_access.workstation(required=True)
+    if not doc.meta.has_field("workstation_id"):
+        frappe.throw(_("Run the site migration to enable the shift computer restriction."))
+    frappe.db.set_value("POS Register Session", doc.name, "workstation_id", current, update_modified=False)
+    audit.log("Shift computer changed", reference_doctype="POS Register Session", reference_name=doc.name,
+              pos_profile=doc.pos_profile, detail=_("Manager moved this shift to the current POS browser."))
+    return {"moved": True}
+
+
 @frappe.whitelist()
 def closing_entry_status(session: str):
     """Poll the close/consolidation state for a session."""
@@ -2557,13 +2613,17 @@ def closing_entry_status(session: str):
     doc = frappe.db.get_value(
         "POS Register Session",
         session,
-        ["status", "closing_status", "closing_error", "pos_closing_entry", "pos_profile"],
+        ["status", "closing_status", "closing_error", "closing_attempts", "pos_closing_entry", "pos_profile"],
         as_dict=True,
     ) or frappe._dict()
+    from esafepos.api import permissions
+
+    permissions.assert_outlet(doc.pos_profile)
     return {
         "status": doc.status,
         "closing_status": doc.closing_status,
         "closing_error": doc.closing_error,
+        "closing_attempts": cint(doc.closing_attempts),
         "closing_hint": _closing_hint(doc.pos_profile, doc.closing_error),
         "pos_closing_entry": doc.pos_closing_entry,
     }
@@ -2630,7 +2690,7 @@ def list_sessions(pos_profile: str, limit: int | str = 20):
         fields=[
             "name", "opened_by", "opened_at", "closed_at", "opening_float",
             "total_sales", "total_discounts", "sales_count", "status",
-            "closing_status", "closing_error",
+            "closing_status", "closing_error", "closing_attempts",
             "pos_opening_entry", "pos_closing_entry",
         ] + (["expected_pending"] if _has_expected_pending() else [])
         + (["variance_reason", "variance_action"]

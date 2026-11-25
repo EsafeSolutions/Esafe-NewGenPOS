@@ -1,0 +1,58 @@
+{
+ "doctype": "DocType",
+ "name": "EsafePOS Access Profile",
+ "module": "EsafePOS",
+ "engine": "InnoDB",
+ "editable_grid": 0,
+ "field_order": [
+  "profile_name",
+  "base_level",
+  "capabilities"
+ ],
+ "fields": [
+  {
+   "fieldname": "profile_name",
+   "fieldtype": "Data",
+   "label": "Profile name",
+   "reqd": 1,
+   "unique": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "base_level",
+   "fieldtype": "Select",
+   "label": "Start from",
+   "options": "Cashier\nSupervisor\nManager\nReports only",
+   "default": "Cashier",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "capabilities",
+   "fieldtype": "Table",
+   "label": "Action overrides",
+   "options": "EsafePOS Access Capability"
+  }
+ ],
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1
+  },
+  {
+   "role": "EsafePOS Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1
+  }
+ ],
+ "actions": [],
+ "links": [],
+ "states": [],
+ "autoname": "field:profile_name",
+ "track_changes": 1
+}

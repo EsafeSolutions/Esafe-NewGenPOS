@@ -122,6 +122,8 @@ def get_settings():
         "help_offer_tour": 1 if offline_switch("help_offer_tour") else 0,
         "help_whats_new": 1 if offline_switch("help_whats_new") else 0,
         "shift_scope": doc.get("shift_scope") or "Per cashier",
+        "shift_multiple_computers": 1 if doc.get("shift_multiple_computers") is None else int(bool(doc.get("shift_multiple_computers"))),
+        "shared_shift_management": int(bool(doc.get("shared_shift_management"))),
         "one_shift_per_user": 1 if doc.get("one_shift_per_user") else 0,
         "carry_shift_past_midnight": 1 if _carry_past_midnight() else 0,
         "warn_locked_periods": 1 if offline_switch("warn_locked_periods") else 0,
@@ -175,6 +177,12 @@ def get_settings():
         "receipt_header": doc.get("receipt_header") or "",
         "receipt_shop_phone": doc.get("receipt_shop_phone") or "",
         "receipt_footer": doc.get("receipt_footer") or "",
+        "receipt_branding_mode": doc.get("receipt_branding_mode") or "Logo and name",
+        "receipt_company_alignment": doc.get("receipt_company_alignment") or "Center",
+        "receipt_company_size": doc.get("receipt_company_size") or "16",
+        "receipt_company_bold": 1 if doc.get("receipt_company_bold") is None or doc.get("receipt_company_bold") else 0,
+        "receipt_show_discount": 1 if doc.get("receipt_show_discount") is None or doc.get("receipt_show_discount") else 0,
+        "receipt_show_saved": 1 if doc.get("receipt_show_saved") is None or doc.get("receipt_show_saved") else 0,
         "receipt_show_item_code": 1 if doc.get("receipt_show_item_code") else 0,
         "receipt_show_barcode": 1 if doc.get("receipt_show_barcode") else 0,
         "receipt_show_serial": 1 if doc.get("receipt_show_serial") else 0,
@@ -357,7 +365,8 @@ def save_settings(payload: dict | str):
         payload = json.loads(payload)
     doc = frappe.get_doc("EsafePOS Settings")
     doc.offline_stock_only = 1 if payload.get("offline_stock_only") else 0
-    doc.shift_scope = payload.get("shift_scope") or "Per cashier"
+    from esafepos import shift_access
+    shift_access.apply_settings(doc, payload)
     # A screen from before 0.54.0 sends no such key: leave the choice alone.
     if "one_shift_per_user" in payload:
         doc.one_shift_per_user = 1 if payload.get("one_shift_per_user") else 0
@@ -798,6 +807,8 @@ def company_setting(company, field):
 
 RECEIPT_FIELDS = [
     "receipt_template", "receipt_paper_width", "receipt_logo", "receipt_header", "receipt_shop_phone", "receipt_footer",
+    "receipt_branding_mode", "receipt_company_alignment", "receipt_company_size", "receipt_company_bold",
+    "receipt_show_discount", "receipt_show_saved",
     "receipt_show_item_code", "receipt_show_barcode", "receipt_show_serial",
     "receipt_show_unit_price", "receipt_show_payments", "receipt_show_note",
     "receipt_show_cashier", "receipt_show_terminal", "receipt_show_invoice_barcode",
@@ -810,11 +821,15 @@ _RECEIPT_BOOL = {
     "receipt_show_unit_price", "receipt_show_payments", "receipt_show_note",
     "receipt_show_cashier", "receipt_show_terminal", "receipt_show_invoice_barcode",
     "receipt_show_tax_id", "receipt_show_address", "receipt_show_terms",
+    "receipt_company_bold", "receipt_show_discount", "receipt_show_saved",
 }
 _RECEIPT_BOOL_DEFAULTS = {
     "receipt_show_cashier": 1,
     "receipt_show_terminal": 1,
     "receipt_show_invoice_barcode": 1,
+    "receipt_company_bold": 1,
+    "receipt_show_discount": 1,
+    "receipt_show_saved": 1,
 }
 
 
@@ -832,6 +847,12 @@ def receipt_config(source):
             out[f] = v or "Retail"
         elif f == "receipt_paper_width":
             out[f] = v if v in ("58mm", "80mm") else "80mm"
+        elif f == "receipt_branding_mode":
+            out[f] = v if v in ("Name and logo", "Name only", "Logo and name", "Logo only") else "Logo and name"
+        elif f == "receipt_company_alignment":
+            out[f] = v if v in ("Left", "Center", "Right") else "Center"
+        elif f == "receipt_company_size":
+            out[f] = str(v) if str(v) in ("12", "14", "16", "18", "20", "24", "28") else "16"
         else:
             out[f] = v or ""
     return out

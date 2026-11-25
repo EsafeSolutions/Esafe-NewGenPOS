@@ -1,5 +1,6 @@
 """Validate the physical denomination breakdown independently of Frappe."""
 import json
+import math
 from decimal import Decimal, InvalidOperation, ROUND_DOWN, ROUND_HALF_UP
 
 
@@ -11,6 +12,26 @@ def decimal_number(value):
     if not number.is_finite():
         raise ValueError("Enter a finite cash count.")
     return number
+
+
+def clean_payment_counts(counted, expected):
+    """A blank count is unknown, never an implicit zero or a balanced drawer."""
+    if not isinstance(counted, dict):
+        raise ValueError("Enter the counted amounts for each payment method.")
+    required = {row["mode_of_payment"] for row in expected}
+    cash = {row["mode_of_payment"] for row in expected if row.get("is_cash")}
+    if required - set(counted):
+        raise ValueError("Enter every counted amount. Use 0 for an empty payment total.")
+    result = {}
+    for mode, value in counted.items():
+        if isinstance(value, bool) or value is None or value == "":
+            raise ValueError("Enter every counted amount. Use 0 for an empty payment total.")
+        number = decimal_number(value)
+        amount = float(number)
+        if not math.isfinite(amount) or (mode in cash and amount < 0):
+            raise ValueError("Enter a finite counted amount; cash cannot be negative.")
+        result[mode] = amount
+    return result
 
 
 def clean_counts(raw, counted, cash_currencies):

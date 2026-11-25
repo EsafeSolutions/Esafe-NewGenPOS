@@ -252,7 +252,7 @@ function reasonOf(data, status) {
 }
 
 // A network failure throws, which fails the sync and makes the browser retry.
-async function post(method, body, csrf, lang) {
+async function post(method, body, csrf, lang, workstation) {
   const response = await fetch('/api/method/' + method, {
     method: 'POST',
     credentials: 'same-origin',
@@ -260,6 +260,7 @@ async function post(method, body, csrf, lang) {
       'Content-Type': 'application/json',
       Accept: 'application/json',
       'X-Frappe-CSRF-Token': csrf,
+      'X-ESAFEPOS-Workstation': workstation || '',
     },
     body: JSON.stringify(Object.assign({}, body, lang ? { _lang: lang } : {})),
   })
@@ -280,6 +281,7 @@ async function sendQueue() {
     if (!db.objectStoreNames.contains('queue')) return
     // The shop switched background sending off: the till sends it when open.
     const boot = await read(db, 'kv', 'bootstrap')
+    const workstation = await read(db, 'kv', 'shift-workstation')
     if (boot && boot.settings && Number(boot.settings.background_upload) === 0) return
     const entries = await idb(db.transaction('queue').objectStore('queue').getAll())
     if (!entries.length) return
@@ -296,7 +298,7 @@ async function sendQueue() {
       if (local && !customers[payload.customer]) {
         const pending = await read(db, 'pending_customers', payload.customer)
         answer = pending
-          ? await post('esafepos.api.catalog.resolve_pending_customer', { payload: pending.payload }, csrf, entry.lang)
+          ? await post('esafepos.api.catalog.resolve_pending_customer', { payload: pending.payload }, csrf, entry.lang, workstation)
           : { ok: false, status: 0, data: { exception: 'x: offline customer record is missing' } }
         if (answer.ok) customers[payload.customer] = answer.data.message && answer.data.message.name
       }
@@ -308,7 +310,8 @@ async function sendQueue() {
           isReturn ? 'esafepos.api.sales.create_return' : 'esafepos.api.sales.submit_sale',
           body,
           csrf,
-          entry.lang
+          entry.lang,
+          workstation
         )
       }
       if (answer.ok) {

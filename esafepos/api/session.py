@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import frappe
 from frappe import _
-from frappe.utils import flt
+from frappe.utils import cint, flt
 
 from esafepos.promotions.loader import get_active_promotions
 from esafepos.api import salespeople
@@ -39,6 +39,8 @@ def get_bootstrap(pos_profile: str | None = None):
     # Management with the EsafePOS Reports role alone: the reports, no till
     # (0.65.0). Before the POS Invoice check, which they need not pass.
     if reports_access.reports_only():
+        if not reports_access.is_viewer():
+            frappe.throw(_("Reports-only access is disabled in this site's settings."), frappe.PermissionError)
         return _reports_bootstrap()
     if not frappe.has_permission("POS Invoice", "read"):
         frappe.throw(
@@ -289,10 +291,11 @@ def get_user_permissions():
     from esafepos.api import reports as reports_mod
     from esafepos.api.labels import can_print_labels as labels_perm
     from esafepos.api.stock_app import can_count_in_till
+    from esafepos import user_access
 
     roles = set(frappe.get_roles())
     return {
-        "sell": bool(has("POS Invoice", "create")),
+        "sell": bool(has("POS Invoice", "create")) and user_access.can_sell(),
         "view_history": bool(has("POS Invoice", "read")),
         "customers": bool(has("Customer", "read")),
         # EsafePOS capability gates (role-configurable in Settings → Permissions).
@@ -306,6 +309,7 @@ def get_user_permissions():
         "can_cash_out": caps_mod.can_cash_out(),
         "can_hold_goods": caps_mod.can_hold_goods(),
         "can_reprint": caps_mod.can_reprint(),
+        "can_delete_sales": caps_mod.can_delete_sales(),
         "sales_by_person": caps_mod.can_see_sales_by_person(),
         "system_check": caps_mod.can_see_system_check(),
         # The reports in Insights (0.62.0): the shop's switch and the person's
@@ -342,7 +346,7 @@ def get_user_permissions():
         "loyalty": bool(has("Loyalty Program", "create")),
         "gift_cards": bool(has("POS Gift Card", "write")),
         "is_manager": bool(
-            {"System Manager", "EsafePOS Manager"} & roles or has("EsafePOS Settings", "write")
+            caps_mod.is_manager() or has("EsafePOS Settings", "write")
         ),
     }
 
@@ -354,17 +358,24 @@ def _pending_closing(pos_profile):
     row = frappe.db.get_value(
         "POS Register Session",
         {"pos_profile": pos_profile, "status": "Closing"},
-        ["name", "closing_status", "closing_error", "pos_closing_entry", "closed_at"],
+        ["name", "closing_status", "closing_error", "closing_attempts", "pos_closing_entry", "closed_at"],
         as_dict=True,
     )
     if not row:
         return None
     from esafepos.api.register import _closing_hint
+    from esafepos import erpnext_compat
+
+    profile = frappe.get_cached_doc("POS Profile", pos_profile)
+    lightweight = (profile.get("esafepos_invoice_mode") == "Sales Invoice"
+                   and not cint(profile.get("esafepos_si_opening_closing")))
 
     return {
         "session": row.name,
         "closing_status": row.closing_status,
         "closing_error": row.closing_error,
+        "closing_attempts": cint(row.closing_attempts),
+        "new_shift_blocked": not lightweight and erpnext_compat.one_open_shift_per_outlet(),
         # An ERPNext accounting period the failed close names (0.58.1).
         "closing_hint": _closing_hint(pos_profile, row.closing_error) if row.closing_status == "Failed" else None,
         "pos_closing_entry": row.pos_closing_entry,
@@ -500,6 +511,8 @@ def _client_settings(profile_name=None):
         "show_out_of_stock": 1 if doc.get("show_out_of_stock") else 0,
         "serial_scan_only": 1 if doc.get("serial_scan_only") else 0,
         "shift_scope": doc.get("shift_scope") or "Per cashier",
+        "shift_multiple_computers": 1 if doc.get("shift_multiple_computers") is None else int(bool(doc.get("shift_multiple_computers"))),
+        "shared_shift_management": int(bool(doc.get("shared_shift_management"))),
         "one_shift_per_user": 1 if doc.get("one_shift_per_user") else 0,
         "warn_locked_periods": 1 if accounting_periods.switch() else 0,
         "enable_order_discount": 1 if doc.get("enable_order_discount") else 0,
@@ -721,12 +734,14 @@ def get_open_session(pos_profile, user=None):
     if not name:
         return None
     doc = frappe.get_doc("POS Register Session", name)
+    from esafepos import shift_access
     return {
         "name": doc.name,
         "opened_at": str(doc.opened_at),
         "opened_by": doc.opened_by,
         "opening_float": doc.opening_float,
         "pos_opening_entry": doc.get("pos_opening_entry"),
+        "workstation_allowed": shift_access.allowed_here(doc),
     }
 
 

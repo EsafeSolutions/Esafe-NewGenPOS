@@ -309,7 +309,7 @@
       </button>
       <button
         type="button" class="btn btn-outline btn-icon"
-        :disabled="session.offline || !session.registerOpen || session.permissions.sell === false || !!session.sellBlockedBy"
+        :disabled="session.offline || !session.registerOpen || session.permissions.sell === false || !!session.sellBlockedBy || session.shiftComputerBlocked"
         :title="t('Sell a gift card')"
         :aria-label="t('Sell a gift card')"
         @click="giftCardOpen = true"
@@ -321,7 +321,7 @@
       <button
         type="button" class="btn btn-primary pay"
         data-tour="cart-pay"
-        :disabled="!cart.lines.length || !session.registerOpen || session.permissions.sell === false || !!session.sellBlockedBy || (session.invoiceMode === 'Sales Invoice' && !session.settings.enable_regular_invoices)"
+        :disabled="!cart.lines.length || !session.registerOpen || session.permissions.sell === false || !!session.sellBlockedBy || session.shiftComputerBlocked || (session.invoiceMode === 'Sales Invoice' && !session.settings.enable_regular_invoices)"
         :title="session.permissions.sell === false ? t('You do not have permission to make sales') : (session.invoiceMode === 'Sales Invoice' && !session.settings.enable_regular_invoices ? t('Regular Sales Invoices are turned off in Modules & Features') : '')"
         @click="$emit('pay')"
       >

@@ -3,6 +3,7 @@
 // "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md.
 import { locale } from './i18n'
 import { plainText } from './format'
+import { workstationId } from './workstation'
 
 export class ApiError extends Error {}
 
@@ -60,6 +61,7 @@ export async function call(method, args = {}, options = {}) {
         'Content-Type': 'application/json',
         Accept: 'application/json',
         'X-Frappe-CSRF-Token': window.csrf_token || '',
+        'X-ESAFEPOS-Workstation': workstationId(),
       },
       // _lang is Frappe's own request language: the server's messages (and
       // ERPNext's) come back in the language on the screen, whatever the

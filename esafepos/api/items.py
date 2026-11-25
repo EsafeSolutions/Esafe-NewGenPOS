@@ -7,6 +7,7 @@ import binascii
 import json
 import math
 from io import BytesIO
+from random import SystemRandom
 from urllib.parse import urlsplit
 
 import frappe
@@ -18,6 +19,7 @@ from esafepos.item_units import conversions
 from esafepos.price_books import get_price_map
 
 MAX_IMAGE_BYTES = 5 * 1024 * 1024
+IDENTIFIER_RANDOM = SystemRandom()
 
 
 def _require(granted):
@@ -180,6 +182,58 @@ def adjust_stock(pos_profile, item_code, warehouse, qty, expected_qty, reason, v
     audit.log("Warehouse stock adjusted in POS", detail="{}: {} → {}. {}".format(warehouse, actual, qty, reason.strip()),
               reference_doctype=doc.doctype, reference_name=doc.name, pos_profile=profile.name)
     return {"name": doc.name}
+
+
+def _identifier_candidate(character_type, length):
+    digits = "0123456789"
+    letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    if character_type == "numeric":
+        return "".join(IDENTIFIER_RANDOM.choice(digits) for _index in range(length))
+    characters = [IDENTIFIER_RANDOM.choice(letters), IDENTIFIER_RANDOM.choice(digits)]
+    characters.extend(IDENTIFIER_RANDOM.choice(letters + digits) for _index in range(length - 2))
+    IDENTIFIER_RANDOM.shuffle(characters)
+    return "".join(characters)
+
+
+@frappe.whitelist(methods=["POST"])
+def generate_identifier(pos_profile, target="item_code", character_type="numeric", length=5,
+                        item_code=None, exclude=None):
+    """Suggest an unused identifier; normal Item validation still applies on save."""
+    _profile(pos_profile)
+    if target not in ("item_code", "barcode"):
+        frappe.throw(_("Choose an item code or barcode to generate."))
+    if target == "barcode" and item_code:
+        item = frappe.get_doc("Item", item_code)
+        item.check_permission("read")
+        item.check_permission("write")
+    else:
+        _require(_can_create())
+    if character_type not in ("numeric", "alphanumeric"):
+        frappe.throw(_("Choose numbers only or letters and numbers."))
+    if (isinstance(length, bool) or not isinstance(length, (int, str))
+            or len(str(length)) > 3 or not str(length).isascii() or not str(length).isdigit()):
+        frappe.throw(_("Enter a whole code length from 1 to 140."))
+    length = int(length)
+    if not 1 <= length <= 140 or (character_type == "alphanumeric" and length < 2):
+        frappe.throw(_("Use 1 to 140 digits, or 2 to 140 characters for letters and numbers."))
+    if isinstance(exclude, str):
+        try:
+            exclude = json.loads(exclude)
+        except (TypeError, ValueError):
+            frappe.throw(_("Send a list of codes to exclude."))
+    if exclude is None:
+        exclude = []
+    if (not isinstance(exclude, list) or len(exclude) > 1000
+            or any(not isinstance(value, str) or len(value) > 140 for value in exclude)):
+        frappe.throw(_("Send up to 1000 codes to exclude, each up to 140 characters."))
+    excluded = {value.strip().upper() for value in exclude}
+    for _attempt in range(100):
+        value = _identifier_candidate(character_type, length)
+        if (value not in excluded and not frappe.db.exists("Item", value)
+                and not frappe.db.exists("Item", {"item_code": value})
+                and not frappe.db.exists("Item Barcode", {"barcode": value})):
+            return {"value": value}
+    frappe.throw(_("No unused code was found at this length. Increase the length or try again."))
 
 
 @frappe.whitelist(methods=["POST"])

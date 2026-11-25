@@ -1,10 +1,28 @@
 import json
 import unittest
 
-from esafepos.cash_count import allocate_count, clean_counts
+from esafepos.cash_count import allocate_count, clean_counts, clean_payment_counts
 
 
 class CashCountTests(unittest.TestCase):
+    def test_payment_counts_require_explicit_zero_and_every_payment(self):
+        rows = [{"mode_of_payment": "Cash", "is_cash": 1}, {"mode_of_payment": "Card"}]
+        self.assertEqual(clean_payment_counts({"Cash": 0, "Card": "0"}, rows), {"Cash": 0, "Card": 0})
+        for values in ({}, {"Cash": 0}, {"Cash": None, "Card": 0}, {"Cash": "", "Card": 0}, []):
+            with self.subTest(values=values), self.assertRaises(ValueError):
+                clean_payment_counts(values, rows)
+
+    def test_payment_counts_reject_nonfinite_invalid_and_negative_cash(self):
+        rows = [{"mode_of_payment": "Cash", "is_cash": 1}]
+        for value in (True, False, "nan", "inf", "-inf", "bad", -1, "1e9999"):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                clean_payment_counts({"Cash": value}, rows)
+
+    def test_payment_counts_preserve_signed_non_cash_and_currency_amounts(self):
+        rows = [{"mode_of_payment": "Cash USD", "is_cash": 1}, {"mode_of_payment": "Store Credit"}]
+        self.assertEqual(clean_payment_counts({"Cash USD": "7.25", "Store Credit": -3690}, rows),
+                         {"Cash USD": 7.25, "Store Credit": -3690})
+
     def breakdown(self, currency="LKR", rows=None):
         return {"Cash": {"currency": currency, "rows": rows or [
             {"kind": "notes", "value": 1000, "quantity": 2},

@@ -16,6 +16,8 @@
   "show_out_of_stock",
   "serial_scan_only",
   "shift_scope",
+  "shift_multiple_computers",
+  "shared_shift_management",
   "one_shift_per_user",
   "carry_shift_past_midnight",
   "warn_locked_periods",
@@ -67,6 +69,7 @@
   "return_exceed_role",
   "exchange_role",
   "capability_rules",
+  "user_access_levels",
   "payment_rules_section",
   "payment_method_rules",
   "channels_section",
@@ -805,10 +808,9 @@
   },
   {
    "default": "0",
-   "description": "Assign a code to each sale made without selecting a customer. Staff can add receipt details later in Sales History.",
+   "description": "Allow checkout without selecting a customer. Uses the outlet default or the shared ESAFE POS Walk-in customer.",
    "fieldname": "enable_walk_in_codes",
    "fieldtype": "Check",
-   "description": "Allow checkout without selecting a customer. Uses the outlet default or the shared ESAFE POS Walk-in customer.",
    "label": "Automatic walk-in customer codes"
   },
   {
@@ -965,6 +967,33 @@
    "label": "Receipt logo"
   },
   {
+   "default": "Logo and name",
+   "fieldname": "receipt_branding_mode",
+   "fieldtype": "Select",
+   "label": "Receipt branding",
+   "options": "Name and logo\nName only\nLogo and name\nLogo only"
+  },
+  {
+   "default": "Center",
+   "fieldname": "receipt_company_alignment",
+   "fieldtype": "Select",
+   "label": "Shop name alignment",
+   "options": "Left\nCenter\nRight"
+  },
+  {
+   "default": "16",
+   "fieldname": "receipt_company_size",
+   "fieldtype": "Select",
+   "label": "Shop name size",
+   "options": "12\n14\n16\n18\n20\n24\n28"
+  },
+  {
+   "default": "1",
+   "fieldname": "receipt_company_bold",
+   "fieldtype": "Check",
+   "label": "Bold shop name"
+  },
+  {
    "description": "Extra line under the company name (e.g. branch / slogan).",
    "fieldname": "receipt_header",
    "fieldtype": "Small Text",
@@ -1010,7 +1039,7 @@
    "default": "1",
    "fieldname": "receipt_show_unit_price",
    "fieldtype": "Check",
-   "label": "Show unit price (qty × rate)"
+   "label": "Show unit price (qty \u00d7 rate)"
   },
   {
    "default": "1",
@@ -1023,6 +1052,18 @@
    "fieldname": "receipt_show_note",
    "fieldtype": "Check",
    "label": "Show the sale note"
+  },
+  {
+   "default": "1",
+   "fieldname": "receipt_show_discount",
+   "fieldtype": "Check",
+   "label": "Show discount details"
+  },
+  {
+   "default": "1",
+   "fieldname": "receipt_show_saved",
+   "fieldtype": "Check",
+   "label": "Show You saved total"
   },
   {
    "default": "1",
@@ -1340,6 +1381,26 @@
    "fieldname": "credit_default_limit",
    "fieldtype": "Currency",
    "label": "Default credit limit"
+  },
+  {
+   "fieldname": "shift_multiple_computers",
+   "fieldtype": "Check",
+   "label": "Use the same shift on multiple computers",
+   "default": "1",
+   "description": "Same register and shift, including the same login on two POS browsers. Off binds the shift to one browser; a manager can move it."
+  },
+  {
+   "fieldname": "shared_shift_management",
+   "fieldtype": "Check",
+   "label": "Shared cashiers may manage this shift",
+   "default": "0",
+   "description": "For shared shifts only: other assigned users may move cash or close the shift when their own ERPNext and POS action permissions allow it."
+  },
+  {
+   "fieldname": "user_access_levels",
+   "fieldtype": "Table",
+   "label": "ESAFE POS USER ACCESS LEVELS",
+   "options": "EsafePOS User Access Level"
   }
  ],
  "index_web_pages_for_search": 0,

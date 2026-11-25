@@ -41,6 +41,7 @@ CASH_OUT = "Cash out"
 REPRINT = "Reprint a receipt"
 OPEN_REGISTER = "Open the register"
 CLOSE_REGISTER = "Close the register"
+DELETE_SALES = "Permanently delete sales"
 HOLD_GOODS = "Hold goods for a customer"
 SALES_BY_PERSON = "See sales by salesperson"
 SYSTEM_CHECK = "See the system check"
@@ -71,6 +72,7 @@ LEGACY_FIELD = {
 # the three of sales on account (0.60.0): they lend the shop's money. And the
 # reports of 0.62.0: the shop's takings and each cashier's record.
 CLOSED_BY_DEFAULT = {
+    DELETE_SALES,
     RETURN_EXCEED, SALES_BY_PERSON, SYSTEM_CHECK, SELL_ON_ACCOUNT, TAKE_PAYMENTS, SET_CREDIT,
     SALES_REPORTS, CASHIER_REPORT, PROFIT, ITEM_PRICE_EDIT, ITEM_CREATE, ITEM_STOCK_VIEW, ITEM_STOCK_ADJUST,
 }
@@ -124,7 +126,11 @@ def assert_outlet(pos_profile):
 
 
 def is_manager(user=None):
-    return bool(MANAGER_ROLES & _roles(user))
+    if MANAGER_ROLES & _roles(user):
+        return True
+    from esafepos import user_access
+    access = user_access.assignment(user)
+    return bool(access and access["level"] == "Manager")
 
 
 def _role_setting(field):
@@ -162,10 +168,16 @@ def _rules(capability):
 
 def allowed(capability, user=None):
     """Is this person allowed to do it?"""
-    if is_manager(user):
+    if MANAGER_ROLES & _roles(user):
         return True
+    from esafepos import user_access
+    access = user_access.assignment(user)
+    if access and capability not in access["capabilities"]:
+        return False
     rows = _rules(capability)
     if not rows:
+        if access:
+            return capability in access["capabilities"]
         if capability in REPORTS_ROLE_DEFAULT:
             from esafepos import reports_access
 
@@ -223,7 +235,14 @@ def _cash_allowed(capability, user=None):
     """CASH_IN or CASH_OUT by its own rows; a site that has none yet but kept a
     row on the old CASH_MOVEMENT (an update that did not migrate) is held to
     that row, so a shop that had locked the drawer is never opened up."""
-    if is_manager(user) or _rules(capability):
+    from esafepos import user_access
+    access = user_access.assignment(user)
+    if access and not _rules(capability) and _rules(CASH_MOVEMENT):
+        who, roles = user or frappe.session.user, _roles(user)
+        return capability in access["capabilities"] and any(
+            r.get("user") == who or (r.get("role") and r.get("role") in roles) for r in _rules(CASH_MOVEMENT)
+        )
+    if access or is_manager(user) or _rules(capability):
         return allowed(capability, user)
     return allowed(CASH_MOVEMENT, user)
 
@@ -246,6 +265,10 @@ def can_move_cash(user=None):
 def can_reprint(user=None):
     """Print a receipt again after the sale."""
     return allowed(REPRINT, user)
+
+
+def can_delete_sales(user=None):
+    return is_manager(user) and allowed(DELETE_SALES, user)
 
 
 def can_open_register(user=None):

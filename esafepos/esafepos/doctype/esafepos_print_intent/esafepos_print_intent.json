@@ -13,7 +13,7 @@
     {"fieldname":"company","label":"Company","fieldtype":"Link","options":"Company","reqd":1},
     {"fieldname":"pos_profile","label":"POS Profile","fieldtype":"Link","options":"POS Profile","reqd":1},
     {"fieldname":"reference_doctype","label":"Reference DocType","fieldtype":"Link","options":"DocType","reqd":1},
-    {"fieldname":"reference_name","label":"Reference document","fieldtype":"Dynamic Link","options":"reference_doctype","reqd":1},
+    {"fieldname":"reference_name","label":"Reference document","fieldtype":"Data","reqd":1,"search_index":1,"description":"Immutable source identifier retained after an authorized permanent sale deletion. Source permissions and existence are validated by the printing API."},
     {"fieldname":"role","label":"Printer role","fieldtype":"Data","reqd":1},
     {"fieldname":"output","label":"Output","fieldtype":"Data","reqd":1},
     {"fieldname":"state","label":"Client-reported state","fieldtype":"Select","options":"prepared\nqueued\npreparing\nsubmitting\nsubmitted\ncompleted\nfailed\ncancelled\nunknown","reqd":1},

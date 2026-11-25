@@ -20,6 +20,7 @@ from frappe.utils import add_days, add_to_date, cint, flt, get_datetime, getdate
 
 from esafepos import __version__, erpnext_compat
 from esafepos.api import permissions
+from esafepos.closing_diagnostics import error_summary
 
 # The ERPNext release of each major version EsafePOS was last tested on (the
 # four test benches). A site on a newer one is told so, nothing more.
@@ -172,7 +173,7 @@ def _check_shifts():
         limit_page_length=20,
     )
     failed = frappe.get_all("POS Register Session", filters={"status": "Closing", "closing_status": "Failed"},
-                            fields=["name", "pos_profile", "closing_error"], limit_page_length=20)
+                            fields=["name", "pos_profile", "closing_error", "closing_attempts"], limit_page_length=20)
     seen = {r.name for r in stuck}
     stuck += [r for r in failed if r.name not in seen]
     if stuck:
@@ -180,9 +181,13 @@ def _check_shifts():
 
         out.append(_row("shifts", PROBLEM, _("Shifts stuck in Closing: {0}").format(len(stuck)),
                         _("Their sales are not in the books yet."),
-                        items=["%s, %s: %s" % (r.name, r.pos_profile, plain(r.closing_error).splitlines()[-1][:140]
-                                                if plain(r.closing_error) else _("no reason recorded")) for r in stuck],
-                        fix=_("Register page, Retry. If it fails again, send this screen.")))
+                        items=["%s, %s: %s%s" % (
+                            r.name, r.pos_profile, error_summary(plain(r.closing_error)) or _("no reason recorded"),
+                            " · " + _("Automatic retries paused after {0} attempts").format(cint(r.closing_attempts))
+                            if cint(r.closing_attempts) >= 30 else "",
+                        ) for r in stuck],
+                        fix=_("Register, Details for manager: correct the item cost, stock or accounting issue shown, "
+                              "then Check and retry closing. Retrying alone cannot supply missing item costs.")))
     old = frappe.get_all(
         "POS Register Session",
         filters={"status": "Open", "opened_at": ["<", add_to_date(now_datetime(), hours=-24)]},
@@ -196,19 +201,30 @@ def _check_shifts():
                         items=["%s, %s, %s, %s" % (r.name, r.pos_profile, r.opened_by, str(r.opened_at)[:16]) for r in old],
                         fix=_("Close them from the Register page (a manager can close anyone's).")))
     if erpnext_compat.one_open_shift_per_outlet():
-        ours = {r.pos_opening_entry for r in frappe.get_all("POS Register Session", filters={"status": "Open"},
-                                                           fields=["pos_opening_entry"]) if r.pos_opening_entry}
+        sessions = frappe.get_all("POS Register Session", filters={"status": ["in", ["Open", "Closing"]]},
+                                  fields=["name", "pos_opening_entry", "status"])
+        ours = {r.pos_opening_entry for r in sessions if r.pos_opening_entry and r.status == "Open"}
+        closing_by_opening = {r.pos_opening_entry: r.name for r in sessions
+                              if r.pos_opening_entry and r.status == "Closing"}
         stale = [
             r for r in frappe.get_all("POS Opening Entry", filters={"docstatus": 1, "status": "Open",
                                                                     "period_start_date": ["<", nowdate()]},
                                       fields=["name", "pos_profile", "user", "period_start_date"], limit_page_length=20)
             if r.name not in ours
         ]
-        if stale:
-            out.append(_row("shifts", PROBLEM, _("Opening entries from an earlier day blocking their outlet: {0}").format(len(stale)),
+        linked = [r for r in stale if r.name in closing_by_opening]
+        external = [r for r in stale if r.name not in closing_by_opening]
+        if linked:
+            out.append(_row("shifts", INFO, _("Earlier opening entries held by unfinished shift closings: {0}").format(len(linked)),
+                            _("These entries belong to the same unfinished shifts, not separate closing problems. "
+                              "ERPNext 16 cannot start the next shift on these registers until posting finishes."),
+                            items=["%s, %s → %s" % (r.name, r.pos_profile, closing_by_opening[r.name]) for r in linked],
+                            fix=_("Finish the linked shift with Check and retry closing. Do not create a second closing or cancel an opening with sales.")))
+        if external:
+            out.append(_row("shifts", PROBLEM, _("Opening entries from an earlier day blocking their outlet: {0}").format(len(external)),
                             _("ERPNext 16 sells only on an opening entry opened today, one per outlet."),
-                            items=["%s, %s, %s" % (r.name, r.pos_profile, r.period_start_date) for r in stale],
-                            fix=_("Close them in ERPNext (POS Closing Entry) or cancel them if they hold no sales.")))
+                            items=["%s, %s, %s" % (r.name, r.pos_profile, r.period_start_date) for r in external],
+                            fix=_("Use Register to recover a verified unused opening. If it has sales, ask a manager to finish its closing in ERPNext.")))
     unposted = frappe.db.sql(
         """select count(*), min(posting_date) from `tabPOS Invoice`
         where docstatus = 1 and ifnull(consolidated_invoice, '') = '' and posting_date < %s""",
@@ -308,6 +324,8 @@ def _check_settings():
 
 
 def _check_errors():
+    from esafepos.accounting_periods import plain
+
     out = []
     since = add_days(now_datetime(), -7)
     rows = frappe.db.sql(
@@ -323,13 +341,12 @@ def _check_errors():
         if (r.method or "").startswith("EsafePOS slow sale"):
             slow += 1
             continue
-        lines = [x for x in (r.error or "").strip().splitlines() if x.strip()]
-        key = ((r.method or "")[:80], (lines[-1].strip() if lines else "")[:160])
+        key = ((r.method or "")[:80], error_summary(plain(r.error), length=160))
         groups[key] = groups.get(key, 0) + 1
     if groups:
         top = sorted(groups.items(), key=lambda kv: -kv[1])[:8]
         out.append(_row("errors", WARN, _("EsafePOS errors in the last 7 days: {0}").format(sum(groups.values())),
-                        _("Grouped, most frequent first."),
+                        _("Most recent 500 log entries from the last 7 days, grouped by cause. Existing entries remain after a fix."),
                         items=["%s x %s: %s" % (n, method, last) for (method, last), n in top],
                         fix=_("Send this screen with the Error Log entries (ERPNext, Error Log).")))
     else:

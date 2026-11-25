@@ -1403,8 +1403,8 @@
 
       <!-- Register & Offline -->
       <div class="sec-card" v-show="generalSection === 'register'">
-        <div class="sec-title"><Icon name="store" /> {{ t('Register & Offline') }}</div>
-        <p class="sec-note">{{ t('How a shift opens and closes, the alerts it sends, and what the till keeps for selling without a connection.') }}</p>
+        <div class="sec-title"><Icon name="store" /> {{ t('Shift Management') }}</div>
+        <p class="sec-note">{{ t('How a shift opens and closes, the alerts it sends, and what the till keeps for selling without a connection.') }} {{ t('Refresh open tills after saving shift settings. Server rules apply immediately.') }}</p>
         <div class="setting-list">
           <label class="field span-2" style="display:block; margin-bottom: 10px">
             <span class="setting-title">{{ t('A shift belongs to') }}</span>
@@ -1414,6 +1414,9 @@
             </select>
             <span class="setting-desc">{{ t('Per cashier lets several people share one counter, each with their own drawer and Z-report. On ERPNext 16 a register (POS Profile) sells with only one open shift, so there each cashier needs their own register. Registers that sell from the same warehouse are still one outlet.') }}</span>
           </label>
+          <label class="setting-row"><input type="checkbox" class="setting-toggle" :checked="generalForm.shift_scope === 'Per outlet'" @change="generalForm.shift_scope = $event.target.checked ? 'Per outlet' : 'Per cashier'" /><span class="setting-text"><span class="setting-title">{{ t('Allow different users to use the same shift') }}</span><span class="setting-desc">{{ t('Users assigned to the same register share its open shift and drawer. Each sale keeps the user who made it. Close existing shifts before changing this mode.') }}</span></span></label>
+          <label class="setting-row"><input type="checkbox" class="setting-toggle" v-model="generalForm.shift_multiple_computers" :true-value="1" :false-value="0" /><span class="setting-text"><span class="setting-title">{{ t('Use the same shift on multiple computers') }}</span><span class="setting-desc">{{ t('On: the same user can use their open shift on both computers. With shared-user mode, different users can also sell into that shift. Select the same register on every computer. Off: the shift is bound to one POS browser, and a manager can move it from Register.') }}</span></span></label>
+          <label class="setting-row"><input type="checkbox" class="setting-toggle" v-model="generalForm.shared_shift_management" :true-value="1" :false-value="0" :disabled="generalForm.shift_scope !== 'Per outlet'" /><span class="setting-text"><span class="setting-title">{{ t('Shared users may manage cash and close the shift') }}</span><span class="setting-desc">{{ t('Off: the opener or a manager manages the drawer. On: other assigned users can also manage it when their own cash and closing permissions allow. Sharing a shift never grants extra action permissions.') }}</span></span></label>
           <label class="setting-row">
             <input type="checkbox" class="setting-toggle" v-model="generalForm.one_shift_per_user" :true-value="1" :false-value="0" />
             <span class="setting-text">
@@ -2267,6 +2270,7 @@
       </div>
 
       <!-- Permissions -->
+      <UserAccessLevels v-if="canManage" v-show="generalSection === 'approvals'" />
       <div class="sec-card" v-show="generalSection === 'approvals'">
         <div class="sec-title"><Icon name="shield" /> {{ t('Permissions') }}</div>
         <p class="sec-note">{{ t('Which roles may change a price, take a return, and approve one.') }}</p>
@@ -2486,6 +2490,7 @@ import LinkPicker from '../components/LinkPicker.vue'
 import ScopePicker from '../components/ScopePicker.vue'
 import PriceListEditor from '../components/PriceListEditor.vue'
 import ItemImageSearchSettings from '../components/ItemImageSearchSettings.vue'
+import UserAccessLevels from '../components/UserAccessLevels.vue'
 import { t, LANGUAGES } from '../i18n'
 
 const session = useSessionStore()
@@ -2636,6 +2641,7 @@ const capabilityOptions = [
   'See profit',
   'Print labels',
   'Use the stock app',
+  'Permanently delete sales',
 ]
 
 // The parts of the EsafePOS Stock app a shop can switch off (0.68.0).
@@ -2693,6 +2699,8 @@ const generalForm = ref({
   help_offer_tour: 1,
   help_whats_new: 1,
   shift_scope: 'Per cashier',
+  shift_multiple_computers: 1,
+  shared_shift_management: 0,
   one_shift_per_user: 0,
   carry_shift_past_midnight: 1,
   warn_locked_periods: 1,
@@ -2843,7 +2851,7 @@ const keptReason = (value) => reasonByShown.value.get(value) || value
 // ---- General is split into groups, like the tabs on the left ----
 const generalSections = [
   { key: 'features', label: 'Features', icon: 'bulb' },
-  { key: 'register', label: 'Register and shifts', icon: 'store' },
+  { key: 'register', label: 'Shift Management', icon: 'store' },
   { key: 'payments', label: 'Payments and delivery', icon: 'card' },
   { key: 'currencies', label: 'Other currencies', icon: 'cash' },
   { key: 'customers', label: 'Customers', icon: 'person' },
@@ -3289,6 +3297,8 @@ async function load() {
     help_offer_tour: info.help_offer_tour === 0 ? 0 : 1,
     help_whats_new: info.help_whats_new === 0 ? 0 : 1,
     shift_scope: info.shift_scope || 'Per cashier',
+    shift_multiple_computers: info.shift_multiple_computers === 0 ? 0 : 1,
+    shared_shift_management: info.shared_shift_management ? 1 : 0,
     one_shift_per_user: info.one_shift_per_user ? 1 : 0,
     // A server from before 0.55.0 does not send it: on, its default.
     carry_shift_past_midnight: info.carry_shift_past_midnight === 0 ? 0 : 1,
@@ -4087,6 +4097,9 @@ async function saveGeneral() {
     })
     settingsInfo.value = info
     generalForm.value.discount_passcode = ''
+    session.settings.shift_scope = info.shift_scope || 'Per cashier'
+    session.settings.shift_multiple_computers = info.shift_multiple_computers === 0 ? 0 : 1
+    session.settings.shared_shift_management = info.shared_shift_management ? 1 : 0
     session.settings.delivery_apps = info.delivery_apps
     session.settings.discount_limit_percent = info.discount_limit_percent
     session.settings.discount_approval_mode = info.discount_approval_mode || 'Passcode only'

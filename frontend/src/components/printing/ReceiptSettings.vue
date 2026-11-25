@@ -80,6 +80,40 @@
               </label>
             </div>
 
+            <details class="rc-advanced" open>
+              <summary>{{ t('Advanced receipt design') }}</summary>
+              <p class="muted small">{{ t('Adjust the shop identity and control which savings details appear on the receipt.') }}</p>
+              <div class="field-grid">
+                <label class="field">
+                  <span>{{ t('Branding layout') }}</span>
+                  <select v-model="receiptForm.receipt_branding_mode">
+                    <option value="Name and logo">{{ t('Name and logo') }}</option>
+                    <option value="Name only">{{ t('Name only') }}</option>
+                    <option value="Logo and name">{{ t('Logo first, then name') }}</option>
+                    <option value="Logo only">{{ t('Logo only') }}</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>{{ t('Shop name alignment') }}</span>
+                  <select v-model="receiptForm.receipt_company_alignment">
+                    <option value="Left">{{ t('Left') }}</option>
+                    <option value="Center">{{ t('Center') }}</option>
+                    <option value="Right">{{ t('Right') }}</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>{{ t('Shop name size') }}</span>
+                  <select v-model="receiptForm.receipt_company_size">
+                    <option v-for="size in [12, 14, 16, 18, 20, 24, 28]" :key="size" :value="String(size)">{{ size }} px</option>
+                  </select>
+                </label>
+                <label class="inline-check rc-advanced-check">
+                  <input type="checkbox" v-model="receiptForm.receipt_company_bold" :true-value="1" :false-value="0" />
+                  {{ t('Bold shop name') }}
+                </label>
+              </div>
+            </details>
+
             <div class="sub-label" style="margin-top: 14px">{{ t('Show on the receipt') }}</div>
             <div class="rc-toggles">
               <label class="inline-check"><input type="checkbox" v-model="receiptForm.receipt_show_item_code" :true-value="1" :false-value="0" /> {{ t('Item code') }}</label>
@@ -88,6 +122,8 @@
               <label class="inline-check"><input type="checkbox" v-model="receiptForm.receipt_show_unit_price" :true-value="1" :false-value="0" /> {{ t('Unit price (qty × rate)') }}</label>
               <label class="inline-check"><input type="checkbox" v-model="receiptForm.receipt_show_payments" :true-value="1" :false-value="0" /> {{ t('Payment methods') }}</label>
               <label class="inline-check"><input type="checkbox" v-model="receiptForm.receipt_show_note" :true-value="1" :false-value="0" /> {{ t('Sale note') }}</label>
+              <label class="inline-check"><input type="checkbox" v-model="receiptForm.receipt_show_discount" :true-value="1" :false-value="0" /> {{ t('Your discount') }}</label>
+              <label class="inline-check"><input type="checkbox" v-model="receiptForm.receipt_show_saved" :true-value="1" :false-value="0" /> {{ t('You saved total') }}</label>
               <label class="inline-check"><input type="checkbox" v-model="receiptForm.receipt_show_cashier" :true-value="1" :false-value="0" /> {{ t('Cashier name') }}</label>
               <label class="inline-check"><input type="checkbox" v-model="receiptForm.receipt_show_terminal" :true-value="1" :false-value="0" /> {{ t('Terminal or user') }}</label>
               <label class="inline-check"><input type="checkbox" v-model="receiptForm.receipt_show_invoice_barcode" :true-value="1" :false-value="0" /> {{ t('Invoice barcode') }}</label>
@@ -333,5 +369,6 @@ const previewReceipt = computed(() => ({
 .receipt-settings{padding:22px;max-width:1400px;margin:0 auto;width:100%;box-sizing:border-box}
 fieldset{border:0;padding:0;margin:0;min-width:0}.sec-title{font-size:18px;font-weight:650;display:flex;align-items:center;gap:8px}.sec-title svg{width:18px;height:18px}.sec-note,.hint-row,.setting-desc{font-size:12px;color:var(--text-muted);line-height:1.65}.sec-note{margin:7px 0 18px}.rc-scope{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:14px 0;margin:5px 0 24px;border-bottom:1px solid var(--border)}.rc-scope-label{font-size:13px;font-weight:600}.rc-scope-hint{font-size:12px;color:var(--text-muted)}.rc-scope select{min-width:200px}.receipt-config{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:36px;align-items:start}.rc-controls{min-width:0}.rc-preview{position:sticky;top:16px;min-width:0}.rc-preview-label{font-size:12px;margin-bottom:10px;color:var(--text-muted)}.field{display:flex;flex-direction:column;gap:6px;min-width:0}.field>span,.seg-label,.sub-label{font-size:12px;color:var(--text-muted)}.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.span-2{grid-column:1/-1}.seg-label{display:block;margin-bottom:9px}.segmented{display:flex;gap:4px;flex-wrap:wrap}.seg-btn{padding:8px 13px;border:1px solid var(--border);border-radius:var(--radius)}.seg-btn.on{background:var(--brand);border-color:var(--brand);color:white}.rc-toggles{display:grid;grid-template-columns:1fr 1fr;gap:11px 16px;margin:12px 0}.inline-check{display:flex;align-items:center;gap:8px;font-size:12px;justify-content:flex-start}.inline-check input{width:15px;min-height:0;flex:none}.rc-textfields{display:flex;flex-direction:column;gap:12px;margin-top:20px}.rc-textfields input:not([type=checkbox]),textarea{width:100%;box-sizing:border-box}.cf-section{padding-top:22px;margin-top:26px;border-top:1px solid var(--border)}.sub-label{font-weight:600;margin-bottom:10px}.cf-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}.cf-row>*{min-width:0;flex:1 1 120px}.cf-row button{flex:0 0 35px}.cf-field{flex-grow:2}.pf-banner{display:flex;align-items:start;gap:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:20px;font-size:13px}.pf-banner svg{width:20px;flex:none}.pf-sub{font-size:12px;line-height:1.65;margin-top:5px}.actions{display:flex;align-items:center;gap:10px;padding-top:22px;margin-top:20px;border-top:1px solid var(--border)}.error{color:var(--red);font-size:13px}.notice{color:var(--text-muted);font-size:13px}input,select,textarea{font:inherit;font-size:13px;color:var(--text);background:var(--input-bg);border:1px solid var(--border);border-radius:var(--radius);padding:9px 10px}button:disabled{opacity:.5}.cf-row svg{width:16px}.loading{font-size:13px;color:var(--text-muted)}
 @media(max-width:1000px){.receipt-config{grid-template-columns:1fr}.rc-preview{position:static;max-width:100%;width:320px;margin:10px auto}.receipt-settings{padding:18px}}
+.rc-advanced{border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin:14px 0}.rc-advanced summary{cursor:pointer;font-weight:650;font-size:13px}.rc-advanced>p{margin:8px 0 12px}.rc-advanced-check{align-self:center;padding-top:17px}
 @media(max-width:520px){.receipt-settings{padding:14px}.rc-toggles{grid-template-columns:1fr}.rc-scope{align-items:stretch}.rc-scope select{width:100%;min-width:0}.field-grid{grid-template-columns:1fr}.actions{flex-wrap:wrap}.rc-preview{width:100%}.seg-btn{padding:7px 10px}}
 </style>

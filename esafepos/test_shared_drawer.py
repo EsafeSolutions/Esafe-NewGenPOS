@@ -119,13 +119,29 @@ class SharedDrawerTests(unittest.TestCase):
 
     def test_cashier_syncs_group_closure_without_other_outlet_figures(self):
         self.permissions.is_manager.return_value = False
-        self.frappe.get_all = Mock(return_value=[Record(name="A", pos_profile="Till A", opened_by="A", status="Open"),
-                                                Record(name="B", pos_profile="Till B", opened_by="B", status="Closing")])
+        def query(fields=None, filters=None, **kwargs):
+            self.assertEqual(filters, {"combined_drawer": "A"})
+            return [Record(name="A", pos_profile="Till A", opened_by="A", status="Open"),
+                    Record(name="B", pos_profile="Till B", opened_by="B", status="Closing")]
+        # Frappe binds fields before filters. A positional filter plus fields=
+        # must raise here exactly as it does on the real site.
+        self.frappe.get_all = Mock(side_effect=lambda dt, *args, **kw: query(*args, **kw))
         result = self.subject.summary("A")
         self.assertEqual(result["group"], "A")
         self.assertFalse(result["all_open"])
         self.assertEqual(result["expected"], [])
         self.register.get_session_summary.assert_not_called()
+
+    def test_candidates_bind_filters_without_colliding_with_fields(self):
+        self.permissions.can_use_outlet = Mock(return_value=True)
+        self.subject._members.return_value = [self.docs[0]]
+        def query(fields=None, filters=None, **kwargs):
+            self.assertEqual(filters, {"status": "Open"})
+            self.assertEqual(fields, ["name", "pos_profile"])
+            return self.docs
+        self.frappe.get_all = Mock(side_effect=lambda dt, *args, **kw: query(*args, **kw))
+        result = self.subject.candidates("A")
+        self.assertEqual([row["session"] for row in result], ["B"])
 
     def test_incompatible_company_or_cash_accounts_are_rejected(self):
         for signature in (("Other", "Cash", {}, [("Cash", "Cash - S")]), ("Shop", "Cash", {}, [("Cash", "Other - S")])):

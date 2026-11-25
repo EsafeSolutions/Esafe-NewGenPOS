@@ -448,6 +448,15 @@ export async function getShiftSale(key) {
   return request(database.transaction('shift_sales').objectStore('shift_sales').get(key))
 }
 
+// Drop this device's cached returnable copy after a confirmed server deletion.
+export async function forgetShiftSale(invoice) {
+  for (const record of await listShiftSales()) {
+    if (record.name === invoice || record.posted_receipt?.name === invoice) {
+      await tx('shift_sales', 'readwrite', store => store.delete(record.key))
+    }
+  }
+}
+
 // Merge a patch into one record, in one transaction.
 export async function patchShiftSale(key, patch) {
   if (!key) return

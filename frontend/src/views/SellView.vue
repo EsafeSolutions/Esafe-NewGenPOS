@@ -24,6 +24,9 @@
       </label>
     </Teleport>
     <!-- "Per cashier" shift scope: the drawer belongs to whoever opened it. -->
+    <div v-if="session.shiftComputerBlocked" class="shift-owner-banner">
+      <Icon name="warning" /> {{ t('This shift is assigned to another computer. Ask a manager to move it from the Register page.') }}
+    </div>
     <div v-if="session.sellBlockedBy" class="shift-owner-banner">
       <Icon name="warning" />
       {{ t('This shift belongs to {name}. Close it and open your own to sell.', { name: session.sellBlockedBy }) }}

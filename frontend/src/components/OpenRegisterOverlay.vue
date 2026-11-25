@@ -11,32 +11,26 @@
       <template v-if="pending">
         <div class="modal-body">
           <div class="shift-banner warn">
-            <div class="shift-name">{{ t('⚠ Previous shift not finished') }}</div>
-            <div class="muted small" style="margin-top: 4px">
-              {{ t('Session') }} <b>{{ pending.session }}</b> {{ t('was closed but its sales are still being finalised') }}<span v-if="pending.closing_status === 'Failed'">&nbsp;{{ t('and the last attempt') }} <b>{{ t('failed') }}</b></span>. {{ t('You can open a new shift now, it keeps finalising in the background.') }}
-            </div>
-            <div v-if="pending.closing_error" class="err-detail">{{ plainText(pending.closing_error) }}</div>
+            <div class="shift-name">{{ t('Previous shift') }} · {{ pending.session }}</div>
           </div>
+          <ShiftClosingHelp :state="pending" :session-name="pending.session" :manager="session.permissions.is_manager" />
           <PeriodHint v-if="pending.closing_hint" :hint="pending.closing_hint" />
           <button
             v-if="canClose"
             class="btn btn-outline choice-btn"
-            :disabled="busy"
+            :disabled="busy || session.offline"
             @click="retry"
           >
-            <Icon name="refresh" /> {{ busy ? t('Retrying…') : t('Retry closing') }}
-            <span class="choice-hint">{{ t('Consolidate the previous shift now instead of waiting for the background retry') }}</span>
+            <Icon name="refresh" /> {{ busy ? t('Checking…') : t('Check and retry closing') }}
           </button>
           <p class="muted small">
-            {{ t("This runs in the background and usually takes a few seconds. It's safe to retry as often as needed, nothing is double-posted.") }}
+            {{ t('Retries keep the saved counts and skip sales already posted.') }}
           </p>
 
-          <!-- The register is closed the moment the cashier closes it, the POS
-               Closing consolidation is a background task (Pending / Queued /
-               Failed) that must NEVER block the next shift. So a fresh shift can
-               always be opened here, whatever the closing status; the previous
-               shift keeps finalising / self-healing in the background. -->
-          <div v-if="canClose" class="force-new-block">
+          <!-- ERPNext 16 requires the previous native opening to finish first.
+               Other modes can start a fresh shift without changing old counts. -->
+          <p v-if="pending.new_shift_blocked" class="muted small">{{ t('This outlet must finish the previous closing before a new shift can start. Ask a manager to fix the issue above, then retry.') }}</p>
+          <div v-if="canOpen && !pending.new_shift_blocked" class="force-new-block">
             <div class="or-sep"><span>{{ t('or open a new shift now') }}</span></div>
             <label class="field-label">{{ t('Opening float for the new shift') }}</label>
             <input
@@ -56,10 +50,10 @@
                 :disabled="busy"
               />
             </label>
-            <button class="btn btn-primary choice-btn" :disabled="busy" @click="forceNew">
+            <button class="btn btn-primary choice-btn" :disabled="busy || session.offline" @click="forceNew">
               <Icon name="play" /> {{ busy ? t('Opening…') : t('Open a new shift') }}
               <span class="choice-hint"
-                >{{ t('Keep selling now, the previous shift keeps finalising in the background until it consolidates') }}</span
+                >{{ t('The previous shift keeps its own sales and closing count. A manager can finish posting it separately.') }}</span
               >
             </button>
           </div>
@@ -159,6 +153,7 @@
             {{ session.posProfile }}. {{ t('Enter the opening cash float to start selling.') }}
           </p>
           <label class="field-label">{{ t('Opening float') }}</label>
+          <p class="muted small">{{ t('Opening float is the change you start with. Enter 0 only if the drawer is empty.') }}</p>
           <input
             ref="floatInput"
             type="text"
@@ -186,7 +181,7 @@
           <button
             class="btn btn-primary btn-lg"
             style="width: 100%"
-            :disabled="busy || !canOpen || oneShiftBlocked"
+            :disabled="busy || !canOpen || oneShiftBlocked || session.offline"
             @click="open"
           >
             {{ busy ? t('Opening…') : t('Open Register') }}
@@ -209,8 +204,10 @@ import { useSessionStore } from '../stores/session'
 import { useCatalogStore } from '../stores/catalog'
 import { call } from '../api'
 import { t } from '../i18n'
-import { parseMoney, plainText } from '../format'
+import { parseMoney } from '../format'
 import PeriodHint from './PeriodHint.vue'
+import ShiftClosingHelp from './ShiftClosingHelp.vue'
+import { createClosingMonitor } from '../shiftHelp'
 
 const session = useSessionStore()
 const catalog = useCatalogStore()
@@ -218,7 +215,6 @@ const openingFloat = ref('0')
 const busy = ref(false)
 const floatInput = ref(null)
 const pending = ref(session.pendingClosing)
-let poll = null
 
 // Cash drawers in another currency ("Cash USD"): each counts its own money.
 // None while selling in other currencies is off, though the drawers stay on
@@ -236,7 +232,10 @@ const floats = ref({})
 function foreignFloats() {
   const out = {}
   for (const d of foreignDrawers.value) {
-    const value = parseMoney(floats.value[d.mode_of_payment])
+    const raw = floats.value[d.mode_of_payment]
+    if (raw == null || String(raw).trim() === '') continue
+    const value = parseMoney(raw)
+    if (value == null || value < 0) throw new Error(t('Enter a valid opening float for {drawer}.', { drawer: d.mode_of_payment }))
     if (value && value > 0) out[d.mode_of_payment] = value
   }
   return JSON.stringify(out)
@@ -262,8 +261,9 @@ const canClose = computed(() => session.permissions.close_register !== false)
 
 onMounted(() => {
   if (!pending.value) floatInput.value?.focus()
+  else startPoll(pending.value.session)
 })
-onBeforeUnmount(() => clearInterval(poll))
+onBeforeUnmount(() => monitor.stop())
 
 // Choose which outlet to open the register for (users assigned to more than one
 // POS Profile). Switching reloads that outlet, if it's already open the dialog
@@ -275,15 +275,24 @@ async function onSwitchOutlet(name) {
   catalog.cacheFullCatalog()
   catalog.cacheCustomers()
   pending.value = session.pendingClosing
+  monitor.stop()
+  if (pending.value) startPoll(pending.value.session)
   openingFloat.value = '0'
   floats.value = {}
 }
 
 async function open() {
+  if (busy.value || session.offline || !canOpen.value || oneShiftBlocked.value) return
+  const amount = parseMoney(openingFloat.value)
+  if (amount == null || amount < 0) {
+    session.notify(t('Enter the opening float as a number, e.g. 1500 or 1500.50'), true)
+    return
+  }
+  if (amount === 0 && !confirm(t('Open with an opening float of 0.00? Confirm the drawer is empty.'))) return
   busy.value = true
   try {
     // Opening is always a fresh shift, there is no resume/retry branch.
-    await session.openRegister(openingFloat.value || 0, { floats: foreignFloats() })
+    await session.openRegister(amount, { floats: foreignFloats() })
     session.notify(t('Register opened'))
   } catch (e) {
     session.notify(e.message, true)
@@ -293,10 +302,17 @@ async function open() {
 }
 
 async function forceNew() {
+  if (!pending.value?.new_shift_blocked) await open()
+}
+
+async function retry() {
+  if (busy.value || session.offline || !canClose.value) return
   busy.value = true
   try {
-    await session.openRegister(openingFloat.value || 0, { floats: foreignFloats() })
-    session.notify(t('New shift opened, the previous one keeps finalising in the background'))
+    const result = await call('esafepos.api.register.retry_closing', { session: pending.value.session })
+    pending.value = { ...pending.value, closing_status: result.closing_status || 'Queued' }
+    session.notify(t('Finalising the previous shift…'))
+    startPoll(pending.value.session)
   } catch (e) {
     session.notify(e.message, true)
   } finally {
@@ -304,46 +320,22 @@ async function forceNew() {
   }
 }
 
-async function retry() {
-  busy.value = true
-  try {
-    await call('esafepos.api.register.retry_closing', { session: pending.value.session })
-    session.notify(t('Finalising the previous shift…'))
-    startPoll(pending.value.session)
-  } catch (e) {
-    session.notify(e.message, true)
-    busy.value = false
+const monitor = createClosingMonitor(
+  name => session.offline ? Promise.reject() : call('esafepos.api.register.closing_entry_status', { session: name }),
+  async (res, name) => {
+    if (pending.value?.session !== name) return
+    pending.value = { ...pending.value, ...res }
+    session.pendingClosing = pending.value
+    if (res.status !== 'Closed') return
+    session.pendingClosing = null
+    pending.value = null
+    await session.bootstrap(session.posProfile)
+    pending.value = session.pendingClosing
+    session.notify(t('Previous shift closed, you can open the register now'))
+    if (pending.value) startPoll(pending.value.session)
   }
-}
-
-function startPoll(sessionName) {
-  clearInterval(poll)
-  let tries = 0
-  poll = setInterval(async () => {
-    tries += 1
-    try {
-      const res = await call('esafepos.api.register.closing_entry_status', { session: sessionName })
-      if (res.status === 'Closed') {
-        clearInterval(poll)
-        session.notify(t('Previous shift closed, you can open the register now'))
-        await session.bootstrap(session.posProfile)
-        pending.value = session.pendingClosing
-        busy.value = false
-      } else if (res.closing_status === 'Failed') {
-        clearInterval(poll)
-        pending.value = { ...pending.value, closing_status: 'Failed', closing_error: res.closing_error, closing_hint: res.closing_hint }
-        session.notify(t('Closing failed again. Check the error and retry'), true)
-        busy.value = false
-      }
-    } catch {
-      /* keep polling */
-    }
-    if (tries >= 40) {
-      clearInterval(poll)
-      busy.value = false
-    }
-  }, 3000)
-}
+)
+function startPoll(name) { monitor.start(name) }
 </script>
 
 <style scoped>
@@ -377,17 +369,6 @@ function startPoll(sessionName) {
   font-size: 16px;
   font-weight: 800;
   margin-top: 4px;
-}
-.err-detail {
-  margin-top: 8px;
-  font-size: 11.5px;
-  font-weight: 500;
-  color: var(--red);
-  font-family: ui-monospace, monospace;
-  white-space: pre-wrap;
-  word-break: break-word;
-  max-height: 90px;
-  overflow-y: auto;
 }
 .small { font-size: 12px; }
 .choice-btn {

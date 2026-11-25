@@ -78,7 +78,14 @@ class LoyaltyDefaultsTests(unittest.TestCase):
 
     def test_migrate_reuses_general_program_without_changing_rates(self):
         row = self.program()
-        self.frappe.get_all.side_effect = lambda dt, *a, **kw: ["Shop"] if dt == "POS Profile" else ([] if kw.get("filters") else [row])
+        def query(fields=None, filters=None, pluck=None, **kwargs):
+            if pluck == "company":
+                self.assertEqual(filters, {"disabled": 0})
+                return ["Shop"]
+            if filters.get("conversion_factor") == 1:
+                return [row]
+            return []
+        self.frappe.get_all.side_effect = lambda dt, *args, **kw: query(*args, **kw)
         self.subject.ensure_setup()
         self.frappe.db.set_value.assert_called_once_with("Loyalty Program", "Rewards", "auto_opt_in", 1)
         self.frappe.get_doc.assert_not_called()

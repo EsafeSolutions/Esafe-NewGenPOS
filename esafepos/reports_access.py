@@ -47,12 +47,16 @@ def holds_role(user: str | None = None) -> bool:
 
 def is_viewer(user: str | None = None) -> bool:
     """Holds the role, and the shop lets the role in."""
-    return holds_role(user) and enabled()
+    from esafepos import user_access
+    return (holds_role(user) or user_access.reports_only(user)) and enabled()
 
 
 def reports_only(user: str | None = None) -> bool:
     """Opens EsafePOS on the reports alone: the role, and none of the till's."""
     user = user or frappe.session.user
+    from esafepos import user_access
+    if user_access.reports_only(user):
+        return True
     if user == "Administrator" or not is_viewer(user):
         return False
     return not (TILL_ROLES & set(frappe.get_roles(user)))

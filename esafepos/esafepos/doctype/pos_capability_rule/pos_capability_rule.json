@@ -15,7 +15,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Can",
-   "options": "Edit price / discount\nEdit item selling prices\nCreate items\nView warehouse stock\nAdjust warehouse stock\nMake returns\nReturn past the window\nExchange goods\nCash in\nCash out\nReprint a receipt\nOpen the register\nClose the register\nHold goods for a customer\nSee sales by salesperson\nSee the system check\nSell on account\nTake customer payments\nSet a customer's credit\nSee sales reports\nSee cashier performance\nSee profit\nPrint labels\nUse the stock app",
+   "options": "Edit price / discount\nEdit item selling prices\nCreate items\nView warehouse stock\nAdjust warehouse stock\nMake returns\nReturn past the window\nExchange goods\nCash in\nCash out\nReprint a receipt\nOpen the register\nClose the register\nHold goods for a customer\nSee sales by salesperson\nSee the system check\nSell on account\nTake customer payments\nSet a customer's credit\nSee sales reports\nSee cashier performance\nSee profit\nPrint labels\nUse the stock app\nPermanently delete sales",
    "reqd": 1
   },
   {

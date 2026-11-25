@@ -57,6 +57,9 @@ def _company_warehouse(profile):
 def _find_by_idempotency_key(key):
     """A non-cancelled sale already posted under this client idempotency key, or
     None. Checks both backends (POS Invoice + Sales Invoice)."""
+    from esafepos.api.sale_deletion import assert_not_deleted_key
+
+    assert_not_deleted_key(key)
     for dt in ("POS Invoice", "Sales Invoice"):
         try:
             if not frappe.get_meta(dt).has_field("esafepos_idempotency_key"):
@@ -81,6 +84,17 @@ def _insert_once(doc, key):
     while the first request is still running. Both pass the "already posted?"
     check before either commits; the key's UNIQUE index then refuses the second
     insert. That refusal is the answer "it posted", not an error to show."""
+    from esafepos.api.sale_deletion import assert_not_deleted_key
+
+    # This locking read also sees deletion markers committed after this
+    # request's first snapshot, once the open-shift lock becomes available.
+    assert_not_deleted_key(key, for_update=True)
+    if doc.get("is_return") and doc.get("return_against"):
+        # A manager may have deleted the original while this return was being
+        # prepared. Current-read it after the caller's drawer lock, before any
+        # insert, so the return cannot point at a removed sale.
+        if frappe.db.get_value(doc.doctype, doc.return_against, "docstatus", for_update=True) != 1:
+            frappe.throw(_("The original sale was cancelled or deleted. This return was not posted."))
     try:
         doc.insert()
         return None
@@ -1265,6 +1279,9 @@ def gift_card_info(card_no: str, pos_profile: str | None = None):
 
 
 def _require_sell():
+    from esafepos import user_access
+    if not user_access.can_sell():
+        frappe.throw(_("Your POS access level does not allow selling. Ask a manager to check your user access level."), frappe.PermissionError)
     if not frappe.has_permission(INVOICE_DOCTYPE, "create"):
         frappe.throw(_("You are not permitted to make sales"), frappe.PermissionError)
 
@@ -1282,6 +1299,8 @@ def _lock_open_session(session_name):
         frappe.throw(
             _("This register is being closed. Reopen it (or wait for the close to finish) before ringing up this sale.")
         )
+    from esafepos import shift_access
+    shift_access.assert_workstation(frappe.get_doc("POS Register Session", session_name))
 
 
 def _assert_erpnext_accepts_sale(pos_profile, session):

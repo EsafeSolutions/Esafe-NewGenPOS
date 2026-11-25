@@ -1,0 +1,44 @@
+{
+ "doctype": "DocType",
+ "name": "EsafePOS User Access Level",
+ "module": "EsafePOS",
+ "engine": "InnoDB",
+ "editable_grid": 1,
+ "field_order": [
+  "user",
+  "access_level",
+  "access_profile"
+ ],
+ "fields": [
+  {
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "options": "User",
+   "label": "User",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "access_level",
+   "fieldtype": "Select",
+   "label": "Access level",
+   "options": "Use existing roles\nCashier\nSupervisor\nManager\nReports only\nCustom",
+   "default": "Use existing roles",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "access_profile",
+   "fieldtype": "Link",
+   "options": "EsafePOS Access Profile",
+   "label": "Custom profile",
+   "depends_on": "eval:doc.access_level=='Custom'",
+   "in_list_view": 1
+  }
+ ],
+ "permissions": [],
+ "actions": [],
+ "links": [],
+ "states": [],
+ "istable": 1
+}

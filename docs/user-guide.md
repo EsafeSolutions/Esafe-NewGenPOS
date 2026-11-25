@@ -136,6 +136,8 @@ For feed purchased in **25 kg and 50 kg bags**, use two distinct alternate UOMs,
 
 In **Items**, combine the category and brand filters with item name, code or barcode search. Users with ERPNext Item write access can edit the display name and upload a JPEG, PNG or WebP product photo up to 5 MB. **Save changes** attaches the image to the ERPNext Item and refreshes the POS catalog.
 
+In **Items → Add item**, use **Generate item code** or **Generate barcode**. Each field has its own **Code type** and length: choose **Numbers only** and **Digits = 5** for a five-digit code such as `00123`, or **Letters and numbers** for uppercase mixed codes. Numeric codes support 1–140 digits; mixed codes support 2–140 characters and always contain both a letter and a number. Leading zeroes are preserved. The last type and length for each field are remembered for this outlet on this browser. Existing items have the same generator controls on each barcode row. You can also type a code yourself. Generation needs a connection, checks existing item codes/barcodes and the current form's values, and fills the field for review; **Create item** or **Save changes** saves it. If another user saves the same value first, generate another code and retry. These are internal identifiers, without an EAN/UPC check digit.
+
 **Edit item selling prices** is available to System Managers and EsafePOS Managers by default. To delegate access, add a role or person under **Settings → General → Approvals and permissions**. The user also needs ERPNext read access to Item, Price List and Item Price, plus Item Price write permission to change an existing price or create permission to add one. Use **Selling price list** to choose which enabled selling list to edit. A shared price list carries the same edit to every outlet using it. Alternate-unit checkout uses an online sale on the outlet's regular price list in its own currency. Holds use the stock unit. Return alternate-unit sales from online Sales History.
 
 With **Settings → General → Features → Automatic walk-in customer codes** enabled, leave the customer field blank and take payment normally. ERPNext bills the POS Profile's default customer when set, or the shared **ESAFE POS Walk-in** customer when the outlet has no default. POS creates the shared billing customer when you save the setting. Each submitted walk-in sale gets a `W-` code on the built-in receipt. Queued offline sales receive a code when they post to ERPNext. Turning the switch off disables the shared fallback and stops assigning new codes. Existing codes stay searchable.
@@ -1017,6 +1019,18 @@ customer in the cart and as a payment tile.
 
 ---
 
+### Permanently deleting a mistaken sale
+
+A manager can open **History → select the receipt → Delete sale…** while online. ERPNext read, delete and (for a submitted invoice) cancel permissions are required. The action becomes available after the site migration creates the deletion audit record. Ordinary cashiers cannot use it.
+
+The check explains whether this sale is eligible. Its shift must still be open, and the invoice must not be consolidated or part of an unresolved return, exchange, wallet, saved-change/customer-credit journal, hold, gift card or coupon transaction. Spent loyalty points and pending/unknown print jobs must be resolved first. Closed or finalising shifts keep their signed-off counts; their invoices require accounting/dependency handling in ERPNext before deletion can be considered.
+
+Enter the reason, type the exact invoice number and confirm that the customer payment has been handled. **Permanently delete sale** first cancels a submitted invoice using ERPNext, then deletes its invoice and lines. Any permission, linked-document, stock/accounting or audit failure rolls the operation back. Card refunds and physical cash are handled separately. A minimal, read-only audit keeps the invoice number, amount, manager, time and reason; invoice numbering is not rewound. Backups, native ledger/audit records and already printed/shared copies are retained.
+
+If the result is uncertain because the connection dropped, press **Check again** to read the server status. A retained upload-key marker prevents an old offline upload from recreating the deleted sale. This device clears its cached returnable copy; refresh other affected tills before they use offline returns. Existing refund/return actions remain appropriate when the intention is to refund a real sale rather than remove a mistaken invoice.
+
+---
+
 ### A supervisor approves the refund (0.63.0)
 **Settings, General, Approvals and access, Refund approval**:
 - **Off** (the default): as before.
@@ -1163,15 +1177,26 @@ A serialized item can never be sold without its exact serials:
 
 For currency-based note/coin counting, optional combined cashier drawers, and default loyalty enrollment, see [Cash counting, combined drawers and default loyalty](register-cash-counting-and-shared-drawers.md). Combined drawers require a manager, compatible cash accounts, uploaded offline sales on every till, and a group close. Site migration enables the new stored counts and loyalty defaults.
 
+**A simple shift routine**
+
+1. At opening, count the change already in the drawer and enter it as the **Opening float**. Use zero only for an empty drawer.
+2. Before closing, press **Check and prepare**. It uploads waiting offline sales, refreshes the expected totals, and retries any failed posting from an earlier day of this shift. Review any upload errors before counting.
+3. Count every payment method. Cash includes the opening float and all cash left in the drawer; card totals come from the payment terminal. Enter an explicit `0` for an empty payment total. Blank, invalid and negative cash counts cannot close the shift; signed non-cash refund/credit totals remain supported.
+4. Review differences, add any required reason and close once. Posting continues in the background. The page updates automatically even after a failure, so it also notices when a manager fixes the closing elsewhere.
+
+When posting needs help, the page explains the cause in everyday language. **Details for manager** contains the original error and shift reference. A missing **Valuation Rate** means an item cost needs checking: a manager should review the item valuation and incoming stock in ERPNext, then use **Check and retry closing**. Zero-cost valuation must be an accounting decision. The POS does not manufacture costs, stock or accounts to make a closing succeed.
+
+**Reading System check after a failed close.** A failed shift and its old POS Opening Entry can be the same problem. System check links them and directs the manager to finish the existing shift closing. It keeps the missing-cost item and invoice in the summary and shows when automatic retries have paused. Do not create another closing or cancel an opening that has sales. The scheduler stops at 30 failed attempts without logging the same warning every ten minutes; correcting the cause and manually retrying remains available. Historical Error Logs stay in the report's most recent 500 entries from the last seven days, even after the underlying bug is fixed.
+
 - The **"Register open"** pill in the top bar is a shortcut, click it to
   jump to the Register page (where closing happens).
 - When the register is closed, the open-register prompt only blocks the
   **Sell** screen, the nav rail and the History/Register/Settings tabs stay
   usable. You can also open the register directly from the **Register** tab.
-- **Open register** (mandatory before selling): enter the opening float →
-  creates a **POS Opening Entry**. One live shift per register, if you
-  already have one, you're offered **Continue that shift** or (only when the
-  testing toggle in Settings → General is ON) **Open a new one anyway**.
+- **Open register** (mandatory before selling): enter the opening float to
+  create a fresh shift and, where configured, a **POS Opening Entry**. An
+  already-open shift continues selling; a shift that has started closing
+  cannot be resumed.
 - **Whose shift it is** (Settings, General, Register and shifts, *A shift belongs to*). *The
   cashier* (the default since 0.60.1): each cashier opens their own shift on the register and sells
   only on it, with their own drawer and Z-report. *The outlet*: one shift per register, and any
@@ -1289,25 +1314,20 @@ three-step state so a slow or failed consolidation can never strand a shift:
 
   If consolidation fails (heavy load, a data issue), the shift stays in
   *Closing* with a **Failed** badge and an error, it does **not** silently
-  reopen. A **↻ Retry closing** button (on the close panel, on the Sell
-  screen's prompt, and in Previous sessions) re-runs it; ERPNext rolls a
-  failed attempt back fully, so retrying never double-posts. A background
-  **self-healer also retries stuck shifts every ~10 minutes**, so most resolve
-  themselves. The next cashier can't open a new shift on that register until
-  the previous close completes, no more "I accidentally kept selling on
-  yesterday's shift."
+  reopen. **Check and retry closing**, on the close panel, Sell prompt and
+  Previous sessions, queues the existing recovery worker. It retains the
+  saved count and skips sales already posted. A background **self-healer
+  retries stuck shifts every ~10 minutes**, up to 30 failed attempts. The
+  help panel shows when automatic retries have paused; a manager can correct
+  the cause and retry manually. Missing costs, stock or accounting setup
+  require that correction; repeated retries alone cannot supply them.
 
-  **Stuck overnight? Start a new shift anyway.** Blocking new sales until a
-  close finishes is the safe default, but a close that keeps **Failing** into
-  the next day shouldn't keep the store shut. On a *Failed* close, a manager
-  (anyone who can close registers) sees a **"Start a new shift anyway"** option
-with an opening-float box, on both the Sell-screen prompt and the Register
-  page. It opens a fresh shift immediately and **leaves the failed shift in the
-  background**, where the self-healer (and the **↻ Retry closing** button) keep
-  retrying its consolidation until it succeeds. Nothing is lost: the old shift's
-  invoices still consolidate on their own; you've just unblocked the till. Only
-  offered when the previous close actually **failed**, a close that's merely
-  still *finalising* must finish (or be retried) first.
+  **Starting the next shift.** ERPNext 16 outlets using POS Opening/Closing
+  Entries must finish the previous closing before starting a new shift; the
+  screen explains this and hides the unsupported new-shift action. Earlier
+  ERPNext versions and lightweight Sales Invoice shifts offer **Open a new
+  shift** to users with opening permission. The old shift keeps its sales
+  and saved count and continues through recovery separately.
 - **Sales Invoice outlets list their invoices on the Z-report.** ERPNext's own
   table on a POS Closing Entry links POS Invoices, so an outlet that posts
   **Sales Invoices** directly left it empty and an accountant had nothing but
@@ -1620,7 +1640,7 @@ stays open.
 | Print format ignored | Set **Print Format** on the POS Profile (Print Settings section; format must target POS Invoice). Verify what loaded in Settings → Status. An ESC/POS printer IP takes priority when configured. |
 | Promotion not applying | Open it → **Run test** with the real items: the report shows the failing gate, rows that match nothing, or items priced 0. |
 | "Already has an open entry" when opening register | You have an open POS Opening Entry, continue that shift, or cancel the entry in the desk. The choice dialog handles it. |
-| "Previous shift not finished / Retry closing" when opening | The last shift's closing hasn't finished consolidating (or failed). Click **↻ Retry closing**, it's safe to retry repeatedly. It also self-heals every ~10 min. You can't open a fresh shift until it completes (this is what prevents selling on a stale shift). |
+| Previous shift needs attention when opening | Read the plain-language help, then use **Check and retry closing**. The background task retries about every 10 minutes, up to 30 failures. Missing costs, stock or accounts require a manager. ERPNext 16 outlets using POS entries must finish the close before opening the next shift. |
 | After midnight: "This shift was opened on ... ERPNext 16 accepts sales only on a shift opened today" | ERPNext 16's own rule. From 0.55.0 the first sale after midnight closes the day in ERPNext and opens the next by itself, unless **Keep a shift open past midnight** is off (Settings, General, Register and shifts). With it off, close the shift on the Register page and open a new one. |
 | Closing fails with "POS Invoice isn't created by user" | A shift more than one cashier sold on, before 0.55.0. Update, then press **Retry closing** (or let the self-healer do it). |
 | The price cannot be changed in the cart, though the POS Profile allows it | Before 0.55.0 EsafePOS had no price field. From 0.55.0 a line's price is typed in the cart, at an outlet whose POS Profile has **Allow User to Edit Rate** ticked, by whoever may **Edit price / discount** (Settings, General, Approvals and permissions). |
@@ -1631,7 +1651,8 @@ stays open.
 | Closing fails with "Cannot link cancelled document: POS Opening Entry" | The shift's POS Opening Entry was cancelled in ERPNext (ERPNext 13 to 15 allow that even with sales on it), and ERPNext refuses to close a shift against a cancelled entry. From 0.54.1 EsafePOS closes it against the entry's **amendment**, ERPNext's own way back: it uses one made by hand, or makes one (for example *POS-OPE-2026-00014-1*), and leaves a note on the shift. Press **Retry closing**, or let the self-healer do it. |
 | **Close Register** stays greyed out after counting | The shop asks for a reason when a drawer is short or over (Settings, General, Register and shifts, *Required*). Write the reason under the count, or tap one of the quick reasons. Recount first if the difference is a mistake. |
 | Closing fails with "You cannot create a Sales Invoice within the closed Accounting Period ..." (or, on ERPNext 13, "... any accounting entries with in the closed Accounting Period ...") | An ERPNext **Accounting Period** locks Sales Invoices on these dates, often one made ahead of time "to open" a month: it locks the month instead. The Register page names it (0.58.1). If the period has not ended, delete it in ERPNext (ERPNext 15 and 16 refuse to save any change to it until it ends, "Accounting Period cannot be created for a future date"); if it covers a month that is really over, untick Sales Invoice in it, press **Retry closing**, then tick it again. Delete any period made ahead for later months too. |
-| Closing shows **Failed** with an error | Read the error (usually a stuck invoice or a transient lock). Hit **↻ Retry closing**; nothing is double-posted. If it keeps failing, open the linked POS Closing Entry in the desk and retry there. |
+| Closing needs attention | Read the suggested next step and use **Check and retry closing**. If it fails again, share **Details for manager**. For a missing Valuation Rate, have a manager correct the item valuation/incoming stock before retrying. The saved closing count is retained. |
+| `DatabaseQuery.execute() got multiple values for argument 'fields'` | Deploy the query-call fix for shared-drawer candidate/member queries and loyalty-program reuse. It changes the app's query arguments; it does not require changing Frappe settings. Missing item valuation is a separate posting issue and must still be corrected. Existing Error Log records remain visible after deployment. |
 | "Close your open shift first" when opening a register | The shop has **One open shift per person** on and you still have a shift open at another outlet. Tap **Go to its Register page**, count and close it, then open this one. If you may not close registers, or the shift is at an outlet you can no longer open, a manager closes it from that outlet's Register page (**Other open shifts here**). An administrator can also turn the setting off. |
 | "difference pending" on a closed shift | The shift closed, but its expected takings could not be worked out at the time. They are filled in from its POS Closing Entry when it consolidates; nothing to do unless the close itself shows **Failed**. |
 | A close **keeps failing** and you need to keep selling | On a *Failed* close, a manager can click **"Start a new shift anyway"** (Sell prompt or Register page) to open a fresh shift now. The failed shift stays in the background and keeps retrying, its invoices still consolidate on their own. |

@@ -116,17 +116,18 @@
               <button type="button" class="btn btn-outline" @click="addBarcode">{{ t('Add barcode') }}</button>
             </div>
             <div v-for="(row, index) in draft.barcodes" :key="row._key" class="barcode-row">
-              <label>{{ t('Barcode') }}<input v-model.trim="row.barcode" maxlength="140" /></label>
+              <ItemIdentifierField v-model="row.barcode" :label="t('Barcode')" target="barcode" :item-code="draft.item_code"
+                :exclude="[draft.item_code, ...draft.barcodes.map((entry) => entry.barcode)]" @busy="row.generating = $event" />
               <label>{{ t('Barcode unit') }}<select v-model="row.uom"><option :value="draft.stock_uom">{{ draft.stock_uom }}</option>
                 <option v-for="unit in draft.units.filter((entry) => entry.uom && entry.uom !== draft.stock_uom)" :key="unit.uom" :value="unit.uom">{{ unit.uom }}</option>
               </select></label>
-              <button type="button" class="btn btn-outline" @click="row.barcode = generateItemBarcode()">{{ t('Generate') }}</button>
               <button type="button" class="btn btn-outline" :aria-label="t('Remove barcode')" @click="draft.barcodes.splice(index, 1)">×</button>
             </div>
           </section>
           <small v-if="!draft.can_edit_prices" class="muted">{{ t('Your account cannot edit item selling prices.') }}</small>
           <small v-else-if="!draft.price_list" class="muted">{{ t('No selling price lists are available to your account.') }}</small>
-          <button v-if="draft.can_edit_item || draft.units.some((unit) => unit.editable)" class="btn btn-primary">
+          <button v-if="draft.can_edit_item || draft.units.some((unit) => unit.editable)" class="btn btn-primary"
+            :disabled="draft.barcodes.some((row) => row.generating)">
             {{ saving ? t('Saving…') : t('Save changes') }}
           </button>
         </fieldset>
@@ -144,9 +145,9 @@ import { call } from '../api'
 import Icon from '../components/Icon.vue'
 import SearchSelect from '../components/SearchSelect.vue'
 import ItemCreateForm from '../components/ItemCreateForm.vue'
+import ItemIdentifierField from '../components/ItemIdentifierField.vue'
 import ItemWarehouseStock from '../components/ItemWarehouseStock.vue'
 import { money } from '../format'
-import { generateItemBarcode } from '../itemUtilities'
 import { t } from '../i18n'
 import { useCatalogStore } from '../stores/catalog'
 import { useCartStore } from '../stores/cart'
@@ -401,7 +402,7 @@ function changePriceList(event) {
 }
 
 async function save() {
-  if (saving.value) return
+  if (saving.value || draft.value?.barcodes.some((row) => row.generating)) return
   saving.value = true
   const item = draft.value
   const profile = session.posProfile
@@ -523,7 +524,8 @@ onBeforeUnmount(() => {
 .unit-price-row label, .barcode-row label { min-width: 0; }
 .unit-price-row small, .barcode-row small { display: block; }
 .price-readonly { padding: 9px 0; display: block; }
-.barcode-row { grid-template-columns: minmax(120px, 1fr) minmax(130px, .65fr) auto auto; }
+.barcode-row { grid-template-columns: minmax(0, 1fr) auto; }
+.barcode-row > .identifier-field { grid-column: 1 / -1; }
 .unit-remove { align-self: end; }
 @media (max-width: 720px) {
   .items-page { grid-template-columns: minmax(0, 1fr); align-content: start; }

@@ -68,7 +68,7 @@ def candidates(session):
         frappe.throw(_("Run bench migrate to enable combined cash drawers."))
     current = {d.name for d in _members(doc)}
     signature = _signature(doc)
-    rows = frappe.get_all("POS Register Session", {"status": "Open"}, fields=["name", "pos_profile"], order_by="opened_at asc")
+    rows = frappe.get_all("POS Register Session", filters={"status": "Open"}, fields=["name", "pos_profile"], order_by="opened_at asc")
     result = []
     for row in rows:
         if row.name in current or not permissions.can_use_outlet(row.pos_profile):
@@ -155,7 +155,7 @@ def summary(session):
         # A linked cashier may be assigned only to their own POS Profile.
         # Synchronize group membership/closure without granting access to
         # another outlet's detailed sales or financial summaries.
-        rows = frappe.get_all("POS Register Session", {"combined_drawer": doc.combined_drawer},
+        rows = frappe.get_all("POS Register Session", filters={"combined_drawer": doc.combined_drawer},
                               fields=["name", "pos_profile", "opened_by", "status"], order_by="name asc")
         return {"group": doc.combined_drawer, "members": [_member_row(r) for r in rows],
                 "all_open": all(r.status == "Open" for r in rows), "expected": [], "version": None}

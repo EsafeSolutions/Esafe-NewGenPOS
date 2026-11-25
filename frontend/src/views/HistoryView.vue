@@ -202,10 +202,12 @@
       :can-refund="session.permissions.can_return !== false"
       :can-exchange="session.permissions.can_exchange !== false"
       reprint
+      allow-permanent-delete
       @close="closeReceipt"
       @updated="updateReceipt"
       @refund="startRefund"
       @exchange="startExchange"
+      @deleted="onSaleDeleted"
     />
     <RefundModal
       v-if="refundInvoice"
@@ -231,6 +233,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { call } from '../api'
 import { useSessionStore } from '../stores/session'
 import { useCartStore } from '../stores/cart'
+import { useCatalogStore } from '../stores/catalog'
 import { money, shortTime } from '../format'
 import { t } from '../i18n'
 import { offlineBlocker } from '../refund'
@@ -396,6 +399,12 @@ function updateReceipt(updated) {
   receipt.value = updated
   const row = sales.value.find((sale) => sale.name === updated.name)
   if (row) Object.assign(row, { receipt_contact: updated.receipt_contact, receipt_name: updated.receipt_name })
+}
+
+async function onSaleDeleted(result) {
+  receipt.value = null
+  sales.value = sales.value.filter(sale => sale.name !== result.invoice)
+  await Promise.allSettled([load(), useCatalogStore().fetch()])
 }
 
 function startRefund(invoice) {

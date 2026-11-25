@@ -2,19 +2,20 @@
   <form class="card create-item" @submit.prevent="create">
     <h2>{{ t('Add item') }}</h2>
     <fieldset :disabled="saving">
-      <label>{{ t('Item code') }}<input v-model.trim="draft.item_code" required maxlength="140" /></label>
+      <ItemIdentifierField v-model="draft.item_code" :label="t('Item code')" target="item_code" required
+        :exclude="[draft.barcode]" @busy="generatingCode = $event" />
       <label>{{ t('Item name') }}<input v-model.trim="draft.item_name" required maxlength="140" /></label>
       <label>{{ t('Category') }}<select v-model="draft.item_group" required><option value="" disabled>{{ t('Choose a category') }}</option><option v-for="name in options.item_groups" :key="name">{{ name }}</option></select></label>
       <label>{{ t('Stock unit') }}<select v-model="draft.stock_uom" required @change="clearUnitChoices"><option value="" disabled>{{ t('Choose a unit') }}</option><option v-for="name in options.stock_uoms" :key="name">{{ name }}</option></select></label>
       <label>{{ t('Brand') }}<select v-model="draft.brand"><option value="">{{ t('No brand') }}</option><option v-for="name in options.brands" :key="name">{{ name }}</option></select></label>
       <div class="barcode-field">
-        <label>{{ t('Barcode (optional)') }}<input v-model.trim="draft.barcode" maxlength="140" /></label>
+        <ItemIdentifierField v-model="draft.barcode" :label="t('Barcode (optional)')" target="barcode"
+          :exclude="[draft.item_code]" @busy="generatingBarcode = $event" />
         <label v-if="draft.barcode">{{ t('Barcode unit') }}
           <select v-model="barcodeUom"><option :value="draft.stock_uom">{{ draft.stock_uom || t('Stock unit') }}</option>
             <option v-for="unit in sellingUnits" :key="unit.uom" :value="unit.uom">{{ unit.uom }}</option>
           </select>
         </label>
-        <button type="button" class="btn btn-outline" @click="draft.barcode = generateItemBarcode()">{{ t('Generate barcode') }}</button>
       </div>
       <section class="create-units">
         <div class="section-heading"><h3>{{ t('Selling prices') }}</h3><span v-if="priceList">{{ priceList }}</span></div>
@@ -37,7 +38,7 @@
         <p v-if="!options.can_edit_prices" class="muted">{{ t('You can add item units. Selling prices can be added by a user with item price access.') }}</p>
       </section>
       <p class="muted">{{ t('Creates a stock item. Add warehouse stock after saving.') }}</p>
-      <button class="btn btn-primary">{{ saving ? t('Saving…') : t('Create item') }}</button>
+      <button class="btn btn-primary" :disabled="generatingCode || generatingBarcode">{{ saving ? t('Saving…') : t('Create item') }}</button>
       <button type="button" class="btn btn-outline" @click="$emit('cancel')">{{ t('Cancel') }}</button>
     </fieldset>
   </form>
@@ -47,12 +48,14 @@
 import { reactive, ref } from 'vue'
 import { call } from '../api'
 import { t } from '../i18n'
-import { generateItemBarcode } from '../itemUtilities'
+import ItemIdentifierField from './ItemIdentifierField.vue'
 import { useSessionStore } from '../stores/session'
 const props = defineProps({ options: { type: Object, required: true } })
 const emit = defineEmits(['created', 'cancel', 'busy'])
 const session = useSessionStore()
 const saving = ref(false)
+const generatingCode = ref(false)
+const generatingBarcode = ref(false)
 const draft = reactive({ item_code: '', item_name: '', item_group: '', stock_uom: '', barcode: '', brand: '' })
 const sellingUnits = ref([])
 const stockPrice = ref('')
@@ -84,7 +87,7 @@ function clearUnitChoices() {
   barcodeUom.value = draft.stock_uom
 }
 async function create() {
-  if (saving.value || session.offline) return
+  if (saving.value || generatingCode.value || generatingBarcode.value || session.offline) return
   saving.value = true
   emit('busy', true)
   const profile = session.posProfile
@@ -118,7 +121,7 @@ h2 { margin: 0 0 16px; }
 fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 14px; min-width: 0; }
 label { display: grid; gap: 5px; }
 input, select { width: 100%; min-width: 0; }
-.barcode-field { display: grid; grid-template-columns: minmax(0, 1fr) 150px auto; gap: 8px; align-items: end; }
+.barcode-field { display: grid; gap: 8px; }
 .create-units { display: grid; gap: 10px; padding-top: 8px; border-top: 1px solid var(--border); }
 .section-heading, .create-unit-row { display: flex; align-items: end; gap: 8px; }
 .section-heading { justify-content: space-between; }

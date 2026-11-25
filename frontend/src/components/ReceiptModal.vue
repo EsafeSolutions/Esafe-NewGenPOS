@@ -2,7 +2,7 @@
      SPDX-License-Identifier: AGPL-3.0-only
      "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md. -->
 <template>
-  <div class="modal-backdrop" @click.self="$emit('close')">
+  <div v-if="!deleteSaleOpen" class="modal-backdrop" @click.self="$emit('close')">
     <div class="modal" style="width: 440px">
       <div class="modal-header">
         {{
@@ -145,6 +145,10 @@
         <button v-if="useSilent && printManager.state.connection!=='connected'" class="btn btn-outline" :disabled="printing" @click="connectManager">{{ t('Connect Esafe Print Manager') }}</button>
         <span v-if="isReprint && !mayReprint" class="muted small reprint-note">{{ t('Printing it again is kept to whoever may reprint a receipt.') }}</span>
         <CashDrawerButton />
+        <button v-if="allowPermanentDelete && isReprint && session.permissions.is_manager && session.permissions.can_delete_sales !== false && !receipt.offline"
+          class="btn btn-outline" :disabled="session.offline || printing" @click="deleteSaleOpen = true">
+          {{ t('Delete sale…') }}
+        </button>
         <button class="btn btn-primary" @click="$emit('close')">
           {{ receipt.is_return ? t('Done') : t('New Sale') }}
         </button>
@@ -153,6 +157,8 @@
   </div>
   <CustomerModal v-if="linkCustomerOpen" :invoice-receipt="receipt"
     @close="linkCustomerOpen = false" @linked="onCustomerLinked" />
+  <DeleteSaleDialog v-if="deleteSaleOpen" :invoice="receipt.name" :doctype="receipt.doctype"
+    @close="deleteSaleOpen = false" @deleted="onSaleDeleted" />
 </template>
 
 <script setup>
@@ -160,6 +166,7 @@ import Icon from './Icon.vue'
 import ReceiptView from './ReceiptView.vue'
 import CashDrawerButton from './printing/CashDrawerButton.vue'
 import CustomerModal from './CustomerModal.vue'
+import DeleteSaleDialog from './DeleteSaleDialog.vue'
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { call } from '../api'
 import { useSessionStore } from '../stores/session'
@@ -176,11 +183,18 @@ const props = defineProps({
   // Opened later, from History or Customers: printing it again is a reprint.
   reprint: { type: Boolean, default: false },
   autoPrint: { type: Boolean, default: false },
+  allowPermanentDelete: { type: Boolean, default: false },
 })
-const emit = defineEmits(['close', 'refund', 'exchange', 'open-in-history', 'updated'])
+const emit = defineEmits(['close', 'refund', 'exchange', 'open-in-history', 'updated', 'deleted'])
 
 const session = useSessionStore()
 const linkCustomerOpen = ref(false)
+const deleteSaleOpen = ref(false)
+function onSaleDeleted(result) {
+  deleteSaleOpen.value = false
+  emit('deleted', result)
+  emit('close')
+}
 const printing = ref(false)
 const emailing = ref(false)
 const shareOpen = ref(false)

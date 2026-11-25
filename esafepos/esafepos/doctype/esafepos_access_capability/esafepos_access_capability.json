@@ -1,0 +1,33 @@
+{
+ "doctype": "DocType",
+ "name": "EsafePOS Access Capability",
+ "module": "EsafePOS",
+ "engine": "InnoDB",
+ "editable_grid": 1,
+ "field_order": [
+  "capability",
+  "allowed"
+ ],
+ "fields": [
+  {
+   "fieldname": "capability",
+   "fieldtype": "Select",
+   "label": "Action",
+   "options": "Edit price / discount\nEdit item selling prices\nCreate items\nView warehouse stock\nAdjust warehouse stock\nMake returns\nReturn past the window\nExchange goods\nCash in\nCash out\nReprint a receipt\nOpen the register\nClose the register\nHold goods for a customer\nSee sales by salesperson\nSee the system check\nSell on account\nTake customer payments\nSet a customer's credit\nSee sales reports\nSee cashier performance\nSee profit\nPrint labels\nUse the stock app\nPermanently delete sales",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "allowed",
+   "fieldtype": "Check",
+   "label": "Allowed",
+   "default": "0",
+   "in_list_view": 1
+  }
+ ],
+ "permissions": [],
+ "actions": [],
+ "links": [],
+ "states": [],
+ "istable": 1
+}

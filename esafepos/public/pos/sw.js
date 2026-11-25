@@ -2,123 +2,129 @@
    SPDX-License-Identifier: AGPL-3.0-only
    "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md.
 
-   The till's service worker: it keeps the SHELL of the POS (the page, its
-   script, its stylesheet, its fonts) on the device, so the app opens with no
-   connection at all. Before this, a shop that lost the network could keep
-   selling only as long as nobody reloaded the tab, and a till that rebooted
-   was a till that could not sell.
-
-   It deliberately does NOT cache any data. Sales, the catalogue, customers and
-   the queue live in IndexedDB, where the app can reason about them, and every
-   API call is a POST which is passed straight through. A service worker that
-   quietly answered an API call from a cache would be a shop selling against
-   numbers nobody can see.
-
-   Scope: it is served from the site root so it can control /pos, but it only
-   ever answers requests for /pos and the POS assets. The desk is untouched.
-
-   Versioning: the page registers it as /sw.js?v=<shell revision>, so a new
-   build is a new worker and a new cache, and the old cache is dropped on
-   activate. Nothing is version-stamped by hand.
-
-   Since 0.56.0 it also SENDS the queue in the background (see the end of the
-   file): the one thing it does with the till's data, and only what the till
-   itself would send, the same way.
+   The shell stays on this device; business data and the durable sales queue
+   remain in IndexedDB. New workers wait for the operator's update agreement.
+   A tab's ?v= revision keeps it on its agreed shell even when another tab
+   activates an update. Never cache API responses or the ERPNext desk.
 */
-
 const VERSION = new URL(self.location.href).searchParams.get('v') || 'dev'
-const CACHE = 'esafepos-shell-' + VERSION
+const PREFIX = 'esafepos-shell-'
+const CACHE = PREFIX + VERSION
 const PAGE = '/pos'
 const ASSETS = '/assets/esafepos/pos/'
 const FONT_HOSTS = ['fonts.googleapis.com', 'fonts.gstatic.com']
+const PAGE_TIMEOUT = 8000
 
-const SHELL = [
-  PAGE,
-  ASSETS + 'pos.js?v=' + VERSION,
-  ASSETS + 'pos.css?v=' + VERSION,
-  ASSETS + 'manifest.json',
-  ASSETS + 'pos-icon.svg',
-  ASSETS + 'pos-icon-192.png',
-  ASSETS + 'pos-icon-512.png',
-]
+async function fetchShell(url, timeout = 60000) {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeout)
+  try {
+    const response = await fetch(url, { cache: 'no-store', credentials: 'same-origin', signal: controller.signal })
+    if (!response.ok || response.redirected) throw new Error('Offline shell unavailable: ' + url)
+    const path = new URL(url, self.location.origin).pathname
+    const mime = response.headers.get('Content-Type') || ''
+    if ((path.endsWith('.js') && !/javascript|ecmascript/i.test(mime)) ||
+        (path.endsWith('.css') && !/text\/css/i.test(mime))) throw new Error('Invalid offline asset: ' + url)
+    // Consume each download now. Unread large response streams can exhaust
+    // browser connections while the remaining files wait for headers.
+    const body = await response.arrayBuffer()
+    const headers = new Headers(response.headers)
+    headers.delete('Content-Encoding')
+    headers.delete('Content-Length')
+    return new Response(body, { headers })
+  } finally {
+    clearTimeout(timer)
+  }
+}
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE).then((cache) =>
-      // One missing file must not leave the till with no shell at all, so each
-      // is added on its own and a failure is tolerated.
-      Promise.all(SHELL.map((url) => cache.add(url).catch(() => null)))
-    )
-  )
-  self.skipWaiting()
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE)
+    // Stage the complete build before changing anything in the cached shell.
+    // A failed deployment must leave the last working shell intact.
+    const page = await fetchShell(PAGE)
+    if (!(await page.clone().text()).includes('window.esafepos_shell_revision = "' + VERSION + '"')) {
+      throw new Error('The deployed shell revision changed during installation')
+    }
+    const manifest = await fetchShell(ASSETS + 'offline-assets.json?v=' + encodeURIComponent(VERSION))
+    const files = await manifest.json()
+    if (!Array.isArray(files) || !files.includes('pos.js') || !files.includes('pos.css') ||
+        files.some((name) => typeof name !== 'string' || !/^[\w./-]+$/.test(name) || name.includes('..') || name.startsWith('/'))) {
+      throw new Error('Invalid offline asset manifest')
+    }
+    const urls = files.map((name) => ASSETS + name + (['pos.js', 'pos.css'].includes(name) ? '?v=' + encodeURIComponent(VERSION) : ''))
+    const responses = await Promise.all(urls.map((url) => fetchShell(url)))
+    await Promise.all(urls.map((url, index) => cache.put(url, responses[index])))
+    await cache.put(PAGE, page)
+    // Icons/installation metadata must not block a usable checkout shell.
+    await Promise.all(['manifest.json', 'pos-icon.svg', 'pos-icon-192.png', 'pos-icon-512.png'].map(async (name) => {
+      try { await cache.put(ASSETS + name, await fetchShell(ASSETS + name)) } catch { /* optional */ }
+    }))
+  })())
+})
+
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'esafepos-activate-update') event.waitUntil(self.skipWaiting())
 })
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches
-      .keys()
-      .then((names) =>
-        Promise.all(
-          names
-            .filter((name) => name.startsWith('esafepos-shell-') && name !== CACHE)
-            .map((name) => caches.delete(name))
-        )
-      )
-      .then(() => self.clients.claim())
-  )
+  event.waitUntil((async () => {
+    const names = (await caches.keys()).filter((name) => name.startsWith(PREFIX))
+    const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+    // Keep every open till's build and the previous shell for recovery. Older
+    // unused builds can go only after a successful replacement is installed.
+    const keep = new Set([CACHE, names.filter((name) => name !== CACHE).pop()])
+    for (const client of windows) {
+      const revision = new URL(client.url).searchParams.get('v')
+      if (revision) keep.add(PREFIX + revision)
+    }
+    await Promise.all(names.filter((name) => !keep.has(name)).map((name) => caches.delete(name)))
+    await self.clients.claim()
+  })())
 })
 
+function requestedCache(request) {
+  const url = new URL(request.url)
+  let revision = url.searchParams.get('v')
+  if (!revision && request.referrer) {
+    try { revision = new URL(request.referrer).searchParams.get('v') } catch { /* no referrer */ }
+  }
+  return revision ? PREFIX + revision : CACHE
+}
+
 async function cacheFirst(request) {
-  const cache = await caches.open(CACHE)
-  const hit = await cache.match(request, { ignoreSearch: false })
+  const cache = await caches.open(requestedCache(request))
+  const hit = await cache.match(request)
   if (hit) return hit
   const response = await fetch(request)
-  if (response && (response.ok || response.type === 'opaque')) {
-    cache.put(request, response.clone()).catch(() => {})
-  }
+  if (response && (response.ok || response.type === 'opaque')) await cache.put(request, response.clone()).catch(() => {})
   return response
 }
 
-// The page itself: always ask the server first, so a deploy is picked up the
-// moment the till has a connection, and fall back to the copy on the device.
-async function pageNetworkFirst(request) {
-  const cache = await caches.open(CACHE)
+async function cachedPage(request) {
+  const cache = await caches.open(requestedCache(request))
+  const hit = await cache.match(PAGE)
+  if (hit) return hit
+  // An uncached first visit still needs the server. Do not hang indefinitely
+  // or replace a cached working shell with a login/maintenance/error page.
   try {
-    const response = await fetch(request)
-    if (response && response.ok) cache.put(PAGE, response.clone()).catch(() => {})
-    return response
-  } catch (e) {
-    const hit = (await cache.match(request, { ignoreSearch: true })) || (await cache.match(PAGE))
-    if (hit) return hit
-    throw e
-  }
+    return await fetchShell(request.url, PAGE_TIMEOUT)
+  } catch { /* use the installed shell */ }
+  const fallback = await (await caches.open(CACHE)).match(PAGE)
+  return fallback || new Response('Connect once to prepare this POS for offline use.', { status: 503, headers: { 'Content-Type': 'text/plain' } })
 }
 
 self.addEventListener('fetch', (event) => {
   const request = event.request
-  if (request.method !== 'GET') return // every API call is a POST, never touched
-  let url
-  try {
-    url = new URL(request.url)
-  } catch (e) {
-    return
-  }
+  if (request.method !== 'GET') return
+  const url = new URL(request.url)
   const sameOrigin = url.origin === self.location.origin
-
   if (request.mode === 'navigate') {
-    // Only the POS. A desk page must never be answered from this cache.
-    if (sameOrigin && (url.pathname === PAGE || url.pathname.startsWith(PAGE + '/'))) {
-      event.respondWith(pageNetworkFirst(request))
-    }
+    if (sameOrigin && (url.pathname === PAGE || url.pathname.startsWith(PAGE + '/'))) event.respondWith(cachedPage(request))
     return
   }
-  if (sameOrigin && url.pathname.startsWith(ASSETS)) {
-    event.respondWith(cacheFirst(request))
-    return
-  }
-  if (FONT_HOSTS.includes(url.hostname)) {
-    event.respondWith(cacheFirst(request))
-  }
+  if (request.cache === 'no-store') return
+  if ((sameOrigin && url.pathname.startsWith(ASSETS)) || FONT_HOSTS.includes(url.hostname)) event.respondWith(cacheFirst(request))
 })
 
 // --- sending the queue in the background (0.56.0) ----------------------------
@@ -266,9 +272,12 @@ async function post(method, body, csrf, lang, workstation) {
   })
   let data = {}
   try {
-    data = await response.json()
+    data = (await response.json()) || {}
   } catch (e) {
     /* not JSON */
+  }
+  if (response.status >= 500 && !data.exc_type && !data._server_messages && !data.exception) {
+    throw new Error('The server is temporarily unavailable')
   }
   return { ok: response.ok, status: response.status, data }
 }

@@ -20,13 +20,23 @@
     window.csrf_token = "{{ csrf_token }}";
     window.esafepos_version = "{{ esafepos_version }}";
     window.esafepos_shell_revision = "{{ pos_shell_revision }}";
+    // Pin reloads of this tab to its agreed build, including after another
+    // till window accepts a newer one. Hash routes and query options survive.
+    var posUrl = new URL(window.location.href);
+    posUrl.searchParams.set("v", window.esafepos_shell_revision);
+    window.history.replaceState(window.history.state, "", posUrl.href);
     // Keep the shell on the device so the till opens with no connection at
     // all, and so a reload during an outage is not the end of the shift.
     // Each shell build gets a new worker and cache.
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", function () {
         navigator.serviceWorker
-          .register("/sw.js?v={{ pos_shell_revision }}", { scope: "/pos", updateViaCache: "none" })
+          .getRegistration("/pos")
+          .then(function (registration) {
+            // Only first install is automatic. Replacing an existing worker
+            // happens through the cashier's Agree and update action.
+            return registration || navigator.serviceWorker.register("/sw.js?v={{ pos_shell_revision }}", { scope: "/pos", updateViaCache: "none" });
+          })
           .catch(function () {
             /* no service worker (old browser, plain http): the till still works online */
           });

@@ -4,7 +4,7 @@ import { mkdir } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createServer } from 'vite'
-const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright')
+const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || './.label-test-tools/node_modules/playwright/index.mjs')
 const root = path.dirname(fileURLToPath(import.meta.url))
 const output = process.env.UPDATE_ARTIFACTS
 if (output) await mkdir(output, { recursive: true })
@@ -45,14 +45,18 @@ const server = await createServer({ root, base: '/', server: { port: 0, host: '1
   } }],
 })
 await server.listen()
-const browser = await chromium.launch({ headless: true, ...(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : { channel: 'chrome' }) })
+const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe' })
 try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+  // Worker installation is covered by update-browser-check; this fixture
+  // verifies the optional-worker path and the actual Vue controls.
+  await page.addInitScript(() => Object.defineProperty(navigator, 'serviceWorker', { value: undefined }))
   const errors = []
   page.on('pageerror', (error) => { errors.push(error.message); console.error(error.message) })
   await page.route('https://fonts.googleapis.com/**', (route) => route.abort())
+  await page.route('https://fonts.gstatic.com/**', (route) => route.abort())
   await page.route('**/api/method/**', (route) => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ message: { revision: 'new' } }) }))
-  await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/update-layout.html`)
+  await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/update-layout.html`, { waitUntil: 'domcontentloaded' })
   await page.locator('.update-notice').waitFor()
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 900 })
@@ -62,13 +66,21 @@ try {
   }
   let prepared = 0
   await page.route('**/pos', (route) => { prepared++; return route.fulfill({ contentType: 'text/html', body: 'window.esafepos_shell_revision = "new"' }) })
-  await page.route('**/assets/esafepos/pos/pos.*?*', (route) => route.fulfill({ contentType: 'text/plain', body: '' }))
-  // Observe the real App watch scheduling a safe reload when the basket clears.
+  await page.route('**/assets/esafepos/pos/pos.*?*', (route) => route.fulfill({ contentType: route.request().url().includes('pos.js?') ? 'text/javascript' : 'text/css', body: '' }))
+  await page.getByRole('button', { name: 'Agree and update' }).click()
+  await page.getByRole('alert').filter({ hasText: 'Finish your current task' }).waitFor()
+  assert.equal(prepared, 0)
+  await page.getByRole('button', { name: 'Later', exact: true }).click()
+  assert.equal(await page.locator('.update-notice').count(), 0)
+  await page.evaluate(() => { cart.lines = [] })
+  assert.equal(prepared, 0, 'Finishing the sale must not apply a postponed update')
+  await page.getByRole('button', { name: 'POS update available', exact: true }).click()
+  // Observe an explicit agreement, after the basket is clear.
   await Promise.all([page.waitForEvent('framenavigated', { predicate: (frame) => frame === page.mainFrame() }),
-    page.evaluate(() => { cart.lines = [] })])
+    page.getByRole('button', { name: 'Agree and update' }).click()])
   assert.ok(prepared > 0)
   assert.deepEqual(errors, [])
-  console.log('PASS real App update banner, desktop/mobile layout, retained basket and reload after sale clears')
+  console.log('PASS desktop/mobile consent notice, retained basket, Later/reminder and reload only after explicit agreement')
 } catch (error) {
   console.error(error)
   throw error

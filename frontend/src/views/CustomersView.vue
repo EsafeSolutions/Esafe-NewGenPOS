@@ -11,14 +11,47 @@
           <input
             :value="search"
             :placeholder="t('Search name, phone, code, email…')"
+            :aria-label="t('Search customers')"
             @input="onSearch($event.target.value)"
           />
           <button v-if="search" class="btn-ghost clear" @click="onSearch('')"><Icon name="close" /></button>
         </div>
-        <select v-model="group" class="group-select" @change="reload">
+        <select v-model="group" class="group-select" :aria-label="t('Customer group')" @change="reload">
           <option value="">{{ t('All groups') }}</option>
           <option v-for="g in groups" :key="g" :value="g">{{ g }}</option>
         </select>
+        <label v-if="session.settings?.enable_customer_balances" class="customer-filter">
+          <span>{{ t('Account balance') }}</span>
+          <select v-model="balance" :aria-label="t('Account balance')" @change="reload">
+            <option value="">{{ t('All balances') }}</option>
+            <option value="owes">{{ t('Still owes') }}</option>
+          </select>
+        </label>
+        <label class="customer-filter">
+          <span>{{ t('Customer activity') }}</span>
+          <select v-model="activity" :aria-label="t('Customer activity')" @change="reload">
+            <option value="">{{ t('All customers') }}</option>
+            <option value="new_today">{{ t('New today') }}</option>
+            <option value="new_yesterday">{{ t('New yesterday') }}</option>
+            <option value="new_week">{{ t('New in the last 7 days') }}</option>
+            <option value="new_month">{{ t('New in the last 30 days') }}</option>
+            <option value="purchased_today">{{ t('Purchased today') }}</option>
+            <option value="purchased_yesterday">{{ t('Purchased yesterday') }}</option>
+            <option value="purchased_date">{{ t('Purchased on a date…') }}</option>
+          </select>
+        </label>
+        <label v-if="activity === 'purchased_date'" class="customer-filter">
+          <span>{{ t('Purchase date') }}</span>
+          <input v-model="activityDate" type="date" :aria-label="t('Purchase date')" @change="reload" />
+        </label>
+        <label v-if="session.multiCompany" class="customer-filter">
+          <span>{{ t('Company') }}</span>
+          <select v-model="companyView" :aria-label="t('Company')" @change="changeCompany">
+            <option v-for="c in session.companies" :key="c" :value="c">{{ c }}</option>
+          </select>
+        </label>
+        <button v-if="group || balance || activity || search" class="btn-ghost reset-filters" @click="resetFilters">{{ t('Clear filters') }}</button>
+        <p v-if="balance === 'owes'" class="filter-hint muted small">{{ t('Unpaid account balances in {company}.', { company: companyView || session.company }) }}</p>
       </div>
       <div class="list-body">
         <button
@@ -33,9 +66,14 @@
             <span v-if="c.mobile_no">{{ c.mobile_no }}</span>
             <span v-if="c.customer_group"> · {{ c.customer_group }}</span>
           </div>
+          <div v-if="balance === 'owes' && c.outstanding != null" class="customer-owed small">{{ t('Still owes') }} {{ money(c.outstanding, listCurrency) }}</div>
         </button>
         <div v-if="loadingList" class="muted center pad">{{ t('Loading…') }}</div>
-        <div v-else-if="!customers.length" class="muted center pad">{{ t('No customers found') }}</div>
+        <div v-else-if="listError" class="list-error pad" role="alert">
+          <p>{{ listError }}</p>
+          <button class="btn btn-outline" @click="reload">{{ t('Retry') }}</button>
+        </div>
+        <div v-else-if="!customers.length" class="muted center pad">{{ activity === 'purchased_date' && !activityDate ? t('Choose a purchase date.') : t('No customers found') }}</div>
         <button v-if="hasMore && !loadingList" class="btn btn-outline load-more" @click="loadMore">
           {{ t('Load more') }}
         </button>
@@ -58,10 +96,6 @@
             <h2>{{ detail.customer_name }}</h2>
             <div class="muted">{{ detail.name }}<span v-if="detail.customer_group"> · {{ detail.customer_group }}</span></div>
           </div>
-          <!-- Several companies: the figures below are one company's. -->
-          <select v-if="session.multiCompany" v-model="companyView" class="company-view" @change="select(selected)">
-            <option v-for="c in session.companies" :key="c" :value="c">{{ c }}</option>
-          </select>
         </header>
 
         <div class="profile-grid">
@@ -75,6 +109,29 @@
           <div v-if="detail.member_since"><span class="lbl">{{ t('Member since') }}</span>{{ detail.member_since }}</div>
           <div v-if="detail.stats.last_purchase"><span class="lbl">{{ t('Last purchase') }}</span>{{ detail.stats.last_purchase }}</div>
         </div>
+
+        <section class="customer-pricing card">
+          <div>
+            <h3>{{ t('Customer price list') }}</h3>
+            <p class="muted small">{{ t('Applies when this customer is selected at the till. Items without a price use the outlet price. Delivery app prices take priority.') }}</p>
+          </div>
+          <div v-if="detail.can_edit_price_list" class="pricing-controls">
+            <label class="customer-filter">
+              <span>{{ t('Selling price list') }}</span>
+              <select v-model="priceList" :aria-label="t('Selling price list')" :disabled="loadingPriceLists || savingPriceList || session.offline">
+                <option value="">{{ t('Use outlet pricing') }}</option>
+                <option v-if="priceList && !priceLists.some(p => p.name === priceList)" :value="priceList" disabled>{{ priceList }}</option>
+                <option v-for="p in priceLists" :key="p.name" :value="p.name">{{ p.name }} ({{ p.currency }})</option>
+              </select>
+            </label>
+            <button class="btn btn-primary" :disabled="loadingPriceLists || savingPriceList || session.offline || priceList === (detail.default_price_list || '')" @click="savePriceList">
+              {{ savingPriceList ? t('Saving…') : t('Save price list') }}
+            </button>
+          </div>
+          <p v-else class="pricing-current">{{ detail.default_price_list || t('Use outlet pricing') }}</p>
+          <p v-if="priceListError" class="pricing-error small" role="alert">{{ priceListError }} <button v-if="!savingPriceList" class="btn-ghost" @click="loadPriceLists(detail)">{{ t('Retry') }}</button></p>
+          <p v-if="session.offline && detail.can_edit_price_list" class="muted small">{{ t('Reconnect to change the customer price list.') }}</p>
+        </section>
 
         <div class="stat-cards">
           <div class="stat"><div class="stat-v">{{ detail.stats.sales_count }}</div><div class="stat-l">{{ t('Sales') }}</div></div>
@@ -91,7 +148,7 @@
         />
 
         <!-- Sales on account (0.60.0): what they owe, a payment, their limit. -->
-        <CustomerCredit v-if="session.settings?.enable_customer_balances" :customer="detail.name" :company="companyView || session.company" @changed="reloadTxns" />
+        <CustomerCredit v-if="session.settings?.enable_customer_balances" :customer="detail.name" :company="companyView || session.company" @changed="accountChanged" />
 
         <div class="txn-head">
           <h3>{{ t('Transactions') }}</h3>
@@ -163,9 +220,11 @@ import ReceiptModal from '../components/ReceiptModal.vue'
 import CustomerCredit from '../components/CustomerCredit.vue'
 import CustomerSalesProgress from '../components/CustomerSalesProgress.vue'
 import { useRouter } from 'vue-router'
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { call } from '../api'
 import { useSessionStore } from '../stores/session'
+import { useCartStore } from '../stores/cart'
+import { putCustomer } from '../offline'
 import { money, shortTime } from '../format'
 import { t } from '../i18n'
 
@@ -176,12 +235,26 @@ const session = useSessionStore()
 
 const search = ref('')
 const group = ref('')
+const balance = ref('')
+const activity = ref('')
+const activityDate = ref('')
+const listCurrency = ref(session.currency)
+const listError = ref('')
 const groups = ref([])
 const customers = ref([])
 const hasMore = ref(false)
 const listStart = ref(0)
 const loadingList = ref(false)
 let searchTimer = null
+let listRequest = 0
+let detailRequest = 0
+let txnRequest = 0
+const priceList = ref('')
+const priceLists = ref([])
+const loadingPriceLists = ref(false)
+const savingPriceList = ref(false)
+const priceListError = ref('')
+const cart = useCartStore()
 
 const selected = ref(null)
 const detail = ref(null)
@@ -201,6 +274,7 @@ onMounted(async () => {
   groups.value = await call('esafepos.api.customers.customer_groups').catch(() => [])
   reload()
 })
+onBeforeUnmount(() => { clearTimeout(searchTimer); listRequest++; detailRequest++; txnRequest++ })
 
 function onSearch(value) {
   search.value = value
@@ -208,65 +282,148 @@ function onSearch(value) {
   searchTimer = setTimeout(reload, 300) // debounce, one query per pause, not per keystroke
 }
 
+function listFilters(start = 0) {
+  return {
+    search: search.value || null,
+    customer_group: group.value || null,
+    company: companyView.value || session.company,
+    still_owes: balance.value === 'owes' ? 1 : 0,
+    activity: activity.value || null,
+    activity_date: activityDate.value || null,
+    start,
+    limit: LIST_LIMIT,
+  }
+}
+
+function resetFilters() {
+  search.value = ''; group.value = ''; balance.value = ''; activity.value = ''; activityDate.value = ''
+  reload()
+}
+
 async function reload() {
+  clearTimeout(searchTimer)
+  listRequest++
+  customers.value = []
+  hasMore.value = false
+  listError.value = ''
   listStart.value = 0
+  if (activity.value === 'purchased_date' && !activityDate.value) {
+    loadingList.value = false
+    return
+  }
+  await fetchCustomers(0, listRequest)
+}
+
+async function fetchCustomers(start, request) {
   loadingList.value = true
   try {
-    const res = await call('esafepos.api.customers.search_customers', {
-      search: search.value || null,
-      customer_group: group.value || null,
-      start: 0,
-      limit: LIST_LIMIT,
-    })
-    customers.value = res.items || []
-    hasMore.value = res.has_more
+    const res = await call('esafepos.api.customers.search_customers', listFilters(start))
+    if (request !== listRequest) return
+    customers.value = start ? customers.value.concat(res.items || []) : res.items || []
+    listStart.value = start
+    hasMore.value = Boolean(res.has_more)
+    listCurrency.value = res.currency || session.currency
   } catch (e) {
-    session.notify(e.message, true)
+    if (request === listRequest) listError.value = e.message
   } finally {
-    loadingList.value = false
+    if (request === listRequest) loadingList.value = false
   }
 }
 
 async function loadMore() {
-  listStart.value += LIST_LIMIT
-  loadingList.value = true
-  try {
-    const res = await call('esafepos.api.customers.search_customers', {
-      search: search.value || null,
-      customer_group: group.value || null,
-      start: listStart.value,
-      limit: LIST_LIMIT,
-    })
-    customers.value = customers.value.concat(res.items || [])
-    hasMore.value = res.has_more
-  } catch (e) {
-    session.notify(e.message, true)
-  } finally {
-    loadingList.value = false
-  }
+  if (loadingList.value) return
+  listError.value = ''
+  await fetchCustomers(listStart.value + LIST_LIMIT, listRequest)
 }
 
 // The company whose figures the profile shows: the till's own by default.
 const companyView = ref(session.company || '')
 
+function changeCompany() {
+  reload()
+  if (selected.value) select(selected.value)
+}
+
+function accountChanged() {
+  reloadTxns()
+  if (balance.value === 'owes') reload()
+}
+
 async function select(c) {
+  const request = ++detailRequest
+  txnRequest++
+  txns.value = []
   selected.value = c
   detail.value = null
   loadingDetail.value = true
   try {
-    detail.value = await call('esafepos.api.customers.customer_detail', {
+    const result = await call('esafepos.api.customers.customer_detail', {
       customer: c.name,
       company: companyView.value || session.company,
     })
+    if (request !== detailRequest) return
+    detail.value = result
+    priceList.value = result.default_price_list || ''
+    priceLists.value = []
+    priceListError.value = ''
+    loadPriceLists(result)
   } catch (e) {
-    session.notify(e.message, true)
+    if (request === detailRequest) session.notify(e.message, true)
   } finally {
-    loadingDetail.value = false
+    if (request === detailRequest) loadingDetail.value = false
   }
-  reloadTxns()
+  if (request === detailRequest) reloadTxns()
+}
+
+async function loadPriceLists(customer) {
+  if (!customer.can_edit_price_list || session.offline) return
+  const request = detailRequest
+  loadingPriceLists.value = true
+  priceListError.value = ''
+  try {
+    const rows = await call('esafepos.api.customers.customer_price_lists', { customer: customer.name, pos_profile: session.posProfile })
+    if (request === detailRequest) priceLists.value = rows || []
+  } catch (e) {
+    if (request === detailRequest) priceListError.value = e.message
+  } finally {
+    if (request === detailRequest) loadingPriceLists.value = false
+  }
+}
+
+async function savePriceList() {
+  const customer = detail.value
+  if (!customer || savingPriceList.value || session.offline) return
+  const request = detailRequest
+  savingPriceList.value = true
+  priceListError.value = ''
+  try {
+    const saved = await call('esafepos.api.customers.set_customer_price_list', {
+      customer: customer.name, pos_profile: session.posProfile, price_list: priceList.value || null,
+    })
+    const value = saved.default_price_list || null
+    const row = customers.value.find(c => c.name === customer.name)
+    if (row) Object.assign(row, { default_price_list: value })
+    await putCustomer({ ...customer, default_currency: customer.billing_currency, default_price_list: value }).catch(() => {})
+    if (cart.customer?.name === customer.name) {
+      cart.customer.default_price_list = value
+      await cart.reprice()
+    }
+    if (request === detailRequest) {
+      detail.value.default_price_list = value
+      priceList.value = value || ''
+    }
+    session.notify(t('Customer price list saved'))
+  } catch (e) {
+    if (request === detailRequest) priceListError.value = e.message
+    else session.notify(e.message, true)
+  } finally {
+    savingPriceList.value = false
+  }
 }
 
 function clearSelection() {
+  detailRequest++
+  txnRequest++
   selected.value = null
   detail.value = null
   txns.value = []
@@ -290,30 +447,36 @@ function txnFilters(start) {
 
 async function reloadTxns() {
   if (!selected.value) return
+  const request = ++txnRequest
   txnStart.value = 0
   loadingTxns.value = true
   try {
     const rows = await call('esafepos.api.sales.search_sales', txnFilters(0))
+    if (request !== txnRequest) return
     txns.value = rows || []
     txnsMore.value = (rows || []).length === TXN_LIMIT
   } catch (e) {
-    session.notify(e.message, true)
+    if (request === txnRequest) session.notify(e.message, true)
   } finally {
-    loadingTxns.value = false
+    if (request === txnRequest) loadingTxns.value = false
   }
 }
 
 async function loadMoreTxns() {
-  txnStart.value += TXN_LIMIT
+  if (!selected.value || loadingTxns.value) return
+  const request = txnRequest
+  const start = txnStart.value + TXN_LIMIT
   loadingTxns.value = true
   try {
-    const rows = await call('esafepos.api.sales.search_sales', txnFilters(txnStart.value))
+    const rows = await call('esafepos.api.sales.search_sales', txnFilters(start))
+    if (request !== txnRequest) return
+    txnStart.value = start
     txns.value = txns.value.concat(rows || [])
     txnsMore.value = (rows || []).length === TXN_LIMIT
   } catch (e) {
-    session.notify(e.message, true)
+    if (request === txnRequest) session.notify(e.message, true)
   } finally {
-    loadingTxns.value = false
+    if (request === txnRequest) loadingTxns.value = false
   }
 }
 
@@ -364,6 +527,21 @@ function updateReceipt(updated) {
 .search-box input { width: 100%; padding: 9px 32px 9px 34px; border-radius: 9px; }
 .search-box .clear { position: absolute; right: 6px; padding: 3px 6px; }
 .group-select { width: 100%; }
+.customer-filter { display: flex; flex-direction: column; gap: 5px; min-width: 0; font-size: 12px; color: var(--text-muted); }
+.customer-filter select, .customer-filter input { width: 100%; min-width: 0; color: var(--text); }
+.reset-filters { align-self: flex-start; font-size: 12px; padding: 3px 0; }
+.filter-hint { margin: 0; line-height: 1.5; }
+.customer-owed { margin-top: 5px; font-weight: 600; color: var(--red); }
+.list-error { color: var(--red); padding-inline: 10px; }
+.list-error p { margin-top: 0; }
+.customer-pricing { margin: 0 0 18px; padding: 16px; }
+.customer-pricing h3 { margin: 0 0 6px; font-size: 15px; }
+.customer-pricing p { margin: 0; line-height: 1.5; }
+.pricing-controls { display: flex; align-items: flex-end; gap: 10px; margin-top: 12px; }
+.pricing-controls label { flex: 1; max-width: 360px; }
+.pricing-controls button { flex-shrink: 0; }
+.customer-pricing .pricing-current { margin-top: 10px; font-weight: 600; }
+.customer-pricing .pricing-error { margin-top: 10px; color: var(--red); }
 .list-body { flex: 1; overflow-y: auto; padding: 0 8px 12px; }
 .cust-row {
   display: block;
@@ -448,9 +626,9 @@ html[data-theme='dark'] .badge.amber { background: rgba(245, 190, 90, 0.2); colo
   .stat { min-width: 125px; }
 }
 @media (max-width: 700px) {
-  .customers { flex-direction: column; overflow: auto; }
-  .cust-list { width: 100%; max-height: 45vh; flex: 0 0 auto; border-right: 0; border-bottom: 1px solid var(--border); }
-  .cust-detail { flex: 1; overflow: visible; padding: 14px 12px 24px; }
+  .customers { flex-direction: column; overflow: hidden; min-height: 0; }
+  .cust-list { width: 100%; flex: 1; border-right: 0; }
+  .cust-detail { display: none; flex: 1; overflow-y: auto; padding: 14px 12px 24px; }
   .customers.detail-selected .cust-list { display: none; }
   .customers.detail-selected .cust-detail { display: block; }
   .mobile-customer-back { display: inline-flex; align-items: center; gap: 6px; margin: 0 0 12px; min-height: 40px; }
@@ -464,5 +642,7 @@ html[data-theme='dark'] .badge.amber { background: rgba(245, 190, 90, 0.2); colo
   .txn-filters { width: 100%; }
   .txn-filters select, .txn-filters input { min-width: 0; flex: 1 1 120px; }
   .txn-table { min-width: 600px; }
+  .pricing-controls { align-items: stretch; flex-direction: column; }
+  .pricing-controls label { max-width: none; }
 }
 </style>

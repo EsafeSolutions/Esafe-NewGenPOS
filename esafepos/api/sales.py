@@ -273,15 +273,20 @@ def _build_sale_invoice(
 
     app = _resolve_delivery_app(payload)
     price_list = resolve_price_list(
-        profile, customer_group, app.get("price_list") if app else None
+        profile, customer_group, app.get("price_list") if app else None, customer=customer
     )
+    if cint(payload.get("queued_offline")) and price_list != profile.selling_price_list and not app:
+        frappe.throw(_("Customer price lists need a connection to confirm current prices. Reconnect and retry."))
     ctx = currency.sale_context(profile, customer, price_list, session_name, pin)
+    if app and app.get("price_list"):
+        ctx.own_list = None
 
     lines = _build_lines(
         payload["items"],
         profile,
         customer_group,
         app.get("price_list") if app else None,
+        customer=customer,
     )
     # A customer with their own list in the sale's currency is priced from it
     # (ERPNext honours it too) for every item it lists; the rest keep the
@@ -2135,7 +2140,7 @@ def _assert_alternate_unit_stock(invoice, profile):
             frappe.throw(_("There is not enough stock for {0} in {1}.").format(code, profile.warehouse))
 
 
-def _build_lines(items, profile, customer_group=None, app_price_list=None):
+def _build_lines(items, profile, customer_group=None, app_price_list=None, customer=None):
     """Resolve server-side prices and attributes for the engine. Client
     prices are ignored. `price` is the effective unit price (price-book
     overrides / delivery-app list applied); `standard_price` is the plain
@@ -2160,14 +2165,14 @@ def _build_lines(items, profile, customer_group=None, app_price_list=None):
         )
     }
     uom_map = {code: d.stock_uom for code, d in details.items()}
-    price_map = effective_prices(profile, codes, customer_group, app_price_list, uom_map)
+    price_map = effective_prices(profile, codes, customer_group, app_price_list, uom_map, customer=customer)
     standard_map = standard_prices(profile, codes, uom_map)
     alternate_codes = {row["item_code"] for row in items
                        if row.get("uom") and row["uom"] != uom_map.get(row["item_code"])}
     from esafepos.item_units import conversions, prices_by_unit
 
     factors = conversions(alternate_codes)
-    alternate_prices = prices_by_unit(factors, profile.selling_price_list)
+    alternate_prices = prices_by_unit(factors, resolve_price_list(profile, customer_group, app_price_list, customer=customer))
     whole_units = set(frappe.get_all("UOM", filters={
         "name": ["in", sorted({unit for _, unit in factors})], "must_be_whole_number": 1,
     }, pluck="name")) if factors else set()

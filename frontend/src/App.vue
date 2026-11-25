@@ -157,9 +157,21 @@
           </a>
         </div>
       </header>
-      <div v-if="appUpdatePending" class="update-notice" role="status">
-        <Icon name="refresh" /> {{ t('Update ready. Finish this task to update automatically.') }}
+      <div v-if="appUpdatePending" class="update-notice">
+        <Icon name="refresh" />
+        <div class="update-copy" role="status" aria-live="polite">
+          <strong>{{ t('POS update available') }}</strong>
+          <span>{{ t('Apply it when you are ready. This till will restart after you agree.') }}</span>
+          <span v-if="appUpdateError" class="update-error" role="alert">{{ t(appUpdateError) }}</span>
+        </div>
+        <div class="update-actions">
+          <button v-if="!appUpdateBusy" type="button" class="btn" @click="deferAppUpdate">{{ t('Later') }}</button>
+          <button type="button" class="btn btn-primary" :disabled="appUpdateBusy" @click="appUpdater?.apply()">
+            {{ t(appUpdateBusy ? 'Applying update…' : 'Agree and update') }}
+          </button>
+        </div>
       </div>
+      <button v-else-if="appUpdateRevision" type="button" class="update-reminder" @click="appUpdateDeferred = false">{{ t('POS update available') }}</button>
       <StorageWarning v-if="!session.reportsOnly" />
       <main class="content" :inert="navOpen">
         <!-- The reports alone: no other screen mounts, not even for the moment
@@ -249,12 +261,17 @@ async function switchOutlet(event) {
 const route = useRoute()
 const router = useRouter()
 const isDisplay = computed(() => route.path === '/display')
-const appUpdatePending = ref(false)
+const appUpdateRevision = ref('')
+const appUpdateDeferred = ref(false)
+const appUpdateBusy = ref(false)
+const appUpdateError = ref('')
+const appUpdatePending = computed(() => appUpdateRevision.value && !appUpdateDeferred.value)
+function deferAppUpdate() {
+  appUpdateDeferred.value = true
+  appUpdateError.value = ''
+}
 let appUpdater = null
 onBeforeUnmount(() => appUpdater?.stop())
-watch(() => [cart.lines.length, cart.submitting, session.syncing, route.path], () => {
-  if (appUpdatePending.value) appUpdater?.check()
-}, { flush: 'post' })
 const navOpen = ref(false)
 const navToggle = ref(null)
 
@@ -423,14 +440,21 @@ const pageTitle = computed(
 )
 
 onMounted(async () => {
+  // The customer display follows its till; it cannot consent for the cashier.
+  if (isDisplay.value) return
   appUpdater = startAppUpdates({
     currentRevision: window.esafepos_shell_revision,
     readRevision: () => call('esafepos.api.session.app_revision', {}, { timeout: 5000 }),
     canReload: () => safeToUpdate({ session, cart, route, document, jobs: printManager.state.jobs }),
-    onPending: (pending) => { appUpdatePending.value = pending },
+    onPending: (revision) => {
+      if (revision !== appUpdateRevision.value) {
+        appUpdateDeferred.value = false
+        appUpdateError.value = ''
+      }
+      appUpdateRevision.value = revision
+    },
+    onState: ({ busy, error }) => { appUpdateBusy.value = busy; appUpdateError.value = error },
   })
-  // The display talks to its till window, with no bootstrap, catalog or shell.
-  if (isDisplay.value) return
 
   clockTimer = setInterval(() => (now.value = Date.now()), 1000)
   // Make offline storage persistent so a queued sale can't be evicted under
@@ -499,6 +523,24 @@ function setupAutoLock() {
   background: var(--card-bg);
   border-bottom: 1px solid var(--border);
   font-size: 13px;
+}
+.update-copy { flex: 1; min-width: 0; display: grid; gap: 3px; }
+.update-error { color: var(--red); }
+.update-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.update-reminder {
+  align-self: flex-end;
+  margin: 6px 16px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  background: var(--card-bg);
+  cursor: pointer;
+}
+@media (max-width: 700px) {
+  .update-notice { flex-wrap: wrap; align-items: flex-start; }
+  .update-actions { width: 100%; }
+  .update-actions .btn { flex: 1; }
 }
 .shell {
   display: flex;

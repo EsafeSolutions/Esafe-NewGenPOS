@@ -114,6 +114,7 @@ class SellingUnitTests(unittest.TestCase):
                               flt=lambda value=0, precision=None: round(float(value or 0), precision)
                               if precision is not None else float(value or 0),
                               effective_prices=Mock(return_value={"FEED": 1000}),
+                              resolve_price_list=Mock(return_value="Standard Selling"),
                               standard_prices=Mock(return_value={"FEED": 1000}), _split_tags=lambda value: [])
         tree = ast.parse(Path(__file__).with_name("sales.py").read_text(encoding="utf-8"))
         selected = [node for node in tree.body if isinstance(node, ast.FunctionDef)
@@ -135,6 +136,18 @@ class SellingUnitTests(unittest.TestCase):
         for unit, qty in (("50 kg Pack", 1.5), ("Unknown pack", 1)):
             with self.subTest(unit=unit), self.assertRaises(ValueError):
                 self.namespace["_build_lines"]([dict(item_code="FEED", qty=qty, uom=unit)], self.profile)
+
+    def test_customer_pack_price_and_stock_rate_fallback_use_the_assigned_list(self):
+        self.namespace["effective_prices"].return_value = {"FEED": 80}
+        self.namespace["resolve_price_list"].return_value = "Wholesale"
+        prices = sys.modules["esafepos.item_units"].prices_by_unit
+        prices.return_value = {("FEED", "25 kg Pack"): 1900}
+        lines = self.namespace["_build_lines"]([
+            dict(item_code="FEED", qty=1, uom="25 kg Pack"),
+            dict(item_code="FEED", qty=1, uom="50 kg Pack"),
+        ], self.profile, customer="CUSTOMER")
+        self.assertEqual([line["price"] for line in lines], [1900, 4000])
+        self.assertEqual(prices.call_args.args[1], "Wholesale")
 
     def test_stock_boundary_counts_packs_loose_and_bundle_components_together(self):
         invoice = Record(items=[Record(item_code="FEED", qty=1, uom="50 kg Pack", stock_uom="Kg", conversion_factor=50),

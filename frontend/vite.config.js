@@ -7,7 +7,15 @@ import vue from '@vitejs/plugin-vue'
 // Build straight into the Frappe app's public folder with fixed filenames so
 // esafepos/www/pos.html can reference /assets/esafepos/pos/pos.js and pos.css.
 export default defineConfig({
-  plugins: [vue()],
+  plugins: [vue(), {
+    name: 'offline-shell-assets',
+    generateBundle(_options, bundle) {
+      // Include lazy language chunks and imported images before calling a
+      // shell install complete; a reboot must not depend on a prior visit.
+      this.emitFile({ type: 'asset', fileName: 'offline-assets.json',
+        source: JSON.stringify(Object.keys(bundle).filter((name) => name !== 'index.html').sort()) })
+    },
+  }],
   base: '/assets/esafepos/pos/',
   build: {
     outDir: '../esafepos/public/pos',

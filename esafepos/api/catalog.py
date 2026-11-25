@@ -424,14 +424,15 @@ def get_prices(pos_profile: str, item_codes: list | str, customer_group: str | N
         item_codes = json.loads(item_codes)
     profile = frappe.get_cached_doc("POS Profile", pos_profile)
     app_price_list = _app_price_list(app_type)
-    price_list = resolve_price_list(profile, customer_group, app_price_list)
+    price_list = resolve_price_list(profile, customer_group, app_price_list, customer=customer)
     uom_map = {
         d.name: d.stock_uom
         for d in frappe.get_all(
             "Item", filters={"name": ["in", item_codes]}, fields=["name", "stock_uom"]
         )
     }
-    prices = effective_prices(profile, item_codes, customer_group, app_price_list, uom_map)
+    prices = effective_prices(profile, item_codes, customer_group, app_price_list, uom_map, customer=customer)
+    ctx = None
     if customer and frappe.db.exists("Customer", customer):
         from esafepos import currency
         from esafepos.api.sales import _quote_session
@@ -440,11 +441,26 @@ def get_prices(pos_profile: str, item_codes: list | str, customer_group: str | N
             ctx = currency.sale_context(profile, customer, price_list, _quote_session(profile.name))
         except frappe.ValidationError:
             ctx = None  # a customer this till cannot sell to: the sale says why
-        prices.update(currency.own_list_prices(ctx, item_codes, uom_map))
+        if not app_price_list:
+            prices.update(currency.own_list_prices(ctx, item_codes, uom_map))
+            if ctx and ctx.own_list:
+                price_list = ctx.own_list
+    from esafepos.item_units import conversions, prices_by_unit
+
+    units = conversions(item_codes)
+    unit_rates = prices_by_unit(units, price_list)
+    selling_units = {}
+    for (code, unit), factor in units.items():
+        if unit != uom_map.get(code):
+            unit_rate = unit_rates.get((code, unit))
+            if unit_rate and customer and not app_price_list and ctx and ctx.foreign and ctx.own_list:
+                unit_rate = flt(unit_rate) / ctx.factor
+            selling_units.setdefault(code, {})[unit] = unit_rate or flt(prices.get(code)) * factor
     return {
         "price_list": price_list,
         "prices": prices,
         "standard_prices": standard_prices(profile, item_codes, uom_map),
+        "selling_units": selling_units,
     }
 
 
@@ -917,7 +933,7 @@ def search_customers(search: str = "", for_receipt: int | str = 0):
         or_filters=or_filters,
         fields=[
             "name", "customer_name", "customer_group", "customer_type",
-            "mobile_no", "email_id", "tax_id", "default_currency",
+            "mobile_no", "email_id", "tax_id", "default_currency", "default_price_list",
         ],
         order_by="customer_name asc",
         limit_page_length=20,
@@ -926,7 +942,7 @@ def search_customers(search: str = "", for_receipt: int | str = 0):
 
 CUSTOMER_FIELDS = [
     "name", "customer_name", "customer_group", "customer_type",
-    "mobile_no", "email_id", "tax_id", "default_currency",
+    "mobile_no", "email_id", "tax_id", "default_currency", "default_price_list",
 ]
 
 # Mobile fields a HOST site may define on Customer in addition to the standard

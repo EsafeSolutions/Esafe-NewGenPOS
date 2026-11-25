@@ -8,19 +8,27 @@ A price book is NOT a separate ERPNext Price List. It simply holds
 (item -> price) rows on the POS Price Book itself: while the book is active
 (validity window + outlet + customer group match), those items sell at the book
 price; everything else keeps its normal selling price. When several books match,
-the HIGHEST priority wins per item. A delivery-app price list (a real ERPNext
-Price List on a POS Delivery App row) overrides price books entirely.
+the HIGHEST priority wins per item. Delivery-app and assigned customer price
+lists take priority over price books, with outlet rates for unpriced items.
 """
 
 import frappe
-from frappe.utils import flt, getdate, nowdate
+from frappe.utils import cint, flt, getdate, nowdate
 
 
-def resolve_price_list(profile, customer_group=None, app_price_list=None):
-    """The ERPNext Price List a sale posts against: a delivery app's own list
-    when present, otherwise the profile's standard selling list. Price books no
-    longer map to a list, they apply as per-item overrides (see book_overrides)."""
-    return app_price_list or profile.selling_price_list
+def resolve_price_list(profile, customer_group=None, app_price_list=None, customer=None):
+    """Delivery app, then an enabled customer list in the outlet currency,
+    then the outlet list. Foreign customer lists use currency.own_list_prices."""
+    if app_price_list:
+        return app_price_list
+    if customer:
+        own = frappe.get_cached_value("Customer", customer, "default_price_list")
+        if own:
+            row = frappe.get_cached_value("Price List", own, ["enabled", "selling", "currency"], as_dict=True)
+            outlet_currency = frappe.get_cached_value("Price List", profile.selling_price_list, "currency")
+            if row and cint(row.enabled) and cint(row.selling) and row.currency == outlet_currency:
+                return own
+    return profile.selling_price_list
 
 
 def get_price_map(item_codes, price_list, stock_uom_map=None, on_date=None, exact_uom=None):
@@ -104,19 +112,18 @@ def book_overrides(profile, customer_group, item_codes, on_date=None):
     return overrides
 
 
-def effective_prices(profile, item_codes, customer_group=None, app_price_list=None, stock_uom_map=None):
-    """The unit price each item actually sells at: the delivery-app price list
-    (if any) else the standard selling price, with active price-BOOK overrides
-    layered on top (books don't apply when a delivery app is active)."""
-    base_list = app_price_list or profile.selling_price_list
+def effective_prices(profile, item_codes, customer_group=None, app_price_list=None, stock_uom_map=None, customer=None):
+    """Delivery/customer list rates with outlet fallback for missing items.
+    Price books apply when using the outlet's normal pricing."""
+    base_list = resolve_price_list(profile, customer_group, app_price_list, customer)
     prices = get_price_map(item_codes, base_list, stock_uom_map)
-    # Items unpriced on an app list fall back to the standard selling price.
-    if app_price_list and app_price_list != profile.selling_price_list:
+    # Items unpriced on an app/customer list fall back to the outlet price.
+    if base_list != profile.selling_price_list:
         missing = [c for c in item_codes if not prices.get(c)]
         if missing:
             for code, rate in get_price_map(missing, profile.selling_price_list, stock_uom_map).items():
                 prices.setdefault(code, rate)
-    if not app_price_list:
+    if not app_price_list and base_list == profile.selling_price_list:
         for code, rate in book_overrides(profile, customer_group, item_codes, ).items():
             prices[code] = rate
     return prices

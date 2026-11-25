@@ -267,6 +267,7 @@ def own_price_list(customer, currency):
             candidate
             and list_currency(candidate) == currency
             and cint(frappe.get_cached_value("Price List", candidate, "selling"))
+            and cint(frappe.get_cached_value("Price List", candidate, "enabled"))
         ):
             return candidate
     return None

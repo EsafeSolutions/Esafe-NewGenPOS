@@ -62,8 +62,11 @@ Either way, stock, GL and reports behave as standard ERPNext.
    `https://github.com/EsafeSolutions/Esafe-NewGenPOS`, branch `main` → **Deploy**.
 2. Site → **Apps** → **Install** next to EsafePOS.
 3. Updates later: the bench shows **Update Available** → Deploy. The site
-   migrates automatically and browsers fetch the new build on next load
-   (asset URLs are version-stamped, no manual cache clearing needed).
+   migrates automatically. Open tills show **POS update available**; finish
+   the current task, return to Sell and choose **Agree and update** to restart
+   with the new build. **Later** keeps the current version with a reminder.
+   This agreement controls the browser app; server deployment/migrations still
+   happen on the bench. No manual cache clearing is needed.
 
 ### Install (bench with shell access)
 ```bash
@@ -196,7 +199,37 @@ already has, so a shop that makes it optional may see the same person added
 twice.
 
 When a customer is attached, the cart shows their **loyalty points** and
-**store credit**, and prices reprice if a price book applies to their group.
+**store credit**, and prices update for their assigned price list or an active
+price book for their group.
+
+Open **Customers** to search the full customer list. Combine the name/phone
+search and group with **Account balance → Still owes** to find customers with a
+positive unpaid account balance. Amounts are in the selected company's currency
+and include payments and advances; holds and unbilled orders are not debt.
+This filter is available when **Customer balances** is enabled.
+
+Use **Customer activity** for **New today**, **New yesterday**, or customers
+created in the **last 7 / 30 days**. These use the site's calendar dates.
+**Purchased today**, **Purchased yesterday**, and **Purchased on a date…** find
+customers with a submitted sale on that day in the selected company. Cancelled
+sales, return-only activity and consolidated duplicates are excluded. A walk-in
+receipt linked to a named customer counts for that customer. **Load more** keeps
+all selected filters; **Clear filters** resets them.
+
+To assign customer pricing, select the customer, choose **Customer price list →
+Selling price list**, then **Save price list**. The selector offers enabled
+ERPNext selling price lists in the customer's billing currency (or the outlet's
+currency when no billing currency is set). You need ERPNext Customer write
+permission, Price List read permission and access to the current outlet.
+Create price lists and Item Prices in ERPNext, or edit their rates in **Items**.
+The assignment uses ERPNext's standard Customer **Default Price List** field.
+
+Selecting that customer at the till applies their prices, including alternate
+selling-unit prices. A unit without a separate rate uses the stock-unit price
+times its conversion factor. Items missing from the customer list use the
+outlet list. Delivery app price lists take priority. Select **Use outlet pricing**
+and save to clear the customer's assignment. Customer-specific price lists need
+a connection to confirm prices and cannot be queued as offline sales.
 
 ### Channel (delivery apps)
 The channel picker defaults to **Walk-in**. Selecting a delivery app
@@ -1359,6 +1392,23 @@ companies (ERPNext User Permissions) sees only theirs.
 
 ## 14. Offline mode
 
+**Prepare each till while online:** sign in, open its register, and allow the
+catalog download to finish. Check **Settings → Status** for cached items and
+**Opens without a connection: ✓ Ready**. Reopening offline requires HTTPS
+(localhost also works), a browser with service-worker support and a Frappe
+version that serves `/sw.js`. Keep the same browser/device and its site data.
+Opening/closing a register and the other server-dependent operations below
+still need a connection.
+
+**Updates require your agreement.** The till checks for deployed builds and
+offers **Agree and update** / **Later**. Finishing a sale, regaining focus or
+reconnecting does not apply an update. If checkout, editing, syncing or printing
+is active, finish it and agree again from Sell. A changed deployment needs fresh
+agreement. Each open window keeps its agreed version, including on reload;
+accepting in another window does not interrupt its work. Incomplete downloads
+keep the previous app usable. Already installed clients need one online reopen
+to load this new update policy; it cannot change code already running in a tab.
+
 After the first online load the catalog (incl. barcodes) is cached locally,
 this also makes everyday search instant. If the connection drops:
 - an amber **Offline, N queued** pill appears,
@@ -1381,6 +1431,9 @@ this also makes everyday search instant. If the connection drops:
   hanging on it, and while the connection is down the till asks the server
   every five seconds and comes back on its own the moment it answers. No
   page reload.
+- Temporary server maintenance and gateway failures also switch eligible sales
+  to the offline queue. Actual ERPNext validation/permission refusals remain
+  visible errors. Queued sales retain their original upload key on reconnect.
 - **Every till refreshes its stock after an outage.** The moment a till is
   back online it uploads its queued sales and pulls a fresh copy of the whole
   catalogue, so its tiles include what the other tills sold while the

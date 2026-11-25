@@ -94,7 +94,7 @@ class SalesPricingTests(unittest.TestCase):
             erpnext_compat=Mock(new_doc=Mock(side_effect=lambda *args: self.invoice)),
             resolve_price_list=Mock(return_value="Selling"),
             _resolve_delivery_app=Mock(return_value=None),
-            _build_lines=lambda items, *args: [dict(item_code="POT", price=195, qty=row["qty"],
+            _build_lines=lambda items, *args, **kwargs: [dict(item_code="POT", price=195, qty=row["qty"],
                                                   uom="Nos", stock_uom="Nos", conversion_factor=1) for row in items],
             _price_overrides=Mock(return_value=[]),
             _apply_bundles=lambda items, *args: ([0] * len(items), []),
@@ -123,6 +123,21 @@ class SalesPricingTests(unittest.TestCase):
         doc = self.build()
         self.assertEqual(doc.grand_total, 195)
         self.assertEqual(doc.items[0].discount_amount, 0)
+
+    def test_customer_price_list_is_used_on_invoice_and_forwarded_to_lines(self):
+        self.namespace["resolve_price_list"].return_value = "Wholesale"
+        build_lines = Mock(wraps=self.namespace["_build_lines"])
+        self.namespace["_build_lines"] = build_lines
+        doc = self.build()
+        self.assertEqual(doc.selling_price_list, "Wholesale")
+        self.assertEqual(build_lines.call_args.kwargs["customer"], "CUSTOMER")
+        self.assertEqual(self.namespace["resolve_price_list"].call_args.kwargs["customer"], "CUSTOMER")
+
+    def test_queued_sale_cannot_silently_use_uncached_customer_prices(self):
+        self.profile.selling_price_list = "Retail"
+        self.namespace["resolve_price_list"].return_value = "Wholesale"
+        with self.assertRaisesRegex(ValueError, "Customer price lists need a connection"):
+            self.namespace["_build_sale_invoice"](self.profile, dict(items=[dict(item_code="POT", qty=1)], queued_offline=1))
 
     def test_quote_endpoint_returns_payable_credit_and_native_tax_breakdown(self):
         for erp in (False, True):

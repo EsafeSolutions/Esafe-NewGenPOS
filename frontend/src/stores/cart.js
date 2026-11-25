@@ -41,6 +41,7 @@ export const useCartStore = defineStore('cart', {
     discountPasscode: null, // manager passcode for over-limit discounts
     discountRequest: null, // approved POS Discount Request name (role approval)
     activePriceList: null,
+    _priceRequest: 0,
     note: '',
     // An exchange in progress: what is coming back and against which sale. The
     // cart itself holds what the customer is taking INSTEAD, so the sell screen
@@ -676,11 +677,14 @@ export const useCartStore = defineStore('cart', {
     // with a price book, or a delivery-app channel). Server-authoritative.
     async reprice() {
       const session = useSessionStore()
+      const request = ++this._priceRequest
       if (!this.lines.length) return
       if (session.offline) {
         this._offlineCurrencyPrices()
         return
       }
+      const customer = this.customer?.name || null
+      const appType = this.appType
       try {
         // The customer too: one billed in another currency may have their
         // own price list in it (esafepos.currency).
@@ -688,14 +692,14 @@ export const useCartStore = defineStore('cart', {
           pos_profile: session.posProfile,
           item_codes: this.lines.map((l) => l.item_code),
           customer_group: this.customer?.customer_group || null,
-          app_type: this.appType,
-          customer: this.customer?.name || null,
+          app_type: appType,
+          customer,
         })
+        if (request !== this._priceRequest || customer !== (this.customer?.name || null) || appType !== this.appType) return
         this.activePriceList = data.price_list
         for (const line of this.lines) {
-          if (line.selling_uom) continue
-          const listed = data.prices[line.item_code]
-          const std = data.standard_prices?.[line.item_code]
+          const listed = line.selling_uom ? data.selling_units?.[line.item_code]?.[line.selling_uom] : data.prices[line.item_code]
+          const std = line.selling_uom ? listed : data.standard_prices?.[line.item_code]
           // A typed price stays: the list's goes where clearing it returns to.
           if (line.price_override != null) {
             if (listed !== undefined) line.price_before_override = listed
@@ -805,7 +809,7 @@ export const useCartStore = defineStore('cart', {
         this.discountRequest = null
       }
       this.wallet = null
-      this.reprice() // customer group may activate a price book
+      await this.reprice() // customer list or group may change selling prices
       if (!customer) return
       const session = useSessionStore()
       if (session.offline) return // wallet needs the server
@@ -821,6 +825,7 @@ export const useCartStore = defineStore('cart', {
     },
 
     clear() {
+      this._priceRequest++
       this.lines = []
       this.customer = null
       this.receiptContact = ''
@@ -1150,6 +1155,9 @@ export const useCartStore = defineStore('cart', {
 
     async _queueOffline(payload, payments) {
       const session = useSessionStore()
+      if (this.customer?.default_price_list && this.customer.default_price_list !== session.priceList && !this.currencyWalkIn) {
+        throw new Error('Customer price lists need a connection to confirm current prices. Reconnect and retry.')
+      }
       if (payload.loyalty_change_amount > 0) {
         throw new Error('Saving change as loyalty points needs a connection. Reconnect and retry.')
       }

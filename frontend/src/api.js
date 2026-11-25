@@ -51,6 +51,7 @@ async function refreshCsrfToken() {
 }
 
 export async function call(method, args = {}, options = {}) {
+  if (navigator.onLine === false) throw new OfflineError()
   let res
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), options.timeout || deadlineFor(method))
@@ -80,7 +81,7 @@ export async function call(method, args = {}, options = {}) {
   }
   let data = {}
   try {
-    data = await res.json()
+    data = (await res.json()) || {}
   } catch {
     /* non-JSON error page */
   }
@@ -90,6 +91,11 @@ export async function call(method, args = {}, options = {}) {
     }
   }
   if (!res.ok) {
+    // Deployments/reverse proxies can return HTML maintenance/gateway pages.
+    // Preserve real Frappe validation/permission failures as refusals.
+    if (res.status >= 500 && !data.exc_type && !data._server_messages && !data.exception) {
+      throw new OfflineError()
+    }
     throw new ApiError(extractMessage(data) || `Request failed (${res.status})`)
   }
   return data.message

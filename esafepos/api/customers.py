@@ -3,19 +3,18 @@
 # "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md.
 """Customer lookup screen, paginated client search plus a per-customer profile
 with balances, lifetime stats and (via sales.search_sales) their POS
-transactions. Every query is server-paginated and scoped to indexed columns, so
-opening this screen never scans the whole customer or sales table and has no
-effect on the rest of the app (it only runs while the screen is open)."""
+transactions. Search filters run before pagination; account balances are grouped
+in company currency and purchase activity excludes cancelled sales and returns."""
 
 from __future__ import annotations
 
 import frappe
 from frappe import _
-from frappe.utils import cint, flt, now_datetime
+from frappe.utils import add_days, cint, flt, getdate, now_datetime, nowdate
 
 CUSTOMER_FIELDS = [
     "name", "customer_name", "customer_group", "customer_type",
-    "mobile_no", "email_id", "tax_id", "default_currency",
+    "mobile_no", "email_id", "tax_id", "default_currency", "default_price_list", "creation",
 ]
 
 
@@ -27,16 +26,35 @@ def _require_read():
 
 
 @frappe.whitelist()
-def search_customers(search: str | None = None, customer_group: str | None = None, start: int | str = 0, limit: int | str = 30):
-    """Paginated customer list. Light columns only, per-customer totals are
-    computed on demand in customer_detail, never per row here. Fetches one extra
-    row to report has_more without a separate COUNT. Returns {items, has_more}."""
+def search_customers(search: str | None = None, customer_group: str | None = None,
+                     start: int | str = 0, limit: int | str = 30, company: str | None = None,
+                     still_owes: int | str = 0, activity: str | None = None, activity_date: str | None = None):
+    """Combine text, group, balance and activity filters before fetching a page."""
     _require_read()
-    start = cint(start)
-    limit = min(cint(limit) or 30, 100)
+    start = max(cint(start), 0)
+    limit = max(1, min(cint(limit) or 30, 100))
+    still_owes = bool(cint(still_owes))
+    window = _activity_window(activity, activity_date)
+    purchases = bool(activity and activity.startswith("purchased_"))
+    if still_owes:
+        from esafepos.features import enabled
+
+        if not enabled("enable_customer_balances"):
+            frappe.throw(_("Customer balances are turned off in Modules & Features."), frappe.PermissionError)
+    if still_owes or purchases:
+        company = _company_for_customer_view(company)
+        if not company:
+            frappe.throw(_("Select a company to filter customer balances or purchases."))
+        return _filtered_customers(search, customer_group, start, limit, company, still_owes, window if purchases else None,
+                                   window if window and not purchases else None)
     filters = {"disabled": 0}
     if customer_group:
         filters["customer_group"] = customer_group
+    if window:
+        filters["creation"] = [">=", window[0]]
+        filters = [["Customer", key, value[0], value[1]] if isinstance(value, list)
+                   else ["Customer", key, "=", value] for key, value in filters.items()]
+        filters.append(["Customer", "creation", "<", window[1]])
     or_filters = None
     search = (search or "").strip()
     if search:
@@ -48,16 +66,131 @@ def search_customers(search: str | None = None, customer_group: str | None = Non
             "email_id": ["like", like],
             "tax_id": ["like", like],
         }
-    rows = frappe.get_all(
+    rows = frappe.get_list(
         "Customer",
         filters=filters,
         or_filters=or_filters,
         fields=CUSTOMER_FIELDS,
-        order_by="customer_name asc",
+        order_by="customer_name asc, name asc",
         limit_start=start,
         limit_page_length=limit + 1,
     )
     return {"items": rows[:limit], "has_more": len(rows) > limit}
+
+
+def _activity_window(activity, activity_date=None):
+    if not activity:
+        return None
+    today = getdate(nowdate())
+    if activity in ("new_today", "purchased_today"):
+        return str(today), str(add_days(today, 1))
+    if activity in ("new_yesterday", "purchased_yesterday"):
+        return str(add_days(today, -1)), str(today)
+    if activity in ("new_week", "new_month"):
+        return str(add_days(today, -6 if activity == "new_week" else -29)), str(add_days(today, 1))
+    if activity == "purchased_date":
+        if not activity_date:
+            frappe.throw(_("Choose a purchase date."))
+        day = getdate(activity_date)
+        return str(day), str(add_days(day, 1))
+    frappe.throw(_("Choose a valid customer activity filter."))
+
+
+def _filtered_customers(search, group, start, limit, company, still_owes, purchases, created):
+    from frappe.model.db_query import DatabaseQuery
+
+    # Keep Frappe's user permissions, ownership, sharing and query hooks on
+    # the Customer table, including the shared-only case on older versions.
+    query = DatabaseQuery("Customer")
+    query.reference_doctype = "Customer"
+    match = query.build_match_conditions()
+    conditions = ["`tabCustomer`.disabled = 0"]
+    conditions.extend("(" + clause.replace("%", "%%") + ")" for clause in query.conditions + [match] if clause)
+    values = {"company": company, "start": start, "limit": limit + 1}
+    if group:
+        conditions.append("`tabCustomer`.customer_group = %(group)s")
+        values["group"] = group
+    if (search or "").strip():
+        conditions.append("(" + " or ".join("`tabCustomer`.{0} like %(search)s".format(field)
+                          for field in ("name", "customer_name", "mobile_no", "email_id", "tax_id")) + ")")
+        values["search"] = "%" + search.strip() + "%"
+    if created:
+        conditions.append("`tabCustomer`.creation >= %(created_from)s and `tabCustomer`.creation < %(created_to)s")
+        values.update({"created_from": created[0], "created_to": created[1]})
+    if purchases:
+        from esafepos.walk_in import customer_attribution_sql
+
+        activity_queries = []
+        for doctype in ("POS Invoice", "Sales Invoice"):
+            join, _, matches = customer_attribution_sql(doctype)
+            matches = matches.replace("%(customer)s", "`tabCustomer`.name")
+            extra = " and ifnull(pi.is_consolidated, 0) = 0" if doctype == "Sales Invoice" else ""
+            activity_queries.append(
+                "exists (select 1 from `tab{0}` pi {1} where {2} and pi.company = %(company)s "
+                "and pi.docstatus = 1 and pi.is_return = 0 and pi.posting_date >= %(purchase_from)s "
+                "and pi.posting_date < %(purchase_to)s{3})".format(doctype, join, matches, extra)
+            )
+        conditions.append("(" + " or ".join(activity_queries) + ")")
+        values.update({"purchase_from": purchases[0], "purchase_to": purchases[1]})
+    balance_join, balance_field = "", ""
+    if still_owes:
+        # Same ledger balance as credit_sales.owed: includes POS credit
+        # journals and regular invoices, nets payments/advances, ignores holds.
+        balance_join = """join (
+            select party, round(sum(debit) - sum(credit), 2) as outstanding
+            from `tabGL Entry`
+            where company = %(company)s and party_type = 'Customer' and is_cancelled = 0
+            group by party having outstanding > 0.005
+        ) balances on balances.party = `tabCustomer`.name"""
+        balance_field = ", balances.outstanding"
+    fields = ", ".join("`tabCustomer`.`{0}`".format(field) for field in CUSTOMER_FIELDS)
+    rows = frappe.db.sql(
+        "select {0}{1} from `tabCustomer` {2} where {3} "
+        "order by `tabCustomer`.customer_name asc, `tabCustomer`.name asc limit %(limit)s offset %(start)s".format(
+            fields, balance_field, balance_join, " and ".join(conditions)), values, as_dict=True,
+    )
+    return {"items": rows[:limit], "has_more": len(rows) > limit,
+            "currency": frappe.get_cached_value("Company", company, "default_currency")}
+
+
+@frappe.whitelist()
+def customer_price_lists(customer: str, pos_profile: str):
+    """Enabled selling lists in the currency this customer's sale will use."""
+    doc, profile = _price_list_customer(customer, pos_profile)
+    billing_currency = doc.get("default_currency") or frappe.get_cached_value("Price List", profile.selling_price_list, "currency")
+    return frappe.get_list("Price List", filters={"enabled": 1, "selling": 1, "currency": billing_currency},
+                           fields=["name", "currency"], order_by="name asc", limit_page_length=0)
+
+
+def _price_list_customer(customer, pos_profile):
+    _require_read()
+    from esafepos.api.permissions import assert_outlet
+
+    assert_outlet(pos_profile)
+    doc = frappe.get_doc("Customer", customer)
+    doc.check_permission("read")
+    profile = frappe.get_cached_doc("POS Profile", pos_profile)
+    return doc, profile
+
+
+@frappe.whitelist()
+def set_customer_price_list(customer: str, pos_profile: str, price_list: str | None = None):
+    """Update ERPNext's native field with normal document validation/auditing."""
+    doc, profile = _price_list_customer(customer, pos_profile)
+    doc.check_permission("write")
+    price_list = (price_list or "").strip()
+    if price_list:
+        selected = frappe.get_doc("Price List", price_list)
+        selected.check_permission("read")
+        if not cint(selected.get("enabled")) or not cint(selected.get("selling")):
+            frappe.throw(_("Choose an enabled selling price list."))
+        billing_currency = doc.get("default_currency") or frappe.get_cached_value("Price List", profile.selling_price_list, "currency")
+        if selected.currency != billing_currency:
+            frappe.throw(_("Choose a price list in {0}, this customer's sale currency.").format(billing_currency))
+    doc.default_price_list = price_list or None
+    doc.save()
+    frappe.clear_document_cache("Customer", customer)
+    return {"customer": doc.name, "default_price_list": doc.default_price_list}
 
 
 @frappe.whitelist()
@@ -175,6 +308,8 @@ def customer_detail(customer: str, company: str | None = None):
         "currency": (frappe.get_cached_value("Company", company, "default_currency") if company else None)
         or frappe.db.get_default("currency"),
         "billing_currency": doc.get("default_currency"),
+        "default_price_list": doc.get("default_price_list"),
+        "can_edit_price_list": bool(doc.has_permission("write") and frappe.has_permission("Price List", "read")),
     }
 
 

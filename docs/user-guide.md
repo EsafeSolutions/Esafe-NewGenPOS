@@ -139,6 +139,17 @@ For feed purchased in **25 kg and 50 kg bags**, use two distinct alternate UOMs,
 
 In **Items**, combine the category and brand filters with item name, code or barcode search. Users with ERPNext Item write access can edit the display name and upload a JPEG, PNG or WebP product photo up to 5 MB. **Save changes** attaches the image to the ERPNext Item and refreshes the POS catalog.
 
+The side rail now has one **Items & stock** manager with four tabs:
+
+- **Item details:** Search active, disabled or all items and filter by category, brand and item type. Create items, edit their names/category/brand/description, set selling and purchasing availability, manage images, units, prices and barcodes, or check **Disable item** and save. To re-enable an item, find it under **Disabled items**, clear **Disable item**, and save. Template edits follow ERPNext's configured variant-field propagation; review affected variants after saving. **Export loaded items** downloads the currently loaded search rows as CSV.
+- **Inventory & transfers:** Select a stock item or individual variant to see on-hand, reserved and available quantities by accessible warehouse. Choose **Transfer stock**, source, destination, quantity and reason, then **Post transfer**. Enter serial numbers one per line and a batch number when required. The transfer posts immediately as a native ERPNext Material Transfer. A lost response offers **Check and retry transfer**, retaining the same request identity in this browser tab, including after a reload and reopening the same item. **Adjust stock** posts a Stock Reconciliation with the reason and optional valuation rate. **Stock movements** shows dated ledger entries with paging when your ERPNext permissions allow it. The warehouse filter beside the search scopes the listed stock quantities; the selected item's table shows every accessible warehouse.
+- **Variants:** Create attributes with unique values and abbreviations (one `value=abbreviation` per line), create a new item template with its category, stock unit and attributes, then choose a value for each attribute to create a variant. Existing numeric attributes keep their ranges and increments. An existing combination is reused. **Manage item** opens the individual variant for its own barcode, price, enabled status and stock. Manufacturer-based templates are managed in ERPNext.
+- **Stock count:** The existing individual and shared count workflows remain available here. Counts stay on screen when switching tabs; old `/count` links open this tab.
+
+Tabs and actions follow your permissions. Transfers need **View warehouse stock**, the separate manager-default **Transfer warehouse stock** capability, and ERPNext Stock Entry read/create/submit rights. Adjustments still need **Adjust warehouse stock** and Stock Reconciliation create/submit rights. Close shifts with unposted sales of affected items first; stock reservations, available quantity, serial/batch validation, company/warehouse permissions and ERPNext approval workflows apply. Item and inventory changes require a connection. Run the site migration after deploying to expose the new capability in access-level and permission-rule selectors.
+
+If a transfer retry is refused after its original response was lost, its saved identity stays locked for another retry. Use **Clear after checking ERPNext** only after confirming that the transfer was not posted; the form asks for that confirmation before allowing a different request.
+
 In **Items → Add item**, use **Generate item code** or **Generate barcode**. Each field has its own **Code type** and length: choose **Numbers only** and **Digits = 5** for a five-digit code such as `00123`, or **Letters and numbers** for uppercase mixed codes. Numeric codes support 1–140 digits; mixed codes support 2–140 characters and always contain both a letter and a number. Leading zeroes are preserved. The last type and length for each field are remembered for this outlet on this browser. Existing items have the same generator controls on each barcode row. You can also type a code yourself. Generation needs a connection, checks existing item codes/barcodes and the current form's values, and fills the field for review; **Create item** or **Save changes** saves it. If another user saves the same value first, generate another code and retry. These are internal identifiers, without an EAN/UPC check digit.
 
 **Edit item selling prices** is available to System Managers and EsafePOS Managers by default. To delegate access, add a role or person under **Settings → General → Approvals and permissions**. The user also needs ERPNext read access to Item, Price List and Item Price, plus Item Price write permission to change an existing price or create permission to add one. Use **Selling price list** to choose which enabled selling list to edit. A shared price list carries the same edit to every outlet using it. Alternate-unit checkout uses an online sale on the outlet's regular price list in its own currency. Holds use the stock unit. Return alternate-unit sales from online Sales History.
@@ -179,6 +190,21 @@ Lines show `item code · ▮ barcode` under the name.
   Quantity changes multiply every component together; zero or *Remove bundle*
   removes the group. Repeated **Add** taps increase the existing bundle quantity.
 - **Serialized lines** show serial chips; qty always equals scanned serials.
+
+To sell a loose item by value, enter **Amount** in the item popup or expand its
+cart line and enter **Amount** there. At **LKR 1,000 per Kg**, entering **500**
+sets quantity to **0.5 Kg** immediately. The unit price stays the same. Editing
+quantity or unit price updates the linked amount. This amount is **before
+discounts and taxes**; checkout applies those as usual.
+
+The calculation uses the selected selling unit and the active customer/channel
+price in the sale currency. Amount entry pauses while prices are confirmed.
+Decimal quantities round to four places, and a message shows any resulting
+amount difference. Whole-unit items and packs require an amount for an exact
+whole quantity. Blank, invalid, zero, negative or too-small amounts leave the
+current quantity unchanged; correct an invalid popup amount before saving.
+Zero-price items, scanned serials and complete bundles retain their existing
+quantity controls. Normal stock checks and offline-sale restrictions still apply.
 
 ### Customer
 Tap **Add a customer** → search by name / mobile / tax ID → select, or create.
@@ -344,7 +370,7 @@ the phone, so their ERPNext permissions apply (a stock count needs ERPNext's Sto
   Permissions, Use the stock app** limits who may use it (open to everyone until you name someone).
 
 ### Stock count from the till (0.69.0)
-The till has its own **Stock count** screen (side rail), for a shop that counts with the barcode scanner it
+The till has a **Stock count** tab under **Items & stock**, for a shop that counts with the barcode scanner it
 already has. Pick the warehouse (the outlet's own is picked for you), then scan: every scan adds one, a serialised item
 is counted by scanning each serial number, and a search finds an item without a barcode. Unless counting blind is
 on, each line shows what is on the shelf and the difference.
@@ -552,6 +578,36 @@ controls the new invoice action and the POS Profile's direct Sales Invoice
 checkout mode. The cashier needs Sales Invoice create and submit permissions.
 The invoice workspace is online-only and uses the active POS Profile's company,
 price list, taxes, warehouse and currency settings.
+
+### Buying and supplier payments
+
+Open **Buying** to choose or add a supplier, receive a purchase with a standard
+ERPNext Purchase Invoice, view their balance, and settle unpaid invoices. This
+online workspace does not require an open register. Managers have the POS
+capability by default; other staff need **Manage buying and suppliers** plus the
+relevant ERPNext document permissions. The module has its own switch in
+**Settings → Modules & Features** and requires site migration after deployment.
+
+In **New purchase invoice**, enter the supplier reference, dates and warehouse,
+then add products, quantities and purchase rates. Add supplier-billed freight or
+handling under **Additional costs**. The summary shows the payable and estimated
+receipt cost per stock unit. **Submit purchase invoice** receives stock and adds
+the payable. These costs increase both the supplier total and stock valuation:
+10 units at LKR 100 plus LKR 100 freight means LKR 1,100 payable and LKR 110
+receipt cost per unit. ERPNext applies the item's stock valuation method.
+
+In **Supplier account**, select one or more unpaid invoices, choose **Pay
+supplier**, and enter a full or partial amount. Payments allocate oldest first
+among the selected invoices. **Cash**, **Bank Transfer** and **Cheque** use
+configured company accounts; transfers/cheques require a reference and date.
+Cheque clearance stays in ERPNext bank reconciliation. If cash comes out of the
+till drawer, also record the normal **Register → Cash out** withdrawal.
+
+Purchases and payments currently use company currency. Serial/batch/asset items,
+linked orders/receipts, foreign currencies, returns, tax-specific entry, advance
+reconciliation and later/third-party landed costs use ERPNext. See the
+[Buying setup and workflow guide](buying-and-supplier-payments.md) for details,
+verification and desktop/mobile screenshots.
 
 ### Selling on account (0.60.0)
 

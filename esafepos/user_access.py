@@ -4,11 +4,12 @@ import frappe
 LEVELS = ("Use existing roles", "Cashier", "Supervisor", "Manager", "Reports only", "Custom")
 CAPABILITIES = (
     "Edit price / discount", "Edit item selling prices", "Create items", "View warehouse stock",
-    "Adjust warehouse stock", "Make returns", "Return past the window", "Exchange goods", "Cash in",
+    "Adjust warehouse stock", "Transfer warehouse stock", "Make returns", "Return past the window", "Exchange goods", "Cash in",
     "Cash out", "Reprint a receipt", "Open the register", "Close the register", "Hold goods for a customer",
     "See sales by salesperson", "See the system check", "Sell on account", "Take customer payments",
     "Set a customer's credit", "See sales reports", "See cashier performance", "See profit", "Print labels",
     "Use the stock app",
+    "Manage buying and suppliers",
     "Permanently delete sales",
 )
 REPORT_CAPABILITIES = {"See sales by salesperson", "See sales reports", "See cashier performance", "See profit"}

@@ -1,6 +1,7 @@
 import { reactive } from 'vue'
 import { EsafeClient, toBase64, fromBase64, encodeCashDrawerPulse } from '@esafe/printer-manager'
 import { printJournal, workstationId } from './journal.js'
+import { validateReceiptLayout } from '../receiptLayout.js'
 
 const DISCOVERY = { action: 'printers.list', resources: ['printers'] }
 const TERMINAL = new Set(['completed', 'failed', 'cancelled'])
@@ -99,6 +100,7 @@ export function createEsafeService({ client = new EsafeClient(), journal = print
   async function saveBinding(profile, selected, guard) {
     await guard() // Settings/POS Profile write checked by the server, before pairing.
     const value = { profile, ...Object.fromEntries(['receipt', 'labels', 'document', 'report'].map((role) => [role, String(selected[role] || '')])), options: {} }
+    if (selected.receiptLayout) value.receiptLayout = Object.fromEntries([58,80].filter((roll) => selected.receiptLayout[roll]).map((roll) => [roll, validateReceiptLayout(selected.receiptLayout[roll], roll)]))
     for (const role of ['receipt', 'document', 'report']) {
       const chosen = selected.options?.[role] || {}, validated = {}
       if (chosen.orientation && !['portrait', 'landscape'].includes(chosen.orientation)) throw new Error('Choose portrait or landscape orientation.')
@@ -119,6 +121,7 @@ export function createEsafeService({ client = new EsafeClient(), journal = print
       await client.pair([DISCOVERY, ...(selectedIds.length ? [{ action: 'print', resources: selectedIds }] : [])], { timeoutMs: 120000 })
       const previous = await binding(profile)
       value.drawer = previous.drawer
+      if (!value.receiptLayout && previous.receipt === value.receipt) value.receiptLayout = previous.receiptLayout
       await journal.saveSetting(bindingKey(profile), value)
       await journal.saveSetting('print-grants', selectedIds)
       state.printGrants = selectedIds; state.bindingRevision++
@@ -310,6 +313,17 @@ export function createEsafeService({ client = new EsafeClient(), journal = print
       return value.drawer
     })
   }
+  async function saveReceiptLayout(profile, roll, layout, guard) {
+    const validated = validateReceiptLayout(layout, roll)
+    await guard()
+    return lock('esafepos-receipt-layout', async () => {
+      const value = await binding(profile)
+      if (!value.receipt) throw new Error('Save a receipt printer before adjusting its paper layout.')
+      value.receiptLayout = { ...value.receiptLayout, [roll]: validated }
+      await journal.saveSetting(bindingKey(profile), value); state.bindingRevision++
+      return validated
+    })
+  }
   async function waitSubmitted(record, timeoutMs = 20000) {
     if (!record?.agentJobId || ['failed', 'cancelled', 'unknown'].includes(record.state)) throw new Error('Receipt submission is not confirmed; the drawer was not opened.')
     if (['submitted', 'completed'].includes(record.state)) return record
@@ -330,5 +344,5 @@ export function createEsafeService({ client = new EsafeClient(), journal = print
       client.jobs.get(record.agentJobId).then(check, (e) => finish(e))
     })
   }
-  return { state, binding, saveBinding, saveDrawer, waitSubmitted, rememberDocument, connect, refreshPrinters, capabilities, refreshJobs, dispatch, retry, reprint, cancel, preview, resume, disconnect, dispose }
+  return { state, binding, saveBinding, saveReceiptLayout, saveDrawer, waitSubmitted, rememberDocument, connect, refreshPrinters, capabilities, refreshJobs, dispatch, retry, reprint, cancel, preview, resume, disconnect, dispose }
 }

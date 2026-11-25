@@ -91,6 +91,7 @@ export const useSessionStore = defineStore('session', {
       discount_approval_mode: 'Passcode only',
       can_approve_requests: false,
       enable_regular_invoices: 1,
+      enable_buying: 1,
       enable_customer_balances: 1,
       enable_customer_payments: 1,
       enable_cheque_tracking: 0,

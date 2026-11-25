@@ -1,0 +1,26 @@
+{
+  "observedOn": "2026-11-26",
+  "source": "Read-only Get-PrintConfiguration and GDI GetDeviceCaps; no settings changed",
+  "queue": "Xprinter XP-80(Copy 1)",
+  "driver": "Xprinter XP-80",
+  "port": "USB002",
+  "defaultPaper": {
+    "widthMm": 72,
+    "heightMm": 296.9,
+    "orientation": "portrait",
+    "scaling": "none"
+  },
+  "deviceCaps": {
+    "dpiX": 203,
+    "dpiY": 203,
+    "printableWidthPixels": 575,
+    "printableHeightPixels": 2373,
+    "physicalWidthPixels": 575,
+    "physicalHeightPixels": 2373,
+    "offsetXPixels": 0,
+    "offsetYPixels": 0,
+    "printableWidthMm": 71.94581280788178
+  },
+  "browserPrintDialogInspected": false,
+  "physicalPrintPerformed": false
+}

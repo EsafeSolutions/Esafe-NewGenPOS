@@ -83,6 +83,7 @@
   "group_section",
   "balances_across_companies",
   "features_section",
+  "enable_buying",
   "enable_regular_invoices",
   "enable_customer_balances",
   "enable_customer_payments",
@@ -586,6 +587,13 @@
    "fieldname": "features_section",
    "fieldtype": "Section Break",
    "label": "Features"
+  },
+  {
+   "default": "1",
+   "description": "Receive stock with Purchase Invoices, include additional valuation costs, view supplier balances and settle supplier payments.",
+   "fieldname": "enable_buying",
+   "fieldtype": "Check",
+   "label": "Buying and supplier payments"
   },
   {
    "default": "1",

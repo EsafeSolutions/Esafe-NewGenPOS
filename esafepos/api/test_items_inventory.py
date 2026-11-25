@@ -3,6 +3,7 @@
 Execute the actual endpoint bodies with mocked document and database services.
 """
 import ast
+import json
 import math
 from pathlib import Path
 import sys
@@ -23,6 +24,7 @@ class InventoryTests(unittest.TestCase):
         self.doc.name = "REC-1"
         self.frappe.get_doc.return_value = self.doc
         self.frappe.db.sql.return_value = [(10,)]
+        self.frappe.db.get_value.return_value = None
         self.stock_app = ModuleType("esafepos.api.stock_app")
         self.stock_app._has_workflow = Mock(return_value=False)
         self.stock_app._unposted = Mock(return_value=[])
@@ -33,11 +35,11 @@ class InventoryTests(unittest.TestCase):
                                                 "esafepos.api.audit": self.audit})
         self.modules.start()
         self.addCleanup(self.modules.stop)
-        self.ns = {"frappe": self.frappe, "_": lambda value: value, "math": math, "flt": float,
+        self.ns = {"frappe": self.frappe, "_": lambda value: value, "math": math, "json": json, "flt": float,
                    "_profile": Mock(return_value=self.profile), "_can_adjust_stock": Mock(return_value=True),
                    "_can_create": Mock(return_value=True), "_stock_item": Mock(return_value=self.item),
                    "_warehouses": Mock(return_value=["Shelf"])}
-        names = {"_require", "_number", "adjust_stock", "create_item"}
+        names = {"_require", "_number", "_json_list", "_clean_selling_units", "_clean_barcodes", "adjust_stock", "create_item"}
         tree = ast.parse(Path(__file__).with_name("items.py").read_text(encoding="utf-8"))
         selected = [node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name in names]
         exec(compile(ast.Module(body=selected, type_ignores=[]), "items.py", "exec"), self.ns)

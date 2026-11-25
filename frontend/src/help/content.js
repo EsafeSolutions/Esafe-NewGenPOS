@@ -30,6 +30,7 @@ export const SCREENS = {
   '/register': 'Register',
   '/insights': 'Insights',
   '/printing': 'Printing',
+  '/items': 'Items & stock',
   '/count': 'Stock count',
   '/settings': 'Settings',
 }
@@ -280,13 +281,27 @@ export const TOPICS = [
 
   // Stock count
   {
-    route: '/count',
+    route: '/items',
     title: 'Count stock from the till',
+    when: (s) => Boolean(s.permissions.stock_count),
     steps: [
+      'Open Items & stock and choose the Stock count tab. Your count stays on screen when switching tabs.',
       'Pick the warehouse, then scan each item: every scan adds one. A serialised item is counted by scanning each serial number.',
       ['{alone} saves your count as an ERPNext stock count draft with only the items that differ from the shelf, ready to submit.', { alone: 'Count alone' }],
       ['{shared} joins a count that phones with the EsafePOS Stock app are doing in the same warehouse. Send your lines, then merge everything into one stock count.', { shared: 'Shared count' }],
       'Close the open shifts before you save or merge a count: their sales leave the stock only when the shift is closed.',
+    ],
+  },
+
+  {
+    route: '/items',
+    title: 'Manage items, inventory and variants',
+    when: (s) => Boolean(s.permissions.edit_items),
+    steps: [
+      'Item details manages names, categories, brands, images, selling units, prices and barcodes. Find disabled items with the Status filter, clear Disable item and save to enable them again.',
+      'Inventory & transfers shows accessible warehouse balances. Transfer stock creates a Material Transfer; Adjust stock posts a Stock Reconciliation. Close affected shifts with unposted sales first.',
+      'If a transfer response is lost, Check and retry transfer checks the same request without posting it twice. Reopening the same item in this browser tab restores the request after a reload.',
+      'Variants creates attributes and item templates, then individual attribute combinations. Manage each variant to set its price, barcode and status.',
     ],
   },
 

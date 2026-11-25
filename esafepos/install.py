@@ -60,6 +60,13 @@ CORE_GRANTS = {
         **SALE_GRANTS,
     },
     "EsafePOS Manager": {
+        "Supplier": ["read", "write", "create"],
+        "Supplier Group": ["read"],
+        "Purchase Invoice": ["read", "write", "create", "submit", "print"],
+        "Payment Entry": ["read", "write", "create", "submit", "print"],
+        "Mode of Payment": ["read"],
+        "Warehouse": ["read"],
+        "GL Entry": ["read"],
         "Quotation": ["read", "write", "create", "submit", "print", "cancel", "amend", "delete"],
         "POS Invoice": ["read", "write", "create", "submit", "cancel", "amend", "print", "delete"],
         "POS Opening Entry": ["read", "write", "create", "submit", "cancel"],
@@ -68,6 +75,21 @@ CORE_GRANTS = {
         "Sales Invoice": ["read", "write", "create", "submit", "cancel", "amend", "print"],
         **CUSTOMER_GRANTS,
         **SALE_GRANTS,
+        "Account": ["read", "select"],
+        "Item": ["read", "write", "create"],
+        "Item Group": ["read"],
+        "Brand": ["read"],
+        "UOM": ["read"],
+        "Price List": ["read"],
+        "Item Price": ["read", "write", "create"],
+        "Item Attribute": ["read", "write", "create"],
+        "Bin": ["read"],
+        "Stock Ledger Entry": ["read"],
+        "Stock Entry Type": ["read"],
+        "Stock Entry": ["read", "write", "create", "submit"],
+        "Stock Reconciliation": ["read", "write", "create", "submit"],
+        "Serial No": ["read"],
+        "Batch": ["read"],
     },
 }
 
@@ -122,6 +144,7 @@ def ensure_setup():
     # what used to drop these indexes.
     ensure_index_fields()
     make_custom_fields()
+    make_buying_fields()
     drop_deprecated_custom_fields()
     migrate_price_books()
     ensure_return_reasons()
@@ -779,6 +802,24 @@ def grant_core_permissions():
                 except Exception:
                     # A ptype that doesn't apply to a doctype is harmless to skip.
                     pass
+
+
+def make_buying_fields():
+    """Native buying documents retain retry identities and outlet attribution."""
+    fields = {}
+    for doctype in ("Supplier", "Purchase Invoice", "Payment Entry"):
+        fields[doctype] = [
+            dict(fieldname="esafepos_buying_key", label="POS Buying Request ID", fieldtype="Data",
+                 unique=1, read_only=1, no_copy=1, hidden=1, print_hide=1),
+            dict(fieldname="esafepos_buying_hash", label="POS Buying Request Details", fieldtype="Data",
+                 read_only=1, no_copy=1, hidden=1, print_hide=1),
+        ]
+        if doctype != "Supplier":
+            fields[doctype].append(dict(fieldname="esafepos_buying_profile", label="POS Buying Outlet",
+                                        fieldtype="Link", options="POS Profile", read_only=1, no_copy=1))
+    fields["Payment Entry"].append(dict(fieldname="esafepos_supplier_payment_method", label="POS Supplier Payment Method",
+                                        fieldtype="Select", options="\nCash\nBank Transfer\nCheque", read_only=1, no_copy=1))
+    create_custom_fields(fields, update=True)
 
 
 def make_custom_fields():

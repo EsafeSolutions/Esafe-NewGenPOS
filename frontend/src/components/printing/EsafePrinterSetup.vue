@@ -22,6 +22,7 @@
       <template v-if="info && selection[optionsRole]"><label class="field"><span>{{ t('Driver options for') }}</span><select v-model="optionsRole" :aria-label="t('Driver options for')" @change="inspect(selection[optionsRole])"><option value="receipt">{{ t('Receipts') }}</option><option value="document">{{ t('Invoices / A4') }}</option><option value="report">{{ t('Reports') }}</option></select></label><div v-if="optionsRole!=='receipt' || config.receipt_output!=='raw'" class="fields"><label class="field"><span>{{ t('Orientation') }}</span><select v-model="driverOptions.orientation" :aria-label="t('Orientation')"><option value="portrait">{{ t('Portrait') }}</option><option value="landscape">{{ t('Landscape') }}</option></select></label><label v-if="info.duplex" class="field"><span>{{ t('Duplex') }}</span><select v-model="driverOptions.duplex" :aria-label="t('Duplex')"><option value="none">{{ t('One side') }}</option><option value="long-edge">{{ t('Long edge') }}</option><option value="short-edge">{{ t('Short edge') }}</option></select></label><label v-if="info.color" class="check"><input v-model="driverOptions.color" type="checkbox" />{{ t('Color output') }}</label></div><p v-else class="hint">{{ t('Raw jobs use copies only. Layout, cutting and encoding are contained in the raw printer bytes.') }}</p></template>
       <div class="actions"><button class="btn btn-primary" :disabled="!canWrite || busy" @click="saveAssignment">{{ t('Approve and save workstation printers') }}</button><button class="btn btn-outline" :disabled="busy || !selection.receipt || assignmentsDirty" @click="test">{{ t('Silent test receipt') }}</button><button class="btn btn-outline" :disabled="busy || !selection.receipt || assignmentsDirty" @click="preview">{{ t('Preview test') }}</button></div>
     </fieldset>
+    <ReceiptPrintLayout :profile="profile" :can-write="canWrite" :needs-migration="needsMigration" :offline="offline" />
     <CashDrawerSetup :profile="profile" :can-write="canWrite" :needs-migration="needsMigration" :offline="offline" />
     <details class="guide" @toggle="loadEnvironment"><summary>{{ t('Installed ERP and printing versions') }}</summary><p v-if="environment">Frappe {{ environment.frappe }} · ERPNext {{ environment.erpnext }} · EsafePOS {{ environment.esafepos }} · SDK {{ environment.sdk }} · Protocol {{ environment.protocol }}<br />{{ environment.installed_apps?.join(', ') }}</p><p v-else>{{ environmentError || t('Open to load version information from this ERP site.') }}</p></details>
     <img v-if="previewUrl" class="test-preview" :src="previewUrl" :alt="t('Esafe test preview')" />
@@ -30,6 +31,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import CashDrawerSetup from './CashDrawerSetup.vue'
+import ReceiptPrintLayout from './ReceiptPrintLayout.vue'
 import { call } from '../../api'
 import { t } from '../../i18n'
 import { useSessionStore } from '../../stores/session'

@@ -323,7 +323,8 @@ function saveItemDetails(edits) {
   const item = unit ? {
     ...detailItem.value, selling_uom: unit.uom, conversion_factor: unit.factor,
     whole_qty: unit.whole_qty, price: unit.price, standard_price: unit.price,
-  } : detailItem.value
+  } : { ...detailItem.value, price: edits.basePrice ?? detailItem.value.price,
+    standard_price: edits.standardPrice ?? detailItem.value.standard_price ?? detailItem.value.price }
   const existing = unit ? cart.lines.find((line) => line.item_code === item.item_code && line.selling_uom === unit.uom) : detailLine.value
   if (!existing) {
     if (!addToCart(item, null, edits.qty)) {

@@ -4,7 +4,8 @@
     <div v-else-if="session.offline" class="card items-card">{{ t('Editing items needs a connection.') }}</div>
     <template v-else>
       <div class="card items-card item-browser">
-        <button v-if="options.can_create_items" type="button" class="btn btn-primary" :disabled="saving || opening" @click="startCreate">{{ t('Add item') }}</button>
+        <div class="browser-heading"><h2>{{ section === 'inventory' ? t('Inventory') : t('Item catalog') }}</h2>
+          <button v-if="options.can_create_items && section === 'details'" type="button" class="btn btn-primary" :disabled="saving || opening" @click="startCreate"><Icon name="plus" />{{ t('Add item') }}</button></div>
         <form class="item-search" @submit.prevent="searchItems()">
           <input v-model="search" :aria-label="t('Find an item')" :placeholder="t('Item name, code or barcode')" />
           <button class="btn btn-primary" :disabled="loading">{{ t('Search') }}</button>
@@ -13,6 +14,13 @@
           <SearchSelect v-model="group" :label="t('Category')" :options="groupOptions" @change="searchItems()" />
           <SearchSelect v-model="brand" :label="t('Brand')" :options="brandOptions" @change="searchItems()" />
         </div>
+        <div class="item-filters">
+          <label>{{ t('Status') }}<select v-model="status" :disabled="saving" @change="searchItems()"><option value="active">{{ t('Active items') }}</option><option value="disabled">{{ t('Disabled items') }}</option><option value="all">{{ t('All statuses') }}</option></select></label>
+          <label v-if="section === 'details'">{{ t('Item type') }}<select v-model="itemType" :disabled="saving" @change="searchItems()"><option value="">{{ t('All item types') }}</option><option value="stock">{{ t('Stock items') }}</option><option value="service">{{ t('Services') }}</option><option value="template">{{ t('Templates') }}</option><option value="variant">{{ t('Variants') }}</option></select></label>
+          <label v-else>{{ t('Warehouse') }}<select v-model="warehouse" :disabled="saving" @change="searchItems()"><option value="">{{ t('All warehouses') }}</option><option v-for="name in options.warehouses || []" :key="name" :value="name">{{ name }}</option></select></label>
+        </div>
+        <div class="result-meta"><small class="muted" role="status">{{ t('{n} items loaded', { n: items.length }) }}</small><button class="btn btn-outline" type="button" :disabled="!items.length || loading" @click="exportItems"><Icon name="download" />{{ t('Export loaded items') }}</button></div>
+        <p v-if="searchError" role="alert">{{ searchError }} <button class="btn btn-outline" type="button" @click="searchItems()">{{ t('Retry') }}</button></p>
         <div class="item-results">
           <div v-if="loading && !items.length" class="muted">{{ t('Loading…') }}</div>
           <div v-else-if="!items.length" class="muted">{{ t('No products found') }}</div>
@@ -23,21 +31,29 @@
             <span>
               <strong>{{ item.item_name }}</strong>
               <small class="muted">{{ [item.name, item.stock_uom, item.item_group, item.brand].filter(Boolean).join(' · ') }}</small>
+              <small v-if="section === 'inventory' && item.available_qty != null" :class="{ 'empty-stock': item.available_qty <= 0 }">{{ t('{n} available', { n: item.available_qty }) }} · {{ t('{n} on hand', { n: item.actual_qty }) }}</small>
             </span>
+            <span v-if="item.disabled" class="item-badge disabled-badge">{{ t('Disabled') }}</span>
+            <span v-else-if="item.has_variants" class="item-badge">{{ t('Template') }}</span>
+            <span v-else-if="item.variant_of" class="item-badge">{{ t('Variant') }}</span>
           </button>
           <button v-if="hasMore" class="btn btn-outline more-items" :disabled="loading || saving" @click="searchItems(true)">
             {{ loading ? t('Loading…') : t('Load more items') }}
           </button>
         </div>
       </div>
-      <ItemCreateForm v-if="creating" :options="options" @busy="saving = $event" @cancel="creating = false" @created="itemCreated" />
+      <ItemCreateForm v-if="creating && section === 'details'" :options="options" @busy="saving = $event" @cancel="creating = false" @created="itemCreated" />
       <div v-else-if="draft" class="card items-card edit-item">
-        <form @submit.prevent="save">
+        <div v-if="section === 'inventory'" class="inventory-item-heading"><h2>{{ draft.item_name }}</h2><p class="muted">{{ draft.item_code }} · {{ draft.stock_uom }}</p></div>
+        <form v-show="section === 'details'" @submit.prevent="save">
         <fieldset :disabled="saving || opening">
           <header>
             <h2>{{ draft.item_name }}</h2>
             <div class="muted">{{ [draft.item_code, draft.item_group, draft.brand].filter(Boolean).join(' · ') }}</div>
           </header>
+          <div v-if="draft.has_variants" class="item-notice">{{ t('This is an item template. Manage attribute combinations in the Variants tab; set prices and stock on each variant.') }}</div>
+          <div v-if="draft.variant_of" class="item-notice">{{ t('Variant of') }}: {{ draft.variant_of }}</div>
+          <div v-if="draft.disabled" class="item-notice disabled-badge" role="status">{{ t('This item is disabled. Clear Disable item and save to enable it again.') }}</div>
           <div class="item-identity">
             <div class="image-preview">
               <img v-if="imagePreview && !previewFailed" :src="imagePreview" :alt="draft.item_name"
@@ -79,12 +95,23 @@
               </div>
             </div>
           </div>
+          <div class="metadata-fields">
+            <label>{{ t('Category') }}<select v-model="draft.item_group" :disabled="!draft.can_edit_item"><option v-for="name in options.item_groups || []" :key="name" :value="name">{{ name }}</option></select></label>
+            <label>{{ t('Brand') }}<select v-model="draft.brand" :disabled="!draft.can_edit_item"><option value="">{{ t('No brand') }}</option><option v-for="name in options.brands || []" :key="name" :value="name">{{ name }}</option></select></label>
+            <label class="description-field">{{ t('Description') }}<textarea v-model="draft.description" :readonly="!draft.can_edit_item" rows="3" maxlength="10000" /></label>
+          </div>
+          <div class="item-settings">
+            <label><input v-model="draft.disabled" type="checkbox" :disabled="!draft.can_edit_item" />{{ t('Disable item') }}</label>
+            <label><input v-model="draft.is_sales_item" type="checkbox" :disabled="!draft.can_edit_item" />{{ t('Available for sale') }}</label>
+            <label><input v-model="draft.is_purchase_item" type="checkbox" :disabled="!draft.can_edit_item" />{{ t('Available for purchase') }}</label>
+          </div>
+          <small v-if="draft.has_variants" class="muted">{{ t('Template changes follow ERPNext variant-field settings. Review the status of existing variants after saving.') }}</small>
           <label v-if="draft.price_list">{{ t('Selling price list') }}
             <select :value="draft.price_list" @change="changePriceList">
               <option v-for="list in priceLists" :key="list.name" :value="list.name">{{ list.name }} · {{ list.currency }}</option>
             </select>
           </label>
-          <section class="item-options-section">
+          <section v-if="!draft.has_variants" class="item-options-section">
             <div class="section-heading"><h3>{{ t('Selling units and prices') }}</h3>
               <button v-if="draft.can_edit_item && !draft.has_serial_no" type="button" class="btn btn-outline" @click="addSellingUnit">{{ t('Add UOM') }}</button>
             </div>
@@ -111,7 +138,7 @@
             </div>
             <p v-if="!draft.can_edit_prices" class="muted">{{ t('Selling prices are read-only for your account.') }}</p>
           </section>
-          <section v-if="draft.can_edit_item" class="item-options-section">
+          <section v-if="draft.can_edit_item && !draft.has_variants" class="item-options-section">
             <div class="section-heading"><h3>{{ t('Barcodes') }}</h3>
               <button type="button" class="btn btn-outline" @click="addBarcode">{{ t('Add barcode') }}</button>
             </div>
@@ -132,7 +159,8 @@
           </button>
         </fieldset>
         </form>
-        <ItemWarehouseStock v-if="options.can_view_stock && !opening" :key="draft.item_code" :item-code="draft.item_code" :disabled="saving" @busy="saving = $event" @updated="refreshCatalog" />
+        <ItemWarehouseStock v-if="options.can_view_stock && draft.is_stock_item && !draft.has_variants && !opening" v-show="section === 'inventory'" :key="draft.item_code" :item-code="draft.item_code" :disabled="saving" @busy="saving = $event" @updated="stockUpdated" />
+        <p v-else-if="section === 'inventory'" class="muted">{{ t('Select a stock item or an individual variant to view inventory.') }}</p>
       </div>
       <div v-else class="card items-card muted">{{ opening ? t('Loading…') : t('Select an item to manage its details.') }}</div>
     </template>
@@ -154,11 +182,17 @@ import { useCartStore } from '../stores/cart'
 import { useSessionStore } from '../stores/session'
 
 const session = useSessionStore()
+const props = defineProps({ section: { type: String, default: 'details' }, itemCode: { type: String, default: '' } })
+const emit = defineEmits(['options'])
 const catalog = useCatalogStore()
 const cart = useCartStore()
 const search = ref('')
 const group = ref('')
 const brand = ref('')
+const status = ref('active')
+const itemType = ref('')
+const warehouse = ref('')
+const searchError = ref('')
 const options = ref({})
 const selectedPriceList = ref('')
 const priceLists = computed(() => options.value.price_lists || [])
@@ -205,11 +239,14 @@ let detailRequest = 0
 async function searchItems(append = false) {
   if (append && (loading.value || !hasMore.value)) return
   if (!append) {
-    activeFilters = { search: search.value, item_group: group.value, brand: brand.value }
+    activeFilters = { search: search.value, item_group: group.value, brand: brand.value,
+      status: status.value, item_type: props.section === 'inventory' ? 'stock' : itemType.value,
+      include_stock: props.section === 'inventory' ? 1 : 0, warehouse: warehouse.value }
     hasMore.value = false
     items.value = []
   }
   loading.value = true
+  searchError.value = ''
   const id = ++request
   try {
     const results = await call('esafepos.api.items.search_items', {
@@ -221,7 +258,7 @@ async function searchItems(append = false) {
       hasMore.value = results.length === pageSize
     }
   } catch (error) {
-    if (id === request) session.notify(error.message, true)
+    if (id === request) searchError.value = error.message
   } finally {
     if (id === request) loading.value = false
   }
@@ -230,6 +267,7 @@ async function searchItems(append = false) {
 function setDraft(item) {
   draft.value = {
     ...item,
+    brand: item.brand || '', description: item.description || '',
     originalName: item.item_name,
     units: item.units.map((unit, index) => ({
       ...unit, _key: `${unit.uom || 'unit'}-${index}`, auto_price: false,
@@ -347,6 +385,7 @@ async function openItem(itemCode, priceList, keepIdentity = false) {
   creating.value = false
   const id = ++detailRequest
   const name = keepIdentity && draft.value.item_name !== draft.value.originalName ? draft.value.item_name : null
+  const metadata = keepIdentity ? Object.fromEntries(['disabled', 'item_group', 'brand', 'description', 'is_sales_item', 'is_purchase_item'].map(key => [key, draft.value[key]])) : null
   opening.value = true
   try {
     const result = await call('esafepos.api.items.item_details', {
@@ -360,6 +399,7 @@ async function openItem(itemCode, priceList, keepIdentity = false) {
     }
     setDraft(result)
     if (name !== null && result.can_edit_item) draft.value.item_name = name
+    if (metadata && result.can_edit_item) Object.assign(draft.value, metadata)
     selectedPriceList.value = result.price_list
   } catch (error) {
     if (id === detailRequest) session.notify(error.message, true)
@@ -382,6 +422,18 @@ async function refreshCatalog() {
   } catch (error) {
     session.notify(error.message, true)
   }
+}
+
+async function stockUpdated() { await refreshCatalog(); await searchItems() }
+
+function exportItems() {
+  const columns = ['name', 'item_name', 'item_group', 'brand', 'stock_uom', 'disabled', 'variant_of',
+    ...(props.section === 'inventory' ? ['actual_qty', 'reserved_qty', 'available_qty'] : [])]
+  const cell = value => '"' + String(value ?? '').replace(/^[=+@\-\t\r]/, "'$&").replaceAll('"', '""') + '"'
+  const csv = [columns, ...items.value.map(item => columns.map(key => item[key]))].map(row => row.map(cell).join(',')).join('\r\n')
+  const url = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }))
+  const link = document.createElement('a'); link.href = url; link.download = 'items-stock.csv'; link.click()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
 async function itemCreated(itemCode) {
@@ -411,11 +463,13 @@ async function save() {
     const updated = await call('esafepos.api.items.save_item', {
       pos_profile: profile, item_code: item.item_code,
       ...(item.can_edit_item && item.item_name !== item.originalName ? { item_name: item.item_name } : {}),
+      ...(item.can_edit_item ? { disabled: item.disabled ? 1 : 0, item_group: item.item_group, brand: item.brand,
+        description: item.description, is_sales_item: item.is_sales_item ? 1 : 0, is_purchase_item: item.is_purchase_item ? 1 : 0 } : {}),
       price_list: item.price_list,
-      ...(item.can_edit_item && !item.has_serial_no ? { selling_units: JSON.stringify(item.units
+      ...(item.can_edit_item && !item.has_serial_no && !item.has_variants ? { selling_units: JSON.stringify(item.units
         .filter((unit) => unit.uom && unit.uom !== item.stock_uom)
         .map(({ uom, factor }) => ({ uom, factor }))) } : {}),
-      ...(item.can_edit_item ? { barcodes: JSON.stringify(item.barcodes
+      ...(item.can_edit_item && !item.has_variants ? { barcodes: JSON.stringify(item.barcodes
         .filter((row) => row.barcode?.trim())
         .map(({ barcode, uom }) => ({ barcode: barcode.trim(), uom }))) } : {}),
       ...(image ? { image_content: image } : {}),
@@ -428,7 +482,7 @@ async function save() {
     clearImage()
     setDraft(updated)
     const listed = items.value.find((row) => row.name === updated.item_code)
-    if (listed) Object.assign(listed, { item_name: updated.item_name, image: updated.image })
+    if (listed) Object.assign(listed, { item_name: updated.item_name, image: updated.image, disabled: updated.disabled, item_group: updated.item_group, brand: updated.brand })
     for (const line of cart.lines) {
       if (line.item_code !== updated.item_code) continue
       line.item_name = updated.item_name
@@ -471,14 +525,18 @@ watch(() => [session.posProfile, session.offline, session.permissions.edit_items
     const result = await call('esafepos.api.items.editor_options', { pos_profile: profile })
     if (session.posProfile !== profile || session.offline) return
     options.value = result
+    emit('options', result)
     if (!selectedPriceList.value) {
       selectedPriceList.value = priceLists.value.find((list) => list.name === result.default_price_list)?.name ||
         priceLists.value[0]?.name || ''
     }
+    if (props.itemCode) openItem(props.itemCode, selectedPriceList.value)
   } catch (error) {
     session.notify(error.message, true)
   }
 }, { immediate: true })
+watch(() => props.itemCode, code => { if (code && !session.offline && session.permissions.edit_items) openItem(code, selectedPriceList.value) })
+watch(() => props.section, () => { if (!session.offline && session.permissions.edit_items) searchItems() })
 onBeforeUnmount(() => {
   request++
   detailRequest++
@@ -489,6 +547,22 @@ onBeforeUnmount(() => {
 <style scoped>
 .items-page { flex: 1; min-height: 0; width: 100%; padding: 16px; display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); align-items: start; gap: 16px; overflow: auto; }
 .items-card { min-width: 0; padding: 16px; display: grid; gap: 12px; }
+.browser-heading, .result-meta { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+.browser-heading h2 { margin: 0; font-size: 17px; }
+.result-meta .btn { padding: 7px 9px; font-size: 12px; }
+.item-filters label { display: grid; gap: 5px; font-size: 12px; color: var(--text-muted); }
+.item-filters select { width: 100%; }
+.item-result > span:nth-child(2) { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.item-badge { font-size: 11px; border: 1px solid var(--border); padding: 4px 7px; border-radius: 6px; color: var(--text-muted); }
+.disabled-badge, .empty-stock { color: var(--red); }
+.item-notice { padding: 12px; background: var(--surface-2); border-radius: 8px; line-height: 1.6; }
+.metadata-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.description-field { grid-column: 1 / -1; }
+.description-field textarea { width: 100%; resize: vertical; }
+.item-settings { display: flex; flex-wrap: wrap; gap: 16px; }
+.edit-item .item-settings label { display: flex; align-items: center; gap: 8px; }
+.edit-item .item-settings input { width: 17px; height: 17px; accent-color: var(--brand); }
+.inventory-item-heading p { margin: 0; }
 .item-browser { max-height: 100%; }
 .item-search { display: flex; gap: 8px; }
 .item-search input { min-width: 0; flex: 1; }

@@ -42,6 +42,7 @@ export const useCartStore = defineStore('cart', {
     discountRequest: null, // approved POS Discount Request name (role approval)
     activePriceList: null,
     _priceRequest: 0,
+    _pricePending: false,
     note: '',
     // An exchange in progress: what is coming back and against which sale. The
     // cart itself holds what the customer is taking INSTEAD, so the sell screen
@@ -678,6 +679,7 @@ export const useCartStore = defineStore('cart', {
     async reprice() {
       const session = useSessionStore()
       const request = ++this._priceRequest
+      this._pricePending = false
       if (!this.lines.length) return
       if (session.offline) {
         this._offlineCurrencyPrices()
@@ -685,6 +687,7 @@ export const useCartStore = defineStore('cart', {
       }
       const customer = this.customer?.name || null
       const appType = this.appType
+      this._pricePending = true
       try {
         // The customer too: one billed in another currency may have their
         // own price list in it (esafepos.currency).
@@ -711,6 +714,8 @@ export const useCartStore = defineStore('cart', {
         }
       } catch {
         /* keep current prices; server re-resolves at submit anyway */
+      } finally {
+        if (request === this._priceRequest) this._pricePending = false
       }
     },
 
@@ -826,6 +831,7 @@ export const useCartStore = defineStore('cart', {
 
     clear() {
       this._priceRequest++
+      this._pricePending = false
       this.lines = []
       this.customer = null
       this.receiptContact = ''

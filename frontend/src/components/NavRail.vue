@@ -21,6 +21,10 @@
       <svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14l-3-1.5L13 21l-3-1.5L7 21l-1-1V3zm9 0v5h5M9 12h6M9 16h6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <span class="rail-label">{{ t('Invoices') }}</span>
     </router-link>
+    <router-link v-if="!session.reportsOnly && session.settings.enable_buying && session.permissions.buying" to="/buying" class="rail-item" :title="t('Buying')" active-class="active">
+      <svg viewBox="0 0 24 24"><path d="M3 7h18v14H3zM7 7V3h10v4M9 12l3 3 3-3m-3-2v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span class="rail-label">{{ t('Buying') }}</span>
+    </router-link>
     <router-link v-if="holdsVisible" to="/holds" class="rail-item" :title="t('Holds')" active-class="active">
       <svg viewBox="0 0 24 24"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
       <span class="rail-label">{{ t('Holds') }}</span>
@@ -33,19 +37,14 @@
       <svg viewBox="0 0 24 24"><path d="M3 3v18h18M8 17v-6m5 6V7m5 10v-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <span class="rail-label">{{ t('Insights') }}</span>
     </router-link>
-    <router-link v-if="!session.reportsOnly && session.permissions.edit_items" to="/items" class="rail-item" :title="t('Items')" active-class="active">
+    <router-link v-if="!session.reportsOnly && (session.permissions.edit_items || session.permissions.stock_count)" to="/items" class="rail-item" :title="t('Items & stock')" active-class="active" data-tour="count-rail">
       <svg viewBox="0 0 24 24"><path d="m3 7 9-4 9 4v10l-9 4-9-4zM3 7l9 4 9-4m-9 4v10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
-      <span class="rail-label">{{ t('Items') }}</span>
+      <span class="rail-label">{{ t('Items & stock') }}</span>
     </router-link>
     <!-- Barcode and price labels (0.67.0): the shop's switch and the person's permission. -->
     <router-link v-if="session.permissions.settings || (!session.reportsOnly && (session.settings.esafe_printing?.silent || session.settings.enable_labels && session.permissions.print_labels))" to="/printing" class="rail-item" :title="t('Printing')" active-class="active" data-tour="labels-rail">
       <svg viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18H3V9h18v9h-3M6 14h12v7H6zM17 12h1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <span class="rail-label">{{ t('Printing') }}</span>
-    </router-link>
-    <!-- Stock count (0.69.0): the switches, the capability and ERPNext create on Stock Reconciliation. -->
-    <router-link v-if="!session.reportsOnly && session.permissions.stock_count" to="/count" class="rail-item" :title="t('Stock count')" active-class="active" data-tour="count-rail">
-      <svg viewBox="0 0 24 24"><path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2M8 8v8M11 8v8M14 8v8M17 8v8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      <span class="rail-label">{{ t('Stock count') }}</span>
     </router-link>
     <button
       v-if="session.canApprove"

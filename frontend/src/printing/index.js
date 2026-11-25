@@ -4,6 +4,7 @@ import { useSessionStore } from '../stores/session'
 import { createEsafeService } from './esafe.js'
 import { selfContainedHtml } from './documents.js'
 import { createDrawerController } from './drawer.js'
+import { receiptLayoutFor, receiptHtmlOptions } from '../receiptLayout.js'
 
 export const printManager = createEsafeService({
   authorize: (record) => call('esafepos.api.esafe_printing.register_intent', {
@@ -25,11 +26,11 @@ export async function nativeReceipt(receipt, source, { reprint = false, automati
   if (!config.silent || session.offline || receipt.offline) return null
   const key = reprint ? crypto.randomUUID() : `receipt:${receipt.doctype || session.invoiceMode}:${receipt.name}:original`
   let format = config.receipt_output || 'html', data, dimensions
-  if (format === 'html') { dimensions = await selfContainedHtml(source, { receipt: true }); data = dimensions.html }
+  if (format === 'html') { const binding = await printManager.binding(profile); dimensions = await selfContainedHtml(source, { receipt: true, layout: receiptLayoutFor(source, binding) }); data = dimensions.html }
   else { const rendered = await call('esafepos.api.esafe_printing.receipt_output', { invoice: receipt.name, output: format, reprint: reprint ? 1 : 0 }, {timeout:60000}); data = fromBase64(rendered.data) }
   const previous = printManager.state.jobs.find((j) => j.reference?.name === receipt.name && j.role === 'receipt')
   return printManager.dispatch({ key, profile, role: 'receipt', format, data,
-    options: { copies: config.copies || 1, ...(format === 'html' ? { size: { width: dimensions.width, height: dimensions.height }, margins: 0, scale: 'actual' } : {}) },
+    options: format === 'html' ? receiptHtmlOptions(dimensions, config.copies || 1) : { copies: config.copies || 1 },
     title: `Receipt ${receipt.name}`, reference: { doctype: receipt.doctype || session.invoiceMode || 'POS Invoice', name: receipt.name, reprint: reprint ? 1 : 0 },
     reprintOf: reprint ? previous?.intentId || '' : '', user: session.user, automatic })
 }

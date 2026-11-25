@@ -173,6 +173,7 @@ import { useSessionStore } from '../stores/session'
 import { money } from '../format'
 import { t } from '../i18n'
 import { printReceipt } from '../receiptPrint'
+import { receiptLayoutFor } from '../receiptLayout.js'
 import { nativeReceipt, printManager, printStatusMessage, silentPrinting, cashDrawer } from '../printing/index.js'
 
 const props = defineProps({
@@ -525,7 +526,9 @@ async function print(forceBrowser = false, automatic = false) {
   printing.value = true
   try {
     await nextTick()
-    await printReceipt(document.getElementById('receipt-print'))
+    const source = document.getElementById('receipt-print')
+    const binding = await printManager.binding(props.receipt.pos_profile || session.posProfile).catch(() => ({}))
+    await printReceipt(source, receiptLayoutFor(source, binding))
   } catch (e) {
     session.notify(e.message, true)
   } finally {

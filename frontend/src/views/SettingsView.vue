@@ -2304,7 +2304,7 @@
           {{ t('Edit item selling prices controls saved ERPNext prices. Managers have POS access by default. Add a rule to grant access to another role or person. ERPNext permissions also apply.') }}
         </p>
         <p class="muted hint-row">
-          {{ t('Create items, View warehouse stock and Adjust warehouse stock are separate manager-default permissions. Grant each to a role or person as needed. Adjusting stock also requires View warehouse stock and ERPNext Stock Reconciliation create and submit permissions.') }}
+          {{ t('Create items, View warehouse stock, Adjust warehouse stock and Transfer warehouse stock are separate manager-default permissions. Grant each to a role or person as needed. Adjustments require ERPNext Stock Reconciliation create/submit permissions. Transfers require Stock Entry read/create/submit permissions. Both require View warehouse stock.') }}
         </p>
       </div>
 
@@ -2622,6 +2622,7 @@ const capabilityOptions = [
   'Create items',
   'View warehouse stock',
   'Adjust warehouse stock',
+  'Transfer warehouse stock',
   'Make returns',
   'Return past the window',
   'Exchange goods',
@@ -2641,6 +2642,7 @@ const capabilityOptions = [
   'See profit',
   'Print labels',
   'Use the stock app',
+  'Manage buying and suppliers',
   'Permanently delete sales',
 ]
 
@@ -2711,6 +2713,7 @@ const generalForm = ref({
   credit_customers: 'Customers allowed on their card',
   credit_default_limit: 0,
   enable_regular_invoices: 1,
+  enable_buying: 1,
   enable_customer_balances: 1,
   enable_customer_payments: 1,
   enable_cheque_tracking: 0,
@@ -2783,6 +2786,7 @@ const generalForm = ref({
 })
 
 const moduleFeatureRows = [
+  { field: 'enable_buying', title: 'Buying and supplier payments', description: 'Receive purchases, include extra costs in stock valuation, and settle supplier invoices by cash, bank transfer or cheque.' },
   { field: 'enable_regular_invoices', title: 'Regular Sales Invoices', description: 'Create named-customer invoices from the cart or use direct Sales Invoice checkout.' },
   { field: 'enable_customer_balances', title: 'Customer balances', description: 'Show customer receivables and open invoices from ERPNext.' },
   { field: 'enable_customer_payments', title: 'Customer payment collection', description: 'Collect and allocate payments against customer invoices.', requires: ['enable_customer_balances'] },
@@ -3313,6 +3317,7 @@ async function load() {
     credit_customers: info.credit_customers || 'Customers allowed on their card',
     credit_default_limit: info.credit_default_limit || 0,
     enable_regular_invoices: info.enable_regular_invoices ?? 1,
+    enable_buying: info.enable_buying ?? 1,
     enable_customer_balances: info.enable_customer_balances ?? 1,
     enable_customer_payments: info.enable_customer_payments ?? 1,
     enable_cheque_tracking: info.enable_cheque_tracking ?? 0,

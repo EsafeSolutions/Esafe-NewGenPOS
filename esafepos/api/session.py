@@ -291,6 +291,7 @@ def get_user_permissions():
     from esafepos.api import reports as reports_mod
     from esafepos.api.labels import can_print_labels as labels_perm
     from esafepos.api.stock_app import can_count_in_till
+    from esafepos.api.buying import can_buy
     from esafepos import user_access
 
     roles = set(frappe.get_roles())
@@ -321,6 +322,7 @@ def get_user_permissions():
         "print_labels": labels_perm(),
         # The Stock count screen (0.69.0): the switches, the capability and ERPNext create on Stock Reconciliation.
         "stock_count": can_count_in_till(),
+        "buying": can_buy(),
         # Sales on account (0.60.0), each nobody's but a manager's until named.
         "sell_on_account": caps_mod.can_sell_on_account(),
         "take_customer_payments": caps_mod.can_take_customer_payments(),

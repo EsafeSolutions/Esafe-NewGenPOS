@@ -11,6 +11,7 @@ from frappe.utils import cint
 
 
 FIELDS = (
+    "enable_buying",
     "enable_regular_invoices",
     "enable_customer_balances",
     "enable_customer_payments",
@@ -31,6 +32,7 @@ FIELDS = (
 # Existing workflows stay available by default. New HR and order workflows are
 # opt-in until their site configuration and policy are complete.
 DEFAULTS = {
+    "enable_buying": 1,
     "enable_regular_invoices": 1,
     "enable_customer_balances": 1,
     "enable_customer_payments": 1,

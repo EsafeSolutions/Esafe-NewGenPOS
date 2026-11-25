@@ -93,14 +93,15 @@
     </div>
     <div v-else-if="expanded" class="line-edit">
       <div class="edit-field">
-        <label>{{ t('Quantity') }}</label>
+        <label :for="`line-qty-${index}`">{{ t('Quantity') }}<template v-if="line.selling_uom || line.uom"> ({{ line.selling_uom || line.uom }})</template></label>
         <div v-if="line.has_serial_no" class="stepper">
-          <input type="number" :value="line.qty" disabled :title="t('Quantity follows scanned serials')" />
+          <input :id="`line-qty-${index}`" type="number" :value="line.qty" disabled :title="t('Quantity follows scanned serials')" />
           <button class="btn btn-outline" @click="serialOpen = true">{{ t('+ Scan serial') }}</button>
         </div>
         <div v-else class="stepper">
           <button class="btn btn-outline" @click="cart.setQty(index, line.qty - 1)">−</button>
           <input
+            :id="`line-qty-${index}`"
             type="number"
             min="0"
             :step="line.whole_qty ? 1 : 'any'"
@@ -110,6 +111,11 @@
           <button class="btn btn-outline" @click="cart.setQty(index, line.qty + 1)">+</button>
         </div>
       </div>
+      <QuantityAmountField v-if="!line.has_serial_no" :id="`line-amount-${index}`" compact
+        :quantity="line.qty" :unit-price="amountRate" :currency="cart.saleCurrency.currency"
+        :unit="line.selling_uom || line.uom" :whole-quantity="Boolean(line.whole_qty)"
+        :disabled="cart._pricePending && line.price_override == null"
+        @update:quantity="cart.setQty(index, $event)" />
       <!-- A price typed for this line: the outlet allows it (POS Profile, Allow
            User to Edit Rate) and the person may edit prices. -->
       <div class="edit-field">
@@ -168,6 +174,7 @@
 
 <script setup>
 import Icon from './Icon.vue'
+import QuantityAmountField from './QuantityAmountField.vue'
 import { ref } from 'vue'
 import { t } from '../i18n'
 import { useCartStore } from '../stores/cart'
@@ -213,6 +220,7 @@ const listPrice = computed(() => cart.inSale(props.line.price_before_override ??
 const priceText = computed(() =>
   props.line.price_override != null ? String(props.line.price_override) : String(cart.inSale(props.line.price))
 )
+const amountRate = computed(() => Number(props.line.price) * (cart.saleCurrency.blocked ? 1 : cart.saleCurrency.factor || 1))
 
 function onSerialAdded(serial) {
   serialOpen.value = false

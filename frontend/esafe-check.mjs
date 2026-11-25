@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict'
 import { createEsafeService, recoveryMessage } from './src/printing/esafe.js'
 import { EsafeClient } from '@esafe/printer-manager'
+import { validateReceiptLayout, receiptHtmlOptions } from './src/receiptLayout.js'
 assert.equal(typeof new EsafeClient().printers.capabilities, 'function')
 function memoryJournal() {
   const settings=new Map(),intents=new Map(),clone=(v)=>v===undefined ? undefined : structuredClone(v)
@@ -120,5 +121,25 @@ async function prepare(h){await h.journal.saveSetting('approved',true);await h.j
   await assert.rejects(h.service.retry(request.key),/accepted job/)
   assert.equal(h.client.calls.length,1)
   console.log('PASS native history loss is unknown and never authorizes automatic original replay')
+}
+{
+  const h=harness();await prepare(h)
+  const wide={paperWidth:72,printableWidth:68,inset:2},narrow={paperWidth:48,printableWidth:48,inset:2}
+  assert.deepEqual(validateReceiptLayout({},58),{paperWidth:58,printableWidth:58,inset:3})
+  for(const value of [{paperWidth:81},{paperWidth:72,printableWidth:80},{inset:-1},{inset:11},{paperWidth:10,inset:3},{paperWidth:'72'},{paperWidth:NaN}])assert.throws(()=>validateReceiptLayout(value,80))
+  await assert.rejects(h.service.saveReceiptLayout('Till',80,wide,async()=>{throw new Error('Denied')}),/Denied/)
+  assert.equal((await h.service.binding('Till')).receiptLayout,undefined)
+  await h.service.saveReceiptLayout('Till',80,wide,async()=>{})
+  await h.service.saveReceiptLayout('Till',58,narrow,async()=>{})
+  assert.deepEqual((await h.service.binding('Till')).receiptLayout,{58:narrow,80:wide})
+  assert.equal((await h.service.binding('Another outlet')).receiptLayout,undefined)
+  assert.equal(h.client.calls.length,0);assert.equal(h.client.pairings.length,0,'Layout save does not print or change scopes')
+  await h.service.saveBinding('Till',{receipt:'receipt'},async()=>{})
+  assert.deepEqual((await h.service.binding('Till')).receiptLayout,{58:narrow,80:wide})
+  await h.service.saveBinding('Till',{receipt:'label'},async()=>{})
+  assert.equal((await h.service.binding('Till')).receiptLayout,undefined,'A different queue requires its own measurements')
+  await assert.rejects(h.service.saveReceiptLayout('Unassigned',80,wide,async()=>{}),/Save a receipt printer/)
+  assert.deepEqual(receiptHtmlOptions({width:72,height:195},2),{copies:2,size:{width:72,height:195},margins:0,orientation:'portrait',scale:'fit'})
+  console.log('PASS receipt layout bounds, server authorization, per-roll/outlet storage, queue changes and exact HTML options')
 }
 console.log('All Esafe printing orchestration checks passed')

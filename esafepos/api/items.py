@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import binascii
 import json
+import hashlib
 import math
 from io import BytesIO
 from random import SystemRandom
@@ -14,7 +15,7 @@ import frappe
 from frappe import _
 from frappe.utils import cint, flt, getdate, nowdate
 
-from esafepos.api.permissions import ITEM_PRICE_EDIT, ITEM_CREATE, ITEM_STOCK_VIEW, ITEM_STOCK_ADJUST, allowed, assert_outlet
+from esafepos.api.permissions import ITEM_PRICE_EDIT, ITEM_CREATE, ITEM_STOCK_VIEW, ITEM_STOCK_ADJUST, ITEM_STOCK_TRANSFER, allowed, assert_outlet
 from esafepos.item_units import conversions
 from esafepos.price_books import get_price_map
 
@@ -27,10 +28,10 @@ def _require(granted):
         frappe.throw(_("Your account does not have access to this action."), frappe.PermissionError)
 
 
-def _stock_item(item_code):
+def _stock_item(item_code, allow_disabled=False):
     item = frappe.get_doc("Item", item_code)
     item.check_permission("read")
-    if item.disabled or not item.is_stock_item or item.has_variants:
+    if (item.disabled and not allow_disabled) or not item.is_stock_item or item.has_variants:
         frappe.throw(_("Choose an enabled stock item without variants."))
     return item
 
@@ -44,7 +45,7 @@ def _warehouses(profile):
 def warehouse_stock(pos_profile, item_code):
     profile = _profile(pos_profile)
     _require(_can_view_stock())
-    item = _stock_item(item_code)
+    item = _stock_item(item_code, allow_disabled=True)
     warehouses = _warehouses(profile)
     bins = frappe.get_list("Bin", filters={"item_code": item_code, "warehouse": ["in", warehouses]},
                            fields=["warehouse", "actual_qty", "reserved_qty"], limit_page_length=0) if warehouses else []
@@ -60,13 +61,16 @@ def warehouse_stock(pos_profile, item_code):
         rows.append({"warehouse": warehouse, "actual_qty": actual,
                      "reserved_qty": reserved + max(held, 0), "available_qty": actual - reserved - held})
     return {"stock_uom": item.stock_uom, "rows": rows,
-            "can_adjust": bool(_can_adjust_stock() and not item.has_serial_no and not item.has_batch_no)}
+            "has_serial_no": bool(item.has_serial_no), "has_batch_no": bool(item.has_batch_no),
+            "can_transfer": bool(_can_transfer_stock() and not item.disabled),
+            "can_view_movements": bool(frappe.has_permission("Stock Ledger Entry", "read")),
+            "can_adjust": bool(_can_adjust_stock() and not item.disabled and not item.has_serial_no and not item.has_batch_no)}
 
 
 def _number(value, message, allow_negative=False):
     try:
         number = float(value)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         frappe.throw(_(message))
     if not math.isfinite(number) or (number < 0 and not allow_negative):
         frappe.throw(_(message))
@@ -317,6 +321,13 @@ def _can_adjust_stock():
             and frappe.has_permission("Stock Reconciliation", "submit"))
 
 
+def _can_transfer_stock():
+    return (_can_view_stock() and allowed(ITEM_STOCK_TRANSFER)
+            and frappe.has_permission("Stock Entry", "create")
+            and frappe.has_permission("Stock Entry", "submit")
+            and frappe.has_permission("Stock Entry", "read"))
+
+
 def _profile(pos_profile):
     if not pos_profile or not can_edit():
         frappe.throw(_("You do not have access to the Items editor."), frappe.PermissionError)
@@ -339,6 +350,8 @@ def editor_options(pos_profile: str):
         "can_create_items": bool(_can_create()),
         "can_view_stock": bool(_can_view_stock()),
         "can_adjust_stock": bool(_can_adjust_stock()),
+        "can_transfer_stock": bool(_can_transfer_stock()),
+        "warehouses": _warehouses(profile) if _can_view_stock() else [],
         "stock_uoms": _filter_names("UOM") if _can_create() else [],
     }
 
@@ -356,13 +369,24 @@ def _selling_lists():
 
 @frappe.whitelist()
 def search_items(pos_profile: str, search: str, start: int | str = 0, limit: int | str = 50,
-                 item_group: str = "", brand: str = ""):
-    _profile(pos_profile)
+                 item_group: str = "", brand: str = "", status="active", item_type="",
+                 include_stock=0, warehouse=""):
+    profile = _profile(pos_profile)
     from esafepos.api.catalog import item_groups_under
 
     term = (search or "").strip()
     item_code = frappe.db.get_value("Item Barcode", {"barcode": term}, "parent") if term else None
-    filters = {"disabled": 0, "is_sales_item": 1, "has_variants": 0}
+    if status not in ("active", "disabled", "all") or item_type not in ("", "stock", "service", "template", "variant"):
+        frappe.throw(_("Choose a valid item status and type."))
+    filters = {}
+    if status != "all":
+        filters["disabled"] = int(status == "disabled")
+    if item_type in ("stock", "service"):
+        filters.update({"is_stock_item": int(item_type == "stock"), "has_variants": 0})
+    elif item_type == "template":
+        filters["has_variants"] = 1
+    elif item_type == "variant":
+        filters["variant_of"] = ["is", "set"]
     groups = item_groups_under([item_group]) if item_group else None
     if groups:
         filters["item_group"] = ["in", groups]
@@ -373,10 +397,38 @@ def search_items(pos_profile: str, search: str, start: int | str = 0, limit: int
         filters["name"] = item_code
     elif term:
         conditions = {"name": ["like", "%" + term + "%"], "item_name": ["like", "%" + term + "%"]}
-    return frappe.get_list("Item", filters=filters, or_filters=conditions,
-                           fields=["name", "item_name", "stock_uom", "item_group", "brand", "image"],
+    rows = frappe.get_list("Item", filters=filters, or_filters=conditions,
+                           fields=["name", "item_name", "stock_uom", "item_group", "brand", "image",
+                                   "disabled", "has_variants", "variant_of", "is_stock_item"],
                            order_by="item_name asc, name asc", limit_start=max(0, cint(start)),
                            limit_page_length=min(100, max(1, cint(limit))))
+    if cint(include_stock):
+        _require(_can_view_stock())
+        warehouses = _warehouses(profile)
+        if warehouse:
+            _require(warehouse in warehouses)
+            warehouses = [warehouse]
+        codes = [row.name for row in rows if row.is_stock_item and not row.has_variants]
+        totals = {code: {"actual_qty": 0, "reserved_qty": 0, "available_qty": 0} for code in codes}
+        bins = frappe.get_list("Bin", filters={"item_code": ["in", codes], "warehouse": ["in", warehouses]},
+                               fields=["item_code", "warehouse", "actual_qty", "reserved_qty"],
+                               limit_page_length=0) if codes and warehouses else []
+        from esafepos.api.catalog import pos_reserved_map
+
+        for row in bins:
+            totals[row.item_code]["actual_qty"] += flt(row.actual_qty)
+            totals[row.item_code]["reserved_qty"] += flt(row.reserved_qty)
+            totals[row.item_code]["available_qty"] += flt(row.actual_qty) - flt(row.reserved_qty)
+        for name in warehouses:
+            for code, held in pos_reserved_map(name).items():
+                if code in totals:
+                    totals[code]["reserved_qty"] += max(flt(held), 0)
+                    totals[code]["available_qty"] -= flt(held)
+        for row in rows:
+            if row.name in totals:
+                stock = totals[row.name]
+                row.update(stock)
+    return rows
 
 
 def _standing_price(item_code, price_list, unit, stock_unit):
@@ -429,10 +481,8 @@ def item_details(pos_profile: str, item_code: str, price_list: str | None = None
     profile = _profile(pos_profile)
     item = frappe.get_doc("Item", item_code)
     item.check_permission("read")
-    if item.disabled or not item.is_sales_item or item.has_variants:
-        frappe.throw(_("This item is unavailable for sale."))
     can_edit_prices = _can_edit_prices()
-    selected_list = _selling_list(profile, price_list) if can_edit_prices else None
+    selected_list = _selling_list(profile, price_list) if can_edit_prices and not item.has_variants else None
     stock_unit = item.stock_uom
     factors = {stock_unit: 1}
     if not item.has_serial_no:
@@ -456,6 +506,10 @@ def item_details(pos_profile: str, item_code: str, price_list: str | None = None
     return {
         "item_code": item.name, "item_name": item.item_name, "stock_uom": stock_unit,
         "item_group": item.item_group, "brand": item.brand, "image": item.image,
+        "description": item.get("description") or "", "disabled": bool(item.disabled),
+        "is_stock_item": bool(item.is_stock_item), "is_sales_item": bool(item.is_sales_item),
+        "is_purchase_item": bool(item.is_purchase_item), "has_variants": bool(item.has_variants),
+        "variant_of": item.variant_of, "has_batch_no": bool(item.has_batch_no),
         "barcode": item.barcodes[0].barcode if item.barcodes else "",
         "barcodes": [{"barcode": row.barcode, "uom": row.uom or stock_unit}
                      for row in (item.get("barcodes") or [])],
@@ -510,16 +564,49 @@ def _image_link(value):
     return value
 
 
-@frappe.whitelist()
+def _update_metadata(item, disabled, item_group, brand, description, is_sales_item, is_purchase_item):
+    values = {key: value for key, value in {
+        "disabled": disabled, "item_group": item_group, "brand": brand, "description": description,
+        "is_sales_item": is_sales_item, "is_purchase_item": is_purchase_item,
+    }.items() if value is not None}
+    if not values:
+        return False
+    item.check_permission("write")
+    for key in ("disabled", "is_sales_item", "is_purchase_item"):
+        if key in values:
+            if values[key] not in (0, 1, "0", "1", False, True):
+                frappe.throw(_("Choose a valid item setting."))
+            values[key] = cint(values[key])
+    for key, doctype in (("item_group", "Item Group"), ("brand", "Brand")):
+        if key not in values:
+            continue
+        if not isinstance(values[key], str) or len(values[key]) > 140 or (key == "item_group" and not values[key]):
+            frappe.throw(_("Choose a valid category and brand."))
+        if values[key]:
+            linked = frappe.get_doc(doctype, values[key])
+            linked.check_permission("read")
+            if key == "item_group" and linked.is_group:
+                frappe.throw(_("Choose a leaf item category."))
+    if "description" in values:
+        if not isinstance(values["description"], str) or len(values["description"]) > 10000:
+            frappe.throw(_("Keep the description within 10,000 characters."))
+        values["description"] = frappe.utils.sanitize_html(values["description"])
+    changed = any(item.get(key) != value for key, value in values.items())
+    item.update(values)
+    return changed
+
+
+@frappe.whitelist(methods=["POST"])
 def save_item(pos_profile: str, item_code: str, item_name: str | None = None, prices: list | str | None = None,
               price_list: str | None = None, image_content: str | None = None, image_url: str | None = None,
-              selling_units: list | str | None = None, barcodes: list | str | None = None):
+              selling_units: list | str | None = None, barcodes: list | str | None = None,
+              disabled=None, item_group=None, brand=None, description=None, is_sales_item=None, is_purchase_item=None):
     profile = _profile(pos_profile)
     item = frappe.get_doc("Item", item_code)
     item.check_permission("read")
-    if item.disabled or not item.is_sales_item or item.has_variants:
-        frappe.throw(_("This item is unavailable for sale."))
     prices = _json_list(prices, "Send a list of unit prices.")
+    if prices and item.has_variants:
+        frappe.throw(_("Set selling prices on individual variants."))
     if prices and not _can_edit_prices():
         frappe.throw(_("You do not have permission to edit item selling prices."), frappe.PermissionError)
     selected_list = _selling_list(profile, price_list) if prices else None
@@ -578,7 +665,8 @@ def save_item(pos_profile: str, item_code: str, item_name: str | None = None, pr
         extension, content = image
         attachment = save_file("product-image." + extension, content, "Item", item.name, df="image")
         item.image = attachment.file_url
-    identity_changed = (item.item_name != name or image is not None or
+    metadata_changed = _update_metadata(item, disabled, item_group, brand, description, is_sales_item, is_purchase_item)
+    identity_changed = (metadata_changed or item.item_name != name or image is not None or
                         (link is not None and link != item.image) or units_changed or barcodes_changed)
     if identity_changed:
         if link is not None:
@@ -600,3 +688,113 @@ def save_item(pos_profile: str, item_code: str, item_name: str | None = None, pr
                   reference_doctype="Item Price", reference_name=doc.name,
                   amount=doc.price_list_rate, pos_profile=profile.name)
     return item_details(pos_profile, item_code, price_list)
+
+
+@frappe.whitelist(methods=["POST"])
+def transfer_stock(pos_profile, item_code, source_warehouse, target_warehouse, qty, expected_qty,
+                   reason, request_id, serial_no="", batch_no=""):
+    """Submit one native Material Transfer; stable names make uncertain retries safe."""
+    profile = _profile(pos_profile)
+    _require(_can_transfer_stock())
+    item = frappe.get_doc("Item", item_code)
+    item.check_permission("read")
+    qty = _number(qty, "Enter a transfer quantity greater than zero.")
+    expected = _number(expected_qty, "Refresh stock before transferring.", allow_negative=True)
+    if qty <= 0 or not isinstance(reason, str) or not reason.strip() or len(reason) > 500:
+        frappe.throw(_("Enter a positive quantity and a reason of 1 to 500 characters."))
+    if not isinstance(request_id, str) or not request_id.strip() or len(request_id) > 100:
+        frappe.throw(_("A transfer request ID is required. Reopen the transfer form."))
+    warehouses = _warehouses(profile)
+    _require(source_warehouse in warehouses and target_warehouse in warehouses)
+    if source_warehouse == target_warehouse:
+        frappe.throw(_("Choose different source and destination warehouses."))
+    for warehouse in (source_warehouse, target_warehouse):
+        frappe.get_doc("Warehouse", warehouse).check_permission("read")
+    serials = [value.strip() for value in str(serial_no or "").splitlines() if value.strip()]
+    payload = [item_code, source_warehouse, target_warehouse, qty, reason.strip(), sorted(serials), batch_no or ""]
+    fingerprint = hashlib.sha256(json.dumps(payload, ensure_ascii=True).encode()).hexdigest()
+    identity = hashlib.sha256((frappe.session.user + ":" + profile.name + ":" + request_id).encode()).hexdigest()[:32]
+    name = "POS-TRF-" + identity
+    marker = "EsafePOS transfer " + fingerprint
+    # Also serializes competing transfers for this item, including an empty destination Bin.
+    frappe.db.sql("select name from `tabItem` where name=%s for update", (item_code,))
+    # Current reads are essential after waiting for another request's commit:
+    # a normal exists/get_doc could still see the request's older SQL snapshot.
+    item = frappe.get_doc("Item", item_code, for_update=True)
+    item.check_permission("read")
+    if frappe.db.get_value("Stock Entry", name, "name", for_update=True):
+        previous = frappe.get_doc("Stock Entry", name, for_update=True)
+        previous.check_permission("read")
+        if previous.docstatus != 1 or previous.company != profile.company or previous.remarks != marker + "\n" + reason.strip():
+            frappe.throw(_("This transfer request was already used. Review the earlier Stock Entry in ERPNext."))
+        return {"name": previous.name, "replayed": True}
+    if item.disabled or not item.is_stock_item or item.has_variants:
+        frappe.throw(_("Choose an enabled stock item without variants."))
+    if item.has_serial_no and (qty != len(serials) or len(serials) != len(set(serials))):
+        frappe.throw(_("Enter one unique serial number for each transferred unit."))
+    if item.has_batch_no and not batch_no:
+        frappe.throw(_("Choose the batch to transfer."))
+    if not item.has_serial_no and serials or not item.has_batch_no and batch_no:
+        frappe.throw(_("Tracking details do not match this item."))
+    if frappe.get_cached_value("UOM", item.stock_uom, "must_be_whole_number") and qty != int(qty):
+        frappe.throw(_("This stock unit requires a whole transfer quantity."))
+    from esafepos.api.stock_app import _has_workflow, _refuse_unposted, _unposted
+
+    if _has_workflow("Stock Entry"):
+        frappe.throw(_("This site requires stock approval. Create the transfer in ERPNext."))
+    current = frappe.db.sql("select actual_qty, reserved_qty from `tabBin` where item_code=%s and warehouse=%s for update",
+                            (item_code, source_warehouse))
+    actual, reserved = (flt(current[0][0]), flt(current[0][1])) if current else (0, 0)
+    if abs(actual - expected) > 0.000001:
+        frappe.throw(_("Stock changed. Refresh warehouse stock and try again."))
+    if qty > actual - max(reserved, 0) + 0.000001:
+        frappe.throw(_("The transfer exceeds available stock after reservations."))
+    _refuse_unposted(_unposted(frappe._dict(items=[{"item_code": item_code, "warehouse": source_warehouse}])))
+    row = {"item_code": item_code, "s_warehouse": source_warehouse, "t_warehouse": target_warehouse,
+           "qty": qty, "uom": item.stock_uom, "stock_uom": item.stock_uom, "conversion_factor": 1}
+    if serials:
+        row["serial_no"] = "\n".join(serials)
+    if batch_no:
+        row["batch_no"] = batch_no
+    if (serials or batch_no) and frappe.get_meta("Stock Entry Detail").has_field("use_serial_batch_fields"):
+        row["use_serial_batch_fields"] = 1
+    doc = frappe.get_doc({"doctype": "Stock Entry", "company": profile.company,
+                          "stock_entry_type": "Material Transfer", "purpose": "Material Transfer",
+                          "from_warehouse": source_warehouse, "to_warehouse": target_warehouse,
+                          "remarks": marker + "\n" + reason.strip(), "items": [row]})
+    doc.check_permission("create")
+    doc.check_permission("submit")
+    doc.insert(set_name=name)
+    doc.submit()
+    from esafepos.api import audit
+
+    audit.log("Warehouse stock transferred in POS", detail="{}: {} → {}. {}".format(item_code, source_warehouse, target_warehouse, reason.strip()),
+              reference_doctype="Stock Entry", reference_name=doc.name, pos_profile=profile.name)
+    return {"name": doc.name, "replayed": False}
+
+
+@frappe.whitelist()
+def stock_movements(pos_profile, item_code, warehouse="", start=0, from_date=None, to_date=None):
+    profile = _profile(pos_profile)
+    _require(_can_view_stock() and frappe.has_permission("Stock Ledger Entry", "read"))
+    _stock_item(item_code, allow_disabled=True)
+    warehouses = _warehouses(profile)
+    if warehouse:
+        _require(warehouse in warehouses)
+        warehouses = [warehouse]
+    if not warehouses:
+        return []
+    filters = {"item_code": item_code, "company": profile.company, "warehouse": ["in", warehouses], "is_cancelled": 0}
+    if from_date and to_date:
+        if getdate(from_date) > getdate(to_date):
+            frappe.throw(_("The start date must be before the end date."))
+        filters["posting_date"] = ["between", [getdate(from_date), getdate(to_date)]]
+    elif from_date:
+        filters["posting_date"] = [">=", getdate(from_date)]
+    elif to_date:
+        filters["posting_date"] = ["<=", getdate(to_date)]
+    return frappe.get_list("Stock Ledger Entry", filters=filters,
+                           fields=["name", "posting_date", "posting_time", "warehouse", "actual_qty",
+                                   "qty_after_transaction", "voucher_type", "voucher_no"],
+                           order_by="posting_date desc, posting_time desc, creation desc",
+                           limit_start=max(0, cint(start)), limit_page_length=50)

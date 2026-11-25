@@ -429,11 +429,12 @@ const pageTitle = computed(
       '/history': t('Sales History'),
       '/customers': t('Customers'),
       '/invoices': t('Customer invoice'),
+      '/buying': t('Buying'),
       '/holds': t('Holds'),
       '/register': t('Register'),
       '/insights': t('Insights'),
       '/printing': t('Printing'),
-      '/items': t('Items'),
+      '/items': t('Items & stock'),
       '/count': t('Stock count'),
       '/settings': t('Settings'),
     })[route.path] || t('Sell')

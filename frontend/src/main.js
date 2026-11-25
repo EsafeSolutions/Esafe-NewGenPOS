@@ -16,9 +16,9 @@ import RegisterView from './views/RegisterView.vue'
 import InsightsView from './views/InsightsView.vue'
 import SettingsView from './views/SettingsView.vue'
 import PrintingView from './views/PrintingView.vue'
-import ItemsView from './views/ItemsView.vue'
-import StockCountView from './views/StockCountView.vue'
+import StockManagerView from './views/StockManagerView.vue'
 import InvoicesView from './views/InvoicesView.vue'
+import BuyingView from './views/BuyingView.vue'
 import CustomerDisplayView from './views/CustomerDisplayView.vue'
 import './styles.css'
 
@@ -29,14 +29,15 @@ const router = createRouter({
     { path: '/history', component: HistoryView },
     { path: '/customers', component: CustomersView },
     { path: '/invoices', component: InvoicesView },
+    { path: '/buying', component: BuyingView },
     { path: '/holds', component: HoldsView },
     { path: '/register', component: RegisterView },
     { path: '/insights', component: InsightsView },
     { path: '/settings', component: SettingsView },
     { path: '/printing', component: PrintingView },
     { path: '/labels', redirect: { path: '/printing', query: { section: 'labels' } } },
-    { path: '/items', component: ItemsView },
-    { path: '/count', component: StockCountView },
+    { path: '/items', component: StockManagerView },
+    { path: '/count', redirect: to => ({ path: '/items', query: { ...to.query, section: 'count' } }) },
     // Second-screen customer-facing display, chrome-free, no bootstrap.
     { path: '/display', component: CustomerDisplayView },
   ],

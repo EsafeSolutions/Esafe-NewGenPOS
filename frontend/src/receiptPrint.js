@@ -1,12 +1,15 @@
 // Copyright (c) 2026 Esafe (PVT) LTD
 // SPDX-License-Identifier: AGPL-3.0-only
+import receiptStyles from './styles/receipt.css?inline'
+import { receiptRollWidth, validateReceiptLayout } from './receiptLayout.js'
 
 // Print only the receipt. Hiding the rest of the POS with visibility:hidden
 // still leaves its viewport, scroll containers and modal offsets on paper.
-export async function createReceiptPrintFrame(source) {
+export async function createReceiptPrintFrame(source, layout = {}) {
   if (!source) throw new Error('Receipt is not ready to print')
   document.getElementById('receipt-print-frame')?.remove()
-  const width = source.classList.contains('paper-58') ? 58 : 80
+  const roll = receiptRollWidth(source), geometry = validateReceiptLayout(layout, roll)
+  const width = geometry.paperWidth, isReceipt = source.classList.contains('receipt')
   const frame = document.createElement('iframe')
   frame.id = 'receipt-print-frame'
   frame.title = 'Receipt print'
@@ -25,7 +28,7 @@ export async function createReceiptPrintFrame(source) {
     // Reuse the loaded Vue scoped styles, including offline. Remote font imports
     // are unnecessary: thermal output uses system fonts and monochrome rules.
     const styles = document.createElement('style')
-    styles.textContent = Array.from(document.styleSheets).map((sheet) => {
+    styles.textContent = isReceipt ? receiptStyles.replace(/:deep\(([^)]+)\)/g, '$1') : Array.from(document.styleSheets).map((sheet) => {
       try {
         return Array.from(sheet.cssRules).filter((rule) => rule.type !== 3).map((rule) => rule.cssText).join('\n')
       } catch {
@@ -35,17 +38,34 @@ export async function createReceiptPrintFrame(source) {
     doc.head.appendChild(styles)
     const paper = doc.createElement('style')
     paper.textContent = `
-      :root { --border: #000; --border-subtle: #000; --text: #000; --text-muted: #000; --mono: monospace; }
+      :root { --border: #000; --border-subtle: #000; --text: #000; --text-muted: #000; --mono: 'Courier New', monospace; }
+      *, *::before, *::after { box-sizing: border-box; }
       html, body { width: ${width}mm !important; height: auto !important; min-height: 0 !important;
         margin: 0 !important; padding: 0 !important; overflow: visible !important; background: #fff !important; }
       body { position: relative !important; }
-      #receipt-print { position: absolute !important; inset: 0 auto auto 0 !important;
-        width: ${width}mm !important; max-width: none !important;
+      #receipt-print { position: ${isReceipt ? 'static' : 'absolute'} !important; inset: auto !important;
+        width: ${geometry.printableWidth}mm !important; max-width: 100% !important;
         margin: 0 !important; box-sizing: border-box; border: 0; border-radius: 0;
-        padding: 3mm; font-family: Arial, Tahoma, sans-serif; line-height: 1.3;
+        padding: ${geometry.inset}mm; font-family: Arial, 'Nirmala UI', 'Iskoola Pota', Tahoma, sans-serif; line-height: 1.3;
+        transform: none !important; zoom: 1 !important;
         background: #fff !important; color: #000 !important; }
       #receipt-print, #receipt-print * { visibility: visible !important; color: #000 !important; }
       #receipt-print img { max-width: 100%; }
+      #receipt-print.tpl-table { --table-rule: #000; }
+      #receipt-print.receipt table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+      #receipt-print.receipt :is(.retail-item-values td, .row > :last-child) { white-space: nowrap; }
+      #receipt-print.receipt .row > :last-child, #receipt-print.receipt .retail-savings strong { flex-shrink: 0; }
+      #receipt-print.receipt .row > :first-child { min-width: 0; overflow-wrap: anywhere; }
+      #receipt-print.tpl-table :is(.retail-totals, .retail-loyalty) { display: grid; grid-template-columns: minmax(0, 1fr) max-content; }
+      #receipt-print.tpl-table :is(.retail-totals, .retail-loyalty) .row { grid-template-columns: subgrid; grid-column: 1 / -1; min-width: 0; }
+      #receipt-print.tpl-table .retail-loyalty-title { grid-column: 1 / -1; }
+      #receipt-print.paper-58.tpl-table .retail-items :is(th, td) { padding-inline: 1px; }
+      #receipt-print.paper-58.tpl-table .retail-items:not(.without-discount) th:nth-child(1) { width: 7%; }
+      #receipt-print.paper-58.tpl-table .retail-items:not(.without-discount) th:nth-child(2) { width: 11%; }
+      #receipt-print.paper-58.tpl-table .retail-items:not(.without-discount) th:nth-child(3) { width: 26%; }
+      #receipt-print.paper-58.tpl-table .retail-items:not(.without-discount) th:nth-child(4) { width: 23%; }
+      #receipt-print.paper-58.tpl-table .retail-items:not(.without-discount) th:nth-child(5) { width: 33%; }
+      #receipt-print .retail-item-name td { white-space: normal; overflow-wrap: anywhere; }
     `
     doc.head.appendChild(paper)
     const receipt = source.cloneNode(true)
@@ -60,6 +80,7 @@ export async function createReceiptPrintFrame(source) {
       img.loading = 'eager'
     })
     doc.body.appendChild(receipt)
+    await doc.fonts?.ready
     await Promise.all(Array.from(receipt.querySelectorAll('img')).map((img) => new Promise((resolve) => {
       if (img.complete) return resolve()
       const done = () => {
@@ -89,6 +110,9 @@ export async function createReceiptPrintFrame(source) {
     const contentPx = Math.max(receipt.scrollHeight, receipt.getBoundingClientRect().height)
     const height = Math.ceil(contentPx / pxPerMm) + 1
     frame.style.height = `${height}mm`
+    frame.dataset.paperWidth = String(width)
+    frame.dataset.printableWidth = String(geometry.printableWidth)
+    frame.dataset.inset = String(geometry.inset)
     paper.textContent += `
       html, body { height: ${height}mm !important; max-height: ${height}mm !important; }
       @page { size: ${width}mm ${height}mm; margin: 0 !important; }
@@ -102,8 +126,8 @@ export async function createReceiptPrintFrame(source) {
   }
 }
 
-export async function printReceipt(source) {
-  const frame = await createReceiptPrintFrame(source)
+export async function printReceipt(source, layout = {}) {
+  const frame = await createReceiptPrintFrame(source, layout)
   const win = frame.contentWindow
   win.addEventListener('afterprint', () => setTimeout(() => frame.remove(), 0), { once: true })
   try {

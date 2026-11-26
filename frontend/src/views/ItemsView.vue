@@ -51,6 +51,7 @@
             <h2>{{ draft.item_name }}</h2>
             <div class="muted">{{ [draft.item_code, draft.item_group, draft.brand].filter(Boolean).join(' · ') }}</div>
           </header>
+          <p v-if="externalChanges" class="item-notice" role="status">{{ t('ERPNext has newer values. Your unsaved edits are kept.') }} <button type="button" class="btn btn-outline" @click="reloadCurrent">{{ t('Reload current values') }}</button></p>
           <div v-if="draft.has_variants" class="item-notice">{{ t('This is an item template. Manage attribute combinations in the Variants tab; set prices and stock on each variant.') }}</div>
           <div v-if="draft.variant_of" class="item-notice">{{ t('Variant of') }}: {{ draft.variant_of }}</div>
           <div v-if="draft.disabled" class="item-notice disabled-badge" role="status">{{ t('This item is disabled. Clear Disable item and save to enable it again.') }}</div>
@@ -159,7 +160,7 @@
           </button>
         </fieldset>
         </form>
-        <ItemWarehouseStock v-if="options.can_view_stock && draft.is_stock_item && !draft.has_variants && !opening" v-show="section === 'inventory'" :key="draft.item_code" :item-code="draft.item_code" :disabled="saving" @busy="saving = $event" @updated="stockUpdated" />
+        <ItemWarehouseStock v-if="options.can_view_stock && draft.is_stock_item && !draft.has_variants && !opening" v-show="section === 'inventory'" :key="draft.item_code" :item-code="draft.item_code" :active="section === 'inventory'" :disabled="saving" @busy="saving = $event" @updated="stockUpdated" />
         <p v-else-if="section === 'inventory'" class="muted">{{ t('Select a stock item or an individual variant to view inventory.') }}</p>
       </div>
       <div v-else class="card items-card muted">{{ opening ? t('Loading…') : t('Select an item to manage its details.') }}</div>
@@ -202,6 +203,14 @@ const brandOptions = computed(() => [{ value: '', label: t('All brands') },
   ...(options.value.brands || []).map((value) => ({ value, label: value }))])
 const items = ref([])
 const draft = ref(null)
+const baseline = ref(''), externalChanges = ref(false)
+function fingerprint(item) {
+  if (!item) return ''
+  return JSON.stringify([item.item_name, item.item_group, item.brand || '', item.description || '', Boolean(item.disabled),
+    Boolean(item.is_sales_item), Boolean(item.is_purchase_item), (item.units || []).map(({ uom, factor, price }) => [uom, Number(factor), Number(price)]),
+    (item.barcodes || []).map(({ barcode, uom }) => [barcode, uom])])
+}
+const dirty = computed(() => fingerprint(draft.value) !== baseline.value || imageFile.value || imageLink.value)
 const creating = ref(false)
 const loading = ref(false)
 const hasMore = ref(false)
@@ -271,10 +280,12 @@ function setDraft(item) {
     originalName: item.item_name,
     units: item.units.map((unit, index) => ({
       ...unit, _key: `${unit.uom || 'unit'}-${index}`, auto_price: false,
-      original: unit.has_explicit_price ? unit.active_price : unit.price,
+      original: unit.price,
     })),
     barcodes: (item.barcodes || []).map((row, index) => ({ ...row, _key: `barcode-${index}` })),
   }
+  baseline.value = fingerprint(draft.value)
+  externalChanges.value = false
 }
 
 function unitChoices(target) {
@@ -424,7 +435,40 @@ async function refreshCatalog() {
   }
 }
 
-async function stockUpdated() { await refreshCatalog(); await searchItems() }
+function stockUpdated(stock) {
+  request++
+  if (!stock?.rows || !draft.value) return
+  const row = items.value.find(item => item.name === draft.value.item_code)
+  if (!row) return
+  const rows = stock.rows.filter(entry => !activeFilters.warehouse || entry.warehouse === activeFilters.warehouse)
+  for (const key of ['actual_qty', 'reserved_qty', 'available_qty']) row[key] = rows.reduce((total, entry) => total + Number(entry[key] || 0), 0)
+}
+
+async function refreshLiveItems() {
+  if (!session.permissions.edit_items || session.offline || saving.value || opening.value || loading.value) return
+  const profile = session.posProfile, id = ++request
+  try {
+    const count = Math.max(pageSize, items.value.length), requests = []
+    for (let start = 0; start < count; start += pageSize) requests.push(call('esafepos.api.items.search_items', {
+      pos_profile: profile, ...activeFilters, start, limit: pageSize,
+    }))
+    const pages = await Promise.all(requests)
+    if (id !== request || session.posProfile !== profile || saving.value) return
+    items.value = pages.flat(); hasMore.value = pages[pages.length - 1].length === pageSize; searchError.value = ''
+    const code = draft.value?.item_code
+    if (!code || creating.value) return
+    const detailId = detailRequest, originalBaseline = baseline.value
+    const updated = await call('esafepos.api.items.item_details', { pos_profile: profile, item_code: code, price_list: selectedPriceList.value || null })
+    if (session.posProfile !== profile || detailId !== detailRequest || code !== draft.value?.item_code || saving.value || originalBaseline !== baseline.value) return
+    if (!dirty.value) setDraft(updated)
+    else externalChanges.value = fingerprint(updated) !== baseline.value
+  } catch (error) { if (id === request) catalog.liveError = error.message }
+}
+
+function reloadCurrent() {
+  if (dirty.value && !window.confirm(t('Discard unsaved item changes and reload ERPNext values?'))) return
+  openItem(draft.value.item_code, selectedPriceList.value)
+}
 
 function exportItems() {
   const columns = ['name', 'item_name', 'item_group', 'brand', 'stock_uom', 'disabled', 'variant_of',
@@ -455,6 +499,7 @@ function changePriceList(event) {
 
 async function save() {
   if (saving.value || draft.value?.barcodes.some((row) => row.generating)) return
+  request++; detailRequest++
   saving.value = true
   const item = draft.value
   const profile = session.posProfile
@@ -462,6 +507,7 @@ async function save() {
     const image = item.can_edit_item && imageFile.value ? await readImage(imageFile.value) : null
     const updated = await call('esafepos.api.items.save_item', {
       pos_profile: profile, item_code: item.item_code,
+      include_catalog: 1,
       ...(item.can_edit_item && item.item_name !== item.originalName ? { item_name: item.item_name } : {}),
       ...(item.can_edit_item ? { disabled: item.disabled ? 1 : 0, item_group: item.item_group, brand: item.brand,
         description: item.description, is_sales_item: item.is_sales_item ? 1 : 0, is_purchase_item: item.is_purchase_item ? 1 : 0 } : {}),
@@ -487,17 +533,17 @@ async function save() {
       if (line.item_code !== updated.item_code) continue
       line.item_name = updated.item_name
       line.image = updated.image
-      const unit = updated.units.find((row) => row.uom === line.selling_uom)
+      const unit = updated.units.find((row) => row.uom === (line.selling_uom || line.uom || updated.stock_uom))
       if (updated.price_list === (options.value.default_price_list || session.priceList) &&
-          unit?.active_price && line.price_override == null) {
+          unit?.active_price && line.price_override == null && !cart.customer && !cart.appType) {
         line.price = unit.active_price
         line.standard_price = unit.active_price
         line.catalog_price = unit.active_price
       }
     }
-    await catalog.fetch()
-    catalog.cacheFullCatalog()
-    await cart.reprice()
+    if (updated.catalog) catalog.applyLiveUpdate(updated.catalog, { upsert: true })
+    catalog.signalChange()
+    cart.reprice().catch(() => {})
     session.notify(t('Item saved'))
   } catch (error) {
     session.notify(error.message, true)
@@ -537,6 +583,7 @@ watch(() => [session.posProfile, session.offline, session.permissions.edit_items
 }, { immediate: true })
 watch(() => props.itemCode, code => { if (code && !session.offline && session.permissions.edit_items) openItem(code, selectedPriceList.value) })
 watch(() => props.section, () => { if (!session.offline && session.permissions.edit_items) searchItems() })
+watch(() => catalog.liveRevision, refreshLiveItems)
 onBeforeUnmount(() => {
   request++
   detailRequest++

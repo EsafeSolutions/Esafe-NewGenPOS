@@ -51,15 +51,17 @@ class ReceiptPrintingTests(unittest.TestCase):
                     "receipt_footer": "Visit again!\n" + RECEIPT_BRAND,
                 }
                 output = build_receipt_bytes(self.receipt)
-                self.assertEqual(output.count(RECEIPT_BRAND.encode("ascii")), 1)
-                self.assertIn(b"Visit again!\n" + RECEIPT_BRAND.encode("ascii") + b"\n", output)
+                # The footer wraps to the thermal roll width.
+                self.assertEqual(b"".join(output.split()).count(b"".join(RECEIPT_BRAND.encode("ascii").split())), 1)
+                self.assertIn(b"Visit again!\n", output)
 
     def test_table_grid_fits_both_rolls_and_preserves_long_cells(self):
         self.receipt["items"][0].update(qty=1234567, amount=123456789.12)
         for paper, width in (("58mm", 32), ("80mm", 42)):
             with self.subTest(paper=paper):
                 self.receipt["receipt_settings"] = {"receipt_template": "Table", "receipt_paper_width": paper}
-                lines = build_receipt_bytes(self.receipt).splitlines()
+                # Raster barcode bytes may contain '+' and newline bytes too.
+                lines = build_receipt_bytes(self.receipt).split(b"\x1dv0\x00", 1)[0].splitlines()
                 grid = [line for line in lines if line.startswith((b"|", b"+"))]
                 self.assertEqual(sum(line.startswith(b"+") for line in grid), 3)
                 self.assertTrue(all(len(line) == width for line in grid))

@@ -22,6 +22,7 @@
               <PosBrandMark class="mobile-brand" />
               <span class="brand-wordmark">ESAFE ERP POS</span>
             </span>
+            <AppVersion />
           </div>
           <span class="brand-divider" aria-hidden="true"></span>
           <div class="topbar-title">{{ pageTitle }}</div>
@@ -208,7 +209,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { call } from './api'
 import { safeToUpdate, startAppUpdates } from './appUpdates'
@@ -224,6 +225,7 @@ onBeforeUnmount(() => printManager.dispose())
 import { t, locale, setLocale, offeredLanguages, LANGUAGES } from './i18n'
 import { theme, toggleTheme } from './theme'
 import PosBrandMark from './components/PosBrandMark.vue'
+import AppVersion from './components/AppVersion.vue'
 import Icon from './components/Icon.vue'
 import NavRail from './components/NavRail.vue'
 import OpenRegisterOverlay from './components/OpenRegisterOverlay.vue'
@@ -235,11 +237,14 @@ import HelpPanel from './components/HelpPanel.vue'
 import HelpCard from './components/HelpCard.vue'
 import TourOverlay from './components/TourOverlay.vue'
 import { useHelpStore } from './stores/help'
+import { startCatalogSync } from './catalogSync'
 
 const session = useSessionStore()
 const help = useHelpStore()
 const catalog = useCatalogStore()
 const cart = useCartStore()
+let catalogSync = null
+onBeforeUnmount(() => catalogSync?.stop())
 const themeAction = computed(() => theme.value === 'dark' ? t('Switch to light mode') : t('Switch to dark mode'))
 
 // Switch the outlet this screen works on. The other outlet's shift stays as it
@@ -265,12 +270,21 @@ const appUpdateRevision = ref('')
 const appUpdateDeferred = ref(false)
 const appUpdateBusy = ref(false)
 const appUpdateError = ref('')
+const deployedVersion = ref('')
 const appUpdatePending = computed(() => appUpdateRevision.value && !appUpdateDeferred.value)
 function deferAppUpdate() {
   appUpdateDeferred.value = true
   appUpdateError.value = ''
 }
 let appUpdater = null
+provide('posUpdates', {
+  revision: appUpdateRevision, busy: appUpdateBusy, error: appUpdateError, serverVersion: deployedVersion,
+  check: () => appUpdater?.check(),
+  review: () => {
+    appUpdateDeferred.value = false
+    router.push(session.reportsOnly ? '/insights' : '/')
+  },
+})
 onBeforeUnmount(() => appUpdater?.stop())
 const navOpen = ref(false)
 const navToggle = ref(null)
@@ -428,6 +442,7 @@ const pageTitle = computed(
       '/': t('Sell'),
       '/history': t('Sales History'),
       '/customers': t('Customers'),
+      '/messages': t('Customer messaging'),
       '/invoices': t('Customer invoice'),
       '/buying': t('Buying'),
       '/holds': t('Holds'),
@@ -445,7 +460,11 @@ onMounted(async () => {
   if (isDisplay.value) return
   appUpdater = startAppUpdates({
     currentRevision: window.esafepos_shell_revision,
-    readRevision: () => call('esafepos.api.session.app_revision', {}, { timeout: 5000 }),
+    readRevision: async () => {
+      const result = await call('esafepos.api.session.app_revision', {}, { timeout: 5000 })
+      deployedVersion.value = result.version || ''
+      return result
+    },
     canReload: () => safeToUpdate({ session, cart, route, document, jobs: printManager.state.jobs }),
     onPending: (revision) => {
       if (revision !== appUpdateRevision.value) {
@@ -466,6 +485,21 @@ onMounted(async () => {
   printManager.resume().catch(() => {})
   if (session.loaded && !session.error && session.reportsOnly) return
   if (session.loaded && !session.error) {
+    catalogSync = startCatalogSync({
+      scope: () => session.posProfile,
+      canSync: () => Boolean(session.loaded && !session.offline && !session.locked && !session.reportsOnly &&
+        !cart.submitting && ['/', '/items', '/invoices'].includes(route.path) &&
+        !document.querySelector('.pay-overlay, .modal-backdrop, [role="dialog"]')),
+      readRevision: () => call('esafepos.api.catalog_sync.revision', { pos_profile: session.posProfile }),
+      refresh: async () => {
+        const result = await catalog.refreshLive(cart.lines.map(line => line.item_code))
+        if (result === false) return false
+        cart.applyCatalogUpdate(result.items)
+        if (result.pricesChanged && cart.lines.length && !cart.submitting) await cart.reprice()
+        return true
+      },
+      onError: error => { catalog.liveError = error },
+    })
     catalog.fetch()
     catalog.cacheFullCatalog() // background fill of the offline cache
     catalog.cacheCustomers() // recent-customers subset for offline select

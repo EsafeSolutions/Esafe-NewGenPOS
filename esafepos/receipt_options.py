@@ -25,6 +25,14 @@ RECEIPT_OPTION_DEFAULTS = {
     "receipt_show_loyalty": 1,
     "receipt_show_cashier": 1,
     "receipt_show_terminal": 1,
+    "receipt_show_customer": 1,
+    "receipt_show_datetime": 1,
+    "receipt_show_header_text": 1,
+    "receipt_show_phone": 1,
+    "receipt_show_footer": 1,
+    "receipt_show_custom_fields": 1,
+    "receipt_show_taxes": 1,
+    "receipt_show_change": 1,
 }
 
 

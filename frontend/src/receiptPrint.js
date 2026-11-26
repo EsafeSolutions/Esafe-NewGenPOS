@@ -2,14 +2,19 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import receiptStyles from './styles/receipt.css?inline'
 import { receiptRollWidth, validateReceiptLayout } from './receiptLayout.js'
+import { fitReceiptContent } from './receiptFit.js'
 
 // Print only the receipt. Hiding the rest of the POS with visibility:hidden
 // still leaves its viewport, scroll containers and modal offsets on paper.
 export async function createReceiptPrintFrame(source, layout = {}) {
   if (!source) throw new Error('Receipt is not ready to print')
   document.getElementById('receipt-print-frame')?.remove()
-  const roll = receiptRollWidth(source), geometry = validateReceiptLayout(layout, roll)
-  const width = geometry.paperWidth, isReceipt = source.classList.contains('receipt')
+  const roll = receiptRollWidth(source), isReceipt = source.classList.contains('receipt')
+  const geometry = validateReceiptLayout(isReceipt ? layout : { paperWidth: roll, printableWidth: roll, ...layout }, roll)
+  const width = geometry.paperWidth
+  const sourceStyle = source.ownerDocument.defaultView.getComputedStyle(source)
+  const designWidth = ['Left', 'Right'].reduce((sum, side) => sum + (Number.parseFloat(sourceStyle.getPropertyValue('--rc-padding' + side)) || 0), 0)
+  if (isReceipt && geometry.printableWidth - geometry.margins.left - geometry.margins.right - designWidth < 10) throw new Error('Receipt design padding and printer margins must leave at least 10 mm for content.')
   const frame = document.createElement('iframe')
   frame.id = 'receipt-print-frame'
   frame.title = 'Receipt print'
@@ -46,7 +51,7 @@ export async function createReceiptPrintFrame(source, layout = {}) {
       #receipt-print { position: ${isReceipt ? 'static' : 'absolute'} !important; inset: auto !important;
         width: ${geometry.printableWidth}mm !important; max-width: 100% !important;
         margin: 0 !important; box-sizing: border-box; border: 0; border-radius: 0;
-        padding: ${geometry.inset}mm; font-family: Arial, 'Nirmala UI', 'Iskoola Pota', Tahoma, sans-serif; line-height: 1.3;
+        padding: calc(${geometry.margins.top}mm + var(--rc-paddingTop, 0mm)) calc(${geometry.margins.right}mm + var(--rc-paddingRight, 0mm)) calc(${geometry.margins.bottom}mm + var(--rc-paddingBottom, 0mm)) calc(${geometry.margins.left}mm + var(--rc-paddingLeft, 0mm)); font-family: Arial, 'Nirmala UI', 'Iskoola Pota', Tahoma, sans-serif; line-height: 1.3;
         transform: none !important; zoom: 1 !important;
         background: #fff !important; color: #000 !important; }
       #receipt-print, #receipt-print * { visibility: visible !important; color: #000 !important; }
@@ -66,6 +71,9 @@ export async function createReceiptPrintFrame(source, layout = {}) {
       #receipt-print.paper-58.tpl-table .retail-items:not(.without-discount) th:nth-child(4) { width: 23%; }
       #receipt-print.paper-58.tpl-table .retail-items:not(.without-discount) th:nth-child(5) { width: 33%; }
       #receipt-print .retail-item-name td { white-space: normal; overflow-wrap: anywhere; }
+      #receipt-print.receipt :is(.receipt-company,.receipt-extra,.retail-loyalty-title,.retail-counts > *, .retail-meta-row > *) { min-width: 0; overflow-wrap: anywhere; }
+      #receipt-print.receipt .retail-meta-row > :first-child { white-space: normal; flex: 0 1 40%; }
+      #receipt-print.receipt .retail-meta-row > :last-child { flex: 1 1 60%; }
     `
     doc.head.appendChild(paper)
     const receipt = source.cloneNode(true)
@@ -95,6 +103,7 @@ export async function createReceiptPrintFrame(source, layout = {}) {
       }, 5000)
       img.onload = img.onerror = done
     })))
+    if (isReceipt) frame.dataset.fit = JSON.stringify(fitReceiptContent(receipt))
     // Calibrate CSS pixels against a real CSS millimetre in this frame instead
     // of assuming 96dpi: browser zoom and Windows display scaling otherwise
     // make some thermal drivers receive a page almost twice as long.
@@ -112,7 +121,7 @@ export async function createReceiptPrintFrame(source, layout = {}) {
     frame.style.height = `${height}mm`
     frame.dataset.paperWidth = String(width)
     frame.dataset.printableWidth = String(geometry.printableWidth)
-    frame.dataset.inset = String(geometry.inset)
+    frame.dataset.margins = JSON.stringify(geometry.margins)
     paper.textContent += `
       html, body { height: ${height}mm !important; max-height: ${height}mm !important; }
       @page { size: ${width}mm ${height}mm; margin: 0 !important; }

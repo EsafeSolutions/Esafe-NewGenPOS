@@ -124,9 +124,11 @@ async function prepare(h){await h.journal.saveSetting('approved',true);await h.j
 }
 {
   const h=harness();await prepare(h)
-  const wide={paperWidth:72,printableWidth:68,inset:2},narrow={paperWidth:48,printableWidth:48,inset:2}
-  assert.deepEqual(validateReceiptLayout({},58),{paperWidth:58,printableWidth:58,inset:3})
-  for(const value of [{paperWidth:81},{paperWidth:72,printableWidth:80},{inset:-1},{inset:11},{paperWidth:10,inset:3},{paperWidth:'72'},{paperWidth:NaN}])assert.throws(()=>validateReceiptLayout(value,80))
+  const wide=validateReceiptLayout({paperWidth:72,printableWidth:68,margins:{left:2,right:6,top:1,bottom:8}},80),narrow=validateReceiptLayout({paperWidth:48,printableWidth:48,inset:2},58)
+  assert.deepEqual(validateReceiptLayout({},58),{paperWidth:48,printableWidth:48,margins:{top:3,right:3,bottom:3,left:3}})
+  assert.equal(validateReceiptLayout({},80).paperWidth,72)
+  assert.equal(validateReceiptLayout({paperWidth:80,printableWidth:80},80).printableWidth,80,'Explicit calibrated full-width geometry is preserved')
+  for(const value of [{paperWidth:81},{paperWidth:72,printableWidth:80},{inset:-1},{inset:11},{paperWidth:10,inset:3},{paperWidth:'72'},{paperWidth:NaN},{margins:{left:-1}},{margins:{bottom:21}},{margins:{right:'3'}},{margins:{top:NaN}},{margins:{left:20,right:20},paperWidth:48},{margins:null}])assert.throws(()=>validateReceiptLayout(value,80))
   await assert.rejects(h.service.saveReceiptLayout('Till',80,wide,async()=>{throw new Error('Denied')}),/Denied/)
   assert.equal((await h.service.binding('Till')).receiptLayout,undefined)
   await h.service.saveReceiptLayout('Till',80,wide,async()=>{})

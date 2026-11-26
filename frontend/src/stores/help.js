@@ -10,6 +10,7 @@ import { defineStore } from 'pinia'
 import { call } from '../api'
 import { TOPICS, TOURS, WHATS_NEW } from '../help/content'
 import { useSessionStore } from './session'
+import { interfaceVersion } from '../releaseNotes'
 
 const LOCAL = 'esafepos-help-seen:'
 const MAX_NEWS = 8
@@ -64,7 +65,7 @@ export const useHelpStore = defineStore('help', {
     inTill() {
       return Boolean(this.switches.in_till)
     },
-    version: () => useSessionStore().settings?.version || '',
+    version: () => interfaceVersion,
     // This person's news: newer than what they saw (everything when they have
     // seen nothing yet), up to this release, for what they may use.
     news() {

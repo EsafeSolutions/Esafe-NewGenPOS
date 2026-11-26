@@ -151,7 +151,7 @@
         "scale": "fit"
       },
       "pageCount": 1,
-      "sha256": "8fd782d5ff6b97a819da60597dbf14a3a019440eed0d832f05c6e38622bbfb10"
+      "sha256": "d36847a6371e75b72dc862b752ab977bf4522c763d4df7300f19632f9013d448"
     },
     {
       "phase": "after",
@@ -168,7 +168,7 @@
         "scale": "fit"
       },
       "pageCount": 1,
-      "sha256": "5f113d1a2ceca99dd08a7dc0332a7ac7f756fa9a916ce4fe468f57c922775b86"
+      "sha256": "129dfe0e87dcb9b8d6f4a816adf71f778e839260eab6edfb8748bcd29d5459ec"
     },
     {
       "phase": "after",
@@ -185,7 +185,24 @@
         "scale": "fit"
       },
       "pageCount": 1,
-      "sha256": "3ed1399927fdabc7ed971abc0c5fe5e96f71dea1368cc1ec770040bd98734502"
+      "sha256": "22ec65894c0eb9392849eceba452dfd7bdc973242273744dd339273011816a59"
+    },
+    {
+      "phase": "after",
+      "name": "80-Table-72-M3-7-1-6",
+      "version": "0.2.2",
+      "options": {
+        "copies": 1,
+        "size": {
+          "width": 72,
+          "height": 200
+        },
+        "margins": 0,
+        "orientation": "portrait",
+        "scale": "fit"
+      },
+      "pageCount": 1,
+      "sha256": "f32266100a3dcf0a38eb3c3f8ef7b0ad0b9c8c2d3bee57430aceb8e8fb331083"
     }
   ],
   "runningExecutable": "esafe-printer-manager.exe"

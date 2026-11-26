@@ -13,7 +13,7 @@
    "fieldname": "capability",
    "fieldtype": "Select",
    "label": "Action",
-   "options": "Edit price / discount\nEdit item selling prices\nCreate items\nView warehouse stock\nAdjust warehouse stock\nTransfer warehouse stock\nMake returns\nReturn past the window\nExchange goods\nCash in\nCash out\nReprint a receipt\nOpen the register\nClose the register\nHold goods for a customer\nSee sales by salesperson\nSee the system check\nSell on account\nTake customer payments\nSet a customer's credit\nSee sales reports\nSee cashier performance\nSee profit\nPrint labels\nUse the stock app\nManage buying and suppliers\nPermanently delete sales",
+   "options": "Edit price / discount\nEdit item selling prices\nCreate items\nView warehouse stock\nAdjust warehouse stock\nTransfer warehouse stock\nReceive warehouse stock\nMake returns\nReturn past the window\nExchange goods\nCash in\nCash out\nReprint a receipt\nOpen the register\nClose the register\nHold goods for a customer\nSee sales by salesperson\nSee the system check\nSell on account\nTake customer payments\nSet a customer's credit\nSee sales reports\nSee cashier performance\nSee profit\nPrint labels\nUse the stock app\nManage buying and suppliers\nPermanently delete sales",
    "reqd": 1,
    "in_list_view": 1
   },

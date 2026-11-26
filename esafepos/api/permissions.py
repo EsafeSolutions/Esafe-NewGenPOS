@@ -30,6 +30,7 @@ ITEM_CREATE = "Create items"
 ITEM_STOCK_VIEW = "View warehouse stock"
 ITEM_STOCK_ADJUST = "Adjust warehouse stock"
 ITEM_STOCK_TRANSFER = "Transfer warehouse stock"
+ITEM_STOCK_RECEIVE = "Receive warehouse stock"
 BUYING = "Manage buying and suppliers"
 RETURN = "Make returns"
 RETURN_EXCEED = "Return past the window"
@@ -76,7 +77,7 @@ LEGACY_FIELD = {
 CLOSED_BY_DEFAULT = {
     DELETE_SALES,
     RETURN_EXCEED, SALES_BY_PERSON, SYSTEM_CHECK, SELL_ON_ACCOUNT, TAKE_PAYMENTS, SET_CREDIT,
-    SALES_REPORTS, CASHIER_REPORT, PROFIT, ITEM_PRICE_EDIT, ITEM_CREATE, ITEM_STOCK_VIEW, ITEM_STOCK_ADJUST, ITEM_STOCK_TRANSFER, BUYING,
+    SALES_REPORTS, CASHIER_REPORT, PROFIT, ITEM_PRICE_EDIT, ITEM_CREATE, ITEM_STOCK_VIEW, ITEM_STOCK_ADJUST, ITEM_STOCK_TRANSFER, ITEM_STOCK_RECEIVE, BUYING,
 }
 # The reports a holder of the EsafePOS Reports role sees while a shop names
 # nobody for them (esafepos.reports_access, 0.65.0): that role exists to read

@@ -115,8 +115,13 @@
   "enable_audit_log",
   "enable_email_receipt",
   "enable_customer_display",
+  "bank_transfer_display",
   "enable_walk_in_codes",
   "enable_receipt_customer_link",
+  "customer_messaging_config",
+  "whatsapp_phone_number_id",
+  "whatsapp_api_version",
+  "whatsapp_access_token",
   "enable_till_lock",
   "auto_lock_minutes",
   "enable_quick_keys",
@@ -182,9 +187,62 @@
   "credit_default_limit",
   "item_image_search_section",
   "item_image_gemini_enabled",
-  "item_image_gemini_key"
+  "purchase_ocr_section",
+  "purchase_ocr_enabled",
+  "purchase_ocr_gemini_key",
+  "purchase_ocr_model",
+  "item_image_gemini_key",
+  "receipt_show_line_discount",
+  "receipt_show_mrp",
+  "receipt_show_gross_total",
+  "receipt_show_total_discount",
+  "receipt_show_savings",
+  "receipt_show_item_count",
+  "receipt_show_total_qty",
+  "receipt_show_loyalty",
+  "receipt_show_customer",
+  "receipt_show_datetime",
+  "receipt_show_header_text",
+  "receipt_show_phone",
+  "receipt_show_footer",
+  "receipt_show_custom_fields",
+  "receipt_show_taxes",
+  "receipt_show_change",
+  "receipt_design"
  ],
  "fields": [
+  {"fieldname": "whatsapp_phone_number_id", "fieldtype": "Data", "label": "WhatsApp Business phone number ID", "hidden": 1},
+  {"fieldname": "whatsapp_api_version", "fieldtype": "Data", "label": "WhatsApp Cloud API version", "default": "v27.0", "hidden": 1},
+  {"fieldname": "whatsapp_access_token", "fieldtype": "Password", "label": "WhatsApp Business access token", "hidden": 1},
+  {
+   "fieldname": "customer_messaging_config",
+   "fieldtype": "Long Text",
+   "label": "POS customer messaging configuration",
+   "hidden": 1
+  },
+  {
+   "fieldname": "purchase_ocr_section",
+   "fieldtype": "Section Break",
+   "label": "Purchase invoice scanning"
+  },
+  {
+   "fieldname": "purchase_ocr_enabled",
+   "fieldtype": "Check",
+   "default": "0",
+   "label": "Enable purchase invoice scanning",
+   "description": "Send a selected invoice photo or PDF to Gemini for extraction and human review. Scanning never posts an invoice."
+  },
+  {
+   "fieldname": "purchase_ocr_gemini_key",
+   "fieldtype": "Password",
+   "label": "Invoice scanning Gemini API key"
+  },
+  {
+   "fieldname": "purchase_ocr_model",
+   "fieldtype": "Data",
+   "default": "gemini-3.5-flash-lite",
+   "label": "Invoice scanning Gemini model"
+  },
   {
    "fieldname": "item_image_search_section",
    "fieldtype": "Section Break",
@@ -1047,7 +1105,7 @@
    "default": "1",
    "fieldname": "receipt_show_unit_price",
    "fieldtype": "Check",
-   "label": "Show unit price (qty \u00d7 rate)"
+   "label": "Show unit price (qty × rate)"
   },
   {
    "default": "1",
@@ -1409,6 +1467,116 @@
    "fieldtype": "Table",
    "label": "ESAFE POS USER ACCESS LEVELS",
    "options": "EsafePOS User Access Level"
+  },
+  {
+   "fieldname": "bank_transfer_display",
+   "fieldtype": "Long Text",
+   "label": "Customer display bank details",
+   "description": "Receiving bank accounts, uploaded logos and official QR images. Managed in POS Settings.",
+   "hidden": 1
+  },
+  {
+   "fieldname": "receipt_show_line_discount",
+   "fieldtype": "Check",
+   "label": "Show line discount",
+   "default": "1"
+  },
+  {
+   "fieldname": "receipt_show_mrp",
+   "fieldtype": "Check",
+   "label": "Show mrp",
+   "default": "1"
+  },
+  {
+   "fieldname": "receipt_show_gross_total",
+   "fieldtype": "Check",
+   "label": "Show gross total",
+   "default": "1"
+  },
+  {
+   "fieldname": "receipt_show_total_discount",
+   "fieldtype": "Check",
+   "label": "Show total discount",
+   "default": "1"
+  },
+  {
+   "fieldname": "receipt_show_savings",
+   "fieldtype": "Check",
+   "label": "Show savings",
+   "default": "1"
+  },
+  {
+   "fieldname": "receipt_show_item_count",
+   "fieldtype": "Check",
+   "label": "Show item count",
+   "default": "1"
+  },
+  {
+   "fieldname": "receipt_show_total_qty",
+   "fieldtype": "Check",
+   "label": "Show total qty",
+   "default": "1"
+  },
+  {
+   "fieldname": "receipt_show_loyalty",
+   "fieldtype": "Check",
+   "label": "Show loyalty",
+   "default": "1"
+  },
+  {
+   "fieldname": "receipt_show_customer",
+   "fieldtype": "Check",
+   "label": "Show customer",
+   "default": "1"
+  },
+  {
+   "fieldname": "receipt_show_datetime",
+   "fieldtype": "Check",
+   "label": "Show datetime",
+   "default": "1"
+  },
+  {
+   "fieldname": "receipt_show_header_text",
+   "fieldtype": "Check",
+   "label": "Show header text",
+   "default": "1"
+  },
+  {
+   "fieldname": "receipt_show_phone",
+   "fieldtype": "Check",
+   "label": "Show phone",
+   "default": "1"
+  },
+  {
+   "fieldname": "receipt_show_footer",
+   "fieldtype": "Check",
+   "label": "Show footer",
+   "default": "1"
+  },
+  {
+   "fieldname": "receipt_show_custom_fields",
+   "fieldtype": "Check",
+   "label": "Show custom fields",
+   "default": "1"
+  },
+  {
+   "fieldname": "receipt_show_taxes",
+   "fieldtype": "Check",
+   "label": "Show taxes",
+   "default": "1"
+  },
+  {
+   "fieldname": "receipt_show_change",
+   "fieldtype": "Check",
+   "label": "Show change",
+   "default": "1"
+  },
+  {
+   "fieldname": "receipt_design",
+   "fieldtype": "Code",
+   "label": "Advanced receipt design",
+   "options": "JSON",
+   "default": "{}"
   }
  ],
  "index_web_pages_for_search": 0,

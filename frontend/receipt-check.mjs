@@ -71,7 +71,7 @@ window.prepare = async ({ width, count, template = 'Retail', currency = 'LKR', d
   receipt.grand_total = receipt.items.reduce((sum, item) => sum + item.amount, 0)
   receipt.payments[0].amount = receipt.grand_total
   await nextTick()
-  await createReceiptPrintFrame(document.getElementById('receipt-print'))
+  await createReceiptPrintFrame(document.getElementById('receipt-print'), { paperWidth: width, printableWidth: width })
 }
 window.ready = true
 </script></body></html>`

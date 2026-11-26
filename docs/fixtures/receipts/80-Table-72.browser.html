@@ -208,16 +208,16 @@
       #receipt-print { position: static !important; inset: auto !important;
         width: 72mm !important; max-width: 100% !important;
         margin: 0 !important; box-sizing: border-box; border: 0; border-radius: 0;
-        padding: 3mm; font-family: Arial, 'Nirmala UI', 'Iskoola Pota', Tahoma, sans-serif; line-height: 1.3;
+        padding: 3mm 3mm 3mm 3mm; font-family: Arial, 'Nirmala UI', 'Iskoola Pota', Tahoma, sans-serif; line-height: 1.3;
         transform: none !important; zoom: 1 !important;
         background: #fff !important; color: #000 !important; }
       #receipt-print, #receipt-print * { visibility: visible !important; color: #000 !important; }
       #receipt-print img { max-width: 100%; }
       #receipt-print.tpl-table { --table-rule: #000; }
-      #receipt-print table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-      #receipt-print :is(.retail-item-values td, .row > :last-child) { white-space: nowrap; }
-      #receipt-print .row > :last-child, #receipt-print .retail-savings strong { flex-shrink: 0; }
-      #receipt-print .row > :first-child { min-width: 0; overflow-wrap: anywhere; }
+      #receipt-print.receipt table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+      #receipt-print.receipt :is(.retail-item-values td, .row > :last-child) { white-space: nowrap; }
+      #receipt-print.receipt .row > :last-child, #receipt-print.receipt .retail-savings strong { flex-shrink: 0; }
+      #receipt-print.receipt .row > :first-child { min-width: 0; overflow-wrap: anywhere; }
       #receipt-print.tpl-table :is(.retail-totals, .retail-loyalty) { display: grid; grid-template-columns: minmax(0, 1fr) max-content; }
       #receipt-print.tpl-table :is(.retail-totals, .retail-loyalty) .row { grid-template-columns: subgrid; grid-column: 1 / -1; min-width: 0; }
       #receipt-print.tpl-table .retail-loyalty-title { grid-column: 1 / -1; }

@@ -9,9 +9,11 @@ import {
   saveCustomers,
   patchCatalogStock,
   patchCatalogStockBy,
+  patchCatalogItems,
   kvSet,
 } from '../offline'
 import { useSessionStore } from './session'
+import { notifyCatalogChanged } from '../catalogSync'
 
 const PAGE_SIZE = 80
 
@@ -35,6 +37,12 @@ export const useCatalogStore = defineStore('catalog', {
     _query: '',
     _searchTimer: null,
     _requestId: 0,
+    _liveRequest: 0,
+    _catalogEpoch: 0,
+    liveRevision: 0,
+    liveLastSync: 0,
+    liveError: '',
+    liveExtraCodes: [],
   }),
 
   getters: {
@@ -43,6 +51,54 @@ export const useCatalogStore = defineStore('catalog', {
   },
 
   actions: {
+    signalChange() {
+      this._catalogEpoch++
+      this._liveRequest++
+      this._requestId++; this.loading = false
+      notifyCatalogChanged()
+    },
+
+    applyLiveUpdate(snapshot, { upsert = false } = {}) {
+      if (!snapshot) return { pricesChanged: false }
+      const removed = new Set(snapshot.removed || [])
+      const rows = snapshot.items || []
+      let changed = removed.size > 0, pricesChanged = removed.size > 0
+      for (const row of rows) {
+        const existing = this.items.find(item => item.item_code === row.item_code)
+        if (!existing) {
+          pricesChanged = true
+          const session = useSessionStore(), term = this.search.trim().toLowerCase()
+          const groups = this.itemGroup ? session.itemGroupMembers?.[this.itemGroup] || [this.itemGroup] : null
+          if (upsert && (!groups || groups.includes(row.item_group)) && (!this.brand || row.brand === this.brand) &&
+              (!term || [row.item_name, row.item_code, row.barcode].some(value => String(value || '').toLowerCase().includes(term)))) {
+            this.items.push({ ...row }); changed = true
+          }
+          continue
+        }
+        if (JSON.stringify([existing.price, existing.standard_price, existing.selling_units]) !==
+            JSON.stringify([row.price, row.standard_price, row.selling_units])) pricesChanged = true
+        if (JSON.stringify(existing) !== JSON.stringify(row)) changed = true
+        Object.assign(existing, row)
+      }
+      if (removed.size) this.items = this.items.filter(item => !removed.has(item.item_code))
+      if (changed) { this._catalogEpoch++; this._requestId++; this.loading = false }
+      patchCatalogItems(rows, [...removed]).catch(() => {})
+      return { pricesChanged }
+    },
+
+    async refreshLive(extraCodes = []) {
+      const session = useSessionStore()
+      if (!session.posProfile || session.offline || this.loading) return false
+      const profile = session.posProfile, epoch = this._catalogEpoch, id = ++this._liveRequest
+      const codes = [...new Set([...this.items.map(item => item.item_code), ...this.liveExtraCodes, ...extraCodes].filter(Boolean))]
+      const batches = []
+      for (let start = 0; start < codes.length; start += 500) batches.push(codes.slice(start, start + 500))
+      const snapshots = await Promise.all(batches.map(item_codes => call('esafepos.api.catalog_sync.item_updates', { pos_profile: profile, item_codes })))
+      if (id !== this._liveRequest || profile !== session.posProfile || epoch !== this._catalogEpoch) return false
+      const applied = this.applyLiveUpdate({ items: snapshots.flatMap(data => data.items || []), removed: snapshots.flatMap(data => data.removed || []) })
+      this.liveLastSync = Date.now(); this.liveRevision++
+      return { ...applied, items: snapshots.flatMap(data => data.items || []) }
+    },
     async fetch(append = false) {
       const session = useSessionStore()
       if (!session.posProfile || (append && (this.loading || !this.hasMore))) return
@@ -97,12 +153,13 @@ export const useCatalogStore = defineStore('catalog', {
     async cacheFullCatalog() {
       const session = useSessionStore()
       const profile = session.posProfile
+      const epoch = this._catalogEpoch
       if (!profile || session.offline) return
       try {
         const items = await call('esafepos.api.catalog.get_full_catalog', {
           pos_profile: profile,
         })
-        if (session.posProfile !== profile) return
+        if (session.posProfile !== profile || epoch !== this._catalogEpoch) return
         await saveCatalog(items)
         // Selling in another currency without a connection: each currency
         // walk-in's own prices (esafepos.currency.offline_prices).
@@ -142,6 +199,7 @@ export const useCatalogStore = defineStore('catalog', {
       if (!levels) return
       const codes = Object.keys(levels)
       if (!codes.length) return
+      this.signalChange()
       for (const item of this.items) {
         if (item.item_code in levels) item.actual_qty = levels[item.item_code]
       }
@@ -165,6 +223,7 @@ export const useCatalogStore = defineStore('catalog', {
         deltas[code] = (deltas[code] || 0) + (Number(line.qty) || 0)
       }
       if (!Object.keys(deltas).length) return
+      this._catalogEpoch++; this._liveRequest++
       for (const item of this.items) {
         if (item.is_stock_item && item.item_code in deltas) {
           item.actual_qty = (Number(item.actual_qty) || 0) - deltas[item.item_code]

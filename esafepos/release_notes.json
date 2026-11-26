@@ -1,0 +1,24 @@
+{
+  "current_version": "0.70.0",
+  "tracking_started": "0.70.0",
+  "previous_version": "0.69.5",
+  "releases": [
+    {
+      "number": 1,
+      "version": "0.70.0",
+      "date": "2026-11-26",
+      "title": "Register control, customer bank details and version history",
+      "changes": [
+        { "id": "F-001", "type": "feature", "title": "Full summaries for every register", "text": "Review sales, returns, account sales, collections, discounts, points and payment totals across your authorized open registers.", "route": "/register" },
+        { "id": "F-002", "type": "feature", "title": "Register switching and cash adjustments", "text": "Switch registers and record drawer cash in or out with a reason, user history and the existing approval controls.", "route": "/register" },
+        { "id": "F-003", "type": "feature", "title": "Reviewed closing of all registers", "text": "Count and review each independent register before closing them in order. Changed totals stop closing; linked drawers retain one combined count.", "route": "/register" },
+        { "id": "F-004", "type": "feature", "title": "Bank details on the customer monitor", "text": "Payment can automatically show receiving accounts, bank logos, an official payment QR and transfer instructions on the customer display.", "route": "/" },
+        { "id": "F-005", "type": "feature", "title": "Editable bank display settings", "text": "Upload bank logos and QR images, adjust sizes, preview the display and route accounts by register, currency and payment method.", "route": "/settings", "audience": "settings" },
+        { "id": "F-006", "type": "feature", "title": "Updates and version management", "text": "See running and server versions, check for deployed updates, and browse numbered releases with feature, improvement and fix counts." },
+        { "id": "I-001", "type": "improvement", "title": "Payment tally guides and symbols", "text": "Cash, card, bank transfer, debt and loyalty explanations include short, over and tallied indicators, with quiet motion and reduced-motion support." },
+        { "id": "I-002", "type": "improvement", "title": "Visible release number and build checks", "text": "The header shows the running interface version. Build checks keep the Python release, frontend package and release history aligned." },
+        { "id": "X-001", "type": "fix", "title": "Reliable bank display synchronization", "text": "Bank details use cloneable snapshots between windows, clear after payment and preserve the customer's account selection during payment updates." }
+      ]
+    }
+  ]
+}

@@ -74,13 +74,22 @@ scheduler_events = {
 # runtime. It returns at once unless a demo run has set
 # frappe.flags.esafepos_demo_stamp, so a real sale is never touched.
 doc_events = {
+    "Item": {"on_update": "esafepos.api.catalog_sync.changed", "on_trash": "esafepos.api.catalog_sync.changed"},
+    "Item Price": {"on_update": "esafepos.api.catalog_sync.changed", "on_trash": "esafepos.api.catalog_sync.changed"},
+    "POS Price Book": {"on_update": "esafepos.api.catalog_sync.changed", "on_trash": "esafepos.api.catalog_sync.changed"},
+    "Stock Ledger Entry": {"after_insert": "esafepos.api.catalog_sync.changed", "on_change": "esafepos.api.catalog_sync.changed"},
+    "Bin": {"on_change": "esafepos.api.catalog_sync.changed"},
     "POS Invoice": {
         "before_insert": "esafepos.demo_data.apply_demo_stamp",
         # ERPNext 16 leaves loyalty points owing on a POS Invoice (see there).
         "before_submit": "esafepos.erpnext_compat.settle_points_outstanding",
         "before_cancel": "esafepos.loyalty_change.cancel_invoice",
+        "on_submit": "esafepos.api.catalog_sync.changed",
+        "on_cancel": "esafepos.api.catalog_sync.changed",
     },
     "Sales Invoice": {
+        "on_submit": "esafepos.api.catalog_sync.changed",
+        "on_cancel": "esafepos.api.catalog_sync.changed",
         "before_cancel": "esafepos.loyalty_change.cancel_invoice",
         "before_insert": [
             "esafepos.demo_data.apply_demo_stamp",
@@ -88,9 +97,11 @@ doc_events = {
             "esafepos.paid_in.clear_on_merged",
         ],
     },
-    "Stock Entry": {"before_insert": "esafepos.demo_data.apply_demo_stamp"},
+    "Stock Entry": {"before_insert": "esafepos.demo_data.apply_demo_stamp",
+                    "on_submit": "esafepos.api.catalog_sync.changed", "on_cancel": "esafepos.api.catalog_sync.changed"},
     # A deleted merged count gives its shared count back (esafepos.api.stock_app).
-    "Stock Reconciliation": {"on_trash": "esafepos.api.stock_app.on_reconciliation_trash"},
+    "Stock Reconciliation": {"on_trash": "esafepos.api.stock_app.on_reconciliation_trash",
+                             "on_submit": "esafepos.api.catalog_sync.changed", "on_cancel": "esafepos.api.catalog_sync.changed"},
     "POS Opening Entry": {"before_insert": "esafepos.demo_data.apply_demo_stamp"},
     "POS Closing Entry": {"before_insert": "esafepos.demo_data.apply_demo_stamp"},
     "Payment Entry": {"before_insert": "esafepos.demo_data.apply_demo_stamp"},

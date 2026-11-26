@@ -167,7 +167,7 @@
 <script setup>
 import Icon from '../components/Icon.vue'
 import SearchSelect from '../components/SearchSelect.vue'
-import { computed, ref, onMounted, watch } from 'vue'
+import { computed, ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { t } from '../i18n'
 import { call } from '../api'
@@ -346,6 +346,8 @@ const showBundles = ref(false)
 const showFavourites = ref(false)
 const favourites = ref([])
 const favLoading = ref(false)
+watch(() => favourites.value.map(item => item.item_code), codes => { catalog.liveExtraCodes = codes }, { immediate: true })
+onBeforeUnmount(() => { catalog.liveExtraCodes = [] })
 
 // The favourites are read once, so their counts follow every sale and return
 // the way the grid's tiles do: until 0.56.1 a favourite kept the count it was
@@ -362,6 +364,13 @@ catalog.$onAction(({ name, args }) => {
     for (const line of args[0] || []) {
       const fav = favourites.value.find((f) => f.item_code === line.item_code)
       if (fav && fav.is_stock_item) fav.actual_qty = (Number(fav.actual_qty) || 0) - (Number(line.qty) || 0)
+    }
+  } else if (name === 'applyLiveUpdate') {
+    const snapshot = args[0] || {}, rows = new Map((snapshot.items || []).map(row => [row.item_code, row]))
+    favourites.value = favourites.value.filter(item => !(snapshot.removed || []).includes(item.item_code))
+    for (const fav of favourites.value) {
+      const row = rows.get(fav.item_code)
+      if (row) Object.assign(fav, row)
     }
   }
 })

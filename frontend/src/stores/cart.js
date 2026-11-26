@@ -674,6 +674,20 @@ export const useCartStore = defineStore('cart', {
       await this.reprice()
     },
 
+    applyCatalogUpdate(rows) {
+      if (this.submitting) return
+      const byCode = new Map((rows || []).map(row => [row.item_code, row]))
+      for (const line of this.lines) {
+        const row = byCode.get(line.item_code)
+        if (!row) continue
+        for (const key of ['item_name', 'image', 'item_group', 'brand', 'tags', 'actual_qty', 'is_stock_item']) {
+          if (row[key] !== undefined) line[key] = row[key]
+        }
+        const unit = row.selling_units?.find(unit => unit.uom === line.selling_uom)
+        line.catalog_price = line.selling_uom ? unit?.price ?? row.price * (line.conversion_factor || 1) : row.price
+      }
+    },
+
     // Re-resolve cart prices when the active price list changes (customer
     // with a price book, or a delivery-app channel). Server-authoritative.
     async reprice() {

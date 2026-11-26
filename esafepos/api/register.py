@@ -966,6 +966,15 @@ def get_session_summary(session: str):
             }
         )
 
+    for row in expected:
+        mode = row["mode_of_payment"]
+        row["payment_type"] = frappe.get_cached_value("Mode of Payment", mode, "type") or ""
+        row["opening_float"] = 0
+        row["cash_in"], row["cash_out"] = 0, 0
+        if row.get("is_cash"):
+            row["opening_float"] = flt(doc.opening_float if mode == drawer else floats.get(mode, 0), 2)
+            row["cash_in"], row["cash_out"] = _drawer_movements(doc, mode, drawer)
+        row["net_payments"] = flt(row["expected_amount"] - row["opening_float"] - row["cash_in"] + row["cash_out"], 2)
     totals = _session_totals(doc.name, sale_doctype)
 
     return {
@@ -1003,8 +1012,75 @@ def get_session_summary(session: str):
         "erpnext_days": _days_info(doc),
         # Who sold what on this shift (empty when nobody was named).
         "salespeople": salespeople.shift_rows(doc.name, sale_doctype),
+        "activity": _session_activity(doc.name, sale_doctype),
         **totals,
     }
+
+
+def _session_activity(session_name, sale_doctype):
+    """Separate sales from returns; all money is in company currency.
+
+    Keep sales_count in _session_totals unchanged: it is also the stale-close
+    invoice-count guard and intentionally includes return invoices.
+    """
+    if sale_doctype not in ("POS Invoice", "Sales Invoice"):
+        frappe.throw(_("Unsupported invoice type"))
+    meta = frappe.get_meta(sale_doctype)
+    optional = []
+    for field in ("loyalty_points", "loyalty_amount", "esafepos_loyalty_change_amount"):
+        expression = "coalesce(`{0}`, 0)".format(field) if meta.has_field(field) else "0"
+        if field == "loyalty_amount":
+            expression += " * coalesce(conversion_rate, 1)"
+        optional.append("sum(case when is_return = 0 then {0} else 0 end) as `{1}`".format(expression, field))
+    rows = frappe.db.sql(  # nosemgrep: fixed doctype, parameterized session
+        """select sum(case when is_return = 0 then 1 else 0 end) as sale_count,
+                  sum(case when is_return = 1 then 1 else 0 end) as return_count,
+                  sum(case when is_return = 0 then base_grand_total else 0 end) as sales,
+                  -sum(case when is_return = 1 then base_grand_total else 0 end) as `returns`,
+                  {optional}
+           from `tab{doctype}` where esafepos_session = %s and docstatus = 1""".format(
+               doctype=sale_doctype, optional=", ".join(optional)),
+        session_name, as_dict=True,
+    )
+    row = rows[0] if rows else {}
+    result = {key: flt(row.get(key), 2) for key in
+              ("sales", "returns", "loyalty_amount", "esafepos_loyalty_change_amount")}
+    result.update({key: cint(row.get(key)) for key in ("sale_count", "return_count", "loyalty_points")})
+    # Actual positive purchase awards; saved change has a
+    # Journal Entry source and is reported separately from the invoice snapshot.
+    result["earned_points"] = 0
+    if frappe.db.table_exists("Loyalty Point Entry"):
+        points = frappe.db.sql(  # nosemgrep
+            """select coalesce(sum(lp.loyalty_points), 0)
+               from `tabLoyalty Point Entry` lp join `tab{doctype}` inv on inv.name = lp.invoice
+               where inv.esafepos_session = %s and inv.docstatus = 1
+                 and lp.invoice_type = %s and lp.loyalty_points > 0""".format(doctype=sale_doctype),
+            (session_name, sale_doctype),
+        )
+        result["earned_points"] = cint(points[0][0]) if points else 0
+    return result
+
+
+@frappe.whitelist()
+def all_registers():
+    """An authorized directory of open shifts across profiles, without switching tills."""
+    from esafepos.api import permissions
+    from esafepos.api.session import _user_profiles
+    if not frappe.has_permission("POS Register Session", "read"):
+        frappe.throw(_("Not permitted"), frappe.PermissionError)
+    profiles = _user_profiles()
+    if not profiles:
+        return []
+    filters = {"pos_profile": ["in", profiles], "status": "Open"}
+    if not permissions.is_manager():
+        filters["opened_by"] = frappe.session.user
+    rows = frappe.get_all("POS Register Session", filters=filters,
+                          fields=["name", "pos_profile", "opened_by", "opened_at", "opening_float"],
+                          order_by="pos_profile asc, opened_at asc")
+    for row in rows:
+        row["session"] = row.name
+        row["opened_by_name"] = frappe.utils.get_fullname(row.opened_by) if row.opened_by else ""
+    return rows
 
 
 def _session_totals(session_name, sale_doctype):
@@ -1145,6 +1221,7 @@ def close_register(
     variance_action: str | None = None,
     expected_payment_count: int | str | None = None,
     denomination_counts: dict | str | None = None,
+    expected_tallies: dict | str | None = None,
 ):
     """Flip the session to 'Closing' (committed immediately, so it can never be
     sold-on or resumed again), then consolidate in a serialized background job.
@@ -1229,6 +1306,8 @@ def close_register(
     except Exception:
         frappe.log_error(title="EsafePOS: shift figures failed at close", message=frappe.get_traceback())
         summary = None
+    if expected_tallies is not None:
+        _assert_expected_tallies(expected_tallies, summary)
     from esafepos.cash_count import clean_counts, clean_payment_counts
     try:
         expected = (summary or {}).get("expected", [])
@@ -1275,6 +1354,16 @@ def close_register(
         detail=_("{0} sales · takings {1}").format(doc.sales_count, doc.total_sales),
     )
     return _close_result(doc, queued=queued)
+
+
+def _assert_expected_tallies(expected_tallies, summary):
+    """Optional strict snapshot for multi-register review, checked under the shift lock."""
+    if isinstance(expected_tallies, str):
+        expected_tallies = json.loads(expected_tallies)
+    current = {row["mode_of_payment"]: {"amount": row["expected_amount"], "currency": row.get("currency")}
+               for row in (summary or {}).get("expected", [])}
+    if not summary or not isinstance(expected_tallies, dict) or current != expected_tallies:
+        frappe.throw(_("Payment totals changed or could not be checked. Refresh this register, re-check the count, then close again."))
 
 
 def _audit_register(kind, session_name, profile_name, amount, detail=None):

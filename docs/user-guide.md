@@ -1,6 +1,6 @@
 # ESAFE POS User Guide
 
-*Applies to EsafePOS v0.69.0. This document is updated with every feature change.*
+*Applies to EsafePOS v0.70.0. This document is updated with every feature change.*
 
 > **Note on this document.** Sections 1 to 17 below were written up to v0.17 and are
 > being brought forward release by release; the **changelog in section 18 is
@@ -150,6 +150,10 @@ Tabs and actions follow your permissions. Transfers need **View warehouse stock*
 
 If a transfer retry is refused after its original response was lost, its saved identity stays locked for another retry. Use **Clear after checking ERPNext** only after confirming that the transfer was not posted; the form asks for that confirmation before allowing a different request.
 
+**Add new stock:** In **Items & stock → Inventory & transfers**, select the item and choose **Add to warehouse**. Select the receiving warehouse, enter **Quantity received**, the **Unit cost** in company currency per stock unit, and a receipt reference/reason. Supply serial numbers or a batch number when required, then choose **Post Material Receipt**. The quantity is added to the existing balance and saved as a submitted ERPNext Material Receipt; unposted sales remain reserved. **Receive warehouse stock** is a separate manager-default capability and also requires View warehouse stock plus ERPNext Stock Entry read/create/submit rights. ERPNext approval workflows and stock/accounting validation still apply. If the response is lost, **Check and retry receipt** checks the saved request without duplicating the incoming quantity, including after reopening the same item in this browser tab.
+
+**Live prices and stock:** Active Sell, Items & stock and invoice screens check committed ERPNext changes every three seconds while online and visible. Loaded products, favourites and cart stock/metadata update automatically; a fifteen-second data check also catches imports or database changes that bypass document hooks. Older Frappe versions and revision-cache outages use direct polling. **Sync now** checks immediately. Saved prices and stock balances appear from the server response, with remaining refresh work in the background. The offline cache receives current loaded rows. Unsaved item edits are retained when ERPNext changes; use **Reload current values** to discard your draft deliberately. Typed cart prices, quantities and discounts remain intact. Customer lists, dated prices, alternate-unit rates and active price books still determine the effective selling price. Sync pauses during checkout/dialogs, when hidden/locked or offline, and resumes on focus/reconnect. Deploy the rebuilt assets and run site migration/reload to install the receiving capability and document hooks.
+
 In **Items → Add item**, use **Generate item code** or **Generate barcode**. Each field has its own **Code type** and length: choose **Numbers only** and **Digits = 5** for a five-digit code such as `00123`, or **Letters and numbers** for uppercase mixed codes. Numeric codes support 1–140 digits; mixed codes support 2–140 characters and always contain both a letter and a number. Leading zeroes are preserved. The last type and length for each field are remembered for this outlet on this browser. Existing items have the same generator controls on each barcode row. You can also type a code yourself. Generation needs a connection, checks existing item codes/barcodes and the current form's values, and fills the field for review; **Create item** or **Save changes** saves it. If another user saves the same value first, generate another code and retry. These are internal identifiers, without an EAN/UPC check digit.
 
 **Edit item selling prices** is available to System Managers and EsafePOS Managers by default. To delegate access, add a role or person under **Settings → General → Approvals and permissions**. The user also needs ERPNext read access to Item, Price List and Item Price, plus Item Price write permission to change an existing price or create permission to add one. Use **Selling price list** to choose which enabled selling list to edit. A shared price list carries the same edit to every outlet using it. Alternate-unit checkout uses an online sale on the outlet's regular price list in its own currency. Holds use the stock unit. Return alternate-unit sales from online Sales History.
@@ -207,6 +211,21 @@ Zero-price items, scanned serials and complete bundles retain their existing
 quantity controls. Normal stock checks and offline-sale restrictions still apply.
 
 ### Customer
+
+Open **Customer messaging** in the POS navigation, or choose **SMS / WhatsApp**
+from a customer's profile. A receipt's **Customer profile** opens the existing
+named/linked account, and **Send e-invoice** lets you edit a message, share its
+secure link or prepare a receipt PNG. **Send via WhatsApp API** submits from POS;
+the optional **WhatsApp popup** opens a separate window where you press Send.
+
+Configure **Settings → General → Customer messaging** for channel switches,
+country code, sender roles, ERPNext SMS gateway fields and the WhatsApp Business
+phone number ID/access token. Text and image API messages use the customer
+service window; approved Meta templates, including image headers, cover
+configured template sends. Ordinary SMS carries text/links. Provider acceptance
+is shown separately from delivery, and uncertain requests must be checked
+before sending again. See [setup, migration and sharing options](customer-messaging-and-einvoices.md).
+
 Tap **Add a customer** → search by name / mobile / tax ID → select, or create.
 What the new-customer form asks is the shop's choice, under **Settings →
 General → Customers**: every field is **Hidden**, **Optional** or **Required**,
@@ -341,6 +360,12 @@ a label printer (a roll) or on an A4 sheet of labels.
 **Esafe silent printing:** in **Printers**, click **Connect / reconnect**, approve the ERP website in the native Windows manager, select installed queues for receipts/labels/A4/reports, then **Approve and save workstation printers**. Install the manager's local certificate through its native Settings and allow browser local-network access when requested. Assignments belong to this browser/workstation and outlet. Set receipt output, copies and document paper; use Preview test and Silent test receipt before enabling silent printing and optional automatic receipts after a successful sale. Both switches default off. Existing profile IP/port and Print Format are preserved.
 
 **Print jobs** shows native acceptance/status, explicit identical retry and authorized new-copy reprints. Unknown jobs are never replayed automatically. Browser fallback is an explicit choice; check the printer before making another copy. The supplied Esafe 0.1.0 installer is an unsigned development build requiring administrator qualification. See the [complete setup, migration and rollback guide](esafe-print-manager.md).
+
+**Receipt sections and custom design:** in **Printing → Receipt**, use the loyalty button or section checkboxes, and **Show all optional sections / Hide optional sections** for bulk changes. Expand **Advanced custom receipt editor** to change alignments, text sizes, line height, padding, spacing, border thickness and image heights. The live preview updates as you edit; blank values retain the template. Save the default or selected outlet to apply. Printer margins add to design padding. [Setup, supported outputs and migration](receipt-custom-editor.md).
+
+**Right-edge clipping:** unconfigured 80/58 mm rolls now start at 72/48 mm printable pages. For an existing setup, choose **Use safe thermal layout**, match the actual Windows form, preview/test and save for that queue. Long identifiers wrap and numeric values are checked before printing; an impossible layout prompts for adjustment instead of sending clipped output. Existing calibrated widths are retained. [Setup and evidence](receipt-right-edge-fit.md).
+
+**Receipt paper on this workstation:** after assigning a receipt queue, enter its Windows paper width, printable width and left/right/top/bottom margins separately for 58 mm and 80 mm rolls. Browser and built-in HTML receipts share these measurements and a content-fitted page height. If the right edge clips, match the driver widths and increase the right margin; the effective content width updates as you edit. **Preview receipt margins** and **Browser margin test** use synthetic amounts with your unsaved entries. **Reset margins to 3 mm** restores the four default margins; use **Save workstation receipt layout** to apply changes to normal receipts. Existing uniform insets retain their spacing. Use HTML for the designer’s borders and fonts. If the browser keeps feeding after the footer, check its selected Windows form and the driver’s receipt/continuous-paper and cut settings; CSS cannot force an early driver cut. See [measurements, setup and verified examples](silent-receipt-diagnosis.md).
 
 With silent printing disabled, USB/Windows queues remain selectable in the browser dialog. Existing server-network receipts require the printer to be reachable from the ERPNext server. QZ Tray setup is not included.
 
@@ -580,6 +605,15 @@ The invoice workspace is online-only and uses the active POS Profile's company,
 price list, taxes, warehouse and currency settings.
 
 ### Buying and supplier payments
+
+**Scan supplier invoice** can fill the purchase draft from a photo or PDF. Configure
+your Gemini key in **Settings → General → Invoice scanning** after site migration.
+Upload the invoice, check supplier and product matches, correct pack quantities to
+stock units, select freight/tax accounts, and reconcile the total. Select **Fill
+purchase draft**, then review the normal purchase form before submitting. Scanning
+does not post an invoice. The document is sent to Google Gemini when you select
+**Read invoice**; API billing/quota apply. See the [scanner setup and review
+guide](buying-and-supplier-payments.md#scan-an-invoice-with-gemini).
 
 Open **Buying** to choose or add a supplier, receive a purchase with a standard
 ERPNext Purchase Invoice, view their balance, and settle unpaid invoices. This
@@ -1569,6 +1603,7 @@ behaviour: it sells offline as long as the tab stays open.)
 
 | Tab | Contents |
 |---|---|
+| **Updates & versions** | Running and server versions, manual update checks, numbered release/change history, feature/improvement/fix counts and search/type filters. Also opens from the version badge. Review returns to the existing Agree and update / Later flow; checking preserves active work. [Full guide](updates-and-versions.md). |
 | **Promotions** | List + Vend-style editor for all types, include/exclude rows, coupons, the dry-run **Test** panel. |
 | **Cashback** | List + editor for cashback rules: percentage or fixed give-back, cap, minimum spend, expiry and activation-delay days, include/exclude products, schedule (dates/times/days), outlets, customer group, optional coupon, stackable. An **Accounting** card shows, per company, the cashback liability and expense accounts in use, what is waiting to be booked, what customers hold and the liability account's balance, with **Book to accounts now** for settings managers. The two accounts are chosen per company in **General → Company accounts** and are created automatically when left empty. |
 | **Bundles** | Fixed-price bundles: components, price, outlets. |
@@ -1866,6 +1901,7 @@ The earlier entries below cover the shared release history inherited from the or
 ### EsafePOS releases
 | Version | Highlights |
 |---|---|
+| 0.70.0 | **Register control, customer bank details and update history.** Full per-register sales/returns/account/reward summaries, register switching, cash adjustments and reviewed sequential closing. Configurable customer bank accounts, logo/QR uploads and automatic payment display. Header version badge and Updates & versions with permanent change IDs and automatic counts. Update #1 records 6 features, 2 improvements and 1 fix; checks never restart a till. [Release guide](updates-and-versions.md). |
 | 0.69.0 | **Stock count from the till.** A Stock count screen in the till counts a warehouse with the barcode scanner: alone (a Stock Reconciliation draft with only the differences, then submit) or as one more device of a shared count with the EsafePOS Stock phones (send, merge, close). Same shelf rule as the app: not saved or merged while sales of an open shift hold its items. Shown only with Count from EsafePOS on (a new switch, on by default), the Use the stock app permission and ERPNext's right to create a Stock Reconciliation, and checked again on the server. The EsafePOS Stock app section of Settings now has the download links for phones and handheld scanners. In all thirteen languages. |
 | 0.68.1 | **A stock count waits for the close of an open shift.** Found by the EsafePOS Stock app's own test against EsafePOS: ERPNext drops a count row equal to the stock it holds, and while a shift is open that stock still includes its sales, so a difference vanished from a merged count. Now a count holding items that sales of an open shift hold is not saved or merged from the app until the shift is closed (counting goes on). Deleting a merged draft gives its shared count back instead of being refused by the link, and says so on the shared count. A phone can read back its own lines of a shared count (count_session_device, as in the Lumen Connector 0.10.0), so a phone joining a reopened count keeps what it sent. |
 | 0.68.0 | **Stock take with the EsafePOS Stock phone app** (the second half of the Zimbabwe shop's 2026-10-25 request). A EsafePOS site now serves the EsafePOS Stock app itself, with the same methods as the Lumen Connector: counts alone or with several phones at once (merged into one Stock Reconciliation, only the differences), stock entries, purchase receipts, approvals with or without a workflow, linking a new barcode, an Excel export. The quantity a count is compared with is what is on the shelf (sales of an open shift taken off), and a count is not submitted from the app while sales of an open shift hold its items. New documents POS Count Session and POS Count Device, a EsafePOS Stock app section in Settings, a Use the stock app permission. In all thirteen languages. |

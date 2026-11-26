@@ -39,36 +39,10 @@
         <div v-if="otherCompany && !receipt.is_return" class="company-note">
           {{ t('Sold by {company}. It can be returned or exchanged at one of its outlets.', { company: receipt.company }) }}
         </div>
-        <div v-if="shareOpen" class="share-card">
-          <div class="share-heading">
-            <div>
-              <strong>{{ t('Send e-invoice') }}</strong>
-              <div class="muted small">{{ t('Share a secure invoice link with the customer.') }}</div>
-            </div>
-            <button class="btn-ghost" :aria-label="t('Close')" @click="shareOpen = false"><Icon name="close" /></button>
-          </div>
-          <label class="share-mobile">
-            <span>{{ t('Customer mobile') }}</span>
-            <input v-model.trim="shareMobile" type="tel" inputmode="tel" autocomplete="tel" :placeholder="t('e.g. +94770000000')" />
-          </label>
-          <div class="share-actions">
-            <button class="btn btn-outline" :disabled="sharing || smsing" @click="openWhatsApp">
-              {{ sharing ? t('Preparing…') : t('WhatsApp') }}
-            </button>
-            <button class="btn btn-outline" :disabled="sharing || smsing" @click="sendSms">
-              {{ smsing ? t('Sending…') : t('Send SMS') }}
-            </button>
-            <button class="btn btn-outline" :disabled="sharing || smsing" @click="copyInvoiceLink">
-              {{ copied ? t('Link copied') : t('Copy link') }}
-            </button>
-          </div>
-          <label v-if="shareDetails" class="share-link">
-            <span>{{ t('Invoice link') }}<small v-if="copyFailed"> · {{ t('Copy was blocked. Select and copy the link below.') }}</small></span>
-            <input :value="shareDetails.url" readonly dir="ltr" @focus="$event.target.select()" @click="$event.target.select()" />
-          </label>
-          <div class="muted small share-note">
-            {{ t('WhatsApp opens a ready message for confirmation. SMS uses ERPNext SMS Settings.') }}
-          </div>
+        <div v-if="shareOpen" class="receipt-message-panel">
+          <button type="button" class="btn-ghost" :aria-label="t('Close message')" @click="shareOpen = false">{{ t('Close message') }}</button>
+          <CustomerMessageComposer :invoice="receipt.name" :customer="profileCustomer" :mobile-number="receipt.customer_phone"
+            :image-source="() => receiptView?.$el" />
         </div>
         <form v-if="customerEditorOpen" class="share-card" @submit.prevent="saveCustomerDetails">
           <label class="share-mobile">
@@ -89,7 +63,7 @@
             <button class="btn btn-primary" :disabled="customerSaving">{{ t('Save details') }}</button>
           </div>
         </form>
-        <ReceiptView :receipt="receipt" printable />
+        <ReceiptView ref="receiptView" :receipt="receipt" printable />
       </div>
       <div class="modal-footer">
         <button
@@ -135,6 +109,7 @@
           class="btn btn-outline" @click="linkCustomerOpen = true">
           {{ t('Add customer to invoice') }}
         </button>
+        <button v-if="profileCustomer && session.permissions.customers && !receipt.offline" type="button" class="btn btn-outline" @click="openCustomerProfile">{{ t('Customer profile') }}</button>
         <button v-if="!receipt.offline" class="btn btn-outline" @click="toggleShare">
           <Icon name="globe" /> {{ t('Send e-invoice') }}
         </button>
@@ -163,6 +138,8 @@
 
 <script setup>
 import Icon from './Icon.vue'
+import CustomerMessageComposer from './CustomerMessageComposer.vue'
+import { useRouter } from 'vue-router'
 import ReceiptView from './ReceiptView.vue'
 import CashDrawerButton from './printing/CashDrawerButton.vue'
 import CustomerModal from './CustomerModal.vue'
@@ -189,6 +166,10 @@ const props = defineProps({
 const emit = defineEmits(['close', 'refund', 'exchange', 'open-in-history', 'updated', 'deleted'])
 
 const session = useSessionStore()
+const router = useRouter()
+const receiptView = ref(null)
+const profileCustomer = computed(() => props.receipt.linked_customer ||
+  (!props.receipt.walk_in_code && props.receipt.customer !== session.defaultCustomer ? props.receipt.customer : null))
 const linkCustomerOpen = ref(false)
 const deleteSaleOpen = ref(false)
 function onSaleDeleted(result) {
@@ -199,12 +180,6 @@ function onSaleDeleted(result) {
 const printing = ref(false)
 const emailing = ref(false)
 const shareOpen = ref(false)
-const shareMobile = ref('')
-const sharing = ref(false)
-const smsing = ref(false)
-const copied = ref(false)
-const copyFailed = ref(false)
-const shareDetails = ref(null)
 const customerEditorOpen = ref(false)
 const customerSaving = ref(false)
 const customerPhone = ref('')
@@ -217,9 +192,6 @@ function onCustomerLinked(updated) {
   linkCustomerOpen.value = false
   customerEditorOpen.value = false
   shareOpen.value = false
-  shareDetails.value = null
-  shareMobile.value = ''
-  copyFailed.value = false
   emit('updated', updated)
   session.notify(t('Customer linked to invoice'))
 }
@@ -251,8 +223,6 @@ async function saveCustomerDetails() {
       mobile_no: customerPhone.value,
       ...(customerNameOpen.value ? { customer_name: customerName.value } : {}),
     })
-    shareDetails.value = null
-    shareMobile.value = ''
     emit('updated', updated)
     customerEditorOpen.value = false
     session.notify(t('Customer details saved'))
@@ -277,128 +247,11 @@ const soldInOtherCurrency = computed(
     props.receipt.currency !== props.receipt.company_currency
 )
 
-function toggleShare() {
-  shareOpen.value = !shareOpen.value
-  if (shareOpen.value && !shareMobile.value) shareMobile.value = props.receipt.customer_phone || ''
-}
-
-async function getShareDetails() {
-  if (shareDetails.value) return shareDetails.value
-  shareDetails.value = await call('esafepos.api.sales.receipt_share_link', {
-    invoice: props.receipt.name,
-  })
-  if (!shareMobile.value && shareDetails.value.mobile) shareMobile.value = shareDetails.value.mobile
-  return shareDetails.value
-}
-
-function whatsAppNumber() {
-  let value = String(shareMobile.value || '').trim().replace(/[\s()-]/g, '')
-  if (value.startsWith('00')) value = `+${value.slice(2)}`
-  if (value.startsWith('0')) {
-    throw new Error(t('Add the country code before sending to WhatsApp (for example +94…).'))
-  }
-  const digits = value.replace(/^\+/, '')
-  if (!/^\d{6,15}$/.test(digits)) {
-    throw new Error(t('Enter a valid mobile number, including the country code.'))
-  }
-  return digits
-}
-
-async function openWhatsApp() {
-  let digits
-  try {
-    digits = whatsAppNumber()
-  } catch (e) {
-    session.notify(e.message, true)
-    return
-  }
-  // Open synchronously so browsers do not treat the tab as an unsolicited
-  // popup while the signed link is being requested.
-  const tab = window.open('about:blank', '_blank')
-  if (!tab) {
-    session.notify(t('Allow pop-ups to open WhatsApp.'), true)
-    return
-  }
-  sharing.value = true
-  try {
-    const details = await getShareDetails()
-    const url = `https://wa.me/${digits}?text=${encodeURIComponent(details.message)}`
-    tab.location.replace(url)
-  } catch (e) {
-    tab.close()
-    session.notify(e.message, true)
-  } finally {
-    sharing.value = false
-  }
-}
-
-async function sendSms() {
-  const mobile = String(shareMobile.value || '').trim()
-  if (!mobile) {
-    session.notify(t('Enter the customer mobile number.'), true)
-    return
-  }
-  smsing.value = true
-  try {
-    const res = await call('esafepos.api.sales.sms_receipt', {
-      invoice: props.receipt.name,
-      mobile,
-    })
-    session.notify(t('E-invoice sent by SMS to {mobile}', { mobile: res.mobile }))
-  } catch (e) {
-    session.notify(e.message, true)
-  } finally {
-    smsing.value = false
-  }
-}
-
-async function copyInvoiceLink() {
-  sharing.value = true
-  copyFailed.value = false
-  try {
-    const details = await getShareDetails()
-    let didCopy = false
-    if (navigator.clipboard?.writeText) {
-      try {
-        await navigator.clipboard.writeText(details.url)
-        didCopy = true
-      } catch {
-        // Fetching the signed link can outlast transient clipboard activation,
-        // especially in mobile browsers. Try their legacy copy path next.
-      }
-    }
-    if (!didCopy) {
-      const area = document.createElement('textarea')
-      area.value = details.url
-      area.setAttribute('readonly', '')
-      area.setAttribute('aria-hidden', 'true')
-      area.style.position = 'fixed'
-      area.style.insetInlineStart = '-9999px'
-      area.style.top = '0'
-      area.style.fontSize = '16px'
-      document.body.appendChild(area)
-      area.focus()
-      area.select()
-      area.setSelectionRange(0, area.value.length)
-      try {
-        didCopy = document.execCommand('copy')
-      } catch {
-        didCopy = false
-      } finally {
-        area.remove()
-      }
-    }
-    copied.value = didCopy
-    copyFailed.value = !didCopy
-    if (didCopy) {
-      session.notify(t('E-invoice link copied'))
-      window.setTimeout(() => { copied.value = false }, 1800)
-    }
-  } catch (e) {
-    session.notify(e.message, true)
-  } finally {
-    sharing.value = false
-  }
+function toggleShare() { shareOpen.value = !shareOpen.value }
+function openCustomerProfile() {
+  if (!profileCustomer.value) return
+  router.push({path: '/customers', query: {customer: profileCustomer.value}})
+  emit('close')
 }
 
 async function emailReceipt() {

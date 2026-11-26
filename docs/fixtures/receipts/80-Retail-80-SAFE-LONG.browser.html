@@ -1,0 +1,263 @@
+<!doctype html><html lang="en" dir="ltr"><head><style>.receipt {
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  font-size: 13px;
+}
+.row.owed { margin-top: 6px; }
+.receipt-sign {
+  margin-top: 26px;
+  padding-top: 4px;
+  border-top: 1px solid currentColor;
+  width: 70%;
+}
+.receipt-head { text-align: center; margin-bottom: 12px; }
+.receipt-logo {
+  max-height: 64px;
+  max-width: 70%;
+  object-fit: contain;
+  margin: 0 auto 8px;
+  display: block;
+}
+.receipt-company { font-weight: 800; font-size: 15px; }
+.receipt-extra { white-space: pre-line; margin: 3px 0; }
+.return-stamp { color: var(--red); font-weight: 800; letter-spacing: 0.2em; }
+.receipt-table { width: 100%; border-collapse: collapse; }
+.receipt-table td {
+  padding: 5px 0;
+  border-bottom: 1px solid var(--border-subtle);
+  vertical-align: top;
+}
+.ritem-name { font-weight: 600; }
+.ritem-meta { font-family: var(--mono); }
+.receipt-totals { margin-top: 10px; }
+.row { display: flex; justify-content: space-between; padding: 2.5px 0; }
+.row.total { font-weight: 800; font-size: 15px; padding: 6px 0; }
+.receipt-promos {
+  margin-top: 8px;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 8px;
+}
+.receipt-note {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-subtle);
+  white-space: pre-line;
+}
+.receipt-terms {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-muted);
+  white-space: pre-line;
+}
+.receipt-foot { text-align: center; margin-top: 12px; }
+.receipt-barcode { width: min(100%, 320px); margin: 0 auto 8px; padding: 5px 0; color: #000; background: #fff; break-inside: avoid; }
+.receipt-barcode svg { display: block; width: 100%; height: 40px; }
+.receipt-barcode .mono { margin-top: 3px; overflow-wrap: anywhere; }
+.receipt-cf-img { max-width: 60%; max-height: 150px; object-fit: contain; margin: 6px auto; display: block; }
+.receipt-cf-foot {
+  text-align: center;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-subtle);
+}
+.small { font-size: 11.5px; }
+
+/* ---- Retail breakdown ---- */
+.tpl-retail, .tpl-table {
+  border-style: solid;
+  border-radius: 4px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.retail-head { text-align: center; padding-bottom: 9px; border-bottom: 1px solid var(--border); }
+.retail-head .receipt-logo { max-height: 58px; margin-bottom: 5px; }
+.retail-head .receipt-company { font-size: 16px; letter-spacing: 0.01em; }
+.retail-meta { padding: 8px 0; border-bottom: 1px solid var(--border); }
+.retail-meta-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 1.5px 0;
+  font-size: 10.5px;
+}
+.retail-meta-row > :first-child {
+  color: var(--text-muted);
+  font-weight: 700;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.retail-meta-row > :last-child { text-align: right; overflow-wrap: anywhere; }
+.retail-custom-fields { border-bottom: 1px solid var(--border); padding: 5px 0; }
+.retail-items { width: 100%; border-collapse: collapse; table-layout: fixed; margin-top: 7px; }
+.retail-items th {
+  border-bottom: 1px solid var(--text);
+  color: var(--text-muted);
+  font-size: 9.5px;
+  letter-spacing: 0.035em;
+  padding: 0 1px 4px;
+  text-align: right;
+}
+.retail-items th:nth-child(1) { text-align: left; }
+.retail-items th:nth-child(1) { width: 6%; }
+.retail-items th:nth-child(2) { width: 12%; }
+.retail-items th:nth-child(3) { width: 24%; }
+.retail-items th:nth-child(4) { width: 27%; }
+.retail-items th:nth-child(5) { width: 31%; }
+.retail-items.without-discount th:nth-child(1) { width: 6%; }
+.retail-items.without-discount th:nth-child(2) { width: 14%; }
+.retail-items.without-discount th:nth-child(3) { width: 30%; }
+.retail-items.without-discount th:nth-child(4) { width: 50%; }
+.retail-items tbody { break-inside: avoid; }
+.retail-items td { padding: 1px; overflow-wrap: anywhere; }
+.retail-item-name td { padding-top: 6px; font-weight: 700; line-height: 1.2; }
+.retail-item-values td { border-bottom: 1px solid var(--border-subtle); color: var(--text-muted); font-size: 10.5px; text-align: right; padding-bottom: 5px; }
+.retail-item-meta { color: var(--text-muted); font-family: var(--mono); font-size: 9.5px; text-align: start; }
+.retail-no { color: var(--text-muted); white-space: nowrap; vertical-align: top; }
+.retail-totals { border-top: 1px solid var(--text); padding-top: 5px; margin-top: 8px; }
+.retail-totals .row { padding: 3px 0; }
+.retail-totals .discount { font-weight: 700; }
+.retail-totals .total { border-top: 1px solid var(--text); border-bottom: 2px solid var(--text); font-size: 16px; margin-top: 3px; padding: 6px 0; }
+.retail-counts { display: flex; justify-content: space-between; padding: 8px 0 0; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.03em; }
+.retail-savings { align-items: center; border: 1px solid var(--text); display: flex; justify-content: space-between; margin-top: 10px; padding: 7px 9px; text-transform: uppercase; }
+.retail-savings span { font-size: 10px; font-weight: 700; letter-spacing: 0.05em; }
+.retail-savings strong { font-size: 19px; line-height: 1; }
+.retail-loyalty { border-top: 1px solid var(--border); margin-top: 10px; padding-top: 8px; }
+.retail-loyalty-title { font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-align: center; text-transform: uppercase; }
+.retail-loyalty .row { padding: 2px 0; }
+.retail-loyalty-balance { border-top: 1px solid var(--border-subtle); margin-top: 3px; padding-top: 5px !important; }
+
+/* ---- Templates ---- */
+.tpl-table { --table-rule: var(--border); }
+.tpl-table .retail-head, .tpl-table .retail-meta, .tpl-table .retail-custom-fields { border-color: var(--table-rule); }
+.tpl-table .retail-items :is(th, td) {
+  border: 1px solid var(--table-rule);
+  padding: 3px 2px;
+  overflow-wrap: anywhere;
+}
+.tpl-table .retail-item-name td { padding-block: 5px; }
+.tpl-table .retail-no { text-align: center; }
+.tpl-table .retail-items th:nth-child(1) { width: 9%; }
+.tpl-table .retail-items th:nth-child(4) { width: 26%; }
+.tpl-table .retail-items th:nth-child(5) { width: 29%; }
+.tpl-table .retail-items.without-discount th:nth-child(3) { width: 36%; }
+.tpl-table .retail-items.without-discount th:nth-child(4) { width: 49%; }
+.tpl-table .retail-totals, .tpl-table .retail-loyalty { border: 1px solid var(--table-rule); padding: 0; }
+.tpl-table :is(.retail-totals, .retail-loyalty) .row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 46%);
+  border: 0;
+  margin: 0;
+  padding: 0 !important;
+}
+.tpl-table :is(.retail-totals, .retail-loyalty) .row + .row { border-top: 1px solid var(--table-rule); }
+.tpl-table :is(.retail-totals, .retail-loyalty) .row > span,
+.tpl-table .retail-loyalty .row > strong { padding: 4px 5px; }
+.tpl-table :is(.retail-totals, .retail-loyalty) .row > :last-child {
+  border-inline-start: 1px solid var(--table-rule);
+  text-align: end;
+  overflow-wrap: anywhere;
+}
+.tpl-table .retail-loyalty-title { padding: 4px; border-bottom: 1px solid var(--table-rule); }
+.tpl-table .retail-savings { border-color: var(--table-rule); }
+.receipt-paper.tpl-table { --table-rule: #b5b5b5; }
+
+.tpl-compact { font-size: 11.5px; padding: 12px; border: none; }
+.tpl-compact .receipt-company { font-size: 13.5px; }
+.tpl-compact .receipt-head { margin-bottom: 8px; }
+.tpl-compact .receipt-table td { padding: 3px 0; }
+.tpl-compact .row.total { font-size: 13.5px; }
+
+.tpl-detailed { font-size: 13px; padding: 22px; }
+.tpl-detailed .receipt-head {
+  padding-bottom: 12px;
+  margin-bottom: 14px;
+  border-bottom: 2px solid var(--border);
+}
+.tpl-detailed .receipt-company { font-size: 18px; }
+.tpl-detailed .receipt-table td { padding: 7px 0; }
+.tpl-detailed .row { padding: 4px 0; }
+
+.receipt.receipt-paper {
+  border: 0;
+  border-radius: 0;
+  box-sizing: border-box;
+  font-size: 12px;
+}
+.receipt-paper .retail-meta-row { font-size: 11px; gap: 6px; }
+.receipt-paper .retail-items th { font-size: 10px; letter-spacing: 0; }
+.receipt-paper .retail-item-values td { font-size: 12px; }
+.receipt-paper.paper-58 { font-size: 11px; }
+.receipt-paper.paper-58 .receipt-company { font-size: 14px; }
+.receipt-paper.paper-58 .retail-meta-row { font-size: 10px; gap: 4px; }
+.receipt-paper.paper-58 .retail-items th { font-size: 9px; }
+.receipt-paper.paper-58 .retail-item-values td { font-size: 10px; }
+.receipt-paper.paper-58 .retail-counts { font-size: 9px; }
+.receipt-paper.paper-58 .retail-totals .total { font-size: 14px; }
+.receipt-paper.paper-58 .retail-savings strong { font-size: 16px; }
+
+/* Structured advanced design; unset properties retain the selected template. */
+.receipt.tpl-compact { --rc-base-padding: 12px; }
+.receipt.tpl-detailed { --rc-base-padding: 22px; }
+.receipt:is(.rc-paddingTop,.rc-paddingRight,.rc-paddingBottom,.rc-paddingLeft) { padding: calc(var(--rc-base-padding, 16px) + var(--rc-paddingTop, 0mm)) calc(var(--rc-base-padding, 16px) + var(--rc-paddingRight, 0mm)) calc(var(--rc-base-padding, 16px) + var(--rc-paddingBottom, 0mm)) calc(var(--rc-base-padding, 16px) + var(--rc-paddingLeft, 0mm)); }
+.receipt.rc-lineHeight, .receipt.rc-lineHeight * { line-height: var(--rc-lineHeight) !important; }
+.rc-headerAlign :is(.retail-head, .receipt-head) { text-align: var(--rc-headerAlign); }
+.rc-footerAlign :is(.receipt-foot, .receipt-cf-foot) { text-align: var(--rc-footerAlign); }
+.rc-itemAlign :is(.retail-item-name td, .ritem-name) { text-align: var(--rc-itemAlign); }
+.rc-labelAlign .row > :first-child { text-align: var(--rc-labelAlign); }
+.rc-valueAlign .row > :last-child { text-align: var(--rc-valueAlign) !important; }
+.rc-logoHeight .receipt-logo { max-height: var(--rc-logoHeight); }
+.rc-barcodeHeight .receipt-barcode svg { height: var(--rc-barcodeHeight); }
+.rc-fontSize :is(.retail-meta-row,.retail-item-values td,.row,.small,.retail-counts) { font-size: var(--rc-fontSize); }
+.rc-totalSize .row.total { font-size: var(--rc-totalSize); }
+.rc-sectionGap :is(.receipt-totals,.retail-loyalty,.retail-savings,.receipt-foot,.receipt-terms,.receipt-note) { margin-top: var(--rc-sectionGap); }
+.rc-itemPadding :is(.retail-items td,.receipt-table td) { padding-block: var(--rc-itemPadding); }
+.rc-borderWidth :is(.row,.row > *,th,td,.retail-head,.retail-meta,.retail-totals,.retail-loyalty,.retail-savings,.receipt-terms) { border-width: var(--rc-borderWidth) !important; }
+.receipt .retail-items.without-mrp th { width: auto !important; }
+.receipt .retail-items.without-mrp th:last-child { width: 46% !important; }
+.receipt .retail-items.without-mrp th:first-child { width: 8% !important; }
+.receipt .retail-items.without-mrp th:nth-child(2) { width: 14% !important; }
+.receipt .retail-items.without-mrp.without-discount th:last-child { width: 78% !important; }
+
+.rc-headerAlign .receipt-logo { display: inline-block; margin-inline: 0; }
+</style><style>
+      :root { --border: #000; --border-subtle: #000; --text: #000; --text-muted: #000; --mono: 'Courier New', monospace; }
+      *, *::before, *::after { box-sizing: border-box; }
+      html, body { width: 72mm !important; height: auto !important; min-height: 0 !important;
+        margin: 0 !important; padding: 0 !important; overflow: visible !important; background: #fff !important; }
+      body { position: relative !important; }
+      #receipt-print { position: static !important; inset: auto !important;
+        width: 72mm !important; max-width: 100% !important;
+        margin: 0 !important; box-sizing: border-box; border: 0; border-radius: 0;
+        padding: calc(3mm + var(--rc-paddingTop, 0mm)) calc(3mm + var(--rc-paddingRight, 0mm)) calc(3mm + var(--rc-paddingBottom, 0mm)) calc(3mm + var(--rc-paddingLeft, 0mm)); font-family: Arial, 'Nirmala UI', 'Iskoola Pota', Tahoma, sans-serif; line-height: 1.3;
+        transform: none !important; zoom: 1 !important;
+        background: #fff !important; color: #000 !important; }
+      #receipt-print, #receipt-print * { visibility: visible !important; color: #000 !important; }
+      #receipt-print img { max-width: 100%; }
+      #receipt-print.tpl-table { --table-rule: #000; }
+      #receipt-print.receipt table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+      #receipt-print.receipt :is(.retail-item-values td, .row > :last-child) { white-space: nowrap; }
+      #receipt-print.receipt .row > :last-child, #receipt-print.receipt .retail-savings strong { flex-shrink: 0; }
+      #receipt-print.receipt .row > :first-child { min-width: 0; overflow-wrap: anywhere; }
+      #receipt-print.tpl-table :is(.retail-totals, .retail-loyalty) { display: grid; grid-template-columns: minmax(0, 1fr) max-content; }
+      #receipt-print.tpl-table :is(.retail-totals, .retail-loyalty) .row { grid-template-columns: subgrid; grid-column: 1 / -1; min-width: 0; }
+      #receipt-print.tpl-table .retail-loyalty-title { grid-column: 1 / -1; }
+      #receipt-print.paper-58.tpl-table .retail-items :is(th, td) { padding-inline: 1px; }
+      #receipt-print.paper-58.tpl-table .retail-items:not(.without-discount) th:nth-child(1) { width: 7%; }
+      #receipt-print.paper-58.tpl-table .retail-items:not(.without-discount) th:nth-child(2) { width: 11%; }
+      #receipt-print.paper-58.tpl-table .retail-items:not(.without-discount) th:nth-child(3) { width: 26%; }
+      #receipt-print.paper-58.tpl-table .retail-items:not(.without-discount) th:nth-child(4) { width: 23%; }
+      #receipt-print.paper-58.tpl-table .retail-items:not(.without-discount) th:nth-child(5) { width: 33%; }
+      #receipt-print .retail-item-name td { white-space: normal; overflow-wrap: anywhere; }
+      #receipt-print.receipt :is(.receipt-company,.receipt-extra,.retail-loyalty-title,.retail-counts > *, .retail-meta-row > *) { min-width: 0; overflow-wrap: anywhere; }
+      #receipt-print.receipt .retail-meta-row > :first-child { white-space: normal; flex: 0 1 40%; }
+      #receipt-print.receipt .retail-meta-row > :last-child { flex: 1 1 60%; }
+    
+      html, body { height: 263mm !important; max-height: 263mm !important; }
+      @page { size: 72mm 263mm; margin: 0 !important; }
+    </style></head><body><div data-v-dcf6495d="" id="receipt-print" class="receipt tpl-retail paper-80 receipt-paper"><div data-v-dcf6495d="" class="retail-head"><!--v-if--><div data-v-dcf6495d="" class="receipt-company" style="text-align: center; font-size: 16px; font-weight: 800;">SYNTHETICSHOPNAMEWITHOUTSPACESSYNTHETICSHOPNAMEWITHOUTSPACESSYNTHETICSHOPNAMEWITHOUTSPACES</div><!--v-if--><!--v-if--><!--v-if--><!--v-if--><!--v-if--></div><div data-v-dcf6495d="" class="retail-meta"><div data-v-dcf6495d="" class="retail-meta-row"><span data-v-dcf6495d="">Invoice #</span><strong data-v-dcf6495d="">SYNTHETIC-80-Retail-80-SAFE-LONG</strong></div><div data-v-dcf6495d="" class="retail-meta-row"><span data-v-dcf6495d="">Time</span><span data-v-dcf6495d="">2026-11-26 12:00:00</span></div><div data-v-dcf6495d="" class="retail-meta-row"><span data-v-dcf6495d="">Customer code</span><span data-v-dcf6495d="">SYNTHETICCUSTOMERCODESYNTHETICCUSTOMERCODESYNTHETICCUSTOMERCODESYNTHETICCUSTOMERCODESYNTHETICCUSTOMERCODESYNTHETICCUSTOMERCODESYNTHETICCUSTOMERCODESYNTHETICCUSTOMERCODE</span></div><div data-v-dcf6495d="" class="retail-meta-row"><span data-v-dcf6495d="">Customer</span><span data-v-dcf6495d="">Synthetic fixture</span></div><!--v-if--><!--v-if--><!--v-if--><!--v-if--></div><!--v-if--><table data-v-dcf6495d="" class="retail-items"><thead data-v-dcf6495d=""><tr data-v-dcf6495d=""><th data-v-dcf6495d="" class="retail-no">#</th><th data-v-dcf6495d="">Qty</th><th data-v-dcf6495d="">MRP</th><th data-v-dcf6495d="">Discount</th><th data-v-dcf6495d="">Amount</th></tr></thead><tbody data-v-dcf6495d=""><tr data-v-dcf6495d="" class="retail-item-name"><td data-v-dcf6495d="" class="retail-no">1</td><td data-v-dcf6495d="" colspan="4">Long synthetic product name — සිංහල தமிழ் — wraps across receipt lines</td></tr><!--v-if--><tr data-v-dcf6495d="" class="retail-item-values"><td data-v-dcf6495d=""></td><td data-v-dcf6495d="">2<!--v-if--></td><td data-v-dcf6495d="">⁨5,200.00⁩</td><td data-v-dcf6495d="">⁨400.00⁩</td><td data-v-dcf6495d="">⁨10,000.00⁩</td></tr></tbody><tbody data-v-dcf6495d=""><tr data-v-dcf6495d="" class="retail-item-name"><td data-v-dcf6495d="" class="retail-no">2</td><td data-v-dcf6495d="" colspan="4">Second synthetic item</td></tr><!--v-if--><tr data-v-dcf6495d="" class="retail-item-values"><td data-v-dcf6495d=""></td><td data-v-dcf6495d="">1<!--v-if--></td><td data-v-dcf6495d="">⁨2,345.67⁩</td><td data-v-dcf6495d="">⁨0.00⁩</td><td data-v-dcf6495d="">⁨2,345.67⁩</td></tr></tbody></table><div data-v-dcf6495d="" class="receipt-totals retail-totals"><div data-v-dcf6495d="" class="row"><span data-v-dcf6495d="">Gross total</span><span data-v-dcf6495d="">⁨LKR&nbsp;12,745.67⁩</span></div><div data-v-dcf6495d="" class="row discount"><span data-v-dcf6495d="">Discount</span><span data-v-dcf6495d="">-⁨LKR&nbsp;400.00⁩</span></div><!--v-if--><div data-v-dcf6495d="" class="row total"><span data-v-dcf6495d="">Net total</span><span data-v-dcf6495d="">⁨LKR&nbsp;12,345.67⁩</span></div><!--v-if--><div data-v-dcf6495d="" class="row"><span data-v-dcf6495d="">Cash</span><span data-v-dcf6495d="">⁨LKR&nbsp;13,000.00⁩</span></div><!--v-if--><!--v-if--><div data-v-dcf6495d="" class="row"><span data-v-dcf6495d="">Change</span><span data-v-dcf6495d="">⁨LKR&nbsp;654.33⁩</span></div><!--v-if--></div><div data-v-dcf6495d="" class="retail-counts"><span data-v-dcf6495d="">Total items: <b data-v-dcf6495d="">2</b></span><span data-v-dcf6495d="">Total qty: <b data-v-dcf6495d="">3</b></span></div><div data-v-dcf6495d="" class="retail-savings"><span data-v-dcf6495d="">You saved</span><strong data-v-dcf6495d="">⁨LKR&nbsp;400.00⁩</strong></div><div data-v-dcf6495d="" class="retail-loyalty"><div data-v-dcf6495d="" class="retail-loyalty-title">Loyalty points<span data-v-dcf6495d=""> · SYNTHETICLOYALTYPROGRAMSYNTHETICLOYALTYPROGRAMSYNTHETICLOYALTYPROGRAMSYNTHETICLOYALTYPROGRAMSYNTHETICLOYALTYPROGRAMSYNTHETICLOYALTYPROGRAM</span></div><div data-v-dcf6495d="" class="row"><span data-v-dcf6495d="">Points earned:</span><span data-v-dcf6495d="">12</span></div><!--v-if--><div data-v-dcf6495d="" class="row retail-loyalty-balance"><span data-v-dcf6495d="">Points balance</span><strong data-v-dcf6495d="">245</strong></div></div><!--v-if--><!--v-if--><!--v-if--><!--v-if--><footer data-v-dcf6495d="" class="receipt-foot muted small"><div data-v-dcf6495d="" class="receipt-barcode" role="img" aria-label="Barcode for invoice SYNTHETIC-80-Retail-80-SAFE-LONG"><div data-v-dcf6495d="" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 407 40" preserveAspectRatio="none" shape-rendering="crispEdges"><g fill="#000"><rect x="10" y="0" width="2" height="40"></rect><rect x="13" y="0" width="1" height="40"></rect><rect x="16" y="0" width="1" height="40"></rect><rect x="21" y="0" width="2" height="40"></rect><rect x="24" y="0" width="3" height="40"></rect><rect x="28" y="0" width="1" height="40"></rect><rect x="32" y="0" width="3" height="40"></rect><rect x="36" y="0" width="2" height="40"></rect><rect x="39" y="0" width="1" height="40"></rect><rect x="43" y="0" width="1" height="40"></rect><rect x="45" y="0" width="3" height="40"></rect><rect x="51" y="0" width="2" height="40"></rect><rect x="54" y="0" width="2" height="40"></rect><rect x="57" y="0" width="3" height="40"></rect><rect x="63" y="0" width="1" height="40"></rect><rect x="65" y="0" width="2" height="40"></rect><rect x="70" y="0" width="1" height="40"></rect><rect x="72" y="0" width="1" height="40"></rect><rect x="76" y="0" width="1" height="40"></rect><rect x="80" y="0" width="2" height="40"></rect><rect x="83" y="0" width="1" height="40"></rect><rect x="87" y="0" width="2" height="40"></rect><rect x="90" y="0" width="3" height="40"></rect><rect x="96" y="0" width="1" height="40"></rect><rect x="98" y="0" width="2" height="40"></rect><rect x="103" y="0" width="1" height="40"></rect><rect x="107" y="0" width="1" height="40"></rect><rect x="109" y="0" width="1" height="40"></rect><rect x="113" y="0" width="1" height="40"></rect><rect x="117" y="0" width="2" height="40"></rect><rect x="120" y="0" width="1" height="40"></rect><rect x="123" y="0" width="2" height="40"></rect><rect x="126" y="0" width="3" height="40"></rect><rect x="131" y="0" width="3" height="40"></rect><rect x="135" y="0" width="1" height="40"></rect><rect x="138" y="0" width="2" height="40"></rect><rect x="142" y="0" width="1" height="40"></rect><rect x="145" y="0" width="3" height="40"></rect><rect x="149" y="0" width="2" height="40"></rect><rect x="153" y="0" width="1" height="40"></rect><rect x="156" y="0" width="2" height="40"></rect><rect x="159" y="0" width="3" height="40"></rect><rect x="164" y="0" width="2" height="40"></rect><rect x="169" y="0" width="1" height="40"></rect><rect x="171" y="0" width="3" height="40"></rect><rect x="175" y="0" width="1" height="40"></rect><rect x="177" y="0" width="2" height="40"></rect><rect x="181" y="0" width="1" height="40"></rect><rect x="186" y="0" width="1" height="40"></rect><rect x="189" y="0" width="4" height="40"></rect><rect x="194" y="0" width="1" height="40"></rect><rect x="197" y="0" width="1" height="40"></rect><rect x="200" y="0" width="1" height="40"></rect><rect x="202" y="0" width="2" height="40"></rect><rect x="208" y="0" width="1" height="40"></rect><rect x="213" y="0" width="2" height="40"></rect><rect x="216" y="0" width="1" height="40"></rect><rect x="219" y="0" width="2" height="40"></rect><rect x="223" y="0" width="1" height="40"></rect><rect x="225" y="0" width="1" height="40"></rect><rect x="230" y="0" width="1" height="40"></rect><rect x="233" y="0" width="2" height="40"></rect><rect x="236" y="0" width="3" height="40"></rect><rect x="241" y="0" width="3" height="40"></rect><rect x="245" y="0" width="1" height="40"></rect><rect x="248" y="0" width="2" height="40"></rect><rect x="252" y="0" width="1" height="40"></rect><rect x="255" y="0" width="3" height="40"></rect><rect x="259" y="0" width="2" height="40"></rect><rect x="263" y="0" width="1" height="40"></rect><rect x="266" y="0" width="2" height="40"></rect><rect x="269" y="0" width="3" height="40"></rect><rect x="274" y="0" width="2" height="40"></rect><rect x="277" y="0" width="3" height="40"></rect><rect x="281" y="0" width="1" height="40"></rect><rect x="285" y="0" width="1" height="40"></rect><rect x="287" y="0" width="1" height="40"></rect><rect x="291" y="0" width="2" height="40"></rect><rect x="296" y="0" width="1" height="40"></rect><rect x="300" y="0" width="2" height="40"></rect><rect x="305" y="0" width="1" height="40"></rect><rect x="307" y="0" width="1" height="40"></rect><rect x="311" y="0" width="2" height="40"></rect><rect x="314" y="0" width="1" height="40"></rect><rect x="318" y="0" width="1" height="40"></rect><rect x="321" y="0" width="2" height="40"></rect><rect x="324" y="0" width="3" height="40"></rect><rect x="329" y="0" width="1" height="40"></rect><rect x="333" y="0" width="2" height="40"></rect><rect x="336" y="0" width="3" height="40"></rect><rect x="340" y="0" width="1" height="40"></rect><rect x="344" y="0" width="3" height="40"></rect><rect x="348" y="0" width="2" height="40"></rect><rect x="351" y="0" width="1" height="40"></rect><rect x="353" y="0" width="3" height="40"></rect><rect x="359" y="0" width="2" height="40"></rect><rect x="362" y="0" width="2" height="40"></rect><rect x="365" y="0" width="1" height="40"></rect><rect x="369" y="0" width="1" height="40"></rect><rect x="373" y="0" width="1" height="40"></rect><rect x="376" y="0" width="2" height="40"></rect><rect x="381" y="0" width="1" height="40"></rect><rect x="384" y="0" width="2" height="40"></rect><rect x="389" y="0" width="3" height="40"></rect><rect x="393" y="0" width="1" height="40"></rect><rect x="395" y="0" width="2" height="40"></rect></g></svg></div><div data-v-dcf6495d="" class="mono" dir="ltr">SYNTHETIC-80-Retail-80-SAFE-LONG</div></div><div data-v-dcf6495d="">Thank you!</div><div data-v-dcf6495d="" class="receipt-extra">Synthetic fixture — not a sale
+ESAFE ERP+POS - pos.esafe.lk | +94 7777 567 52</div></footer></div></body></html>

@@ -14,6 +14,8 @@
     "browser": {
       "width": 219.203125,
       "height": 738.8125,
+      "paddingTop": "11.3386px",
+      "paddingBottom": "11.3386px",
       "paddingLeft": "11.3386px",
       "paddingRight": "11.3386px",
       "position": "static",
@@ -84,6 +86,8 @@
     "silent": {
       "width": 219.203125,
       "height": 738.796875,
+      "paddingTop": "11.3386px",
+      "paddingBottom": "11.3386px",
       "paddingLeft": "11.3386px",
       "paddingRight": "11.3386px",
       "position": "static",
@@ -167,6 +171,8 @@
     "browser": {
       "width": 219.203125,
       "height": 707.625,
+      "paddingTop": "11.3386px",
+      "paddingBottom": "11.3386px",
       "paddingLeft": "11.3386px",
       "paddingRight": "11.3386px",
       "position": "static",
@@ -237,6 +243,8 @@
     "silent": {
       "width": 219.203125,
       "height": 707.625,
+      "paddingTop": "11.3386px",
+      "paddingBottom": "11.3386px",
       "paddingLeft": "11.3386px",
       "paddingRight": "11.3386px",
       "position": "static",
@@ -320,6 +328,8 @@
     "browser": {
       "width": 219.203125,
       "height": 580.734375,
+      "paddingTop": "11.3386px",
+      "paddingBottom": "11.3386px",
       "paddingLeft": "11.3386px",
       "paddingRight": "11.3386px",
       "position": "static",
@@ -350,6 +360,8 @@
     "silent": {
       "width": 219.203125,
       "height": 580.71875,
+      "paddingTop": "11.3386px",
+      "paddingBottom": "11.3386px",
       "paddingLeft": "11.3386px",
       "paddingRight": "11.3386px",
       "position": "static",
@@ -393,6 +405,8 @@
     "browser": {
       "width": 219.203125,
       "height": 566.78125,
+      "paddingTop": "11.3386px",
+      "paddingBottom": "11.3386px",
       "paddingLeft": "11.3386px",
       "paddingRight": "11.3386px",
       "position": "static",
@@ -423,6 +437,8 @@
     "silent": {
       "width": 219.203125,
       "height": 566.765625,
+      "paddingTop": "11.3386px",
+      "paddingBottom": "11.3386px",
       "paddingLeft": "11.3386px",
       "paddingRight": "11.3386px",
       "position": "static",
@@ -466,6 +482,8 @@
     "browser": {
       "width": 219.203125,
       "height": 580.734375,
+      "paddingTop": "11.3386px",
+      "paddingBottom": "11.3386px",
       "paddingLeft": "11.3386px",
       "paddingRight": "11.3386px",
       "position": "static",
@@ -496,6 +514,8 @@
     "silent": {
       "width": 219.203125,
       "height": 580.71875,
+      "paddingTop": "11.3386px",
+      "paddingBottom": "11.3386px",
       "paddingLeft": "11.3386px",
       "paddingRight": "11.3386px",
       "position": "static",
@@ -539,6 +559,8 @@
     "browser": {
       "width": 219.203125,
       "height": 606.734375,
+      "paddingTop": "11.3386px",
+      "paddingBottom": "11.3386px",
       "paddingLeft": "11.3386px",
       "paddingRight": "11.3386px",
       "position": "static",
@@ -569,6 +591,8 @@
     "silent": {
       "width": 219.203125,
       "height": 606.71875,
+      "paddingTop": "11.3386px",
+      "paddingBottom": "11.3386px",
       "paddingLeft": "11.3386px",
       "paddingRight": "11.3386px",
       "position": "static",
@@ -612,6 +636,8 @@
     "browser": {
       "width": 302.359375,
       "height": 686.75,
+      "paddingTop": "11.3386px",
+      "paddingBottom": "11.3386px",
       "paddingLeft": "11.3386px",
       "paddingRight": "11.3386px",
       "position": "static",
@@ -682,6 +708,8 @@
     "silent": {
       "width": 302.359375,
       "height": 686.75,
+      "paddingTop": "11.3386px",
+      "paddingBottom": "11.3386px",
       "paddingLeft": "11.3386px",
       "paddingRight": "11.3386px",
       "position": "static",
@@ -765,6 +793,8 @@
     "browser": {
       "width": 302.359375,
       "height": 673.75,
+      "paddingTop": "11.3386px",
+      "paddingBottom": "11.3386px",
       "paddingLeft": "11.3386px",
       "paddingRight": "11.3386px",
       "position": "static",
@@ -835,6 +865,8 @@
     "silent": {
       "width": 302.359375,
       "height": 673.75,
+      "paddingTop": "11.3386px",
+      "paddingBottom": "11.3386px",
       "paddingLeft": "11.3386px",
       "paddingRight": "11.3386px",
       "position": "static",
@@ -918,6 +950,8 @@
     "browser": {
       "width": 302.359375,
       "height": 513.546875,
+      "paddingTop": "11.3386px",
+      "paddingBottom": "11.3386px",
       "paddingLeft": "11.3386px",
       "paddingRight": "11.3386px",
       "position": "static",
@@ -948,6 +982,8 @@
     "silent": {
       "width": 302.359375,
       "height": 513.546875,
+      "paddingTop": "11.3386px",
+      "paddingBottom": "11.3386px",
       "paddingLeft": "11.3386px",
       "paddingRight": "11.3386px",
       "position": "static",
@@ -991,6 +1027,8 @@
     "browser": {
       "width": 302.359375,
       "height": 499.59375,
+      "paddingTop": "11.3386px",
+      "paddingBottom": "11.3386px",
       "paddingLeft": "11.3386px",
       "paddingRight": "11.3386px",
       "position": "static",
@@ -1021,6 +1059,8 @@
     "silent": {
       "width": 302.359375,
       "height": 499.59375,
+      "paddingTop": "11.3386px",
+      "paddingBottom": "11.3386px",
       "paddingLeft": "11.3386px",
       "paddingRight": "11.3386px",
       "position": "static",
@@ -1064,6 +1104,8 @@
     "browser": {
       "width": 302.359375,
       "height": 513.546875,
+      "paddingTop": "11.3386px",
+      "paddingBottom": "11.3386px",
       "paddingLeft": "11.3386px",
       "paddingRight": "11.3386px",
       "position": "static",
@@ -1094,6 +1136,8 @@
     "silent": {
       "width": 302.359375,
       "height": 513.546875,
+      "paddingTop": "11.3386px",
+      "paddingBottom": "11.3386px",
       "paddingLeft": "11.3386px",
       "paddingRight": "11.3386px",
       "position": "static",
@@ -1137,6 +1181,8 @@
     "browser": {
       "width": 302.359375,
       "height": 539.546875,
+      "paddingTop": "11.3386px",
+      "paddingBottom": "11.3386px",
       "paddingLeft": "11.3386px",
       "paddingRight": "11.3386px",
       "position": "static",
@@ -1167,6 +1213,8 @@
     "silent": {
       "width": 302.359375,
       "height": 539.546875,
+      "paddingTop": "11.3386px",
+      "paddingBottom": "11.3386px",
       "paddingLeft": "11.3386px",
       "paddingRight": "11.3386px",
       "position": "static",
@@ -1210,6 +1258,8 @@
     "browser": {
       "width": 272.125,
       "height": 730.375,
+      "paddingTop": "11.3386px",
+      "paddingBottom": "11.3386px",
       "paddingLeft": "11.3386px",
       "paddingRight": "11.3386px",
       "position": "static",
@@ -1280,6 +1330,8 @@
     "silent": {
       "width": 272.125,
       "height": 730.375,
+      "paddingTop": "11.3386px",
+      "paddingBottom": "11.3386px",
       "paddingLeft": "11.3386px",
       "paddingRight": "11.3386px",
       "position": "static",
@@ -1363,6 +1415,8 @@
     "browser": {
       "width": 181.40625,
       "height": 827.015625,
+      "paddingTop": "7.55906px",
+      "paddingBottom": "7.55906px",
       "paddingLeft": "7.55906px",
       "paddingRight": "7.55906px",
       "position": "static",
@@ -1433,6 +1487,8 @@
     "silent": {
       "width": 181.40625,
       "height": 827.015625,
+      "paddingTop": "7.55906px",
+      "paddingBottom": "7.55906px",
       "paddingLeft": "7.55906px",
       "paddingRight": "7.55906px",
       "position": "static",
@@ -1493,6 +1549,477 @@
           "bottom": "1px solid rgb(0, 0, 0)",
           "left": "1px solid rgb(0, 0, 0)",
           "right": "1px solid rgb(0, 0, 0)"
+        }
+      },
+      "overflows": [],
+      "textOverflows": [],
+      "footer": true,
+      "text": true
+    }
+  },
+  {
+    "name": "80-Table-72-M3-7-1-6",
+    "options": {
+      "copies": 1,
+      "size": {
+        "width": 72,
+        "height": 200
+      },
+      "margins": 0,
+      "orientation": "portrait",
+      "scale": "fit"
+    },
+    "browser": {
+      "width": 272.125,
+      "height": 748.453125,
+      "paddingTop": "3.77953px",
+      "paddingBottom": "22.6772px",
+      "paddingLeft": "11.3386px",
+      "paddingRight": "26.4567px",
+      "position": "static",
+      "bodyMargin": "0px",
+      "barcodeFont": "Arial, \"Nirmala UI\", \"Iskoola Pota\", Tahoma, sans-serif",
+      "tableLayout": "fixed",
+      "borders": {
+        ".retail-head": {
+          "top": "0px none rgb(0, 0, 0)",
+          "bottom": "1px solid rgb(0, 0, 0)",
+          "left": "0px none rgb(0, 0, 0)",
+          "right": "0px none rgb(0, 0, 0)"
+        },
+        ".retail-meta": {
+          "top": "0px none rgb(0, 0, 0)",
+          "bottom": "1px solid rgb(0, 0, 0)",
+          "left": "0px none rgb(0, 0, 0)",
+          "right": "0px none rgb(0, 0, 0)"
+        },
+        ".retail-items th": {
+          "top": "1px solid rgb(0, 0, 0)",
+          "bottom": "1px solid rgb(0, 0, 0)",
+          "left": "1px solid rgb(0, 0, 0)",
+          "right": "1px solid rgb(0, 0, 0)"
+        },
+        ".retail-item-values td:last-child": {
+          "top": "1px solid rgb(0, 0, 0)",
+          "bottom": "1px solid rgb(0, 0, 0)",
+          "left": "1px solid rgb(0, 0, 0)",
+          "right": "1px solid rgb(0, 0, 0)"
+        },
+        ".retail-totals": {
+          "top": "1px solid rgb(0, 0, 0)",
+          "bottom": "1px solid rgb(0, 0, 0)",
+          "left": "1px solid rgb(0, 0, 0)",
+          "right": "1px solid rgb(0, 0, 0)"
+        },
+        ".retail-totals .row + .row": {
+          "top": "1px solid rgb(0, 0, 0)",
+          "bottom": "0px none rgb(0, 0, 0)",
+          "left": "0px none rgb(0, 0, 0)",
+          "right": "0px none rgb(0, 0, 0)"
+        },
+        ".retail-totals .row > :last-child": {
+          "top": "0px none rgb(0, 0, 0)",
+          "bottom": "0px none rgb(0, 0, 0)",
+          "left": "1px solid rgb(0, 0, 0)",
+          "right": "0px none rgb(0, 0, 0)"
+        },
+        ".retail-savings": {
+          "top": "1px solid rgb(0, 0, 0)",
+          "bottom": "1px solid rgb(0, 0, 0)",
+          "left": "1px solid rgb(0, 0, 0)",
+          "right": "1px solid rgb(0, 0, 0)"
+        },
+        ".retail-loyalty": {
+          "top": "1px solid rgb(0, 0, 0)",
+          "bottom": "1px solid rgb(0, 0, 0)",
+          "left": "1px solid rgb(0, 0, 0)",
+          "right": "1px solid rgb(0, 0, 0)"
+        }
+      },
+      "overflows": [],
+      "textOverflows": [],
+      "footer": true,
+      "text": true
+    },
+    "silent": {
+      "width": 272.125,
+      "height": 748.4375,
+      "paddingTop": "3.77953px",
+      "paddingBottom": "22.6772px",
+      "paddingLeft": "11.3386px",
+      "paddingRight": "26.4567px",
+      "position": "static",
+      "bodyMargin": "0px",
+      "barcodeFont": "Arial, \"Nirmala UI\", \"Iskoola Pota\", Tahoma, sans-serif",
+      "tableLayout": "fixed",
+      "borders": {
+        ".retail-head": {
+          "top": "0px none rgb(0, 0, 0)",
+          "bottom": "1px solid rgb(0, 0, 0)",
+          "left": "0px none rgb(0, 0, 0)",
+          "right": "0px none rgb(0, 0, 0)"
+        },
+        ".retail-meta": {
+          "top": "0px none rgb(0, 0, 0)",
+          "bottom": "1px solid rgb(0, 0, 0)",
+          "left": "0px none rgb(0, 0, 0)",
+          "right": "0px none rgb(0, 0, 0)"
+        },
+        ".retail-items th": {
+          "top": "1px solid rgb(0, 0, 0)",
+          "bottom": "1px solid rgb(0, 0, 0)",
+          "left": "1px solid rgb(0, 0, 0)",
+          "right": "1px solid rgb(0, 0, 0)"
+        },
+        ".retail-item-values td:last-child": {
+          "top": "1px solid rgb(0, 0, 0)",
+          "bottom": "1px solid rgb(0, 0, 0)",
+          "left": "1px solid rgb(0, 0, 0)",
+          "right": "1px solid rgb(0, 0, 0)"
+        },
+        ".retail-totals": {
+          "top": "1px solid rgb(0, 0, 0)",
+          "bottom": "1px solid rgb(0, 0, 0)",
+          "left": "1px solid rgb(0, 0, 0)",
+          "right": "1px solid rgb(0, 0, 0)"
+        },
+        ".retail-totals .row + .row": {
+          "top": "1px solid rgb(0, 0, 0)",
+          "bottom": "0px none rgb(0, 0, 0)",
+          "left": "0px none rgb(0, 0, 0)",
+          "right": "0px none rgb(0, 0, 0)"
+        },
+        ".retail-totals .row > :last-child": {
+          "top": "0px none rgb(0, 0, 0)",
+          "bottom": "0px none rgb(0, 0, 0)",
+          "left": "1px solid rgb(0, 0, 0)",
+          "right": "0px none rgb(0, 0, 0)"
+        },
+        ".retail-savings": {
+          "top": "1px solid rgb(0, 0, 0)",
+          "bottom": "1px solid rgb(0, 0, 0)",
+          "left": "1px solid rgb(0, 0, 0)",
+          "right": "1px solid rgb(0, 0, 0)"
+        },
+        ".retail-loyalty": {
+          "top": "1px solid rgb(0, 0, 0)",
+          "bottom": "1px solid rgb(0, 0, 0)",
+          "left": "1px solid rgb(0, 0, 0)",
+          "right": "1px solid rgb(0, 0, 0)"
+        }
+      },
+      "overflows": [],
+      "textOverflows": [],
+      "footer": true,
+      "text": true
+    }
+  },
+  {
+    "name": "58-Table-58-M1-4-0-8",
+    "options": {
+      "copies": 1,
+      "size": {
+        "width": 58,
+        "height": 202
+      },
+      "margins": 0,
+      "orientation": "portrait",
+      "scale": "fit"
+    },
+    "browser": {
+      "width": 219.203125,
+      "height": 759.390625,
+      "paddingTop": "0px",
+      "paddingBottom": "30.2362px",
+      "paddingLeft": "3.77953px",
+      "paddingRight": "15.1181px",
+      "position": "static",
+      "bodyMargin": "0px",
+      "barcodeFont": "Arial, \"Nirmala UI\", \"Iskoola Pota\", Tahoma, sans-serif",
+      "tableLayout": "fixed",
+      "borders": {
+        ".retail-head": {
+          "top": "0px none rgb(0, 0, 0)",
+          "bottom": "1px solid rgb(0, 0, 0)",
+          "left": "0px none rgb(0, 0, 0)",
+          "right": "0px none rgb(0, 0, 0)"
+        },
+        ".retail-meta": {
+          "top": "0px none rgb(0, 0, 0)",
+          "bottom": "1px solid rgb(0, 0, 0)",
+          "left": "0px none rgb(0, 0, 0)",
+          "right": "0px none rgb(0, 0, 0)"
+        },
+        ".retail-items th": {
+          "top": "1px solid rgb(0, 0, 0)",
+          "bottom": "1px solid rgb(0, 0, 0)",
+          "left": "1px solid rgb(0, 0, 0)",
+          "right": "1px solid rgb(0, 0, 0)"
+        },
+        ".retail-item-values td:last-child": {
+          "top": "1px solid rgb(0, 0, 0)",
+          "bottom": "1px solid rgb(0, 0, 0)",
+          "left": "1px solid rgb(0, 0, 0)",
+          "right": "1px solid rgb(0, 0, 0)"
+        },
+        ".retail-totals": {
+          "top": "1px solid rgb(0, 0, 0)",
+          "bottom": "1px solid rgb(0, 0, 0)",
+          "left": "1px solid rgb(0, 0, 0)",
+          "right": "1px solid rgb(0, 0, 0)"
+        },
+        ".retail-totals .row + .row": {
+          "top": "1px solid rgb(0, 0, 0)",
+          "bottom": "0px none rgb(0, 0, 0)",
+          "left": "0px none rgb(0, 0, 0)",
+          "right": "0px none rgb(0, 0, 0)"
+        },
+        ".retail-totals .row > :last-child": {
+          "top": "0px none rgb(0, 0, 0)",
+          "bottom": "0px none rgb(0, 0, 0)",
+          "left": "1px solid rgb(0, 0, 0)",
+          "right": "0px none rgb(0, 0, 0)"
+        },
+        ".retail-savings": {
+          "top": "1px solid rgb(0, 0, 0)",
+          "bottom": "1px solid rgb(0, 0, 0)",
+          "left": "1px solid rgb(0, 0, 0)",
+          "right": "1px solid rgb(0, 0, 0)"
+        },
+        ".retail-loyalty": {
+          "top": "1px solid rgb(0, 0, 0)",
+          "bottom": "1px solid rgb(0, 0, 0)",
+          "left": "1px solid rgb(0, 0, 0)",
+          "right": "1px solid rgb(0, 0, 0)"
+        }
+      },
+      "overflows": [],
+      "textOverflows": [],
+      "footer": true,
+      "text": true
+    },
+    "silent": {
+      "width": 219.203125,
+      "height": 759.390625,
+      "paddingTop": "0px",
+      "paddingBottom": "30.2362px",
+      "paddingLeft": "3.77953px",
+      "paddingRight": "15.1181px",
+      "position": "static",
+      "bodyMargin": "0px",
+      "barcodeFont": "Arial, \"Nirmala UI\", \"Iskoola Pota\", Tahoma, sans-serif",
+      "tableLayout": "fixed",
+      "borders": {
+        ".retail-head": {
+          "top": "0px none rgb(0, 0, 0)",
+          "bottom": "1px solid rgb(0, 0, 0)",
+          "left": "0px none rgb(0, 0, 0)",
+          "right": "0px none rgb(0, 0, 0)"
+        },
+        ".retail-meta": {
+          "top": "0px none rgb(0, 0, 0)",
+          "bottom": "1px solid rgb(0, 0, 0)",
+          "left": "0px none rgb(0, 0, 0)",
+          "right": "0px none rgb(0, 0, 0)"
+        },
+        ".retail-items th": {
+          "top": "1px solid rgb(0, 0, 0)",
+          "bottom": "1px solid rgb(0, 0, 0)",
+          "left": "1px solid rgb(0, 0, 0)",
+          "right": "1px solid rgb(0, 0, 0)"
+        },
+        ".retail-item-values td:last-child": {
+          "top": "1px solid rgb(0, 0, 0)",
+          "bottom": "1px solid rgb(0, 0, 0)",
+          "left": "1px solid rgb(0, 0, 0)",
+          "right": "1px solid rgb(0, 0, 0)"
+        },
+        ".retail-totals": {
+          "top": "1px solid rgb(0, 0, 0)",
+          "bottom": "1px solid rgb(0, 0, 0)",
+          "left": "1px solid rgb(0, 0, 0)",
+          "right": "1px solid rgb(0, 0, 0)"
+        },
+        ".retail-totals .row + .row": {
+          "top": "1px solid rgb(0, 0, 0)",
+          "bottom": "0px none rgb(0, 0, 0)",
+          "left": "0px none rgb(0, 0, 0)",
+          "right": "0px none rgb(0, 0, 0)"
+        },
+        ".retail-totals .row > :last-child": {
+          "top": "0px none rgb(0, 0, 0)",
+          "bottom": "0px none rgb(0, 0, 0)",
+          "left": "1px solid rgb(0, 0, 0)",
+          "right": "0px none rgb(0, 0, 0)"
+        },
+        ".retail-savings": {
+          "top": "1px solid rgb(0, 0, 0)",
+          "bottom": "1px solid rgb(0, 0, 0)",
+          "left": "1px solid rgb(0, 0, 0)",
+          "right": "1px solid rgb(0, 0, 0)"
+        },
+        ".retail-loyalty": {
+          "top": "1px solid rgb(0, 0, 0)",
+          "bottom": "1px solid rgb(0, 0, 0)",
+          "left": "1px solid rgb(0, 0, 0)",
+          "right": "1px solid rgb(0, 0, 0)"
+        }
+      },
+      "overflows": [],
+      "textOverflows": [],
+      "footer": true,
+      "text": true
+    }
+  },
+  {
+    "name": "80-Retail-80-M2-10-0-0",
+    "options": {
+      "copies": 1,
+      "size": {
+        "width": 80,
+        "height": 181
+      },
+      "margins": 0,
+      "orientation": "portrait",
+      "scale": "fit"
+    },
+    "browser": {
+      "width": 302.359375,
+      "height": 677.328125,
+      "paddingTop": "0px",
+      "paddingBottom": "0px",
+      "paddingLeft": "7.55906px",
+      "paddingRight": "37.7953px",
+      "position": "static",
+      "bodyMargin": "0px",
+      "barcodeFont": "Arial, \"Nirmala UI\", \"Iskoola Pota\", Tahoma, sans-serif",
+      "tableLayout": "fixed",
+      "borders": {
+        ".retail-head": {
+          "top": "0px none rgb(0, 0, 0)",
+          "bottom": "1px solid rgb(0, 0, 0)",
+          "left": "0px none rgb(0, 0, 0)",
+          "right": "0px none rgb(0, 0, 0)"
+        },
+        ".retail-meta": {
+          "top": "0px none rgb(0, 0, 0)",
+          "bottom": "1px solid rgb(0, 0, 0)",
+          "left": "0px none rgb(0, 0, 0)",
+          "right": "0px none rgb(0, 0, 0)"
+        },
+        ".retail-items th": {
+          "top": "0px none rgb(0, 0, 0)",
+          "bottom": "1px solid rgb(0, 0, 0)",
+          "left": "0px none rgb(0, 0, 0)",
+          "right": "0px none rgb(0, 0, 0)"
+        },
+        ".retail-item-values td:last-child": {
+          "top": "0px none rgb(0, 0, 0)",
+          "bottom": "1px solid rgb(0, 0, 0)",
+          "left": "0px none rgb(0, 0, 0)",
+          "right": "0px none rgb(0, 0, 0)"
+        },
+        ".retail-totals": {
+          "top": "1px solid rgb(0, 0, 0)",
+          "bottom": "0px none rgb(0, 0, 0)",
+          "left": "0px none rgb(0, 0, 0)",
+          "right": "0px none rgb(0, 0, 0)"
+        },
+        ".retail-totals .row + .row": {
+          "top": "0px none rgb(0, 0, 0)",
+          "bottom": "0px none rgb(0, 0, 0)",
+          "left": "0px none rgb(0, 0, 0)",
+          "right": "0px none rgb(0, 0, 0)"
+        },
+        ".retail-totals .row > :last-child": {
+          "top": "0px none rgb(0, 0, 0)",
+          "bottom": "0px none rgb(0, 0, 0)",
+          "left": "0px none rgb(0, 0, 0)",
+          "right": "0px none rgb(0, 0, 0)"
+        },
+        ".retail-savings": {
+          "top": "1px solid rgb(0, 0, 0)",
+          "bottom": "1px solid rgb(0, 0, 0)",
+          "left": "1px solid rgb(0, 0, 0)",
+          "right": "1px solid rgb(0, 0, 0)"
+        },
+        ".retail-loyalty": {
+          "top": "1px solid rgb(0, 0, 0)",
+          "bottom": "0px none rgb(0, 0, 0)",
+          "left": "0px none rgb(0, 0, 0)",
+          "right": "0px none rgb(0, 0, 0)"
+        }
+      },
+      "overflows": [],
+      "textOverflows": [],
+      "footer": true,
+      "text": true
+    },
+    "silent": {
+      "width": 302.359375,
+      "height": 677.3125,
+      "paddingTop": "0px",
+      "paddingBottom": "0px",
+      "paddingLeft": "7.55906px",
+      "paddingRight": "37.7953px",
+      "position": "static",
+      "bodyMargin": "0px",
+      "barcodeFont": "Arial, \"Nirmala UI\", \"Iskoola Pota\", Tahoma, sans-serif",
+      "tableLayout": "fixed",
+      "borders": {
+        ".retail-head": {
+          "top": "0px none rgb(0, 0, 0)",
+          "bottom": "1px solid rgb(0, 0, 0)",
+          "left": "0px none rgb(0, 0, 0)",
+          "right": "0px none rgb(0, 0, 0)"
+        },
+        ".retail-meta": {
+          "top": "0px none rgb(0, 0, 0)",
+          "bottom": "1px solid rgb(0, 0, 0)",
+          "left": "0px none rgb(0, 0, 0)",
+          "right": "0px none rgb(0, 0, 0)"
+        },
+        ".retail-items th": {
+          "top": "0px none rgb(0, 0, 0)",
+          "bottom": "1px solid rgb(0, 0, 0)",
+          "left": "0px none rgb(0, 0, 0)",
+          "right": "0px none rgb(0, 0, 0)"
+        },
+        ".retail-item-values td:last-child": {
+          "top": "0px none rgb(0, 0, 0)",
+          "bottom": "1px solid rgb(0, 0, 0)",
+          "left": "0px none rgb(0, 0, 0)",
+          "right": "0px none rgb(0, 0, 0)"
+        },
+        ".retail-totals": {
+          "top": "1px solid rgb(0, 0, 0)",
+          "bottom": "0px none rgb(0, 0, 0)",
+          "left": "0px none rgb(0, 0, 0)",
+          "right": "0px none rgb(0, 0, 0)"
+        },
+        ".retail-totals .row + .row": {
+          "top": "0px none rgb(0, 0, 0)",
+          "bottom": "0px none rgb(0, 0, 0)",
+          "left": "0px none rgb(0, 0, 0)",
+          "right": "0px none rgb(0, 0, 0)"
+        },
+        ".retail-totals .row > :last-child": {
+          "top": "0px none rgb(0, 0, 0)",
+          "bottom": "0px none rgb(0, 0, 0)",
+          "left": "0px none rgb(0, 0, 0)",
+          "right": "0px none rgb(0, 0, 0)"
+        },
+        ".retail-savings": {
+          "top": "1px solid rgb(0, 0, 0)",
+          "bottom": "1px solid rgb(0, 0, 0)",
+          "left": "1px solid rgb(0, 0, 0)",
+          "right": "1px solid rgb(0, 0, 0)"
+        },
+        ".retail-loyalty": {
+          "top": "1px solid rgb(0, 0, 0)",
+          "bottom": "0px none rgb(0, 0, 0)",
+          "left": "0px none rgb(0, 0, 0)",
+          "right": "0px none rgb(0, 0, 0)"
         }
       },
       "overflows": [],

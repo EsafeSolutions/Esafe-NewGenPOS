@@ -98,6 +98,9 @@
           </div>
         </header>
 
+        <div class="customer-message-action"><button type="button" class="btn btn-outline" @click="messageOpen = !messageOpen">{{ t(messageOpen ? 'Close message' : 'SMS / WhatsApp') }}</button></div>
+        <CustomerMessageComposer v-if="messageOpen" :customer="detail.name" :mobile-number="detail.mobile_no" />
+
         <div class="profile-grid">
           <div v-if="detail.mobile_no"><span class="lbl">{{ t('Phone') }}</span>{{ detail.mobile_no }}</div>
           <div v-if="detail.email_id"><span class="lbl">{{ t('Email') }}</span>{{ detail.email_id }}</div>
@@ -219,8 +222,9 @@ import Icon from '../components/Icon.vue'
 import ReceiptModal from '../components/ReceiptModal.vue'
 import CustomerCredit from '../components/CustomerCredit.vue'
 import CustomerSalesProgress from '../components/CustomerSalesProgress.vue'
-import { useRouter } from 'vue-router'
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import CustomerMessageComposer from '../components/CustomerMessageComposer.vue'
+import { useRoute, useRouter } from 'vue-router'
+import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { call } from '../api'
 import { useSessionStore } from '../stores/session'
 import { useCartStore } from '../stores/cart'
@@ -269,10 +273,14 @@ const txnStart = ref(0)
 const loadingTxns = ref(false)
 
 const receipt = ref(null)
+const messageOpen = ref(false)
+const customerRoute = useRoute()
+watch(() => customerRoute.query.customer, name => { if (name) select({name}) })
 
 onMounted(async () => {
   groups.value = await call('esafepos.api.customers.customer_groups').catch(() => [])
   reload()
+  if (customerRoute.query.customer) select({name:customerRoute.query.customer})
 })
 onBeforeUnmount(() => { clearTimeout(searchTimer); listRequest++; detailRequest++; txnRequest++ })
 
@@ -350,6 +358,7 @@ function accountChanged() {
 }
 
 async function select(c) {
+  messageOpen.value = false
   const request = ++detailRequest
   txnRequest++
   txns.value = []
@@ -527,6 +536,7 @@ function updateReceipt(updated) {
 .search-box input { width: 100%; padding: 9px 32px 9px 34px; border-radius: 9px; }
 .search-box .clear { position: absolute; right: 6px; padding: 3px 6px; }
 .group-select { width: 100%; }
+.customer-message-action { margin: 14px 0; }
 .customer-filter { display: flex; flex-direction: column; gap: 5px; min-width: 0; font-size: 12px; color: var(--text-muted); }
 .customer-filter select, .customer-filter input { width: 100%; min-width: 0; color: var(--text); }
 .reset-filters { align-self: flex-start; font-size: 12px; padding: 3px 0; }

@@ -1,21 +1,24 @@
 <template>
   <section class="warehouse-stock" :aria-label="t('Warehouse stock')">
     <div class="stock-heading"><div><h3>{{ t('Warehouse stock') }}</h3><p class="muted">{{ t('Quantities are in the stock unit.') }} {{ stock.stock_uom }}</p></div>
-      <button type="button" class="btn btn-outline" :disabled="loading || saving || disabled || session.offline" @click="load"><Icon name="refresh" />{{ t('Refresh') }}</button></div>
-    <p v-if="error" role="alert">{{ error }}</p><p v-if="loading" role="status">{{ t('Loading…') }}</p>
+      <button type="button" class="btn btn-outline" :disabled="loading || saving || disabled || session.offline" @click="load()"><Icon name="refresh" />{{ t('Refresh') }}</button></div>
+    <p v-if="error" role="alert">{{ error }}</p><p v-if="refreshError" class="empty" role="status">{{ t('Live refresh paused') }}: {{ refreshError }}</p><p v-if="loading" role="status">{{ t('Loading…') }}</p>
     <template v-else-if="!error">
       <div class="stock-table"><table>
         <thead><tr><th>{{ t('Warehouse') }}</th><th>{{ t('On hand') }}</th><th>{{ t('Reserved') }}</th><th>{{ t('Available') }}</th></tr></thead>
         <tbody><tr v-for="row in stock.rows" :key="row.warehouse"><th scope="row">{{ row.warehouse }}</th><td>{{ row.actual_qty }}</td><td>{{ row.reserved_qty }}</td><td :class="{ empty: row.available_qty <= 0 }">{{ row.available_qty }}</td></tr></tbody>
       </table></div>
       <p v-if="!stock.rows.length" class="muted">{{ t('No accessible warehouses in this company.') }}</p>
-      <p class="muted stock-hint">{{ t('Reserved includes unposted POS sales. Close affected shifts before changing stock.') }}</p>
+      <p class="muted stock-hint">{{ t('Reserved includes unposted POS sales. Close affected shifts before transfers or absolute adjustments. Material Receipts add new stock.') }}</p>
       <div class="stock-actions" role="group" :aria-label="t('Inventory actions')">
-        <button v-if="stock.can_transfer && stock.rows.length > 1" type="button" class="btn btn-outline" :aria-pressed="action === 'transfer'" :disabled="saving || uncertain" @click="action = 'transfer'"><Icon name="exchange" />{{ t('Transfer stock') }}</button>
-        <button v-if="stock.can_adjust" type="button" class="btn btn-outline" :aria-pressed="action === 'adjust'" :disabled="saving || uncertain" @click="action = 'adjust'"><Icon name="detail" />{{ t('Adjust stock') }}</button>
-        <button v-if="stock.can_view_movements" type="button" class="btn btn-outline" :aria-pressed="action === 'movements'" :disabled="saving || uncertain" @click="showMovements"><Icon name="clock" />{{ t('Stock movements') }}</button>
+        <button v-if="stock.can_receive" type="button" class="btn btn-outline" :aria-pressed="action === 'receive'" :disabled="saving || uncertain || receiptUncertain" @click="action = 'receive'"><Icon name="plus" />{{ t('Add to warehouse') }}</button>
+        <button v-if="stock.can_transfer && stock.rows.length > 1" type="button" class="btn btn-outline" :aria-pressed="action === 'transfer'" :disabled="saving || uncertain || receiptUncertain" @click="action = 'transfer'"><Icon name="exchange" />{{ t('Transfer stock') }}</button>
+        <button v-if="stock.can_adjust" type="button" class="btn btn-outline" :aria-pressed="action === 'adjust'" :disabled="saving || uncertain || receiptUncertain" @click="action = 'adjust'"><Icon name="detail" />{{ t('Adjust stock') }}</button>
+        <button v-if="stock.can_view_movements" type="button" class="btn btn-outline" :aria-pressed="action === 'movements'" :disabled="saving || uncertain || receiptUncertain" @click="showMovements"><Icon name="clock" />{{ t('Stock movements') }}</button>
       </div>
       <p v-if="posted" class="posted" role="status">{{ t('Posted successfully') }}: <a :href="'/app/' + posted.type + '/' + encodeURIComponent(posted.name)" target="_blank" rel="noopener noreferrer">{{ posted.name }}</a></p>
+      <WarehouseReceipt v-if="stock.can_receive" v-show="action === 'receive'" :item-code="itemCode" :stock="stock" :disabled="disabled || saving && !receiptPosting"
+        @busy="receiptBusy" @posted="receiptPosted" @pending="receiptPending" />
       <form v-if="action === 'transfer' && stock.can_transfer" class="stock-form" @submit.prevent="transfer">
         <h4>{{ t('Transfer between warehouses') }}</h4>
         <fieldset :disabled="saving || disabled || session.offline || uncertain">
@@ -62,11 +65,15 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { call, OfflineError } from '../api'
 import Icon from './Icon.vue'
+import WarehouseReceipt from './WarehouseReceipt.vue'
+import { useCatalogStore } from '../stores/catalog'
 import { t } from '../i18n'
 import { useSessionStore } from '../stores/session'
-const props = defineProps({ itemCode: String, disabled: Boolean })
+const props = defineProps({ itemCode: String, disabled: Boolean, active: { type: Boolean, default: true } })
 const emit = defineEmits(['updated', 'busy'])
 const session = useSessionStore()
+const catalog = useCatalogStore()
+const refreshError = ref(''), receiptUncertain = ref(false), receiptPosting = ref(false)
 const stock = ref({ rows: [] }), warehouse = ref(''), qty = ref(''), rate = ref(''), reason = ref('')
 const source = ref(''), target = ref(''), transferQty = ref(''), transferReason = ref(''), serials = ref(''), batch = ref('')
 const action = ref(''), loading = ref(false), saving = ref(false), error = ref(''), posted = ref(null), uncertain = ref(false)
@@ -87,10 +94,12 @@ const validTransfer = computed(() => uncertain.value || (source.value && target.
   (!stock.value.has_serial_no || serials.value.trim()) && (!stock.value.has_batch_no || batch.value)))
 const movements = ref([]), moreMovements = ref(false), movementLoading = ref(false), movementError = ref(''), fromDate = ref(''), toDate = ref('')
 let movementDates = {}
-async function load() {
+async function load(quiet = false) {
   if (session.offline) return
   const id = ++request
-  loading.value = true; error.value = ''
+  if (!quiet) loading.value = true
+  if (!quiet) error.value = ''
+  refreshError.value = ''
   try {
     const result = await call('esafepos.api.items.warehouse_stock', { pos_profile: session.posProfile, item_code: props.itemCode })
     if (id !== request) return
@@ -98,16 +107,26 @@ async function load() {
     if (!result.rows.some(row => row.warehouse === warehouse.value)) warehouse.value = result.rows[0]?.warehouse || ''
     if (!result.rows.some(row => row.warehouse === source.value)) source.value = warehouse.value
     if (!action.value) action.value = result.can_transfer && result.rows.length > 1 ? 'transfer' : result.can_adjust ? 'adjust' : ''
-  } catch (err) { if (id === request) error.value = err.message }
+  } catch (err) { if (id === request) { if (quiet) refreshError.value = err.message; else error.value = err.message } }
   finally { if (id === request) loading.value = false }
 }
+function receiptBusy(value) { receiptPosting.value = value; saving.value = value; emit('busy', value) }
+function receiptPending(value) { receiptUncertain.value = value; if (value) action.value = 'receive' }
+function updatedStock(result) {
+  request++
+  if (result.stock) stock.value = result.stock
+  else load(true)
+  emit('updated', result.stock || stock.value)
+  catalog.signalChange()
+}
+function receiptPosted(result) { posted.value = { type: 'stock-entry', name: result.name }; updatedStock(result) }
 async function transfer() {
   if (saving.value || props.disabled || session.offline || !validTransfer.value) return
   if (!uncertain.value) {
     if (!window.confirm(t('Post this stock transfer?') + '\n' + transferQty.value + ' ' + stock.value.stock_uom + '\n' + source.value + ' → ' + target.value)) return
     transferPayload = { pos_profile: session.posProfile, item_code: props.itemCode, source_warehouse: source.value,
       target_warehouse: target.value, qty: transferQty.value, expected_qty: sourceRow.value.actual_qty,
-      reason: transferReason.value, serial_no: serials.value, batch_no: batch.value, request_id: globalThis.crypto.randomUUID() }
+      reason: transferReason.value, serial_no: serials.value, batch_no: batch.value, request_id: globalThis.crypto.randomUUID(), include_snapshot: 1 }
     try { sessionStorage.setItem(recoveryKey(), JSON.stringify(transferPayload)) } catch { /* Private window. */ }
   }
   saving.value = true; emit('busy', true)
@@ -117,7 +136,7 @@ async function transfer() {
     try { sessionStorage.removeItem(recoveryKey()) } catch { /* Private window. */ }
     transferQty.value = ''; transferReason.value = ''; serials.value = ''; batch.value = ''
     session.notify(t('Stock transfer posted') + ': ' + result.name)
-    await load(); emit('updated')
+    updatedStock(result)
   } catch (err) {
     uncertain.value = err instanceof OfflineError || uncertain.value
     if (!uncertain.value) { try { sessionStorage.removeItem(recoveryKey()) } catch { /* Private window. */ } }
@@ -138,9 +157,9 @@ async function adjust() {
   saving.value = true; emit('busy', true)
   try {
     const result = await call('esafepos.api.items.adjust_stock', { pos_profile: session.posProfile, item_code: props.itemCode,
-      warehouse: row.warehouse, qty: qty.value, expected_qty: row.actual_qty, reason: reason.value, valuation_rate: rate.value || null })
+      warehouse: row.warehouse, qty: qty.value, expected_qty: row.actual_qty, reason: reason.value, valuation_rate: rate.value || null, include_snapshot: 1 })
     posted.value = { type: 'stock-reconciliation', name: result.name }; qty.value = ''; rate.value = ''; reason.value = ''
-    session.notify(t('Stock adjustment posted') + ': ' + result.name); await load(); emit('updated')
+    session.notify(t('Stock adjustment posted') + ': ' + result.name); updatedStock(result)
   } catch (err) { session.notify(err.message, true) }
   finally { saving.value = false; emit('busy', false) }
 }
@@ -161,6 +180,10 @@ async function loadMovements(append = false) {
 watch(() => [props.itemCode, session.posProfile], () => { recoverTransfer(); load() }, { immediate: true })
 watch(warehouse, () => { qty.value = ''; rate.value = ''; reason.value = '' })
 watch(source, () => { if (target.value === source.value) target.value = '' })
+watch(saving, value => { if (value) request++ }, { flush: 'sync' })
+watch(() => [catalog.liveRevision, props.active], () => {
+  if (props.active && !saving.value && !props.disabled && !session.offline) { load(true); if (action.value === 'movements') loadMovements() }
+})
 onBeforeUnmount(() => { request++; movementRequest++ })
 </script>
 

@@ -2,7 +2,7 @@
 export function safeToUpdate({ session, cart, route, document, jobs = [] }) {
   if (session.offline || session.syncing || session.locked || cart.submitting || cart.lines.length || cart.exchange) return false
   if (jobs.some((job) => ['preparing', 'submitting', 'printing'].includes(job.state))) return false
-  if (document.querySelector('.modal-backdrop, .pay-overlay, [role="dialog"]')) return false
+  if (document.querySelector('.modal-backdrop, .pay-overlay, [role="dialog"], dialog[open]')) return false
   const field = document.activeElement
   if (field?.matches('input, textarea, select') && field.value) return false
   if (route.path === '/display') return false

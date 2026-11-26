@@ -80,6 +80,8 @@ def message_for(doc, url):
 def share_details(doc):
     url = make_link(doc)
     mobile = doc.get("esafepos_walk_in_phone") or ""
+    if not mobile and doc.get("esafepos_receipt_customer"):
+        mobile = frappe.db.get_value("Customer", doc.esafepos_receipt_customer, "mobile_no") or ""
     if not mobile and not doc.get("esafepos_walk_in_code"):
         mobile = doc.get("contact_mobile") or doc.get("contact_phone") or ""
         if not mobile and doc.get("customer"):

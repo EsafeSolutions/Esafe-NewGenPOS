@@ -10,6 +10,24 @@ The EsafePOS Manager role receives native Supplier, Purchase Invoice and Payment
 
 Configure an enabled company warehouse, stock and payable accounts, a supplier group, expense accounts for additional costs, and enabled **Mode of Payment** records. Each payment mode needs a default Cash or Bank account for the selected company, in company currency. Use a Cash-type mode for cash and a Bank-type mode for transfers or cheques. Different Bank modes may share the same account.
 
+## Scan an invoice with Gemini
+
+After deploying this update, run `bench --site <site> migrate` to add the scanner settings. Open **Settings → General → Invoice scanning**, enter your Gemini API key, keep or update the model ID (default `gemini-3.5-flash-lite`), and enable scanning. The scanner also offers this setup directly to staff who can write EsafePOS Settings. This key is separate from product image search, stored in a Frappe encrypted Password field, and never returned by the configuration API. Leaving the key blank preserves it; removing it requires disabling the scanner. Google billing and quota apply.
+
+1. Select **Scan supplier invoice** in Buying. A supplier can be selected before scanning or matched during review.
+2. Choose a clear JPG, PNG, WebP or PDF up to 8 MB, then select **Read invoice**. This sends the document to Google Gemini. The app processes the bytes inline and does not create a Frappe File attachment or use Google's Files upload API.
+3. Check the supplier, reference, dates, currency and every detected row. The server suggests permitted suppliers/products using exact item code, barcode, name or supplier tax ID; ambiguous products remain unselected. You can search for a different product, or add a supplier without rescanning.
+4. Check quantities and costs in the selected product's **stock UOM**. Different or unknown printed units require explicit confirmation after correction; a bag or carton is never silently treated as one stock unit. Missing or unreadable values remain blank.
+5. Select accounts for detected freight/handling and tax. Valuation costs use expense accounts and increase both payable and receipt valuation. **Tax only** uses an account of type Tax and increases payable without capitalization. Choose the correct accounting treatment before posting; complex localization and tax rules remain in ERPNext.
+6. Reconcile the checked row total to the printed invoice total, review warnings, and acknowledge that you checked the original. Known duplicate references, a foreign currency, invoice-level discounts, unmatched products, uncertain UOMs, invalid amounts and mismatched totals prevent import. Invoice-level discounts and advanced buying documents use ERPNext.
+7. Select **Fill purchase draft**. This performs no stock or accounting posting. Check the warehouse and draft, then use the existing **Submit purchase invoice** action. Replacing a nonempty supplier draft asks first.
+
+Scanning requires online buying access, native Purchase Invoice create and Item read permissions. Settings require native EsafePOS Settings write permission. The API accepts only validated inline file bytes, verifies file signatures and size, uses a fixed Google host and validated model ID, disallows redirects and tools, rate-limits users to one attempt per 15 seconds, and rejects incomplete/malformed model output. Invoice text is explicitly treated as untrusted data. API keys, raw documents and provider error bodies are not written by the scanning code to app logs. No catalog is sent to Gemini; matching happens locally through permission-filtered queries.
+
+The file/result live in the current browser component. Closing it or leaving the page discards them; this is not a document archive. OCR is a drafting aid and can misread invoices. A real Gemini scan still needs verification after you supply a key; automated checks use fixture responses rather than claiming OCR accuracy.
+
+Screenshots: [desktop review](screenshots/buying-ocr/review-desktop.png), [phone product/UOM review](screenshots/buying-ocr/review-mobile.png), [phone draft summary with separate tax and valuation](screenshots/buying-ocr/draft-summary-mobile.png), [account retry state](screenshots/buying-ocr/account-retry-desktop.png).
+
 ## Receive a purchase
 
 1. Open **Buying** and choose a supplier, or use **Add supplier** to create one.
@@ -22,6 +40,8 @@ The server creates and submits an ERPNext **Purchase Invoice** with **Update Sto
 
 Additional costs are native **Purchase Taxes and Charges** rows with calculation type **Actual**, category **Valuation and Total**, and direction **Add**. ERPNext allocates them by item value and posts the stock/accounting effects. They increase the amount owed to this supplier. All invoice lines must be stock items when valuation costs are present.
 
+The **Charge type** control can also record a fixed **Tax only** amount against an account of type Tax, using native category **Total**. The summary separates this tax from valuation costs, so recoverable tax is not silently included in stock cost. It is not a replacement for regional tax templates or statutory validation.
+
 For example, 10 units at LKR 100 plus LKR 100 freight creates LKR 1,100 payable and an estimated receipt valuation of LKR 110 per stock unit. The warehouse's resulting valuation depends on the item's ERPNext valuation method and existing stock. The POS never writes a Bin or Item valuation rate directly.
 
 Costs billed by a separate carrier or discovered after submission must be booked separately and allocated through an ERPNext **Landed Cost Voucher**. They must not also be added to the goods supplier's payable. The simple POS form does not replace jurisdiction-specific tax entry, foreign-currency purchasing, alternate purchase UOMs, linked orders/receipts, returns, or later landed-cost adjustments.
@@ -33,6 +53,8 @@ Supplier-specific invoice drafts stay separate while the Buying page is open. Sw
 **Supplier account** shows the company-currency net ledger balance, all visible unpaid invoices, paginated purchase history, and the latest 50 submitted Payment Entries. Invoice details show actual receipt valuation rates and the additional costs, with a link to the native invoice.
 
 The net balance is supplier credits minus debits in the permitted company GL entries. A negative balance is supplier credit. It includes credits and advances; therefore it can differ from the sum of invoice outstandings. GL read permission is required to see this balance. Without that permission, the screen still shows the permitted invoices and states that ledger access is required. Credits/advances can be reconciled in ERPNext.
+
+Frappe 16 requires dictionary aggregate expressions; the compatibility helper now uses these while retaining legacy expressions on v13–v15. Both paths retain permission-aware `get_list` queries. The Buying page fills its flex parent, including large displays. Failed account loads show a retry action inside the panel while manual invoice entry stays available.
 
 Select unpaid invoices and choose **Pay supplier**. Enter a full or partial amount and a payment date. The server allocates the payment to the selected invoices oldest first. Selected invoices must share the same company-currency payable account. Overpayments, stale/settled invoices, foreign-currency selections, and dates earlier than an allocated invoice are refused.
 
@@ -52,6 +74,10 @@ Affected modules: `api/buying.py`, `BuyingView.vue`, route/navigation/title, fea
 
 ## Verification
 
+Current scanner/compatibility verification: `python -m unittest esafepos.api.test_buying esafepos.api.test_purchase_ocr esafepos.api.test_credit_checkout` passes 52 focused tests; `cd frontend && node buying-check.mjs` and `node purchase-ocr-check.mjs` pass Chrome fixture workflows on desktop/phone. The latter covers setup/key masking, upload validation, Gemini failure/retry, item matching, explicit pack correction, tax/valuation separation, totals, duplicates, foreign currency, PDF upload, offline gating, account-error recovery and draft-only import. Production assets are rebuilt and Python 3.7 grammar/settings JSON/whitespace are checked. No live key was supplied, so Google extraction quality and live ERPNext postings remain unverified.
+
+Original Buying implementation verification:
+
 - `python -m unittest esafepos.api.test_buying`: 28 focused tests pass against mocked Frappe services, including valuation charge mapping, stock-update submission, permissions/company/currency boundaries, workflows, dates, stale/excess allocations, decimals, bank references, supplier creation, and idempotency.
 - `python -m unittest esafepos.api.test_buying esafepos.api.test_credit_checkout`: buying and checkout regression tests pass.
 - `cd frontend && node buying-check.mjs`: Chrome fixture flows pass for purchase entry, separate supplier drafts, all three payment methods, partial/full settlement, overpayment prevention, a lost-response retry, supplier creation, offline/permission gates, and desktop/mobile overflow.
@@ -63,3 +89,5 @@ Screenshots: [desktop purchase](screenshots/buying/purchase-desktop.png), [mobil
 These tests do not execute live ERPNext stock or GL posting. After migration, validate a sample invoice, valuation charge, partial payment and bank reconciliation on the site's ERPNext version before production use.
 
 ERPNext references: [Purchase Invoice](https://docs.frappe.io/erpnext/purchase-invoice), [valuation and payable charge categories](https://docs.frappe.io/erpnext/difference-in-total-and-valuation-in-tax-and-charges), [Landed Cost Voucher](https://docs.frappe.io/erpnext/stock-transactions-landed-cost-voucher).
+
+Scanner/compatibility references: [Frappe database API](https://docs.frappe.io/framework/user/en/api/database), [Frappe 16 aggregate parser](https://github.com/frappe/frappe/blob/version-16/frappe/database/query.py), [Gemini document understanding](https://ai.google.dev/gemini-api/docs/document-processing), [Gemini generateContent reference](https://ai.google.dev/api/generate-content), [Gemini models](https://ai.google.dev/gemini-api/docs/models).

@@ -137,6 +137,19 @@ export async function saveCatalog(items) {
   })
 }
 
+// Patch current rows without clearing unrelated cached pages or queued sales.
+export async function patchCatalogItems(items, removed = []) {
+  const database = await db()
+  return new Promise((resolve, reject) => {
+    const transaction = database.transaction('items', 'readwrite')
+    const store = transaction.objectStore('items')
+    for (const code of removed) store.delete(code)
+    for (const item of items || []) store.put(JSON.parse(JSON.stringify(item)))
+    transaction.oncomplete = () => resolve()
+    transaction.onerror = () => reject(transaction.error)
+  })
+}
+
 // `groups`: the picked group and every group beneath it (the server sends
 // them per chip), or one group name, or nothing for all.
 export async function searchCatalog(search = '', groups = null, limit = 80, brand = '', scaleOptions = null) {

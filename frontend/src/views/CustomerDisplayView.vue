@@ -20,7 +20,12 @@
         <div>{{ [snap.terminal, snap.cashier].filter(Boolean).join(' · ') }}</div>
       </div>
     </header>
-    <main v-if="snap.items.length" class="cd-content">
+    <main v-if="snap.bankAccounts?.length && !snap.receipt" class="cd-bank-content">
+      <div class="cd-bank-title"><Icon name="bank" :size="26" /><div><h2>{{ t('Bank transfer details') }}</h2><span>{{ t('Choose the receiving account, then confirm the recipient in your banking app.') }}</span></div></div>
+      <div v-if="snap.bankAccounts.length > 1" class="cd-bank-tabs"><button v-for="(account, index) in snap.bankAccounts" :key="index" class="btn btn-outline" :aria-pressed="bankIndex === index" @click="bankIndex = index">{{ account.bank_name }} · {{ account.account_number.slice(-4) }}</button></div>
+      <Transition name="bank-panel" mode="out-in" appear><BankTransferCard :key="bankIndex" :account="snap.bankAccounts[bankIndex] || snap.bankAccounts[0]" :amount="snap.due" /></Transition>
+    </main>
+    <main v-else-if="snap.items.length" class="cd-content">
       <aside class="cd-sidebar">
         <div class="cd-greeting">
           <Icon name="person" :size="25" />
@@ -96,10 +101,13 @@ import { RECEIPT_BRAND } from '../receiptOptions'
 import DisplayContactPad from '../components/DisplayContactPad.vue'
 import DisplayProductIcon from '../components/DisplayProductIcon.vue'
 import Icon from '../components/Icon.vue'
+import BankTransferCard from '../components/BankTransferCard.vue'
 import esafeMark from '../assets/esafe-solutions-favicon.png'
 
 const snap = ref({ items: [] })
 const itemList = ref(null)
+const bankIndex = ref(0)
+watch(() => (snap.value.bankAccounts || []).map(account => [account.bank_name, account.account_number, account.currency, account.pos_profile].join('|')).join('\n'), () => { bankIndex.value = 0 })
 const terminalId = new URLSearchParams(location.hash.split('?')[1] || '').get('terminal')
 let stop = null
 let channel = null
@@ -190,6 +198,15 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+.cd-bank-content { flex: 1; min-height: 0; overflow: auto; width: min(1060px, 100%); align-self: center; padding: 0 2px 4px; }
+.cd-bank-title { display: flex; align-items: center; gap: 14px; margin: 4px 0 18px; }
+.cd-bank-title h2 { font-size: 22px; margin: 0 0 4px; }
+.cd-bank-title span { color: var(--text-muted); font-size: 14px; }
+.cd-bank-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.cd-bank-tabs [aria-pressed=true] { border-color: var(--brand); background: var(--surface-2); }
+.bank-panel-enter-active, .bank-panel-leave-active { transition: opacity .18s ease, transform .18s ease; }
+.bank-panel-enter-from, .bank-panel-leave-to { opacity: 0; transform: translateY(6px); }
+@media (prefers-reduced-motion: reduce) { .bank-panel-enter-active, .bank-panel-leave-active { transition: none; } }
 .cdisplay { height: 100dvh; display: flex; flex-direction: column; padding: clamp(12px, 2vw, 38px) clamp(12px, 2.8vw, 54px) clamp(12px, 1.5vw, 28px); background: #f2f6fc; color: #142e53; font-size: clamp(14px, .94vw, 18px); }
 .cd-head { min-height: clamp(44px, 3.5vw, 66px); display: flex; align-items: center; gap: 10px; margin-bottom: clamp(10px, .9vw, 17px); }
 .cd-head h1 { margin: 0; font-size: clamp(18px, 1.85vw, 36px); overflow-wrap: anywhere; }

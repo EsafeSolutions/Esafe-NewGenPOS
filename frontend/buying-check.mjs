@@ -10,7 +10,7 @@ const root = path.dirname(fileURLToPath(import.meta.url))
 const output = path.join(root, '../docs/screenshots/buying')
 await mkdir(output, { recursive: true })
 const html = `<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><title>Buying workflow check</title></head><body style="overflow:auto">
-<header style="height:52px;background:var(--pos-blue);color:white;display:flex;align-items:center;justify-content:space-between;padding:0 20px"><b>ESAFE ERP POS / Buying</b><span>Weerakoon Agro</span></header><div id="app"></div><script type="module">
+<header style="height:52px;background:var(--pos-blue);color:white;display:flex;align-items:center;justify-content:space-between;padding:0 20px"><b>ESAFE ERP POS / Buying</b><span>Weerakoon Agro</span></header><div id="app" style="height:calc(100dvh - 52px);display:flex;overflow:hidden"></div><script type="module">
 import { createApp } from 'vue'; import { createPinia } from 'pinia'; import BuyingView from '/src/views/BuyingView.vue'; import { useSessionStore } from '/src/stores/session.js'; import '/src/styles.css';
 const pinia=createPinia(), session=useSessionStore(pinia); session.posProfile='Main till'; session.company='Weerakoon Agro'; session.currency='LKR'; session.settings.enable_buying=1; session.permissions={buying:true}; window.test={session}; createApp(BuyingView).use(pinia).mount('#app'); window.ready=true;
 </script></body></html>`
@@ -81,6 +81,7 @@ try {
   await page.goto(`http://127.0.0.1:${server.config.server.port}/buying-check.html`)
   await page.getByRole('button', { name: /Greenfield Agri Supplies/ }).click()
   await page.getByText('Unpaid purchase invoices', { exact: true }).waitFor()
+  assert.ok(await page.locator('.buying-workspace').evaluate(el => el.getBoundingClientRect().width >= window.innerWidth - 1), 'Buying fills its flex parent')
   await screenshot('account-desktop.png')
   await page.getByRole('button', { name: 'New purchase invoice', exact: true }).click()
   await page.getByLabel('Supplier invoice number', { exact: true }).fill('GF-2959')

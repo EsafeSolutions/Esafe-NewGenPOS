@@ -5,7 +5,8 @@
   <div
     :id="printable ? 'receipt-print' : null"
     class="receipt"
-    :class="[`tpl-${tpl}`, `paper-${paperWidth}`]"
+    :class="[`tpl-${tpl}`, `paper-${paperWidth}`, { 'receipt-custom': Object.keys(designStyle).length }, ...Object.keys(designStyle).map(key => key.slice(2))]"
+    :style="designStyle"
   >
     <template v-if="retail">
       <div class="retail-head">
@@ -17,8 +18,8 @@
           <img v-if="showReceiptLogo" :src="s.receipt_logo" class="receipt-logo" alt="" />
           <div v-if="showCompanyName" class="receipt-company" :style="companyStyle">{{ receipt.company }}</div>
         </template>
-        <div v-if="s.receipt_header" class="muted small receipt-extra">{{ s.receipt_header }}</div>
-        <div v-if="s.receipt_shop_phone" class="muted small receipt-extra">{{ s.receipt_shop_phone }}</div>
+        <div v-if="enabled('receipt_show_header_text') && s.receipt_header" class="muted small receipt-extra">{{ s.receipt_header }}</div>
+        <div v-if="enabled('receipt_show_phone') && s.receipt_shop_phone" class="muted small receipt-extra">{{ s.receipt_shop_phone }}</div>
         <div v-if="s.receipt_show_address && s.receipt_address" class="muted small receipt-extra">
           {{ s.receipt_address }}
         </div>
@@ -32,13 +33,13 @@
         <div class="retail-meta-row">
           <span>{{ t('Invoice #') }}</span><strong>{{ receipt.name }}</strong>
         </div>
-        <div class="retail-meta-row">
+        <div v-if="enabled('receipt_show_datetime')" class="retail-meta-row">
           <span>{{ t('Time') }}</span><span>{{ receipt.posting_date }} {{ String(receipt.posting_time || '').split('.')[0] }}</span>
         </div>
-        <div v-if="receipt.walk_in_code" class="retail-meta-row">
+        <div v-if="enabled('receipt_show_customer') && receipt.walk_in_code" class="retail-meta-row">
           <span>{{ t('Customer code') }}</span><span>{{ receipt.walk_in_code }}</span>
         </div>
-        <div v-if="customerLabel" class="retail-meta-row">
+        <div v-if="enabled('receipt_show_customer') && customerLabel" class="retail-meta-row">
           <span>{{ t('Customer') }}</span><span>{{ customerLabel }}</span>
         </div>
         <div v-if="s.receipt_show_cashier !== 0 && (receipt.cashier || receipt.sales_person)" class="retail-meta-row">
@@ -62,33 +63,33 @@
         </template>
       </div>
 
-      <table class="retail-items" :class="{ 'without-discount': s.receipt_show_discount === 0 }">
+      <table class="retail-items" :class="{ 'without-discount': !showLineDiscount, 'without-mrp': !showMrp }">
         <thead>
           <tr>
-            <th class="retail-no">#</th><th>{{ t('Qty') }}</th><th>{{ t('MRP') }}</th><th v-if="s.receipt_show_discount !== 0">{{ t('Discount') }}</th><th>{{ t('Amount') }}</th>
+            <th class="retail-no">#</th><th>{{ t('Qty') }}</th><th v-if="showMrp">{{ t('MRP') }}</th><th v-if="showLineDiscount">{{ t('Discount') }}</th><th>{{ t('Amount') }}</th>
           </tr>
         </thead>
         <tbody v-for="(item, i) in receipt.items" :key="i">
           <tr class="retail-item-name">
-            <td class="retail-no">{{ i + 1 }}</td><td :colspan="s.receipt_show_discount !== 0 ? 4 : 3">{{ item.item_name }}</td>
+            <td class="retail-no">{{ i + 1 }}</td><td :colspan="itemColspan">{{ item.item_name }}</td>
           </tr>
           <tr v-if="(s.receipt_show_item_code && item.item_code) || (s.receipt_show_barcode && item.barcode) || (s.receipt_show_serial && item.serial_no)">
-            <td></td><td :colspan="s.receipt_show_discount !== 0 ? 4 : 3" class="retail-item-meta">
+            <td></td><td :colspan="itemColspan" class="retail-item-meta">
               <span v-if="s.receipt_show_item_code && item.item_code">{{ item.item_code }}</span>
               <span v-if="s.receipt_show_barcode && item.barcode"><template v-if="s.receipt_show_item_code && item.item_code"> · </template>{{ item.barcode }}</span>
               <span v-if="s.receipt_show_serial && item.serial_no"><template v-if="(s.receipt_show_item_code && item.item_code) || (s.receipt_show_barcode && item.barcode)"> · </template>{{ t('SN') }} {{ String(item.serial_no).split('\n').join(', ') }}</span>
             </td>
           </tr>
           <tr class="retail-item-values">
-            <td></td><td>{{ qty(item.qty) }}<template v-if="receipt.has_alternate_units"> {{ item.uom }}</template></td><td>{{ itemMoney(originalRate(item)) }}</td><td v-if="s.receipt_show_discount !== 0">{{ itemMoney(lineSaving(item)) }}</td><td>{{ itemMoney(item.amount) }}</td>
+            <td></td><td>{{ qty(item.qty) }}<template v-if="receipt.has_alternate_units"> {{ item.uom }}</template></td><td v-if="showMrp">{{ itemMoney(originalRate(item)) }}</td><td v-if="showLineDiscount">{{ itemMoney(lineSaving(item)) }}</td><td>{{ itemMoney(item.amount) }}</td>
           </tr>
         </tbody>
       </table>
 
       <div class="receipt-totals retail-totals">
-        <div class="row"><span>{{ t('Gross total') }}</span><span>{{ m(grossTotal) }}</span></div>
-        <div v-if="s.receipt_show_discount !== 0 && totalSavings > 0 && !receipt.is_return" class="row discount"><span>{{ t('Discount') }}</span><span>-{{ m(totalSavings) }}</span></div>
-        <div v-for="tax in receipt.taxes" :key="tax.description" class="row">
+        <div v-if="enabled('receipt_show_gross_total')" class="row"><span>{{ t('Gross total') }}</span><span>{{ m(grossTotal) }}</span></div>
+        <div v-if="enabled('receipt_show_total_discount') && s.receipt_show_discount !== 0 && totalSavings > 0 && !receipt.is_return" class="row discount"><span>{{ t('Discount') }}</span><span>-{{ m(totalSavings) }}</span></div>
+        <div v-for="tax in (enabled('receipt_show_taxes') ? receipt.taxes : [])" :key="tax.description" class="row">
           <span>{{ tax.description }}</span><span>{{ m(tax.tax_amount) }}</span>
         </div>
         <div v-if="roundingAdjustment" class="row"><span>{{ t('Rounding') }}</span><span>{{ m(roundingAdjustment) }}</span></div>
@@ -104,7 +105,7 @@
         </template>
         <div v-if="receipt.loyalty_amount" class="row"><span>{{ t('Loyalty points') }} ({{ receipt.loyalty_points_redeemed }})</span><span>{{ money(receipt.loyalty_amount) }}</span></div>
         <div v-if="receipt.loyalty_change_amount" class="row"><span>{{ t('Change saved as points') }} ({{ receipt.loyalty_change_points }})</span><span>{{ m(receipt.loyalty_change_amount) }}</span></div>
-        <div v-if="receipt.change_amount" class="row"><span>{{ t('Change') }}</span><span>{{ foreign && receipt.change_currency !== receipt.currency ? money(receipt.base_change_amount, receipt.company_currency) : m(receipt.change_amount) }}</span></div>
+        <div v-if="enabled('receipt_show_change') && receipt.change_amount" class="row"><span>{{ t('Change') }}</span><span>{{ foreign && receipt.change_currency !== receipt.currency ? money(receipt.base_change_amount, receipt.company_currency) : m(receipt.change_amount) }}</span></div>
         <template v-if="receipt.on_account && !receipt.is_return">
           <div class="row total owed"><span>{{ t('Owed on this sale') }}</span><span>{{ m(receipt.on_account.owed_on_sale) }}</span></div>
           <div v-if="receipt.on_account.owed_total != null" class="row muted small"><span>{{ t('Owed in all') }}</span><span>{{ money(receipt.on_account.owed_total, receipt.company_currency) }}</span></div>
@@ -115,10 +116,10 @@
         </template>
       </div>
 
-      <div class="retail-counts">
-        <span>{{ t('Total items') }}: <b>{{ itemCount }}</b></span><span>{{ t('Total qty') }}: <b>{{ qty(totalQty) }}</b></span>
+      <div v-if="enabled('receipt_show_item_count') || enabled('receipt_show_total_qty')" class="retail-counts">
+        <span v-if="enabled('receipt_show_item_count')">{{ t('Total items') }}: <b>{{ itemCount }}</b></span><span v-if="enabled('receipt_show_total_qty')">{{ t('Total qty') }}: <b>{{ qty(totalQty) }}</b></span>
       </div>
-      <div v-if="s.receipt_show_saved !== 0 && totalSavings > 0 && !receipt.is_return" class="retail-savings">
+      <div v-if="enabled('receipt_show_savings') && s.receipt_show_saved !== 0 && totalSavings > 0 && !receipt.is_return" class="retail-savings">
         <span>{{ t('You saved') }}</span><strong>{{ m(totalSavings) }}</strong>
       </div>
       <div v-if="loyaltyVisible" class="retail-loyalty">
@@ -151,8 +152,8 @@
         <img v-if="showReceiptLogo" :src="s.receipt_logo" class="receipt-logo" alt="" />
         <div v-if="showCompanyName" class="receipt-company" :style="companyStyle">{{ receipt.company }}</div>
       </template>
-      <div v-if="s.receipt_header" class="muted small receipt-extra">{{ s.receipt_header }}</div>
-      <div v-if="s.receipt_shop_phone" class="muted small receipt-extra">{{ s.receipt_shop_phone }}</div>
+      <div v-if="enabled('receipt_show_header_text') && s.receipt_header" class="muted small receipt-extra">{{ s.receipt_header }}</div>
+      <div v-if="enabled('receipt_show_phone') && s.receipt_shop_phone" class="muted small receipt-extra">{{ s.receipt_shop_phone }}</div>
       <div v-if="s.receipt_show_address && s.receipt_address" class="muted small receipt-extra">
         {{ s.receipt_address }}
       </div>
@@ -161,11 +162,11 @@
       </div>
       <div v-if="receipt.is_return" class="return-stamp">{{ t('REFUND') }}</div>
       <div class="muted small">
-        {{ receipt.name }} · {{ receipt.posting_date }} {{ String(receipt.posting_time || '').split('.')[0] }}
+        {{ receipt.name }}<template v-if="enabled('receipt_show_datetime')"> · {{ receipt.posting_date }} {{ String(receipt.posting_time || '').split('.')[0] }}</template>
       </div>
       <div class="muted small" v-if="receipt.return_against">{{ t('against') }} {{ receipt.return_against }}</div>
-      <div v-if="receipt.walk_in_code" class="muted small">{{ t('Customer code') }} {{ receipt.walk_in_code }}</div>
-      <div v-if="customerLabel" class="muted small">{{ customerLabel }}</div>
+      <div v-if="enabled('receipt_show_customer') && receipt.walk_in_code" class="muted small">{{ t('Customer code') }} {{ receipt.walk_in_code }}</div>
+      <div v-if="enabled('receipt_show_customer') && customerLabel" class="muted small">{{ customerLabel }}</div>
       <div class="muted small" v-if="s.receipt_show_cashier !== 0 && receipt.sales_person">{{ t('Served by') }} {{ receipt.sales_person }}</div>
       <div class="muted small" v-if="receipt.app_type">
         {{ receipt.app_type }}<span v-if="receipt.order_id"> · {{ t('Order') }} {{ receipt.order_id }}</span>
@@ -207,7 +208,7 @@
       <div v-if="s.receipt_show_discount !== 0 && receipt.discount_amount" class="row">
         <span>{{ t('Discount') }}</span><span>-{{ m(receipt.discount_amount) }}</span>
       </div>
-      <div v-for="tax in receipt.taxes" :key="tax.description" class="row">
+      <div v-for="tax in (enabled('receipt_show_taxes') ? receipt.taxes : [])" :key="tax.description" class="row">
         <span>{{ tax.description }}</span><span>{{ m(tax.tax_amount) }}</span>
       </div>
       <div class="row total">
@@ -237,7 +238,7 @@
       <div v-if="receipt.loyalty_change_amount" class="row">
         <span>{{ t('Change saved as points') }} ({{ receipt.loyalty_change_points }})</span><span>{{ m(receipt.loyalty_change_amount) }}</span>
       </div>
-      <div v-if="receipt.change_amount" class="row">
+      <div v-if="enabled('receipt_show_change') && receipt.change_amount" class="row">
         <span>{{ t('Change') }}</span>
         <span>{{ foreign && receipt.change_currency !== receipt.currency ? money(receipt.base_change_amount, receipt.company_currency) : m(receipt.change_amount) }}</span>
       </div>
@@ -264,7 +265,7 @@
       {{ t('Customer signature') }}
     </div>
 
-    <div v-if="s.receipt_show_saved !== 0 && totalSavings > 0 && !receipt.is_return" class="retail-savings">
+    <div v-if="enabled('receipt_show_savings') && s.receipt_show_saved !== 0 && totalSavings > 0 && !receipt.is_return" class="retail-savings">
       <span>{{ t('You saved') }}</span><strong>{{ m(totalSavings) }}</strong>
     </div>
     <div v-if="s.receipt_show_discount !== 0 && receipt.applied_promotions?.length" class="receipt-promos">
@@ -272,7 +273,7 @@
         ★ {{ promo.title }} ({{ t('saved') }} {{ m(promo.savings) }})
       </div>
     </div>
-    <div v-if="receipt.loyalty_points_earned" class="receipt-promos muted small">
+    <div v-if="enabled('receipt_show_loyalty') && receipt.loyalty_points_earned" class="receipt-promos muted small">
       {{ t('Points earned:') }} {{ receipt.loyalty_points_earned }}
     </div>
 
@@ -299,8 +300,8 @@
         <div aria-hidden="true" v-html="invoiceBarcode"></div>
         <div class="mono" dir="ltr">{{ receipt.name }}</div>
       </div>
-      <div>{{ t('Thank you!') }}</div>
-      <div class="receipt-extra">{{ footer }}</div>
+      <div v-if="enabled('receipt_show_footer')">{{ t('Thank you!') }}</div>
+      <div v-if="enabled('receipt_show_footer')" class="receipt-extra">{{ footer }}</div>
     </footer>
   </div>
 </template>
@@ -309,7 +310,8 @@
 import { computed } from 'vue'
 import { t } from '../i18n'
 import { isolate, money, outletCurrency, rateLine } from '../format'
-import { receiptFooter } from '../receiptOptions'
+import { receiptDesignStyle } from '../receiptDesign'
+import { receiptOptionEnabled, receiptFooter } from '../receiptOptions'
 import { svg as barcodeSvg } from '../barcode'
 import { useSessionStore } from '../stores/session'
 
@@ -330,12 +332,17 @@ const session = useSessionStore()
 const s = computed(
   () => props.settings || { ...(session.settings || {}), ...(props.receipt.receipt_settings || {}) }
 )
+const enabled = (field) => receiptOptionEnabled(s.value, field)
+const showMrp = computed(() => enabled('receipt_show_mrp'))
+const showLineDiscount = computed(() => enabled('receipt_show_discount') && enabled('receipt_show_line_discount'))
+const itemColspan = computed(() => 2 + Number(showMrp.value) + Number(showLineDiscount.value))
+const designStyle = computed(() => receiptDesignStyle(s.value.receipt_design || {}))
 const footer = computed(() => receiptFooter(s.value.receipt_footer || ''))
 const invoiceBarcode = computed(() => props.receipt.offline ? '' : barcodeSvg(props.receipt.name, { code128: true }))
 const showReceiptLogo = computed(() => Boolean(s.value.receipt_logo) && s.value.receipt_branding_mode !== 'Name only')
 const showCompanyName = computed(() => s.value.receipt_branding_mode !== 'Logo only' || !s.value.receipt_logo)
 const companyStyle = computed(() => ({
-  textAlign: ({ Left: 'left', Center: 'center', Right: 'right' })[s.value.receipt_company_alignment] || 'center',
+  textAlign: designStyle.value['--rc-headerAlign'] || ({ Left: 'left', Center: 'center', Right: 'right' })[s.value.receipt_company_alignment] || 'center',
   fontSize: `${Math.min(28, Math.max(12, Number(s.value.receipt_company_size) || 16))}px`,
   fontWeight: s.value.receipt_company_bold === 0 ? 500 : 800,
 }))
@@ -403,15 +410,15 @@ const totalQty = computed(() =>
     ? number(props.receipt.total_qty)
     : (props.receipt.items || []).reduce((sum, item) => sum + Math.abs(number(item.qty)), 0)
 )
-const loyaltyVisible = computed(() =>
+const loyaltyVisible = computed(() => enabled('receipt_show_loyalty') && (
   Boolean(props.receipt.loyalty) ||
   Boolean(props.receipt.loyalty_points_earned) ||
-  Boolean(props.receipt.loyalty_points_redeemed)
+  Boolean(props.receipt.loyalty_points_redeemed))
 )
 
 // Dynamic custom fields resolved by the server (get_receipt), each is
 // { label, value, render: 'Text'|'Image', position: 'Header'|'Footer' }.
-const cf = computed(() => props.receipt.custom_fields || [])
+const cf = computed(() => enabled('receipt_show_custom_fields') ? (props.receipt.custom_fields || []) : [])
 const headerCustomFields = computed(() => cf.value.filter((f) => f.position === 'Header'))
 const footerCustomFields = computed(() => cf.value.filter((f) => f.position !== 'Header'))
 function asImg(value) {

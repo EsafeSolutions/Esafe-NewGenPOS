@@ -56,7 +56,7 @@ try{
   await admin('admin.pairing.decide',{id:pending.id,allow:true,permissions});await pairing
   const printers=await client.printers.list();assert.ok(printers.some(p=>p.id===printerId),'Use the same installed Windows queue')
   const capabilities=await client.printers.capabilities(printerId),results=[]
-  for(const [phase,name]of[['before','58-Table-58'],['before','80-Table-80'],['after','58-Table-58'],['after','80-Table-80'],['after','80-Table-72']]){
+  for(const [phase,name]of[['before','58-Table-58'],['before','80-Table-80'],['after','58-Table-58'],['after','80-Table-80'],['after','80-Table-72'],['after','80-Table-72-M3-7-1-6'],['after','80-Table-72-CUSTOM'],['after','80-Table-80-SAFE'],['after','58-Table-58-CUSTOM-SAFE'],['after','80-Retail-80-SAFE-LONG']]){
     const file=path.resolve(output,'..',phase,name+'.request.json'),request=JSON.parse(await readFile(file,'utf8'))
     const response=await client.preview({printerId:request.printerId,format:request.format,data:new Uint8Array(Buffer.from(request.dataBase64,'base64')),options:request.options,title:request.title})
     await writeFile(path.join(output,phase+'-'+name+'.png'),Buffer.from(response.dataBase64,'base64'))

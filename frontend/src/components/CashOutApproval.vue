@@ -77,6 +77,7 @@ const props = defineProps({
   currency: { type: String, default: null },
   drawer: { type: String, default: null },
   reason: { type: String, default: '' },
+  posProfile: { type: String, default: '' },
 })
 const emit = defineEmits(['close', 'approved'])
 const session = useSessionStore()
@@ -121,7 +122,7 @@ async function sendRequest() {
   try {
     const res = await call('esafepos.api.approval_requests.create_request', {
       request_type: 'Cash Out',
-      pos_profile: session.posProfile,
+      pos_profile: props.posProfile || session.posProfile,
       amount: props.amount,
       mode_of_payment: props.drawer || null,
       reason: props.reason || null,

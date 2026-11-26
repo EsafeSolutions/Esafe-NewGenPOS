@@ -8,11 +8,15 @@ from __future__ import annotations
 
 import json
 
+from esafepos.receipt_design import clean_receipt_design
+from esafepos.receipt_options import RECEIPT_OPTION_DEFAULTS, receipt_option_enabled
+
 import frappe
 from frappe import _
 from frappe.utils import cint, flt, getdate, nowdate
 from frappe.utils.password import get_decrypted_password
 
+from esafepos import bank_display
 from esafepos import __version__
 from esafepos import erpnext_compat
 from esafepos.api import approval_requests
@@ -159,6 +163,7 @@ def get_settings():
         "enable_audit_log": 1 if doc.get("enable_audit_log") else 0,
         "enable_email_receipt": 1 if doc.get("enable_email_receipt") else 0,
         "enable_customer_display": 1 if doc.get("enable_customer_display") else 0,
+        "bank_transfer_display": bank_display.settings_value(doc),
         "enable_walk_in_codes": cint(doc.get("enable_walk_in_codes")),
         "enable_receipt_customer_link": cint(doc.get("enable_receipt_customer_link")),
         "enable_till_lock": 1 if doc.get("enable_till_lock") else 0,
@@ -198,6 +203,7 @@ def get_settings():
         "receipt_address": doc.get("receipt_address") or "",
         "receipt_show_terms": 1 if doc.get("receipt_show_terms") else 0,
         "receipt_terms": doc.get("receipt_terms") or "",
+        **receipt_config(doc),
         "gift_card_expiry_days": doc.get("gift_card_expiry_days") or 0,
         "companies": frappe.get_all("Company", pluck="name", order_by="name asc"),
         "pos_profiles": frappe.get_all(
@@ -814,7 +820,7 @@ RECEIPT_FIELDS = [
     "receipt_show_cashier", "receipt_show_terminal", "receipt_show_invoice_barcode",
     "receipt_show_tax_id", "receipt_tax_id", "receipt_show_address",
     "receipt_address", "receipt_show_terms", "receipt_terms",
-]
+] + [field for field in RECEIPT_OPTION_DEFAULTS if field not in ("receipt_show_cashier", "receipt_show_terminal")] + ["receipt_design"]
 
 _RECEIPT_BOOL = {
     "receipt_show_item_code", "receipt_show_barcode", "receipt_show_serial",
@@ -832,6 +838,9 @@ _RECEIPT_BOOL_DEFAULTS = {
     "receipt_show_saved": 1,
 }
 
+_RECEIPT_BOOL.update(RECEIPT_OPTION_DEFAULTS)
+_RECEIPT_BOOL_DEFAULTS.update(RECEIPT_OPTION_DEFAULTS)
+
 
 def receipt_config(source):
     """A clean, correctly-typed receipt dict from any source (the settings doc
@@ -842,7 +851,12 @@ def receipt_config(source):
     for f in RECEIPT_FIELDS:
         v = get(f)
         if f in _RECEIPT_BOOL:
-            out[f] = 1 if v or (v is None and _RECEIPT_BOOL_DEFAULTS.get(f)) else 0
+            out[f] = int(receipt_option_enabled({f: v}, f)) if f in _RECEIPT_BOOL_DEFAULTS else int(v not in (None, 0, False, "0", "false", ""))
+        elif f == "receipt_design":
+            try:
+                out[f] = clean_receipt_design(v)
+            except (ValueError, TypeError):
+                frappe.throw(_("Invalid advanced receipt design."))
         elif f == "receipt_template":
             out[f] = v or "Retail"
         elif f == "receipt_paper_width":
@@ -862,7 +876,7 @@ def _apply_receipt_payload(doc, payload):
     config = receipt_config(payload)
     for field in RECEIPT_FIELDS:
         if field in payload:
-            doc.set(field, config[field])
+            doc.set(field, json.dumps(config[field]) if field == "receipt_design" else config[field])
 
 
 def profile_receipt(pos_profile):

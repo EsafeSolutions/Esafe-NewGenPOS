@@ -28,6 +28,7 @@
         </div>
       </div>
 
+      <p v-if="displayPayment?.bankAccounts?.length" class="bank-display-hint"><Icon name="monitor" /> {{ t('Bank account details and QR are showing on the customer display.') }}</p>
       <div class="amount-due">
         <div class="due-label">{{ remaining > 0 ? t('Remaining') : t('Change') }}</div>
         <div class="due-value" :class="{ change: remaining < 0 }">
@@ -287,6 +288,7 @@ import PaymentBrand from './PaymentBrand.vue'
 import RefundApproval from './RefundApproval.vue'
 import { ref, computed, onMounted, onBeforeUnmount, watchEffect } from 'vue'
 import { displayPayment, displayReceipt, receiptSnapshot } from '../customerDisplay'
+import { bankAccounts } from '../bankDisplay'
 import { call } from '../api'
 import { useCartStore } from '../stores/cart'
 import { useSessionStore } from '../stores/session'
@@ -434,6 +436,7 @@ watchEffect(() => {
   if (!session.settings?.enable_customer_display) return
   const currency = sale.value.currency
   displayPayment.value = {
+    bankAccounts: bankAccounts(session.settings.bank_transfer_display, session.posProfile, currency, payments.value.at(-1)?.mode_of_payment || ''),
     total: money(total.value, currency),
     paid: money(paid.value, currency),
     due: remaining.value > 0 ? money(remaining.value, currency) : '',
@@ -887,6 +890,7 @@ function round2(n) {
 </script>
 
 <style scoped>
+.bank-display-hint { display: flex; align-items: center; gap: 8px; margin: 0 0 14px; padding: 12px; border-radius: var(--radius); color: var(--brand-dark); background: var(--surface-2); font-size: 13px; }
 .change-points { padding: 16px; }
 .change-points-choice { display: flex; align-items: center; gap: 12px; cursor: pointer; }
 .change-points-choice input { width: 22px; height: 22px; flex: 0 0 auto; accent-color: var(--brand); }

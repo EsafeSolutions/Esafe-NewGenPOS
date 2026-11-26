@@ -24,7 +24,7 @@ from frappe import _
 from frappe.utils import cint, flt
 
 from esafepos.api.sales import get_receipt
-from esafepos.receipt_options import receipt_footer
+from esafepos.receipt_options import receipt_footer, receipt_option_enabled
 from esafepos.receipt_barcode import invoice_raster
 
 ESC = b"\x1b"
@@ -134,12 +134,13 @@ def build_receipt_bytes(receipt, open_drawer=0):
     out += _text(receipt["company"]) + b"\n"
     out += NORMAL_SIZE + BOLD_OFF
     out += _text(receipt["name"]) + b"\n"
-    out += _text(f"{receipt['posting_date']} {str(receipt['posting_time']).split('.')[0]}") + b"\n"
-    if receipt.get("walk_in_code"):
+    if receipt_option_enabled(settings, "receipt_show_datetime"):
+        out += _text(f"{receipt['posting_date']} {str(receipt['posting_time']).split('.')[0]}") + b"\n"
+    if receipt_option_enabled(settings, "receipt_show_customer") and receipt.get("walk_in_code"):
         out += _text("Customer code: " + receipt["walk_in_code"]) + b"\n"
-    if receipt["customer_name"] != receipt.get("walk_in_code"):
+    if receipt_option_enabled(settings, "receipt_show_customer") and receipt["customer_name"] != receipt.get("walk_in_code"):
         out += _text(receipt["customer_name"] or "") + b"\n"
-    if ((receipt.get("walk_in_code") or receipt.get("receipt_contact"))
+    if (receipt_option_enabled(settings, "receipt_show_customer") and (receipt.get("walk_in_code") or receipt.get("receipt_contact"))
             and receipt.get("customer_phone") and receipt["customer_phone"] != receipt["customer_name"]):
         out += _text(receipt["customer_phone"]) + b"\n"
     # The selling company's VAT number (its receipt's, else the company's own),
@@ -158,7 +159,7 @@ def build_receipt_bytes(receipt, open_drawer=0):
     out += _line() + b"\n"
     if settings.get("receipt_show_discount", 1) and receipt.get("discount_amount"):
         out += _text(_pad("Discount", "-" + _num(receipt["discount_amount"]))) + b"\n"
-    for tax in receipt.get("taxes", []):
+    for tax in (receipt.get("taxes", []) if receipt_option_enabled(settings, "receipt_show_taxes") else []):
         out += _text(_pad(tax["description"][: WIDTH - 12], _num(tax["tax_amount"]))) + b"\n"
 
     out += BOLD_ON
@@ -174,7 +175,7 @@ def build_receipt_bytes(receipt, open_drawer=0):
         out += _text(_pad(f"= {local}", _num(receipt["base_grand_total"]))) + b"\n"
         out += _text(f"1 {receipt['currency']} = {flt(receipt.get('conversion_rate')):g} {local}") + b"\n"
 
-    for payment in receipt.get("payments", []):
+    for payment in (receipt.get("payments", []) if settings.get("receipt_show_payments", 1) else []):
         if foreign and payment.get("currency"):
             shown = f"{payment['currency']} {_num(payment.get('tendered'))}"
         else:
@@ -184,7 +185,7 @@ def build_receipt_bytes(receipt, open_drawer=0):
         out += _text(_pad("Loyalty points", _num(receipt["loyalty_amount"]))) + b"\n"
     if receipt.get("loyalty_change_amount"):
         out += _text(_pad("Change saved as points", _num(receipt["loyalty_change_amount"]))) + b"\n"
-    if receipt.get("change_amount"):
+    if receipt_option_enabled(settings, "receipt_show_change") and receipt.get("change_amount"):
         if foreign and receipt.get("change_currency") != receipt.get("currency"):
             change = f"{local} {_num(receipt.get('base_change_amount'))}"
         elif foreign:
@@ -208,7 +209,7 @@ def build_receipt_bytes(receipt, open_drawer=0):
         out += _line() + b"\n"
         for promo in promos:
             out += _text(f"* {promo['title']} (saved {_num(promo['savings'])})") + b"\n"
-    if receipt.get("loyalty_points_earned"):
+    if receipt_option_enabled(settings, "receipt_show_loyalty") and receipt.get("loyalty_points_earned"):
         out += _text(f"Points earned: {receipt['loyalty_points_earned']}") + b"\n"
 
     out += _receipt_footer_bytes(settings, width, receipt["name"])
@@ -235,8 +236,8 @@ def _retail_receipt_body(receipt, width, lined=False):
     out += _text(receipt.get("company") or "") + b"\n"
     out += NORMAL_SIZE + BOLD_OFF
     for line in (
-        settings.get("receipt_header") if settings.get("receipt_header") else None,
-        settings.get("receipt_shop_phone") if settings.get("receipt_shop_phone") else None,
+        settings.get("receipt_header") if receipt_option_enabled(settings, "receipt_show_header_text") else None,
+        settings.get("receipt_shop_phone") if receipt_option_enabled(settings, "receipt_show_phone") else None,
         settings.get("receipt_address")
         if settings.get("receipt_show_address") and settings.get("receipt_address")
         else None,
@@ -255,15 +256,15 @@ def _retail_receipt_body(receipt, width, lined=False):
     when = "{} {}".format(
         receipt.get("posting_date") or "", str(receipt.get("posting_time") or "").split(".")[0]
     ).strip()
-    if when:
+    if receipt_option_enabled(settings, "receipt_show_datetime") and when:
         out += _text(_pad("TIME", when, width)) + b"\n"
     code = receipt.get("walk_in_code")
-    if code:
+    if receipt_option_enabled(settings, "receipt_show_customer") and code:
         out += _text(_pad("CUSTOMER CODE", code, width)) + b"\n"
     name = receipt.get("customer_name")
     phone = receipt.get("customer_phone")
     customer = " / ".join(value for value in (name if name != code else "", phone if phone != name else "") if value)
-    if customer:
+    if receipt_option_enabled(settings, "receipt_show_customer") and customer:
         out += _text(_pad("CUSTOMER", customer, width)) + b"\n"
     if settings.get("receipt_show_cashier", 1) and receipt.get("cashier"):
         out += _text(_pad("CASHIER", receipt["cashier"], width)) + b"\n"
@@ -272,10 +273,11 @@ def _retail_receipt_body(receipt, width, lined=False):
     if receipt.get("return_against"):
         out += _text(_pad("AGAINST", receipt["return_against"], width)) + b"\n"
 
-    show_discount = settings.get("receipt_show_discount", 1)
-    rule = _retail_grid_rule(width, show_discount=show_discount) if lined else _line(width)
+    show_discount = settings.get("receipt_show_discount", 1) and receipt_option_enabled(settings, "receipt_show_line_discount")
+    show_mrp = receipt_option_enabled(settings, "receipt_show_mrp")
+    rule = _retail_grid_rule(width, show_discount=show_discount, show_mrp=show_mrp) if lined else _line(width)
     out += rule + b"\n"
-    out += _text(_retail_columns("QTY", "MRP", "DISC", "AMOUNT", width, lined, show_discount)) + b"\n"
+    out += _text(_retail_columns("QTY", "MRP", "DISC", "AMOUNT", width, lined, show_discount, show_mrp)) + b"\n"
     out += rule + b"\n"
     for index, item in enumerate(receipt.get("items") or []):
         name = "{}) {}".format(index + 1, item.get("item_name") or item.get("item_code") or "")
@@ -293,6 +295,7 @@ def _retail_receipt_body(receipt, width, lined=False):
                 width,
                 lined,
                 show_discount,
+                show_mrp,
             )
         ) + b"\n"
         if lined:
@@ -300,11 +303,12 @@ def _retail_receipt_body(receipt, width, lined=False):
 
     if not lined:
         out += rule + b"\n"
-    out += _text(_pad("GROSS TOTAL", _num(receipt.get("gross_total")), width)) + b"\n"
+    if receipt_option_enabled(settings, "receipt_show_gross_total"):
+        out += _text(_pad("GROSS TOTAL", _num(receipt.get("gross_total")), width)) + b"\n"
     savings = flt(receipt.get("total_savings"))
-    if show_discount and savings > 0 and not receipt.get("is_return"):
+    if receipt_option_enabled(settings, "receipt_show_total_discount") and settings.get("receipt_show_discount", 1) and savings > 0 and not receipt.get("is_return"):
         out += BOLD_ON + _text(_pad("DISCOUNT", "-" + _num(savings), width)) + BOLD_OFF + b"\n"
-    for tax in receipt.get("taxes") or []:
+    for tax in ((receipt.get("taxes") or []) if receipt_option_enabled(settings, "receipt_show_taxes") else []):
         out += _text(_pad((tax.get("description") or "TAX")[: width - 12], _num(tax.get("tax_amount")), width)) + b"\n"
     rounding = flt(receipt.get("rounding_adjustment"))
     if rounding:
@@ -314,7 +318,7 @@ def _retail_receipt_body(receipt, width, lined=False):
     out += _text(_pad("NET TOTAL", "{} {}".format(receipt.get("currency") or "", _num(total)).strip(), width)) + b"\n"
     out += BOLD_OFF
 
-    for payment in receipt.get("payments") or []:
+    for payment in ((receipt.get("payments") or []) if settings.get("receipt_show_payments", 1) else []):
         out += _text(_pad(payment.get("mode_of_payment") or "PAID", _num(payment.get("amount")), width)) + b"\n"
     if receipt.get("loyalty_amount"):
         out += _text(_pad("LOYALTY REDEEMED", _num(receipt.get("loyalty_amount")), width)) + b"\n"
@@ -322,11 +326,13 @@ def _retail_receipt_body(receipt, width, lined=False):
         out += _text(_pad("CHANGE SAVED AS POINTS", _num(receipt.get("loyalty_change_amount")), width)) + b"\n"
     if receipt.get("change_amount"):
         out += _text(_pad("CHANGE", _num(receipt.get("change_amount")), width)) + b"\n"
-    out += _text(_pad("ITEMS", receipt.get("item_count") or len(receipt.get("items") or []), width)) + b"\n"
-    out += _text(_pad("TOTAL QTY", _num(receipt.get("total_qty")), width)) + b"\n"
+    if receipt_option_enabled(settings, "receipt_show_item_count"):
+        out += _text(_pad("ITEMS", receipt.get("item_count") or len(receipt.get("items") or []), width)) + b"\n"
+    if receipt_option_enabled(settings, "receipt_show_total_qty"):
+        out += _text(_pad("TOTAL QTY", _num(receipt.get("total_qty")), width)) + b"\n"
 
     loyalty = receipt.get("loyalty") or {}
-    if loyalty:
+    if receipt_option_enabled(settings, "receipt_show_loyalty") and loyalty:
         out += _line(width) + b"\n"
         out += ALIGN_CENTER + BOLD_ON + _text("LOYALTY POINTS") + BOLD_OFF + b"\n" + ALIGN_LEFT
         if receipt.get("loyalty_points_earned"):
@@ -335,7 +341,7 @@ def _retail_receipt_body(receipt, width, lined=False):
             out += _text(_pad("POINTS REDEEMED", receipt.get("loyalty_points_redeemed"), width)) + b"\n"
         out += BOLD_ON + _text(_pad("POINTS BALANCE", loyalty.get("balance", 0), width)) + BOLD_OFF + b"\n"
 
-    if settings.get("receipt_show_saved", 1) and savings > 0 and not receipt.get("is_return"):
+    if receipt_option_enabled(settings, "receipt_show_savings") and settings.get("receipt_show_saved", 1) and savings > 0 and not receipt.get("is_return"):
         out += _line(width) + b"\n"
         out += ALIGN_CENTER + BOLD_ON + _text("YOU SAVED " + _num(savings)) + BOLD_OFF + b"\n" + ALIGN_LEFT
     if settings.get("receipt_terms") and settings.get("receipt_show_terms"):
@@ -355,6 +361,8 @@ def _receipt_footer_bytes(settings, width, invoice_id):
     )
     if barcode:
         out += barcode + _text(invoice_id) + b"\n"
+    if not receipt_option_enabled(settings, "receipt_show_footer"):
+        return out
     out += b"Thank you!\n"
     for line in receipt_footer(settings).splitlines():
         for part in wrap(line, width=width):
@@ -362,25 +370,19 @@ def _receipt_footer_bytes(settings, width, invoice_id):
     return out
 
 
-def _retail_column_widths(width, lined, show_discount=True):
-    amount_width = 10 if width >= 42 else 8
-    price_width = 9 if width >= 42 else 7
-    discount_width = 9 if width >= 42 else 7
-    if show_discount:
-        qty_width = width - amount_width - price_width - discount_width - (5 if lined else 3)
-        return qty_width, price_width, discount_width, amount_width
-    qty_width = width - amount_width - price_width - (4 if lined else 2)
-    return qty_width, price_width, amount_width
+def _retail_column_widths(width, lined, show_discount=True, show_mrp=True):
+    sizes = ([9 if width >= 42 else 7] if show_mrp else []) + ([9 if width >= 42 else 7] if show_discount else []) + [10 if width >= 42 else 8]
+    count = len(sizes) + 1
+    return tuple([width - sum(sizes) - (count + 1 if lined else count - 1)] + sizes)
 
 
-def _retail_grid_rule(width, show_discount=True):
-    return b"+" + b"+".join(b"-" * size for size in _retail_column_widths(width, True, show_discount)) + b"+"
+def _retail_grid_rule(width, show_discount=True, show_mrp=True):
+    return b"+" + b"+".join(b"-" * size for size in _retail_column_widths(width, True, show_discount, show_mrp)) + b"+"
 
 
-def _retail_columns(qty, mrp, discount, amount, width, lined=False, show_discount=True):
-    """Right-align retail columns within a 58 mm or 80 mm line."""
-    values = (qty, mrp, discount, amount) if show_discount else (qty, mrp, amount)
-    widths = _retail_column_widths(width, lined, show_discount)
+def _retail_columns(qty, mrp, discount, amount, width, lined=False, show_discount=True, show_mrp=True):
+    values = [qty] + ([mrp] if show_mrp else []) + ([discount] if show_discount else []) + [amount]
+    widths = _retail_column_widths(width, lined, show_discount, show_mrp)
     if not lined:
         return " ".join(_right(value, size) for value, size in zip(values, widths))
     columns = [wrap(value, width=size) for value, size in zip(values, widths)]

@@ -2,7 +2,10 @@
      SPDX-License-Identifier: AGPL-3.0-only
      "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md. -->
 <template>
-  <div class="register">
+  <div class="register" :class="{ 'register-wide': registerTab === 'all' }">
+    <nav class="register-tabs" :aria-label="t('Register workspace')"><button class="btn btn-outline" :aria-pressed="registerTab === 'current'" @click="registerTab = 'current'" :disabled="hubBusy">{{ t('This register') }}</button><button class="btn btn-outline" :aria-pressed="registerTab === 'all'" @click="registerTab = 'all'" :disabled="hubBusy"><Icon name="store" /> {{ t('All registers') }}</button></nav>
+    <AllRegisters v-if="registerTab === 'all'" @busy="hubBusy = $event" @changed="refreshAfterHub" @switched="hubSwitched" />
+    <template v-else>
     <div v-if="pending && !closedResult" class="card panel">
       <div class="panel-head">{{ t('Previous shift') }} · {{ pending.session }}</div>
       <div class="panel-body">
@@ -192,39 +195,7 @@
           <button v-if="session.settings.shift_multiple_computers === 0 && session.permissions.is_manager" class="btn btn-outline" :disabled="movingComputer || session.offline" @click="moveComputer">{{ movingComputer ? t('Moving…') : t('Use this computer for this shift') }}</button>
         </div>
         <div class="panel-body" v-if="summary">
-          <div class="stat-row">
-            <div class="stat">
-              <div class="stat-label">{{ t('Sales') }}</div>
-              <div class="stat-value">{{ summary.sales_count }}</div>
-            </div>
-            <div class="stat">
-              <div class="stat-label">{{ t('Takings') }}</div>
-              <div class="stat-value">{{ money(summary.total_sales, local) }}</div>
-            </div>
-            <div class="stat">
-              <div class="stat-label">{{ t('Discounts given') }}</div>
-              <div class="stat-value">{{ money(summary.total_discounts, local) }}</div>
-            </div>
-            <div class="stat">
-              <div class="stat-label">{{ t('Opening float') }}</div>
-              <div class="stat-value">{{ money(summary.opening_float, local) }}</div>
-              <div v-for="(amount, drawer) in summary.foreign_floats || {}" :key="drawer" class="muted small">
-                {{ drawer }}: {{ money(amount, drawerCurrency(drawer)) }}
-              </div>
-            </div>
-            <!-- Sales on account (0.60.0): owed, never in a drawer, and the
-                 customers' payments of what they owe, which are. -->
-            <div v-if="summary.on_account" class="stat" data-tour="register-on-account">
-              <div class="stat-label">{{ t('On account') }}</div>
-              <div class="stat-value">{{ money(summary.on_account, local) }}</div>
-              <div class="muted small">{{ t('Owed, not in the drawer') }}</div>
-            </div>
-            <div v-if="summary.customer_payments_total" class="stat">
-              <div class="stat-label">{{ t('Customer payments') }}</div>
-              <div class="stat-value">{{ money(summary.customer_payments_total, local) }}</div>
-              <div class="muted small">{{ t('{n} taken, in the drawer', { n: summary.customer_payments.length }) }}</div>
-            </div>
-          </div>
+          <RegisterSummary :summary="summary" />
           <!-- Who sold what on this shift (esafepos.api.salespeople.shift_rows). -->
           <div v-if="summary.salespeople?.length" class="sp-block">
             <div class="days-title">{{ t('By salesperson') }}</div>
@@ -420,6 +391,7 @@
           </div>
           <p v-if="otherLoading" class="muted">{{ t('Loading session summary…') }}</p>
           <SharedDrawerPanel v-if="!otherLoading" :key="otherTarget.session" :session-name="otherTarget.session" @changed="otherCombinedDrawer = $event" @closed="sharedClosed" />
+          <RegisterSummary v-if="!otherLoading && otherSummary" :summary="otherSummary" />
           <template v-if="!otherLoading && !otherCombinedDrawer">
             <div v-if="otherError" class="summary-error">
               {{ t('⚠ Couldn\'t load the expected takings') }} ({{ otherError }}). {{ t('You can still close the register. Enter the counted amounts below.') }}
@@ -530,9 +502,17 @@
             <summary>{{ t('Help with this closing') }}</summary>
             <ShiftClosingHelp :state="past" :session-name="past.name" :manager="session.permissions.is_manager" />
           </details>
+          <details class="history-help" @toggle="loadPastSummary(past, $event)">
+            <summary><Icon name="report" /> {{ t('Full session summary and payment counts') }}</summary>
+            <p v-if="past.summaryLoading" class="muted small">{{ t('Loading…') }}</p>
+            <p v-if="past.summaryError" class="neg small" role="alert">{{ past.summaryError }} <button class="btn btn-outline" @click="loadPastSummary(past)">{{ t('Retry') }}</button></p>
+            <RegisterSummary v-if="past.fullSummary" :summary="past.fullSummary" />
+            <div v-for="row in past.counts || []" :key="row.mode_of_payment" class="past-count small"><b>{{ row.mode_of_payment }}</b><span>{{ t('Counted') }} {{ money(row.counted_amount, row.currency || local) }}</span><span>{{ t('Difference') }} {{ past.expected_pending ? '—' : money(row.difference, row.currency || local) }}</span></div>
+          </details>
         </div>
       </div>
     </div>
+    </template>
     <CashOutApproval
       v-if="approving"
       :amount="approving.amount"
@@ -550,6 +530,8 @@ import CashDrawerButton from '../components/printing/CashDrawerButton.vue'
 import CashDenominationCounter from '../components/CashDenominationCounter.vue'
 import SharedDrawerPanel from '../components/SharedDrawerPanel.vue'
 import Icon from '../components/Icon.vue'
+import AllRegisters from '../components/AllRegisters.vue'
+import RegisterSummary from '../components/RegisterSummary.vue'
 import SalespeopleTable from '../components/SalespeopleTable.vue'
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { call } from '../api'
@@ -563,6 +545,10 @@ import CashOutApproval from '../components/CashOutApproval.vue'
 import { t } from '../i18n'
 
 const session = useSessionStore()
+const registerTab = ref('current')
+const hubBusy = ref(false)
+async function refreshAfterHub() { pending.value = session.pendingClosing; await Promise.all([load(), loadHistory(), loadOtherShifts()]) }
+async function hubSwitched() { summary.value = null; counted.value = {}; denominations.value = {}; pending.value = session.pendingClosing; closedResult.value = null; registerTab.value = 'current'; await refreshAfterHub() }
 const summary = ref(null)
 const counted = ref({})
 const denominations = ref({})
@@ -834,6 +820,15 @@ async function loadHistory() {
   history.value = await call('esafepos.api.register.list_sessions', {
     pos_profile: session.posProfile,
   }).catch(() => [])
+}
+
+async function loadPastSummary(past, event) {
+  if (event && !event.target.open || past.fullSummary || past.summaryLoading) return
+  past.summaryLoading = true
+  past.summaryError = ''
+  try { past.fullSummary = await call('esafepos.api.register.get_session_summary', { session: past.name }) }
+  catch (e) { past.summaryError = e.message }
+  finally { past.summaryLoading = false }
 }
 
 async function sharedClosed() {
@@ -1148,6 +1143,13 @@ async function close() {
 </script>
 
 <style scoped>
+.register.register-wide { max-width: 1220px; }
+.register-tabs { display: flex; gap: 8px; padding: 4px 0; }
+.register-tabs [aria-pressed=true] { background: var(--surface-2); border-color: var(--brand); color: var(--brand-dark); }
+.register-tabs .btn { transition: background .16s ease, transform .16s ease; }
+.register-tabs .btn:hover:not(:disabled) { transform: translateY(-1px); }
+@media (prefers-reduced-motion: reduce) { .register-tabs .btn { transition: none; transform: none !important; } }
+
 .closing-guide { list-style: none; counter-reset: closing-step; margin: 0 0 18px; padding: 0; display: grid; gap: 12px; }
 .closing-guide li { counter-increment: closing-step; display: grid; grid-template-columns: 28px 1fr; column-gap: 10px; line-height: 1.5; }
 .closing-guide li::before { content: counter(closing-step); grid-row: span 2; background: var(--surface-2); color: var(--brand-dark); border-radius: 50%; width: 28px; height: 28px; display: grid; place-items: center; font-weight: 700; }
@@ -1155,6 +1157,7 @@ async function close() {
 .count-progress, .shift-note { line-height: 1.6; }
 .shift-note { border-inline-start: 3px solid var(--amber); padding-inline-start: 12px; }
 .history-help { margin-top: 12px; }
+.past-count { display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border-subtle); }
 .history-help > summary { cursor: pointer; color: var(--brand-dark); margin-bottom: 10px; font-weight: 600; }
 .queued-block {
   display: flex;

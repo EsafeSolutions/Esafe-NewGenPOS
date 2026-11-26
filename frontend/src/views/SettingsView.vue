@@ -1030,9 +1030,14 @@
 
     <!-- ============ CHANNELS & GENERAL ============ -->
     <section v-if="activeTab === 'General'" class="tab-body">
+      <CustomerMessagingSettings v-if="generalSection === 'messaging' && canManage" />
       <div v-if="generalSection === 'image-search'" class="sec-card">
         <div class="sec-title"><Icon name="image" /> {{ t('Product image search') }}</div>
         <ItemImageSearchSettings v-if="canManage" />
+      </div>
+      <div v-if="generalSection === 'invoice-scanning'" class="sec-card">
+        <div class="sec-title"><Icon name="image" /> {{ t('Purchase invoice scanning') }}</div>
+        <PurchaseOcrSettings v-if="canManage" />
       </div>
       <!-- Holds and deposits -->
       <div class="sec-card" v-show="generalSection === 'holds'">
@@ -1400,6 +1405,8 @@
           </div>
         </template>
       </div>
+
+      <BankDisplaySettings v-if="generalSection === 'bank-display'" />
 
       <!-- Register & Offline -->
       <div class="sec-card" v-show="generalSection === 'register'">
@@ -2304,12 +2311,12 @@
           {{ t('Edit item selling prices controls saved ERPNext prices. Managers have POS access by default. Add a rule to grant access to another role or person. ERPNext permissions also apply.') }}
         </p>
         <p class="muted hint-row">
-          {{ t('Create items, View warehouse stock, Adjust warehouse stock and Transfer warehouse stock are separate manager-default permissions. Grant each to a role or person as needed. Adjustments require ERPNext Stock Reconciliation create/submit permissions. Transfers require Stock Entry read/create/submit permissions. Both require View warehouse stock.') }}
+          {{ t('Create items, View warehouse stock, Adjust warehouse stock, Transfer warehouse stock and Receive warehouse stock are separate manager-default permissions. Adjustments require Stock Reconciliation create/submit permissions. Transfers and Material Receipts require Stock Entry read/create/submit permissions. All stock changes require View warehouse stock.') }}
         </p>
       </div>
 
       <!-- Sticky footer -->
-      <div v-if="generalSection !== 'image-search'" class="editor-footer">
+      <div v-if="!['image-search', 'invoice-scanning', 'bank-display', 'messaging'].includes(generalSection)" class="editor-footer">
         <span style="flex: 1" />
         <button class="btn btn-primary" :disabled="saving || !canManage" @click="saveGeneral">
           {{ saving ? t('Saving…') : t('Save Settings') }}
@@ -2415,9 +2422,12 @@
       </div>
     </section>
 
+    <section v-if="activeTab === 'Updates & versions'" class="tab-body"><UpdatesPanel /></section>
+
     <section v-if="activeTab === 'Status'" class="tab-body">
+      <div class="status-update-link"><button type="button" class="btn btn-outline" @click="pickSettingsTab('Updates & versions')"><Icon name="refresh" /> {{ t('Updates, features and version history') }}</button></div>
       <div class="status-grid">
-        <div class="stat sec-card"><div class="stat-label">{{ t('EsafePOS version') }}</div><div class="stat-value">{{ settingsInfo.version || '-' }}</div></div>
+        <div class="stat sec-card"><div class="stat-label">{{ t('EsafePOS version') }}</div><div class="stat-value">{{ interfaceVersion }}</div></div>
         <div class="stat sec-card"><div class="stat-label">{{ t('Outlet (POS Profile)') }}</div><div class="stat-value">{{ session.posProfile }}</div></div>
         <div class="stat sec-card"><div class="stat-label">{{ t('Default price list') }}</div><div class="stat-value">{{ session.priceList }}</div></div>
         <div class="stat sec-card"><div class="stat-label">{{ t('Connection') }}</div><div class="stat-value">{{ session.offline ? t('⚠ Offline') : t('✓ Online') }}</div></div>
@@ -2478,6 +2488,9 @@
 
 <script setup>
 import Icon from '../components/Icon.vue'
+import BankDisplaySettings from '../components/BankDisplaySettings.vue'
+import UpdatesPanel from '../components/UpdatesPanel.vue'
+import { interfaceVersion } from '../releaseNotes'
 import OfflineLogModal from '../components/OfflineLogModal.vue'
 import { ref, computed, onMounted, watch } from 'vue'
 import { call } from '../api'
@@ -2490,6 +2503,9 @@ import LinkPicker from '../components/LinkPicker.vue'
 import ScopePicker from '../components/ScopePicker.vue'
 import PriceListEditor from '../components/PriceListEditor.vue'
 import ItemImageSearchSettings from '../components/ItemImageSearchSettings.vue'
+import PurchaseOcrSettings from '../components/PurchaseOcrSettings.vue'
+import CustomerMessagingSettings from '../components/CustomerMessagingSettings.vue'
+import { useRoute } from 'vue-router'
 import UserAccessLevels from '../components/UserAccessLevels.vue'
 import { t, LANGUAGES } from '../i18n'
 
@@ -2498,7 +2514,7 @@ const help = useHelpStore()
 const catalog = useCatalogStore()
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
-const ALL_TABS = ['Promotions', 'Cashback', 'Bundles', 'Price Books', 'Loyalty & Gift Cards', 'General', 'Audit Log', 'System check', 'Status']
+const ALL_TABS = ['Promotions', 'Cashback', 'Bundles', 'Price Books', 'Loyalty & Gift Cards', 'General', 'Audit Log', 'System check', 'Updates & versions', 'Status']
 const perms = computed(() => session.permissions || {})
 
 function tabAllowed(tab) {
@@ -2515,6 +2531,7 @@ function tabAllowed(tab) {
 }
 const tabs = computed(() => ALL_TABS.filter(tabAllowed))
 const activeTab = ref('Status')
+const settingsRoute = useRoute()
 const settingsContent = ref(null)
 const generalOpen = ref(false)
 const sectionMenuOpen = ref(false)
@@ -2528,6 +2545,7 @@ const tabIcons = {
   General: 'settings',
   'Audit Log': 'list',
   'System check': 'shield',
+  'Updates & versions': 'refresh',
   Status: 'detail',
 }
 
@@ -2623,6 +2641,7 @@ const capabilityOptions = [
   'View warehouse stock',
   'Adjust warehouse stock',
   'Transfer warehouse stock',
+  'Receive warehouse stock',
   'Make returns',
   'Return past the window',
   'Exchange goods',
@@ -2857,19 +2876,25 @@ const generalSections = [
   { key: 'features', label: 'Features', icon: 'bulb' },
   { key: 'register', label: 'Shift Management', icon: 'store' },
   { key: 'payments', label: 'Payments and delivery', icon: 'card' },
+  { key: 'bank-display', label: 'Customer bank display', icon: 'bank' },
   { key: 'currencies', label: 'Other currencies', icon: 'cash' },
   { key: 'customers', label: 'Customers', icon: 'person' },
+  { key: 'messaging', label: 'Customer messaging', icon: 'phone' },
   { key: 'companies', label: 'Companies', icon: 'company' },
   { key: 'returns', label: 'Returns and refunds', icon: 'refresh' },
   { key: 'holds', label: 'Holds and deposits', icon: 'bookmark' },
   { key: 'credit', label: 'Sales on account', icon: 'clock' },
   { key: 'image-search', label: 'Product image search', icon: 'image' },
+  { key: 'invoice-scanning', label: 'Invoice scanning', icon: 'image' },
   { key: 'languages', label: 'Languages', icon: 'globe' },
   { key: 'help', label: 'Help for staff', icon: 'help' },
   { key: 'money', label: 'Accounts and gift cards', icon: 'bank' },
   { key: 'approvals', label: 'Approvals and access', icon: 'shield' },
 ]
 const generalSection = ref('features')
+watch(() => settingsRoute.query.section, value => {
+  if (value === 'messaging' && perms.value.settings) { generalSection.value = 'messaging'; activeTab.value = 'General'; generalOpen.value = true }
+})
 const activeGeneralLabel = computed(() => generalSections.find(group => group.key === generalSection.value)?.label || 'General')
 
 // ---- languages at the till (esafepos.languages) ----
@@ -3246,6 +3271,7 @@ const modeHint = computed(() => {
 
 onMounted(() => {
   activeTab.value = tabs.value.includes('Promotions') ? 'Promotions' : tabs.value[0] || 'Status'
+  if (settingsRoute.query.section === 'messaging' && perms.value.settings) { generalSection.value = 'messaging'; activeTab.value = 'General' }
   generalOpen.value = activeTab.value === 'General'
   load()
 })
@@ -4222,6 +4248,7 @@ const filteredBooks = computed(() => {
 </script>
 
 <style scoped>
+.status-update-link { margin-bottom: 16px; }
 .settings {
   overflow: auto;
 }

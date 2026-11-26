@@ -186,7 +186,7 @@ def item_group_and_below(group):
 
 
 @frappe.whitelist()
-def get_items(pos_profile: str, search: str = "", item_group: str = "", start: int | str = 0, limit: int | str = 60, price_list: str | None = None, brand: str = ""):
+def get_items(pos_profile: str, search: str = "", item_group: str = "", start: int | str = 0, limit: int | str = 60, price_list: str | None = None, brand: str = "", item_codes=None):
     """Items with selling price and stock for the POS grid."""
     start, limit = int(start), min(int(limit), 500)
     profile = frappe.get_cached_doc("POS Profile", pos_profile)
@@ -200,6 +200,13 @@ def get_items(pos_profile: str, search: str = "", item_group: str = "", start: i
     internal = internal_item_codes()
     if internal:
         filters["name"] = ["not in", sorted(internal)]
+    if item_codes is not None:
+        from esafepos.api.items import _json_list_codes
+
+        wanted = [code for code in _json_list_codes(item_codes) if code not in internal]
+        if not wanted:
+            return {"items": [], "price_list": active_price_list}
+        filters["name"] = ["in", wanted]
     or_filters = None
     if search:
         or_filters = {

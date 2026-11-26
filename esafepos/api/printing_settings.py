@@ -57,7 +57,7 @@ def save_receipt_defaults(config, custom_fields=None):
     merged = settings.receipt_config(doc)
     merged.update({key: config[key] for key in settings.RECEIPT_FIELDS if key in config})
     for key, value in settings.receipt_config(merged).items():
-        doc.set(key, value)
+        doc.set(key, json.dumps(value) if key == "receipt_design" else value)
     if custom_fields is not None:
         doc.set("receipt_custom_fields", json.dumps(settings._clean_custom_fields(custom_fields)))
     doc.save()

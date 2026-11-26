@@ -16,6 +16,8 @@
 // screen first, `click` opens something first (a receipt), and `optional`
 // skips a step whose element is not on screen (no sales yet, a switch off).
 
+import { releaseNews } from '../releaseNotes'
+
 const salespeople = (s) => s.salesPersons.length > 0 && s.settings.salesperson_mode !== 'Off'
 const manager = (s) => Boolean(s.permissions.is_manager)
 // Sales on account (0.60.0): the shop sells on account at all, and this person may.
@@ -302,6 +304,8 @@ export const TOPICS = [
       'Inventory & transfers shows accessible warehouse balances. Transfer stock creates a Material Transfer; Adjust stock posts a Stock Reconciliation. Close affected shifts with unposted sales first.',
       'If a transfer response is lost, Check and retry transfer checks the same request without posting it twice. Reopening the same item in this browser tab restores the request after a reload.',
       'Variants creates attributes and item templates, then individual attribute combinations. Manage each variant to set its price, barcode and status.',
+      'Add to warehouse posts a Material Receipt: choose a warehouse, received quantity, unit cost and reference. It adds stock without replacing the existing balance.',
+      'Live sync checks committed price and stock changes while this screen is active. Sync now checks immediately; unsaved item edits stay intact when ERPNext changes.',
     ],
   },
 
@@ -338,6 +342,35 @@ export const TOPICS = [
       'It counts in the cash expected at the close.',
       'Putting money in and taking it out are two permissions, and your shop may ask for a reason for every cash out.',
       'Where your shop asks for it, a manager approves a cash out: their passcode at the till, or a request they approve from the Approvals tray.',
+    ],
+  },
+  {
+    route: '/register',
+    title: 'All registers and payment tallies',
+    steps: [
+      'Open All registers to review authorized open shifts. Full summary / adjust / close shows separate sales, returns, account sales, points and payment totals.',
+      'Cash expected is opening float plus net cash payments plus cash in, less cash out. Count the opening float once. Saved change is already included in cash in.',
+      'Compare cards with the terminal batch before fees and bank transfers with received bank entries. These methods do not add drawer cash.',
+      'For Close all registers, upload every till, stop selling, enter every payment count and tick Reviewed. A failed close stops the remaining registers; earlier successful closes stay saved.',
+      'Close linked physical drawers with their combined count first. Previous sessions shows saved counts and any background posting issue.',
+    ],
+  },
+  {
+    route: '/settings',
+    title: 'Bank details on the customer display',
+    steps: [
+      'In General, Customer bank display, add receiving accounts and upload a bank logo and official payment QR. Set the outlet, currency, method and image sizes, preview, then Save bank display settings.',
+      'Enable Customer-facing display in Features and open Display from Sell on the customer monitor. Payment shows the bank details automatically, or after selecting the configured bank method.',
+      'A QR scan does not confirm payment. Verify actual receipt and the reference before completing the sale. Closing payment clears the bank panel.',
+    ],
+  },
+  {
+    route: '/settings',
+    title: 'Updates, versions and feature counts',
+    steps: [
+      'Select the version badge in the header or open Updates & versions in Settings to see numbered releases and their feature, improvement and fix counts.',
+      'Each feature keeps an F ID, improvements an I ID and fixes an X ID. Search or filter the notes without changing the release totals. Numbered tracking begins at v0.70.0; older releases have no invented counts.',
+      'Check for updates reads the deployed server version and notes. Review available update returns to Sell or Insights; finish your work and choose Agree and update separately. Checking never restarts the till.',
     ],
   },
   {
@@ -547,6 +580,7 @@ export const TOURS = {
 // What is new, newest first. Shown once per person after an update, only the
 // entries newer than what they last saw and that apply to them.
 export const WHATS_NEW = [
+  ...releaseNews(),
   { version: '0.69.0', title: 'Count stock from the till', text: 'A Stock count screen counts a warehouse with the barcode scanner, alone or together with the phones of the EsafePOS Stock app, and saves an ERPNext stock count with only the differences.', route: '/count', when: (s) => Boolean(s.permissions.stock_count) },
   { version: '0.67.0', title: 'Barcode and price labels', text: 'Printing → Labels prints barcode and price labels from items, scans, stock documents or changed prices.', route: '/printing', when: (s) => Boolean(s.settings.enable_labels && s.permissions.print_labels) },
   { version: '0.66.0', title: 'Payments in their own currency', text: 'In Insights, the sales summary shows under each payment method what it took in other currencies, in their own money, with a total per currency. An amount typed in another currency at the till is kept with the payment for it.', route: '/insights', when: (s) => Boolean(s.multiCurrency?.enabled) && Boolean(s.permissions.sales_reports) },

@@ -5,6 +5,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow, noarchive">
+  <meta name="referrer" content="no-referrer">
   <meta name="theme-color" content="#10254b">
   <title>{{ title }}</title>
   <link rel="icon" type="image/png" href="/assets/esafepos/pos/icon-192.png">
@@ -117,7 +118,7 @@
       <table class="items{% if receipt.lined_table %} lined{% endif %}">
         <thead><tr><th>Item</th><th>Qty</th><th>Rate</th><th>Amount</th></tr></thead>
         <tbody>
-          {% for item in receipt.items %}
+          {% for item in receipt['items'] %}
           <tr>
             <td><div class="item-name">{{ item.item_name }}</div>{% if item.item_code %}<div class="item-code">{{ item.item_code }}</div>{% endif %}{% if item.saving %}<div class="saving">Saved {{ item.saving }}</div>{% endif %}</td>
             <td>{{ item.qty }}</td><td>{{ item.rate }}</td><td>{{ item.amount }}</td>

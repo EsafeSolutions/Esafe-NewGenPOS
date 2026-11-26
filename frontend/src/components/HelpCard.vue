@@ -31,11 +31,11 @@
       <template v-else>
         <div class="hc-badge"><Icon name="star" :size="26" /></div>
         <h2 id="hc-title" class="hc-title">{{ t('What is new in EsafePOS') }}</h2>
-        <p class="hc-lead muted">EsafePOS {{ help.version }}</p>
+        <p class="hc-lead muted">EsafePOS {{ help.version }} · {{ t('{n} feature notes', { n: items.length }) }}</p>
         <ul class="hc-list">
           <li v-for="item in items" :key="item.version + item.title" class="hc-item">
             <div class="hc-item-body">
-              <div class="hc-item-title">{{ t(item.title) }}</div>
+              <div class="hc-item-title"><bdi v-if="item.id" class="muted small">{{ item.id }} · </bdi>{{ t(item.title) }}</div>
               <div class="hc-item-text">{{ t(item.text) }}</div>
             </div>
             <button

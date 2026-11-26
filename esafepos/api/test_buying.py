@@ -1,5 +1,6 @@
 """Buying boundaries against mocked Frappe services; runnable without a bench."""
 import importlib.util
+import ast
 from pathlib import Path
 import sys
 from types import ModuleType, SimpleNamespace
@@ -38,6 +39,7 @@ class BuyingTests(unittest.TestCase):
         self.frappe.get_cached_doc = Mock(return_value=self.profile)
         self.frappe.get_cached_value = Mock(return_value="LKR")
         self.frappe.get_list = Mock(return_value=[])
+        self.frappe.__version__ = "15.0.0"
         self.supplier = Document(name="SUP", supplier_name="Green Supplies", supplier_group="Local", disabled=0)
         self.warehouse = Document(name="Stores", company="Shop", is_group=0, disabled=0)
         self.item = Document(name="RICE", stock_uom="Kg", disabled=0, is_purchase_item=1, has_variants=0,
@@ -75,6 +77,14 @@ class BuyingTests(unittest.TestCase):
         self.package_patch = patch.object(esafepos.api, "permissions", self.permissions, create=True)
         self.package_patch.start()
         self.addCleanup(self.package_patch.stop)
+        compat = ModuleType("esafepos.erpnext_compat")
+        compat.__dict__.update(frappe=self.frappe, cint=utils.cint)
+        tree = ast.parse(Path(__file__).parents[1].joinpath("erpnext_compat.py").read_text(encoding="utf-8"))
+        selected = [node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == "sum_fields"]
+        exec(compile(ast.Module(body=selected, type_ignores=[]), "erpnext_compat.py", "exec"), compat.__dict__)
+        compat_patch = patch.dict(sys.modules, {"esafepos.erpnext_compat": compat})
+        compat_patch.start()
+        self.addCleanup(compat_patch.stop)
         spec = importlib.util.spec_from_file_location("buying_under_test", Path(__file__).with_name("buying.py"))
         self.api = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(self.api)
@@ -357,6 +367,37 @@ class BuyingTests(unittest.TestCase):
         self.assertEqual(result["warehouses"], [])
         self.assertEqual(result["payment_modes"], [])
         self.frappe.get_list.assert_not_called()
+
+    def test_frappe_16_balance_uses_dictionary_aggregates_and_keeps_permissions(self):
+        self.frappe.__version__ = "16.60.2"
+        self.api._invoice_rows = Mock(return_value=[])
+        def strict_get_list(doctype, **kwargs):
+            if doctype == "GL Entry":
+                self.assertEqual(kwargs["fields"], [{"SUM": "credit", "as": "credit"}, {"SUM": "debit", "as": "debit"}])
+                self.assertNotIn("ignore_permissions", kwargs)
+                return [Document(credit=500, debit=700)]
+            return []
+        self.frappe.get_list.side_effect = strict_get_list
+        self.assertEqual(self.api.supplier_account("Till", "SUP")["balance"], -200)
+
+    def test_legacy_balance_uses_supported_string_aggregates(self):
+        self.api._invoice_rows = Mock(return_value=[])
+        self.api.supplier_account("Till", "SUP")
+        self.assertEqual(self.frappe.get_list.call_args_list[0].kwargs["fields"], ["sum(credit) as credit", "sum(debit) as debit"])
+
+    def test_tax_only_charges_do_not_increase_stock_valuation(self):
+        self.accounts["Input tax"] = Document(name="Input tax", company="Shop", is_group=0, disabled=0,
+                                               account_currency="LKR", account_type="Tax", root_type="Asset")
+        self.invoice(costs=[{"kind": "tax", "description": "Input tax", "account": "Input tax", "amount": 180}])
+        self.assertEqual(self.created[-1].taxes[0]["category"], "Total")
+        with self.assertRaises(ValueError):
+            self.invoice(costs=[{"kind": "tax", "description": "Not tax", "account": "Freight", "amount": 180}])
+
+    def test_duplicate_supplier_reference_is_refused_before_receiving_stock(self):
+        self.frappe.get_list.return_value = [Document(name="EXISTING", docstatus=1)]
+        with self.assertRaisesRegex(ValueError, "already exists"):
+            self.invoice(bill_no="SUP-BILL-1")
+        self.assertFalse(self.created)
 
     def test_options_exclude_foreign_and_incompatible_payment_accounts(self):
         modes = [Document(name="Cash", type="Cash"), Document(name="Foreign", type="Bank"), Document(name="Wrong type", type="Bank")]

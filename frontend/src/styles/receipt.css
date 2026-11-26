@@ -199,3 +199,28 @@
 .receipt-paper.paper-58 .retail-counts { font-size: 9px; }
 .receipt-paper.paper-58 .retail-totals .total { font-size: 14px; }
 .receipt-paper.paper-58 .retail-savings strong { font-size: 16px; }
+
+/* Structured advanced design; unset properties retain the selected template. */
+.receipt.tpl-compact { --rc-base-padding: 12px; }
+.receipt.tpl-detailed { --rc-base-padding: 22px; }
+.receipt:is(.rc-paddingTop,.rc-paddingRight,.rc-paddingBottom,.rc-paddingLeft) { padding: calc(var(--rc-base-padding, 16px) + var(--rc-paddingTop, 0mm)) calc(var(--rc-base-padding, 16px) + var(--rc-paddingRight, 0mm)) calc(var(--rc-base-padding, 16px) + var(--rc-paddingBottom, 0mm)) calc(var(--rc-base-padding, 16px) + var(--rc-paddingLeft, 0mm)); }
+.receipt.rc-lineHeight, .receipt.rc-lineHeight * { line-height: var(--rc-lineHeight) !important; }
+.rc-headerAlign :is(.retail-head, .receipt-head) { text-align: var(--rc-headerAlign); }
+.rc-footerAlign :is(.receipt-foot, .receipt-cf-foot) { text-align: var(--rc-footerAlign); }
+.rc-itemAlign :is(.retail-item-name td, .ritem-name) { text-align: var(--rc-itemAlign); }
+.rc-labelAlign .row > :first-child { text-align: var(--rc-labelAlign); }
+.rc-valueAlign .row > :last-child { text-align: var(--rc-valueAlign) !important; }
+.rc-logoHeight .receipt-logo { max-height: var(--rc-logoHeight); }
+.rc-barcodeHeight .receipt-barcode :deep(svg) { height: var(--rc-barcodeHeight); }
+.rc-fontSize :is(.retail-meta-row,.retail-item-values td,.row,.small,.retail-counts) { font-size: var(--rc-fontSize); }
+.rc-totalSize .row.total { font-size: var(--rc-totalSize); }
+.rc-sectionGap :is(.receipt-totals,.retail-loyalty,.retail-savings,.receipt-foot,.receipt-terms,.receipt-note) { margin-top: var(--rc-sectionGap); }
+.rc-itemPadding :is(.retail-items td,.receipt-table td) { padding-block: var(--rc-itemPadding); }
+.rc-borderWidth :is(.row,.row > *,th,td,.retail-head,.retail-meta,.retail-totals,.retail-loyalty,.retail-savings,.receipt-terms) { border-width: var(--rc-borderWidth) !important; }
+.receipt .retail-items.without-mrp th { width: auto !important; }
+.receipt .retail-items.without-mrp th:last-child { width: 46% !important; }
+.receipt .retail-items.without-mrp th:first-child { width: 8% !important; }
+.receipt .retail-items.without-mrp th:nth-child(2) { width: 14% !important; }
+.receipt .retail-items.without-mrp.without-discount th:last-child { width: 78% !important; }
+
+.rc-headerAlign .receipt-logo { display: inline-block; margin-inline: 0; }

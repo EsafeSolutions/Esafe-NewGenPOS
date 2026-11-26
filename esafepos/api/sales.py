@@ -2284,36 +2284,19 @@ def receipt_share_link(invoice: str):
 
 
 @frappe.whitelist()
-def sms_receipt(invoice: str, mobile: str | None = None):
-    """Send the signed e-invoice link through Frappe's configured SMS gateway."""
-    details = receipt_share_link(invoice)
-    recipient = (mobile or details.get("mobile") or "").strip()
-    if not recipient:
-        frappe.throw(_("No mobile number. Add one to the customer or type it in."))
-    # SMS providers differ on whether punctuation is accepted, but none should
-    # receive arbitrary text in the receiver parameter.
-    compact = recipient.replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
-    digits = compact[1:] if compact.startswith("+") else compact
-    if not digits.isdigit() or not 6 <= len(digits) <= 15:
-        frappe.throw(_("Enter a valid mobile number, including the country code when required."))
-    if not frappe.db.get_single_value("SMS Settings", "sms_gateway_url"):
-        frappe.throw(_("SMS gateway is not configured. Set it in ERPNext SMS Settings first."))
+def sms_receipt(invoice: str, mobile: str | None = None, message: str | None = None, request_key: str | None = None):
+    """Compatibility endpoint; typed messages use the same durable POS sender."""
+    from esafepos.api import messaging
 
-    from frappe.core.doctype.sms_settings.sms_settings import send_sms
-
-    send_sms(receiver_list=[compact], msg=details["message"], success_msg=False)
-    doctype = _doctype_of(invoice)
-    doc = frappe.get_doc(doctype, invoice)
-    from esafepos.api import audit
-
-    audit.log(
-        "SMS receipt",
-        detail="E-invoice link sent by SMS to {0}".format(compact),
-        reference_doctype=doctype,
-        reference_name=invoice,
-        pos_profile=doc.get("pos_profile"),
+    details = messaging.compose(invoice=invoice)
+    result = messaging.send_message(
+        channel="SMS", mobile=mobile or details.get("mobile"),
+        message=message or details["message"], invoice=invoice,
+        request_key=request_key or frappe.generate_hash(length=32),
     )
-    return {"sent": True, "mobile": compact}
+    if result["status"] != "Submitted to gateway":
+        frappe.throw(result.get("error") or _("This SMS request is already processing. Check message history before retrying."))
+    return dict(result, sent=True)
 
 
 @frappe.whitelist()

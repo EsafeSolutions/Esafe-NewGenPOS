@@ -37,6 +37,7 @@
         </div>
         <div class="receipt-config">
           <div class="rc-controls">
+            <div class="section-actions"><button class="btn btn-outline" :aria-pressed="receiptForm.receipt_show_loyalty !== 0" @click="receiptForm.receipt_show_loyalty = receiptForm.receipt_show_loyalty === 0 ? 1 : 0">{{ receiptForm.receipt_show_loyalty === 0 ? t('Show loyalty points section') : t('Hide loyalty points section') }}</button></div>
             <div class="seg-field">
               <span class="seg-label">{{ t('Template') }}</span>
               <div class="segmented">
@@ -114,8 +115,12 @@
               </div>
             </details>
 
+            <ReceiptDesignEditor v-model="receiptForm.receipt_design" />
+            <div class="section-actions"><button class="btn btn-outline" @click="setOptionalSections(1)">{{ t('Show all optional sections') }}</button><button class="btn btn-outline" @click="setOptionalSections(0)">{{ t('Hide optional sections') }}</button></div>
+            <p class="sec-note">{{ t('Invoice identity, purchased items and net total remain visible. Loyalty redemption used as payment remains in the totals even when the points summary is hidden.') }}</p>
             <div class="sub-label" style="margin-top: 14px">{{ t('Show on the receipt') }}</div>
             <div class="rc-toggles">
+              <label v-for="option in extraOptions" :key="option.key" class="inline-check"><input type="checkbox" v-model="receiptForm[option.key]" :true-value="1" :false-value="0" /> {{ t(option.label) }}</label>
               <label class="inline-check"><input type="checkbox" v-model="receiptForm.receipt_show_item_code" :true-value="1" :false-value="0" /> {{ t('Item code') }}</label>
               <label class="inline-check"><input type="checkbox" v-model="receiptForm.receipt_show_barcode" :true-value="1" :false-value="0" /> {{ t('Barcode') }}</label>
               <label class="inline-check"><input type="checkbox" v-model="receiptForm.receipt_show_serial" :true-value="1" :false-value="0" /> {{ t('Serial numbers') }}</label>
@@ -199,7 +204,15 @@ import { useSessionStore } from '../../stores/session'
 import { printReceipt } from '../../receiptPrint'
 import Icon from '../Icon.vue'
 import ReceiptView from '../ReceiptView.vue'
+import ReceiptDesignEditor from './ReceiptDesignEditor.vue'
+import { RECEIPT_OPTION_DEFAULTS } from '../../receiptOptions.js'
+import { cleanReceiptDesign } from '../../receiptDesign.js'
+import { printManager } from '../../printing/index.js'
+import { receiptLayoutFor } from '../../receiptLayout.js'
 
+const extraOptions = Object.entries({receipt_show_loyalty:'Loyalty points section',receipt_show_mrp:'MRP column',receipt_show_line_discount:'Line discounts',receipt_show_total_discount:'Total discount',receipt_show_gross_total:'Gross total',receipt_show_savings:'Savings section',receipt_show_item_count:'Item count',receipt_show_total_qty:'Total quantity',receipt_show_customer:'Customer details',receipt_show_datetime:'Receipt date and time',receipt_show_header_text:'Header text',receipt_show_phone:'Shop phone',receipt_show_footer:'Footer text',receipt_show_custom_fields:'Custom field sections',receipt_show_taxes:'Tax breakdown',receipt_show_change:'Change amount'}).map(([key,label])=>({key,label}))
+function normalizeForm(value = {}) { return { ...RECEIPT_OPTION_DEFAULTS, ...value, receipt_design: value.receipt_design || {} } }
+function setOptionalSections(value) { for (const key of new Set([...extraOptions.map(o=>o.key), ...Object.keys(receiptForm.value).filter(k=>k.startsWith('receipt_show_')), 'receipt_show_item_code','receipt_show_barcode','receipt_show_serial','receipt_show_unit_price','receipt_show_payments','receipt_show_note','receipt_show_discount','receipt_show_saved','receipt_show_cashier','receipt_show_terminal','receipt_show_invoice_barcode','receipt_show_tax_id','receipt_show_address','receipt_show_terms'])) receiptForm.value[key] = value }
 const session = useSessionStore()
 const loading = ref(false), saving = ref(false), ready = ref(false), error = ref(''), preview = ref(null)
 const defaultForm = ref({ receipt_custom_fields: [] }), posProfiles = ref([]), formats = ref({})
@@ -215,7 +228,7 @@ async function load() {
   loading.value = true; error.value = ''
   try {
     const data = await call('esafepos.api.printing_settings.receipt_workspace')
-    defaultForm.value = { ...data.config, receipt_custom_fields: data.custom_fields || [] }
+    defaultForm.value = { ...normalizeForm(data.config), receipt_custom_fields: data.custom_fields || [] }
     posProfiles.value = data.profiles || []; formats.value = data.print_formats || {}
     profileReceiptOverrides.value = data.overrides || []; ready.value = true
     await Promise.all([loadFieldOptions('Sale Invoice'), loadFieldOptions('POS Profile')])
@@ -229,7 +242,7 @@ async function onReceiptScopeChange() {
   try {
     const data = await call('esafepos.api.settings.get_profile_receipt', { pos_profile: scope })
     if (request !== scopeRequest) return
-    profileReceiptForm.value = data.config || {}; profileReceiptCustomFields.value = data.custom_fields || []
+    profileReceiptForm.value = normalizeForm(data.config); profileReceiptCustomFields.value = data.custom_fields || []
     receiptHasOverride.value = !!data.has_override
   } catch (e) { if (request === scopeRequest) { error.value = e.message; receiptScope.value = '' } }
   finally { if (request === scopeRequest) loading.value = false }
@@ -268,10 +281,14 @@ async function resetProfileReceipt() {
 async function save(action) {
   if (saving.value || session.offline || loading.value) return
   saving.value = true; error.value = ''
-  try { await action() } catch (e) { error.value = e.message } finally { saving.value = false }
+  try { cleanReceiptDesign(receiptForm.value.receipt_design || {}); await action() } catch (e) { error.value = e.message } finally { saving.value = false }
 }
 async function printPreview() {
-  await save(() => printReceipt(preview.value.$el))
+  await save(async () => {
+    const source = preview.value.$el
+    const binding = await printManager.binding(receiptScope.value || session.posProfile).catch(() => ({}))
+    await printReceipt(source, receiptLayoutFor(source, binding))
+  })
 }
 onMounted(load)
 onActivated(async () => {
@@ -366,7 +383,7 @@ const previewReceipt = computed(() => ({
 
 </script>
 <style scoped>
-.receipt-settings{padding:22px;max-width:1400px;margin:0 auto;width:100%;box-sizing:border-box}
+.section-actions{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0}.receipt-settings{padding:22px;max-width:1400px;margin:0 auto;width:100%;box-sizing:border-box}
 fieldset{border:0;padding:0;margin:0;min-width:0}.sec-title{font-size:18px;font-weight:650;display:flex;align-items:center;gap:8px}.sec-title svg{width:18px;height:18px}.sec-note,.hint-row,.setting-desc{font-size:12px;color:var(--text-muted);line-height:1.65}.sec-note{margin:7px 0 18px}.rc-scope{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:14px 0;margin:5px 0 24px;border-bottom:1px solid var(--border)}.rc-scope-label{font-size:13px;font-weight:600}.rc-scope-hint{font-size:12px;color:var(--text-muted)}.rc-scope select{min-width:200px}.receipt-config{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:36px;align-items:start}.rc-controls{min-width:0}.rc-preview{position:sticky;top:16px;min-width:0}.rc-preview-label{font-size:12px;margin-bottom:10px;color:var(--text-muted)}.field{display:flex;flex-direction:column;gap:6px;min-width:0}.field>span,.seg-label,.sub-label{font-size:12px;color:var(--text-muted)}.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.span-2{grid-column:1/-1}.seg-label{display:block;margin-bottom:9px}.segmented{display:flex;gap:4px;flex-wrap:wrap}.seg-btn{padding:8px 13px;border:1px solid var(--border);border-radius:var(--radius)}.seg-btn.on{background:var(--brand);border-color:var(--brand);color:white}.rc-toggles{display:grid;grid-template-columns:1fr 1fr;gap:11px 16px;margin:12px 0}.inline-check{display:flex;align-items:center;gap:8px;font-size:12px;justify-content:flex-start}.inline-check input{width:15px;min-height:0;flex:none}.rc-textfields{display:flex;flex-direction:column;gap:12px;margin-top:20px}.rc-textfields input:not([type=checkbox]),textarea{width:100%;box-sizing:border-box}.cf-section{padding-top:22px;margin-top:26px;border-top:1px solid var(--border)}.sub-label{font-weight:600;margin-bottom:10px}.cf-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}.cf-row>*{min-width:0;flex:1 1 120px}.cf-row button{flex:0 0 35px}.cf-field{flex-grow:2}.pf-banner{display:flex;align-items:start;gap:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:20px;font-size:13px}.pf-banner svg{width:20px;flex:none}.pf-sub{font-size:12px;line-height:1.65;margin-top:5px}.actions{display:flex;align-items:center;gap:10px;padding-top:22px;margin-top:20px;border-top:1px solid var(--border)}.error{color:var(--red);font-size:13px}.notice{color:var(--text-muted);font-size:13px}input,select,textarea{font:inherit;font-size:13px;color:var(--text);background:var(--input-bg);border:1px solid var(--border);border-radius:var(--radius);padding:9px 10px}button:disabled{opacity:.5}.cf-row svg{width:16px}.loading{font-size:13px;color:var(--text-muted)}
 @media(max-width:1000px){.receipt-config{grid-template-columns:1fr}.rc-preview{position:static;max-width:100%;width:320px;margin:10px auto}.receipt-settings{padding:18px}}
 .rc-advanced{border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin:14px 0}.rc-advanced summary{cursor:pointer;font-weight:650;font-size:13px}.rc-advanced>p{margin:8px 0 12px}.rc-advanced-check{align-self:center;padding-top:17px}

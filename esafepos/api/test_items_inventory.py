@@ -35,7 +35,7 @@ class InventoryTests(unittest.TestCase):
                                                 "esafepos.api.audit": self.audit})
         self.modules.start()
         self.addCleanup(self.modules.stop)
-        self.ns = {"frappe": self.frappe, "_": lambda value: value, "math": math, "json": json, "flt": float,
+        self.ns = {"frappe": self.frappe, "_": lambda value: value, "math": math, "json": json, "flt": float, "cint": int,
                    "_profile": Mock(return_value=self.profile), "_can_adjust_stock": Mock(return_value=True),
                    "_can_create": Mock(return_value=True), "_stock_item": Mock(return_value=self.item),
                    "_warehouses": Mock(return_value=["Shelf"])}

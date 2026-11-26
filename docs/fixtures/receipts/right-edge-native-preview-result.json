@@ -1,0 +1,277 @@
+{
+  "nativeVersion": "0.2.2",
+  "printerId": "Xprinter XP-80(Copy 1)",
+  "capabilities": {
+    "color": false,
+    "driver": "Xprinter XP-80",
+    "duplex": false,
+    "maxCopies": 32767,
+    "papers": [
+      {
+        "height": 297,
+        "id": 257,
+        "name": "80(72)mm x 297mm",
+        "width": 72
+      },
+      {
+        "height": 210,
+        "id": 258,
+        "name": "80(72)mm x 210 mm",
+        "width": 72
+      },
+      {
+        "height": 3276,
+        "id": 259,
+        "name": "82(80)mm x 3276mm",
+        "width": 80
+      },
+      {
+        "height": 1000,
+        "id": 260,
+        "name": "80(72)mm x 1000mm",
+        "width": 72
+      },
+      {
+        "height": 3276,
+        "id": 261,
+        "name": "80(72)mm x 3276mm",
+        "width": 72
+      },
+      {
+        "height": 210,
+        "id": 262,
+        "name": "76(63.5)mm x 210mm",
+        "width": 63.5
+      },
+      {
+        "height": 297,
+        "id": 263,
+        "name": "76(63.5)mm x 297mm",
+        "width": 63.5
+      },
+      {
+        "height": 3276,
+        "id": 264,
+        "name": "76(63.5)mm x 3276mm",
+        "width": 63.5
+      },
+      {
+        "height": 210,
+        "id": 265,
+        "name": "58(48)mm x 210 mm",
+        "width": 48
+      },
+      {
+        "height": 297,
+        "id": 266,
+        "name": "58(48)mm x 297mm",
+        "width": 48
+      },
+      {
+        "height": 3276,
+        "id": 267,
+        "name": "58(48)mm x 3276mm",
+        "width": 48
+      },
+      {
+        "height": 296.9,
+        "id": 256,
+        "name": "Custom size",
+        "width": 72
+      }
+    ],
+    "physicalCompletionAvailable": false,
+    "port": "USB002",
+    "printerId": "Xprinter XP-80(Copy 1)",
+    "queuedJobs": 0,
+    "resolutions": [
+      {
+        "x": 203,
+        "y": 203
+      }
+    ],
+    "status": 0,
+    "statusSource": "windows-spooler",
+    "trays": [
+      {
+        "id": 1,
+        "name": "Roll paper storehouse"
+      }
+    ]
+  },
+  "isolated": true,
+  "physicalPrintPerformed": false,
+  "jobsCreated": 0,
+  "certificateTrustChanged": false,
+  "previews": [
+    {
+      "phase": "before",
+      "name": "58-Table-58",
+      "version": "0.2.2",
+      "options": {
+        "copies": 1,
+        "size": {
+          "width": 58,
+          "height": 197
+        },
+        "margins": 0,
+        "scale": "actual"
+      },
+      "pageCount": 1,
+      "sha256": "4387cd8ab4c9bf0c9b9ddfc4abcf3c253bdd9acebfe89c68c78052b72ccd2186"
+    },
+    {
+      "phase": "before",
+      "name": "80-Table-80",
+      "version": "0.2.2",
+      "options": {
+        "copies": 1,
+        "size": {
+          "width": 80,
+          "height": 189
+        },
+        "margins": 0,
+        "scale": "actual"
+      },
+      "pageCount": 1,
+      "sha256": "35c88312c395d27b36840501ee88ca09ae9bb422997c2b5de73f83fcb5dfeaf4"
+    },
+    {
+      "phase": "after",
+      "name": "58-Table-58",
+      "version": "0.2.2",
+      "options": {
+        "copies": 1,
+        "size": {
+          "width": 58,
+          "height": 192
+        },
+        "margins": 0,
+        "orientation": "portrait",
+        "scale": "fit"
+      },
+      "pageCount": 1,
+      "sha256": "30e3f9f0ed0cd2edc8d93bfa2a7c1655716644d271e924b7e5897d91dee271a6"
+    },
+    {
+      "phase": "after",
+      "name": "80-Table-80",
+      "version": "0.2.2",
+      "options": {
+        "copies": 1,
+        "size": {
+          "width": 80,
+          "height": 183
+        },
+        "margins": 0,
+        "orientation": "portrait",
+        "scale": "fit"
+      },
+      "pageCount": 1,
+      "sha256": "f9b4f2db876262371fd1848c167b485964127889d41d0132bcb71decc081fc57"
+    },
+    {
+      "phase": "after",
+      "name": "80-Table-72",
+      "version": "0.2.2",
+      "options": {
+        "copies": 1,
+        "size": {
+          "width": 72,
+          "height": 195
+        },
+        "margins": 0,
+        "orientation": "portrait",
+        "scale": "fit"
+      },
+      "pageCount": 1,
+      "sha256": "546a63be2a68ee6fcf948be6a3c084175b259ca2cbfa4f10430694996a865c3e"
+    },
+    {
+      "phase": "after",
+      "name": "80-Table-72-M3-7-1-6",
+      "version": "0.2.2",
+      "options": {
+        "copies": 1,
+        "size": {
+          "width": 72,
+          "height": 200
+        },
+        "margins": 0,
+        "orientation": "portrait",
+        "scale": "fit"
+      },
+      "pageCount": 1,
+      "sha256": "1ed6f0d132cb29c80c9a87c58b5fd051794cb91e99d7230b97cbdc7d333601c7"
+    },
+    {
+      "phase": "after",
+      "name": "80-Table-72-CUSTOM",
+      "version": "0.2.2",
+      "options": {
+        "copies": 1,
+        "size": {
+          "width": 72,
+          "height": 153
+        },
+        "margins": 0,
+        "orientation": "portrait",
+        "scale": "fit"
+      },
+      "pageCount": 1,
+      "sha256": "35faef8eb90292bf6845d7637271a5a27b206da0b5feb1375f6091a946ba27ce"
+    },
+    {
+      "phase": "after",
+      "name": "80-Table-80-SAFE",
+      "version": "0.2.2",
+      "options": {
+        "copies": 1,
+        "size": {
+          "width": 72,
+          "height": 199
+        },
+        "margins": 0,
+        "orientation": "portrait",
+        "scale": "fit"
+      },
+      "pageCount": 1,
+      "sha256": "e16c58ae5964d059ffb28024df7c7d8ce22c0577108353aad6f6a1c5522a0088"
+    },
+    {
+      "phase": "after",
+      "name": "58-Table-58-CUSTOM-SAFE",
+      "version": "0.2.2",
+      "options": {
+        "copies": 1,
+        "size": {
+          "width": 48,
+          "height": 204
+        },
+        "margins": 0,
+        "orientation": "portrait",
+        "scale": "fit"
+      },
+      "pageCount": 1,
+      "sha256": "6bfb6aae43163d3c897c48bbf6817888dafa82c9bf37c25e04b7100e5cfdc80d"
+    },
+    {
+      "phase": "after",
+      "name": "80-Retail-80-SAFE-LONG",
+      "version": "0.2.2",
+      "options": {
+        "copies": 1,
+        "size": {
+          "width": 72,
+          "height": 263
+        },
+        "margins": 0,
+        "orientation": "portrait",
+        "scale": "fit"
+      },
+      "pageCount": 1,
+      "sha256": "726d1bb4561565e86a78e7fadcc99ef43e1aef1dc78bf68b2f7ba7d2ae4b53e7"
+    }
+  ],
+  "runningExecutable": "esafe-printer-manager.exe"
+}

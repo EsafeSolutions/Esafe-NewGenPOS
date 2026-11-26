@@ -21,6 +21,9 @@ permissions.assert_outlet = Mock()
 permissions.can_use_outlet = Mock(return_value=True)
 sys.modules[permissions.__name__] = permissions
 settings = types.ModuleType("esafepos.api.settings")
+from esafepos.receipt_options import RECEIPT_OPTION_DEFAULTS, receipt_option_enabled
+from esafepos.receipt_design import clean_receipt_design
+settings.__dict__.update(RECEIPT_OPTION_DEFAULTS=RECEIPT_OPTION_DEFAULTS, receipt_option_enabled=receipt_option_enabled, clean_receipt_design=clean_receipt_design, frappe=fake, _=fake._, json=json)
 # Use the real receipt normalizer and partial-update helper without importing
 # unrelated ERPNext accounting integrations into this standalone test process.
 tree = ast.parse((ROOT / "esafepos/api/settings.py").read_text(encoding="utf-8"))
@@ -28,6 +31,8 @@ names = {"RECEIPT_FIELDS", "_RECEIPT_BOOL", "_RECEIPT_BOOL_DEFAULTS", "receipt_c
 nodes = [node for node in tree.body if getattr(node, "name", None) in names
          or isinstance(node, ast.Assign) and any(getattr(t, "id", None) in names for t in node.targets)]
 exec(compile(ast.Module(body=nodes, type_ignores=[]), "receipt_helpers", "exec"), settings.__dict__)
+settings._RECEIPT_BOOL.update(RECEIPT_OPTION_DEFAULTS)
+settings._RECEIPT_BOOL_DEFAULTS.update(RECEIPT_OPTION_DEFAULTS)
 settings._clean_custom_fields = lambda value: value or []
 settings._global_custom_fields = lambda: []
 sys.modules[settings.__name__] = settings
@@ -55,6 +60,23 @@ class Doc(dict):
 
 
 class PrintingSettingsTests(unittest.TestCase):
+    def test_receipt_design_and_visibility_defaults_and_roundtrip(self):
+        config = settings.receipt_config({})
+        self.assertEqual(config["receipt_show_loyalty"], 1)
+        self.assertEqual(config["receipt_design"], {})
+        config = settings.receipt_config({"receipt_show_loyalty": "0", "receipt_design": '{"headerAlign":"right","paddingRight":2}'})
+        self.assertEqual(config["receipt_show_loyalty"], 0)
+        self.assertEqual(config["receipt_design"]["paddingRight"], 2)
+        doc = Doc()
+        settings._apply_receipt_payload(doc, config)
+        self.assertEqual(json.loads(doc["receipt_design"]), config["receipt_design"])
+        self.assertEqual(settings.receipt_config(doc), config)
+
+    def test_receipt_design_rejects_unsafe_or_out_of_range_values(self):
+        for value in ({"paddingLeft": -1}, {"fontSize": 100}, {"headerAlign": "url(x)"}, {"css": "display:none"}, {"lineHeight": True}):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                settings.receipt_config({"receipt_design": value})
+
     def setUp(self):
         fake.has_permission = Mock(return_value=True)
         self.doc = Doc(esafepos_invoice_mode="POS Invoice", esafepos_printer_ip="192.168.1.50", esafepos_printer_port=9100, warehouse="Keep warehouse")

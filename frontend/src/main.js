@@ -11,6 +11,7 @@ import App from './App.vue'
 import SellView from './views/SellView.vue'
 import HistoryView from './views/HistoryView.vue'
 import CustomersView from './views/CustomersView.vue'
+import MessagesView from './views/MessagesView.vue'
 import HoldsView from './views/HoldsView.vue'
 import RegisterView from './views/RegisterView.vue'
 import InsightsView from './views/InsightsView.vue'
@@ -28,6 +29,7 @@ const router = createRouter({
     { path: '/', component: SellView },
     { path: '/history', component: HistoryView },
     { path: '/customers', component: CustomersView },
+    { path: '/messages', component: MessagesView },
     { path: '/invoices', component: InvoicesView },
     { path: '/buying', component: BuyingView },
     { path: '/holds', component: HoldsView },

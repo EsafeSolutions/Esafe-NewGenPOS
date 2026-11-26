@@ -158,6 +158,7 @@ def options(pos_profile):
             "warehouses": frappe.get_list("Warehouse", filters={"company": profile.company, "is_group": 0, "disabled": 0},
                                            pluck="name", order_by="name", limit_page_length=0) if has("Warehouse", "read") else [],
             "cost_accounts": [row.name for row in accounts if row.root_type == "Expense" and row.account_type not in ("Cost of Goods Sold",)],
+            "tax_accounts": [row.name for row in accounts if row.account_type == "Tax"],
             "payment_modes": modes,
             "supplier_groups": frappe.get_list("Supplier Group", filters={"is_group": 0}, pluck="name", limit_page_length=0) if has("Supplier Group", "read") else [],
             "can_create_supplier": bool(has("Supplier", "create") and has("Supplier Group", "read")),
@@ -222,12 +223,14 @@ def _invoice_rows(profile, supplier, outstanding=False, start=0):
 
 @frappe.whitelist()
 def supplier_account(pos_profile, supplier, start=0):
+    from esafepos.erpnext_compat import sum_fields
+
     profile, currency = _context(pos_profile)
     _supplier(supplier)
     balance = None
     if frappe.has_permission("GL Entry", "read"):
         totals = frappe.get_list("GL Entry", filters={"company": profile.company, "party_type": "Supplier", "party": supplier, "is_cancelled": 0},
-                                 fields=["sum(credit) as credit", "sum(debit) as debit"], limit_page_length=1)
+                                 fields=sum_fields("credit", "debit"), order_by="", limit_page_length=1)
         balance = flt(totals[0].credit) - flt(totals[0].debit) if totals else 0
     open_invoices = _invoice_rows(profile, supplier, outstanding=True)
     payments = []
@@ -240,6 +243,17 @@ def supplier_account(pos_profile, supplier, start=0):
                                     order_by="posting_date desc, name desc", limit_page_length=50)
     return {"currency": currency, "balance": balance, "open_invoices": open_invoices,
             "invoices": _invoice_rows(profile, supplier, start=start), "payments": payments}
+
+
+@frappe.whitelist()
+def check_invoice_reference(pos_profile, supplier, bill_no):
+    profile, currency = _context(pos_profile)
+    _supplier(supplier)
+    reference = str(bill_no or "").strip()[:140]
+    if not reference:
+        return []
+    return frappe.get_list("Purchase Invoice", filters={"company": profile.company, "supplier": supplier,
+        "bill_no": reference, "docstatus": ["in", [0, 1]]}, fields=["name", "docstatus"], limit_page_length=5)
 
 
 @frappe.whitelist()
@@ -272,6 +286,8 @@ def create_invoice(pos_profile, supplier, items, warehouse, idempotency_key, cos
     prior = _previous("Purchase Invoice", identity, fingerprint, profile.company)
     if prior:
         return _summary(prior)
+    if bill_no and check_invoice_reference(pos_profile, supplier, bill_no):
+        frappe.throw(_("An invoice with this supplier reference already exists. Review the supplier history before adding it again."))
     if not items:
         frappe.throw(_("Add at least one item."))
     posting = _date(posting_date or nowdate(), "posting date")
@@ -288,22 +304,28 @@ def create_invoice(pos_profile, supplier, items, warehouse, idempotency_key, cos
         item.check_permission("read")
         if item.disabled or not item.is_purchase_item or item.has_variants or item.is_fixed_asset or item.has_serial_no or item.has_batch_no:
             frappe.throw(_("Use ERPNext for disabled, template, asset, serial or batch tracked items."))
-        if costs and not item.is_stock_item:
+        if any(cost.get("kind", "valuation") == "valuation" for cost in costs) and not item.is_stock_item:
             frappe.throw(_("Valuation costs require stock items on every invoice line."))
         rows.append({"item_code": item.name, "qty": _number(row.get("qty"), "quantity"),
                      "rate": _number(row.get("rate"), "purchase rate"), "uom": item.stock_uom,
                      "conversion_factor": 1, "warehouse": warehouse, "cost_center": profile.cost_center})
     taxes = []
     for row in costs:
+        kind = row.get("kind", "valuation")
+        if kind not in ("valuation", "tax"):
+            frappe.throw(_("Choose a valuation cost or tax charge."))
         account = _account(row.get("account"), profile.company, currency)
-        if account.root_type != "Expense":
+        if kind == "valuation" and account.root_type != "Expense":
             frappe.throw(_("Select an expense account for additional valuation costs."))
+        if kind == "tax" and account.account_type != "Tax":
+            frappe.throw(_("Select a tax account for a tax-only charge."))
         description = str(row.get("description") or "").strip()
         if not description or len(description) > 140:
             frappe.throw(_("Enter a cost description of at most 140 characters."))
         taxes.append({"charge_type": "Actual", "account_head": account.name,
                       "description": description, "tax_amount": _number(row.get("amount"), "additional cost"),
-                      "category": "Valuation and Total", "add_deduct_tax": "Add", "cost_center": profile.cost_center})
+                      "category": "Valuation and Total" if kind == "valuation" else "Total",
+                      "add_deduct_tax": "Add", "cost_center": profile.cost_center})
     doc = frappe.get_doc({"doctype": "Purchase Invoice", "supplier": supplier, "company": profile.company,
                           "currency": currency, "conversion_rate": 1, "party_account_currency": currency,
                           "credit_to": _payable(supplier, profile.company, currency),

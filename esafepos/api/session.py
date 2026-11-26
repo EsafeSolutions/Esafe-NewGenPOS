@@ -497,7 +497,7 @@ def _client_settings(profile_name=None):
 
     from frappe.utils import cint
 
-    from esafepos import accounting_periods, cash_out, credit_sales, features, languages, refund_approval, variance
+    from esafepos import accounting_periods, bank_display, cash_out, credit_sales, features, languages, refund_approval, variance
     from esafepos.api import approval_requests
     from esafepos.api import labels as labels_mod
 
@@ -534,6 +534,7 @@ def _client_settings(profile_name=None):
         "enable_xreport": 1 if doc.get("enable_xreport") else 0,
         "enable_email_receipt": 1 if doc.get("enable_email_receipt") else 0,
         "enable_customer_display": 1 if doc.get("enable_customer_display") else 0,
+        "bank_transfer_display": bank_display.client_config(doc, profile_name),
         "enable_till_lock": 1 if doc.get("enable_till_lock") else 0,
         "auto_lock_minutes": cint(doc.get("auto_lock_minutes")) or 0,
         "enable_quick_keys": 1 if doc.get("enable_quick_keys") else 0,

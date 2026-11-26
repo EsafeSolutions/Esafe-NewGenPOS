@@ -19,6 +19,14 @@ from frappe import _
 from frappe.utils import cint, flt
 
 
+def sum_fields(*names):
+    """Permission-aware get_list aggregates changed to dictionaries in v16."""
+    major = cint(str(getattr(frappe, "__version__", "15")).split(".")[0])
+    if major >= 16:
+        return [{"SUM": name, "as": name} for name in names]
+    return ["sum({0}) as {0}".format(name) for name in names]
+
+
 def _fail(what, exc):
     frappe.log_error(
         title=f"EsafePOS: incompatible ERPNext API ({what})",

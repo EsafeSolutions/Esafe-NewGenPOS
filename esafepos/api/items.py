@@ -15,7 +15,7 @@ import frappe
 from frappe import _
 from frappe.utils import cint, flt, getdate, nowdate
 
-from esafepos.api.permissions import ITEM_PRICE_EDIT, ITEM_CREATE, ITEM_STOCK_VIEW, ITEM_STOCK_ADJUST, ITEM_STOCK_TRANSFER, allowed, assert_outlet
+from esafepos.api.permissions import ITEM_PRICE_EDIT, ITEM_CREATE, ITEM_STOCK_VIEW, ITEM_STOCK_ADJUST, ITEM_STOCK_TRANSFER, ITEM_STOCK_RECEIVE, allowed, assert_outlet
 from esafepos.item_units import conversions
 from esafepos.price_books import get_price_map
 
@@ -61,8 +61,10 @@ def warehouse_stock(pos_profile, item_code):
         rows.append({"warehouse": warehouse, "actual_qty": actual,
                      "reserved_qty": reserved + max(held, 0), "available_qty": actual - reserved - held})
     return {"stock_uom": item.stock_uom, "rows": rows,
+            "currency": frappe.get_cached_value("Company", profile.company, "default_currency"),
             "has_serial_no": bool(item.has_serial_no), "has_batch_no": bool(item.has_batch_no),
             "can_transfer": bool(_can_transfer_stock() and not item.disabled),
+            "can_receive": bool(_can_receive_stock() and not item.disabled),
             "can_view_movements": bool(frappe.has_permission("Stock Ledger Entry", "read")),
             "can_adjust": bool(_can_adjust_stock() and not item.disabled and not item.has_serial_no and not item.has_batch_no)}
 
@@ -88,6 +90,18 @@ def _json_list(value, message):
     if not isinstance(value, list) or not all(isinstance(row, dict) for row in value):
         frappe.throw(_(message))
     return value
+
+
+def _json_list_codes(value):
+    if isinstance(value, str):
+        try:
+            value = json.loads(value)
+        except (ValueError, TypeError):
+            frappe.throw(_("Send a list of item codes."))
+    if (not isinstance(value, list) or len(value) > 500
+            or any(not isinstance(code, str) or not code or len(code) > 140 for code in value)):
+        frappe.throw(_("Send at most 500 valid item codes."))
+    return list(dict.fromkeys(value))
 
 
 def _clean_selling_units(rows, stock_uom):
@@ -142,7 +156,7 @@ def _save_prices(item_code, selected_list, prices, allowed_units):
 
 
 @frappe.whitelist(methods=["POST"])
-def adjust_stock(pos_profile, item_code, warehouse, qty, expected_qty, reason, valuation_rate=None):
+def adjust_stock(pos_profile, item_code, warehouse, qty, expected_qty, reason, valuation_rate=None, include_snapshot=0):
     profile = _profile(pos_profile)
     _require(_can_adjust_stock())
     item = _stock_item(item_code)
@@ -185,7 +199,11 @@ def adjust_stock(pos_profile, item_code, warehouse, qty, expected_qty, reason, v
 
     audit.log("Warehouse stock adjusted in POS", detail="{}: {} → {}. {}".format(warehouse, actual, qty, reason.strip()),
               reference_doctype=doc.doctype, reference_name=doc.name, pos_profile=profile.name)
-    return {"name": doc.name}
+    result = {"name": doc.name}
+    if cint(include_snapshot):
+        frappe.local.esafepos_pos_reserved = {}
+        result["stock"] = warehouse_stock(pos_profile, item_code)
+    return result
 
 
 def _identifier_candidate(character_type, length):
@@ -328,6 +346,13 @@ def _can_transfer_stock():
             and frappe.has_permission("Stock Entry", "read"))
 
 
+def _can_receive_stock():
+    return (_can_view_stock() and allowed(ITEM_STOCK_RECEIVE)
+            and frappe.has_permission("Stock Entry", "read")
+            and frappe.has_permission("Stock Entry", "create")
+            and frappe.has_permission("Stock Entry", "submit"))
+
+
 def _profile(pos_profile):
     if not pos_profile or not can_edit():
         frappe.throw(_("You do not have access to the Items editor."), frappe.PermissionError)
@@ -351,6 +376,7 @@ def editor_options(pos_profile: str):
         "can_view_stock": bool(_can_view_stock()),
         "can_adjust_stock": bool(_can_adjust_stock()),
         "can_transfer_stock": bool(_can_transfer_stock()),
+        "can_receive_stock": bool(_can_receive_stock()),
         "warehouses": _warehouses(profile) if _can_view_stock() else [],
         "stock_uoms": _filter_names("UOM") if _can_create() else [],
     }
@@ -600,7 +626,8 @@ def _update_metadata(item, disabled, item_group, brand, description, is_sales_it
 def save_item(pos_profile: str, item_code: str, item_name: str | None = None, prices: list | str | None = None,
               price_list: str | None = None, image_content: str | None = None, image_url: str | None = None,
               selling_units: list | str | None = None, barcodes: list | str | None = None,
-              disabled=None, item_group=None, brand=None, description=None, is_sales_item=None, is_purchase_item=None):
+              disabled=None, item_group=None, brand=None, description=None, is_sales_item=None, is_purchase_item=None,
+              include_catalog=0):
     profile = _profile(pos_profile)
     item = frappe.get_doc("Item", item_code)
     item.check_permission("read")
@@ -687,12 +714,17 @@ def save_item(pos_profile: str, item_code: str, item_name: str | None = None, pr
                   detail=f"{item.name} · {doc.price_list} · {doc.uom} · {previous_rate} → {doc.price_list_rate}",
                   reference_doctype="Item Price", reference_name=doc.name,
                   amount=doc.price_list_rate, pos_profile=profile.name)
-    return item_details(pos_profile, item_code, price_list)
+    result = item_details(pos_profile, item_code, price_list)
+    if cint(include_catalog):
+        from esafepos.api.catalog_sync import item_updates
+
+        result["catalog"] = item_updates(pos_profile, [item_code])
+    return result
 
 
 @frappe.whitelist(methods=["POST"])
 def transfer_stock(pos_profile, item_code, source_warehouse, target_warehouse, qty, expected_qty,
-                   reason, request_id, serial_no="", batch_no=""):
+                   reason, request_id, serial_no="", batch_no="", include_snapshot=0):
     """Submit one native Material Transfer; stable names make uncertain retries safe."""
     profile = _profile(pos_profile)
     _require(_can_transfer_stock())
@@ -727,7 +759,10 @@ def transfer_stock(pos_profile, item_code, source_warehouse, target_warehouse, q
         previous.check_permission("read")
         if previous.docstatus != 1 or previous.company != profile.company or previous.remarks != marker + "\n" + reason.strip():
             frappe.throw(_("This transfer request was already used. Review the earlier Stock Entry in ERPNext."))
-        return {"name": previous.name, "replayed": True}
+        result = {"name": previous.name, "replayed": True}
+        if cint(include_snapshot):
+            result["stock"] = warehouse_stock(pos_profile, item_code)
+        return result
     if item.disabled or not item.is_stock_item or item.has_variants:
         frappe.throw(_("Choose an enabled stock item without variants."))
     if item.has_serial_no and (qty != len(serials) or len(serials) != len(set(serials))):
@@ -770,7 +805,11 @@ def transfer_stock(pos_profile, item_code, source_warehouse, target_warehouse, q
 
     audit.log("Warehouse stock transferred in POS", detail="{}: {} → {}. {}".format(item_code, source_warehouse, target_warehouse, reason.strip()),
               reference_doctype="Stock Entry", reference_name=doc.name, pos_profile=profile.name)
-    return {"name": doc.name, "replayed": False}
+    result = {"name": doc.name, "replayed": False}
+    if cint(include_snapshot):
+        frappe.local.esafepos_pos_reserved = {}
+        result["stock"] = warehouse_stock(pos_profile, item_code)
+    return result
 
 
 @frappe.whitelist()

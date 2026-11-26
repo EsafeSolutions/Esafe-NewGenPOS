@@ -3,7 +3,7 @@
   <section class="buying-workspace">
     <header class="buying-heading">
       <div><h1>{{ t('Buying') }}</h1><p class="muted">{{ t('Receive stock, track supplier balances and make payments.') }}</p></div>
-      <span class="muted">{{ options.company || session.company }}<br />{{ options.currency }}</span>
+      <div class="buying-heading-actions"><span class="muted">{{ options.company || session.company }}<br />{{ options.currency }}</span><button v-if="allowed && options.can_create_invoice" type="button" class="btn btn-primary" :disabled="locked || session.offline" @click="scanOpen = !scanOpen">{{ t('Scan supplier invoice') }}</button></div>
     </header>
     <p v-if="!allowed" class="card buying-message" role="alert">{{ t('Buying is disabled or your account does not have buying access.') }}</p>
     <template v-else>
@@ -12,6 +12,7 @@
       <div v-if="uncertain" class="buying-message buying-error" role="status">{{ t('The posting response was lost. Check this request before entering another purchase or payment.') }} <button type="button" class="btn btn-primary" :disabled="busy || session.offline" @click="retryPosting">{{ t('Check posting result') }}</button></div>
       <p v-if="success" class="buying-message buying-success" role="status">{{ success }}</p>
       <div v-if="loading" class="buying-message" role="status">{{ t('Loading buying setup…') }}</div>
+      <PurchaseInvoiceScanner v-if="ready && scanOpen" :pos-profile="session.posProfile" :currency="options.currency" :supplier="supplier" :cost-accounts="options.cost_accounts" :tax-accounts="options.tax_accounts || []" :can-create-supplier="options.can_create_supplier" :disabled="locked || session.offline" @close="scanOpen = false" @apply="applyScan" @need-supplier="prepareSupplier" />
       <div v-else-if="ready" class="buying-layout">
         <aside class="card supplier-directory" :class="{ 'has-selection': supplier && !showSuppliers }">
           <div class="section-heading"><h2>{{ t('Suppliers') }}</h2><button v-if="options.can_create_supplier" class="btn btn-outline" type="button" :disabled="locked" @click="showNewSupplier = !showNewSupplier">{{ t('Add supplier') }}</button></div>
@@ -26,7 +27,7 @@
           <p v-if="supplierLoading" class="muted" role="status">{{ t('Searching…') }}</p>
           <div class="supplier-list" :aria-label="t('Suppliers')">
             <button v-for="row in suppliers" :key="row.name" type="button" :disabled="locked" class="supplier-row" :class="{ selected: supplier?.name === row.name }" :aria-pressed="supplier?.name === row.name" @click="selectSupplier(row)">
-              <strong>{{ row.supplier_name }}</strong><small>{{ row.name }}</small><small>{{ row.supplier_group }}</small>
+              <strong>{{ row.supplier_name }}</strong><small v-if="row.name !== row.supplier_name">{{ row.name }}</small><small>{{ row.supplier_group }}</small>
             </button>
             <p v-if="!supplierLoading && !suppliers.length" class="buying-empty">{{ t('No suppliers found. Add a supplier to record a purchase.') }}</p>
           </div>
@@ -98,6 +99,11 @@
               </tbody></table></div>
               <p v-else class="buying-empty">{{ t('No supplier payments to display.') }}</p>
             </template>
+            <div v-else class="account-retry">
+              <h3>{{ t('Supplier account could not be loaded') }}</h3>
+              <p class="muted">{{ t('Try again to see balances and payments. You can still enter a new purchase invoice.') }}</p>
+              <button type="button" class="btn btn-primary" :disabled="session.offline" @click="loadAccount">{{ t('Retry supplier account') }}</button>
+            </div>
           </section>
 
           <form v-else class="purchase-layout" @submit.prevent="createInvoice">
@@ -115,7 +121,7 @@
               <p v-if="itemLoading" class="muted" role="status">{{ t('Searching…') }}</p>
               <div v-if="itemResults.length" class="item-suggestions"><button v-for="item in itemResults" :key="item.name" type="button" @click="addItem(item)"><strong>{{ item.item_name }}</strong><small>{{ item.name }} · {{ item.stock_uom }}</small></button></div>
               <p v-else-if="itemSearched && !itemLoading" class="muted">{{ t('No matching items. Create the item under Items; use ERPNext for serial, batch or asset purchases.') }}</p>
-              <div v-for="(line, index) in draft.items" :key="line.item_code" class="purchase-line">
+              <div v-for="(line, index) in draft.items" :key="line.id || line.item_code" class="purchase-line">
                 <div class="purchase-line-name"><strong>{{ line.item_name }}</strong><small>{{ line.item_code }} · {{ line.uom }}</small></div>
                 <label>{{ t('Qty') }}<input v-model="line.qty" inputmode="decimal" required :aria-label="t('Quantity for {name}', { name: line.item_name })" /></label>
                 <label>{{ t('Unit cost') }}<input v-model="line.rate" inputmode="decimal" required :aria-label="t('Unit cost for {name}', { name: line.item_name })" /></label>
@@ -126,19 +132,20 @@
               <div class="section-heading costs-heading"><h3>{{ t('Additional costs') }}</h3><button type="button" class="btn btn-outline" @click="addCost">{{ t('Add cost') }}</button></div>
               <p class="muted">{{ t('Freight, handling or other supplier-billed costs increase the invoice total and are spread across stock items by value.') }}</p>
               <div v-for="(cost, index) in draft.costs" :key="cost.id" class="cost-row">
+                <label>{{ t('Charge type') }}<select v-model="cost.kind" @change="cost.account = ''"><option value="valuation">{{ t('Stock valuation cost') }}</option><option value="tax">{{ t('Tax only') }}</option></select></label>
                 <label>{{ t('Description') }}<input v-model="cost.description" required maxlength="140" :placeholder="t('e.g. Freight')" /></label>
-                <label>{{ t('Expense account') }}<select v-model="cost.account" required><option value="">{{ t('Select account') }}</option><option v-for="accountName in options.cost_accounts" :key="accountName">{{ accountName }}</option></select></label>
+                <label>{{ t(cost.kind === 'tax' ? 'Tax account' : 'Expense account') }}<select v-model="cost.account" required><option value="">{{ t('Select account') }}</option><option v-for="accountName in (cost.kind === 'tax' ? options.tax_accounts : options.cost_accounts)" :key="accountName">{{ accountName }}</option></select></label>
                 <label>{{ t('Amount') }}<input v-model="cost.amount" inputmode="decimal" required /></label>
                 <button class="remove-row" type="button" :aria-label="t('Remove cost {number}', { number: index + 1 })" @click="draft.costs.splice(index, 1)">×</button>
               </div>
               <p v-if="draft.costs.length && !options.cost_accounts.length" class="buying-error">{{ t('Create a company-currency expense account for these costs in ERPNext.') }}</p>
-              <p class="muted">{{ t('Costs invoiced by another supplier or received later can be allocated with an ERPNext Landed Cost Voucher.') }}</p>
+              <p class="muted">{{ t('Tax-only charges increase the payable without adding to stock valuation. Later costs or costs billed by another supplier use an ERPNext Landed Cost Voucher.') }}</p>
             </fieldset>
             <aside class="card purchase-summary">
               <h3>{{ t('Purchase summary') }}</h3>
-              <dl><div><dt>{{ t('Items') }}</dt><dd>{{ showMoney(subtotal) }}</dd></div><div><dt>{{ t('Valuation costs') }}</dt><dd>{{ showMoney(additionalTotal) }}</dd></div><div class="summary-total"><dt>{{ t('Supplier payable') }}</dt><dd>{{ showMoney(subtotal + additionalTotal) }}</dd></div></dl>
+              <dl><div><dt>{{ t('Items') }}</dt><dd>{{ showMoney(subtotal) }}</dd></div><div><dt>{{ t('Valuation costs') }}</dt><dd>{{ showMoney(valuationTotal) }}</dd></div><div v-if="additionalTotal !== valuationTotal"><dt>{{ t('Tax') }}</dt><dd>{{ showMoney(additionalTotal - valuationTotal) }}</dd></div><div class="summary-total"><dt>{{ t('Supplier payable') }}</dt><dd>{{ showMoney(subtotal + additionalTotal) }}</dd></div></dl>
               <p class="muted">{{ t('Each item’s receipt valuation includes its share of additional costs. Warehouse valuation follows the item’s ERPNext valuation method.') }}</p>
-              <div v-if="draft.costs.length && subtotal > 0" class="valuation-preview"><h4>{{ t('Estimated receipt cost per stock unit') }}</h4><div v-for="line in draft.items" :key="line.item_code"><span>{{ line.item_name }}</span><b>{{ showMoney((parseMoney(line.rate) || 0) * (1 + additionalTotal / subtotal)) }}</b></div></div>
+              <div v-if="valuationTotal && subtotal > 0" class="valuation-preview"><h4>{{ t('Estimated receipt cost per stock unit') }}</h4><div v-for="(line, index) in draft.items" :key="index"><span>{{ line.item_name }}</span><b>{{ showMoney((parseMoney(line.rate) || 0) * (1 + valuationTotal / subtotal)) }}</b></div></div>
               <p v-if="!invoiceValid && draft.items.length" class="buying-error">{{ t('Check the warehouse, dates, positive quantities, unit costs and additional cost details. Valuation costs require stock items only.') }}</p>
               <button class="btn btn-primary" type="submit" :disabled="!invoiceValid || locked || session.offline">{{ t(busy ? 'Posting…' : 'Submit purchase invoice') }}</button>
               <p class="muted">{{ t('The invoice is submitted immediately. Use Pay supplier to settle it in full or in part.') }}</p>
@@ -165,10 +172,12 @@ import { money, parseMoney } from '../format'
 import { newId } from '../offline'
 import { useSessionStore } from '../stores/session'
 import { t } from '../i18n'
+import PurchaseInvoiceScanner from '../components/PurchaseInvoiceScanner.vue'
 
 const session = useSessionStore()
 const allowed = computed(() => session.settings.enable_buying && session.permissions.buying && !session.reportsOnly)
 const options = ref({})
+const scanOpen = ref(false)
 const ready = ref(false)
 const loading = ref(false)
 const busy = ref(false)
@@ -207,9 +216,10 @@ const positive = (value) => parseMoney(value) !== null && parseMoney(value) > 0
 const lineAmount = (line) => (parseMoney(line.qty) || 0) * (parseMoney(line.rate) || 0)
 const subtotal = computed(() => draft.value.items.reduce((sum, line) => sum + lineAmount(line), 0))
 const additionalTotal = computed(() => draft.value.costs.reduce((sum, cost) => sum + (parseMoney(cost.amount) || 0), 0))
+const valuationTotal = computed(() => draft.value.costs.filter(cost => cost.kind !== 'tax').reduce((sum, cost) => sum + (parseMoney(cost.amount) || 0), 0))
 const invoiceValid = computed(() => Boolean(supplier.value && options.value.can_create_invoice && draft.value.items.length && draft.value.warehouse &&
   draft.value.postingDate && draft.value.dueDate >= draft.value.postingDate &&
-  draft.value.items.every((line) => positive(line.qty) && positive(line.rate) && (!draft.value.costs.length || line.is_stock_item)) &&
+  draft.value.items.every((line) => positive(line.qty) && positive(line.rate) && (!valuationTotal.value || line.is_stock_item)) &&
   draft.value.costs.every((cost) => cost.description.trim() && cost.account && positive(cost.amount))))
 const payableInvoices = computed(() => (account.value?.open_invoices || []).filter((row) => row.currency === options.value.currency))
 const payableSelection = computed(() => payableInvoices.value.filter((row) => selectedInvoices.value.includes(row.name)))
@@ -239,6 +249,7 @@ async function initialize() {
   supplier.value = null; account.value = null; detail.value = null; options.value = {}
   ready.value = false; loading.value = false; error.value = ''; success.value = ''
   uncertain.value = null
+  scanOpen.value = false
   suppliers.value = []; supplierQuery.value = ''; selectedInvoices.value = []
   supplierDrafts.clear()
   showPayment.value = false; showNewSupplier.value = false; tab.value = 'account'; historyStart.value = 0
@@ -332,7 +343,7 @@ async function createInvoice() {
   await mutate('invoice', 'create_invoice', { supplier: supplier.value.name, warehouse: draft.value.warehouse,
     bill_no: draft.value.billNo, bill_date: draft.value.billDate || null, posting_date: draft.value.postingDate, due_date: draft.value.dueDate,
     items: draft.value.items.map((line) => ({ item_code: line.item_code, qty: parseMoney(line.qty), rate: parseMoney(line.rate) })),
-    costs: draft.value.costs.map((cost) => ({ description: cost.description, account: cost.account, amount: parseMoney(cost.amount) })) }, async (result) => {
+    costs: draft.value.costs.map((cost) => ({ description: cost.description, account: cost.account, amount: parseMoney(cost.amount), ...(cost.kind === 'tax' ? { kind: 'tax' } : {}) })) }, async (result) => {
     resetDraft(); tab.value = 'account'; historyStart.value = 0; await loadAccount()
     selectedInvoices.value = [result.name]
     success.value = t('Purchase invoice {name} submitted. Stock and supplier balance updated.', { name: result.name })
@@ -367,7 +378,16 @@ function addItem(item) {
     is_stock_item: item.is_stock_item, qty: '1', rate: item.last_purchase_rate > 0 ? String(item.last_purchase_rate) : '' })
   ++itemVersion; clearTimeout(itemTimer); itemQuery.value = ''; itemResults.value = []; itemSearched.value = false; itemLoading.value = false
 }
-function addCost() { draft.value.costs.push({ id: newId(), description: '', account: options.value.cost_accounts?.[0] || '', amount: '' }) }
+function addCost() { draft.value.costs.push({ id: newId(), kind: 'valuation', description: '', account: options.value.cost_accounts?.[0] || '', amount: '' }) }
+function prepareSupplier(name) { showNewSupplier.value = true; showSuppliers.value = true; newSupplier.value.name = name || ''; nextTick(() => document.querySelector('.supplier-create input')?.focus()) }
+function applyScan(result) {
+  const existing = supplier.value?.name === result.supplier.name ? draft.value : supplierDrafts.get(result.supplier.name)
+  if ((existing?.items.length || existing?.costs.length || existing?.billNo) && !window.confirm(t('Replace the existing purchase draft for this supplier with the checked scan?'))) return
+  selectSupplier(result.supplier)
+  draft.value = { ...draft.value, billNo: result.billNo, billDate: result.billDate, dueDate: result.dueDate || options.value.today,
+    items: result.items.map(row => ({ ...row, id: newId() })), costs: result.costs.map(row => ({ ...row, id: newId() })) }
+  scanOpen.value = false; tab.value = 'invoice'; success.value = t('Invoice draft filled. Check the warehouse and details before submitting.')
+}
 async function viewInvoice(name) {
   const context = contextVersion, selectedSupplier = supplier.value?.name
   try {
@@ -381,10 +401,13 @@ onUnmounted(() => { ++contextVersion; clearTimeout(supplierTimer); clearTimeout(
 </script>
 
 <style scoped>
-.buying-workspace { padding: 20px; min-height: 100%; display: flex; flex-direction: column; gap: 16px; }
+.buying-workspace { flex: 1; width: 100%; min-width: 0; height: 100%; min-height: 0; overflow: auto; box-sizing: border-box; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+.account-retry { padding: 26px 12px; text-align: center; }
 .buying-heading, .supplier-header, .section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .buying-heading h1 { font-size: 24px; margin: 0; }
 .buying-heading p { margin: 5px 0 0; }
+.buying-heading-actions { display: flex; align-items: center; gap: 16px; }
+.buying-heading-actions > span { font-size: 12px; text-align: end; line-height: 1.6; }
 .buying-heading > span { text-align: end; font-size: 12px; line-height: 1.7; }
 h2, h3, h4 { margin: 0; } h2 { font-size: 18px; } h3 { font-size: 15px; } h4 { font-size: 12px; }
 .buying-layout { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 18px; align-items: start; }
@@ -454,7 +477,8 @@ small, .muted { color: var(--text-muted); }
 .line-amount { font-size: 12px; align-self: center; text-align: end; padding-top: 16px; overflow-wrap: anywhere; }
 .remove-row { height: 42px; background: none; border: 0; color: var(--red); font-size: 24px; cursor: pointer; padding: 0; }
 .costs-heading { margin-top: 28px; }
-.cost-row { display: grid; grid-template-columns: minmax(100px, 1fr) minmax(120px, 1.4fr) 95px 26px; gap: 10px; align-items: end; margin: 16px 0; }
+.cost-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)) 26px; gap: 10px; align-items: end; margin: 16px 0; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+.cost-row > .remove-row { grid-column: 3; grid-row: 1 / 3; align-self: center; }
 .purchase-summary { position: sticky; top: 12px; }
 .purchase-summary dl { margin: 18px 0; font-size: 13px; }
 .purchase-summary dl > div { display: flex; justify-content: space-between; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--border); }
@@ -469,6 +493,7 @@ small, .muted { color: var(--text-muted); }
 .invoice-detail .section-heading p { font-size: 12px; margin-bottom: 0; }
 .detail-cost { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; }
 @media (max-width: 1250px) { .purchase-layout { grid-template-columns: minmax(0, 1fr); } .purchase-summary { position: static; } }
+@media (max-width: 700px) { .buying-heading { align-items: flex-start; flex-direction: column; }.buying-heading-actions { width: 100%; justify-content: space-between; }.buying-heading-actions > span { text-align: start; }.cost-row > label:nth-child(3) { grid-column: 1; }.cost-row > .remove-row { grid-column: 2; grid-row: 1 / 5; } }
 @media (max-width: 1000px) { .buying-layout { grid-template-columns: 210px minmax(0, 1fr); gap: 12px; } .account-overview { gap: 18px; } .purchase-line { grid-template-columns: minmax(0, 1fr) 65px 95px 26px; } .line-amount { grid-column: 1 / 4; text-align: start; padding: 0; } .purchase-line .remove-row { grid-column: 4; grid-row: 1 / 3; align-self: center; } .cost-row { grid-template-columns: 1fr 1fr 26px; } .cost-row > label:nth-child(3) { grid-column: 1 / 3; } .cost-row > button { grid-column: 3; grid-row: 1 / 3; align-self: center; } }
 @media (max-width: 700px) { .buying-workspace { padding: 12px; gap: 12px; } .buying-heading h1 { font-size: 21px; } .buying-heading p { font-size: 12px; max-width: 250px; } .buying-layout { grid-template-columns: minmax(0, 1fr); } .supplier-directory { position: static; } .supplier-directory.has-selection { display: none; } .supplier-list { max-height: 300px; } .change-supplier { display: inline-flex; } .supplier-header { flex-wrap: wrap; } .supplier-header > div { flex-basis: 100%; } .account-panel, .purchase-editor, .purchase-summary, .invoice-detail { padding: 14px; } .account-overview > div { min-width: 140px; } .account-overview strong { font-size: 23px; } .account-overview > button { width: 100%; } .form-grid { gap: 12px; } .buying-tabs { gap: 16px; } .buying-tabs button { font-size: 12px; } .purchase-line { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 30px; gap: 12px; } .purchase-line-name { grid-column: 1 / 3; } .purchase-line label { grid-row: 2; } .purchase-line .remove-row { grid-column: 3; grid-row: 1 / 4; } .line-amount { grid-column: 1 / 3; } .cost-row { grid-template-columns: minmax(0, 1fr) 30px; } .cost-row > label, .cost-row > label:nth-child(3) { grid-column: 1; } .cost-row > button { grid-column: 2; grid-row: 1 / 4; } .buying-message .btn { margin: 10px 0 0; } .payment-form { padding: 12px; } }
 </style>

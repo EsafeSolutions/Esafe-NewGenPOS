@@ -1,0 +1,33 @@
+{
+ "doctype": "DocType",
+ "name": "POS Customer Message",
+ "module": "EsafePOS",
+ "autoname": "hash",
+ "engine": "InnoDB",
+ "field_order": ["channel", "status", "customer", "mobile", "message", "pos_profile", "company", "invoice_type", "invoice", "error", "provider_id", "request_key", "payload_hash"],
+ "fields": [
+  {"fieldname": "channel", "fieldtype": "Select", "label": "Channel", "options": "SMS\nWhatsApp\nWhatsApp API", "reqd": 1, "in_list_view": 1, "read_only": 1},
+  {"fieldname": "status", "fieldtype": "Select", "label": "Status", "options": "Preparing\nSubmitted to gateway\nOpened in WhatsApp\nSubmitted to WhatsApp\nRejected\nOutcome unknown", "in_list_view": 1, "read_only": 1},
+  {"fieldname": "provider_id", "fieldtype": "Data", "label": "Provider message ID", "read_only": 1, "length": 255},
+  {"fieldname": "customer", "fieldtype": "Link", "options": "Customer", "label": "Customer", "in_list_view": 1, "read_only": 1},
+  {"fieldname": "mobile", "fieldtype": "Data", "label": "Mobile", "read_only": 1},
+  {"fieldname": "message", "fieldtype": "Long Text", "label": "Message", "read_only": 1},
+  {"fieldname": "pos_profile", "fieldtype": "Link", "options": "POS Profile", "label": "POS Profile", "read_only": 1},
+  {"fieldname": "company", "fieldtype": "Link", "options": "Company", "label": "Company", "read_only": 1},
+  {"fieldname": "invoice_type", "fieldtype": "Data", "label": "Invoice type", "read_only": 1},
+  {"fieldname": "invoice", "fieldtype": "Data", "label": "Invoice", "read_only": 1},
+  {"fieldname": "error", "fieldtype": "Small Text", "label": "Outcome detail", "read_only": 1},
+  {"fieldname": "request_key", "fieldtype": "Data", "label": "Request key", "unique": 1, "reqd": 1, "hidden": 1, "read_only": 1},
+  {"fieldname": "payload_hash", "fieldtype": "Data", "label": "Payload hash", "hidden": 1, "read_only": 1}
+ ],
+ "permissions": [
+  {"role": "System Manager", "read": 1},
+  {"role": "EsafePOS Manager", "read": 1},
+  {"role": "EsafePOS Cashier", "read": 1, "if_owner": 1},
+  {"role": "Sales Manager", "read": 1},
+  {"role": "Sales User", "read": 1, "if_owner": 1}
+ ],
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "track_changes": 0
+}

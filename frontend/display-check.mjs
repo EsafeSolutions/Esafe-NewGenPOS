@@ -1,10 +1,12 @@
 // Browser regression checks for the till catalog and its read-only customer display.
-// Run: node display-check.mjs. Optional PLAYWRIGHT_MODULE, CHROME_PATH and DISPLAY_ARTIFACTS.
+// Run: node display-check.mjs. --display-only skips the independent item-manager editor.
+// Optional PLAYWRIGHT_MODULE, CHROME_PATH and DISPLAY_ARTIFACTS.
 import assert from 'node:assert/strict'
 import { mkdir } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createServer } from 'vite'
+import { RECEIPT_BRAND } from './src/receiptOptions.js'
 
 const root = path.dirname(fileURLToPath(import.meta.url))
 const html = `<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"></head><body>
@@ -150,7 +152,7 @@ if (!process.argv.includes('--serve')) {
     await editor.getByLabel(/Unit price/).fill('18')
     await editor.getByLabel(/^Discount /).fill('10')
     await editor.getByRole('button', { name: 'Add to cart' }).click()
-    assert.deepEqual(await till.evaluate(() => window.edits), { qty: 1.25, price: 18, discount: 10, method: 'percent' })
+    assert.deepEqual(await till.evaluate(() => window.edits), { qty: 1.25, basePrice: 20, standardPrice: 20, price: 18, discount: 10, method: 'percent' })
     await till.getByRole('button', { name: /Roasted coffee ITEM-0/ }).click()
     await editor.getByLabel('Selling unit').selectOption('Pack')
     assert.equal(await editor.getByLabel(/Unit price/).inputValue(), '12')
@@ -183,7 +185,7 @@ if (!process.argv.includes('--serve')) {
     await otherTill.waitForFunction(() => window.ready)
     await otherTill.evaluate(() => publishCart({ items: [{ name:'Different till' }] }))
     await till.evaluate(() => showReceipt())
-    await display.getByText('ESAFE ERP+POS - pos.esafe.lk', { exact: true }).waitFor()
+    await display.getByText(RECEIPT_BRAND, { exact: true }).waitFor()
     await display.getByText(/POS-0001/).waitFor()
     assert.equal(await display.getByText('Different till').count(), 0)
     for (const label of ['Change', 'Points earned', 'Points balance', 'You save']) {
@@ -278,6 +280,7 @@ if (!process.argv.includes('--serve')) {
     })
     assert.equal(await till.evaluate(() => catalog.items[0].item_code), '01234')
 
+    if (!process.argv.includes('--display-only')) {
     const manager = await context.newPage()
     let priceAccess = true
     manager.on('pageerror', (error) => errors.push(error.message))
@@ -364,8 +367,11 @@ if (!process.argv.includes('--serve')) {
     await manager.getByLabel('Item name').fill('Coffee with updated label')
     await manager.getByRole('button', { name: 'Save changes' }).click()
     await manager.getByRole('button', { name: /Coffee with updated label/ }).waitFor()
+    }
     assert.deepEqual(errors, [])
-    console.log('PASS catalog paging, item filters, image upload, price access, display and responsive layout')
+    console.log(process.argv.includes('--display-only')
+      ? 'PASS catalog paging, customer display, terminal isolation, receipt, membership and responsive layout'
+      : 'PASS catalog paging, item filters, image upload, price access, display and responsive layout')
   } finally {
     await browser.close()
     await server.close()

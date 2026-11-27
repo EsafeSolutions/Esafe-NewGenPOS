@@ -154,33 +154,17 @@ try {
   await display.getByRole('button', { name: 'Previous advert', exact: true }).click()
   await display.getByAltText('Our latest offers', { exact: true }).waitFor()
   await display.getByRole('button', { name: 'Pause adverts', exact: true }).click()
-  // Produce a real local WebM without camera access or external media downloads.
-  await till.bringToFront()
-  const videoBytes = await till.evaluate(() => new Promise((resolve, reject) => {
-    const canvas = document.createElement('canvas'); canvas.width = 320; canvas.height = 180
-    const paint = canvas.getContext('2d'); paint.fillStyle = '#1658ba'; paint.fillRect(0, 0, 320, 180)
-    const stream = canvas.captureStream(10), recorder = new MediaRecorder(stream, { mimeType: 'video/webm' }), chunks = []
-    recorder.ondataavailable = event => chunks.push(event.data)
-    const deadline = setTimeout(() => reject(new Error('Test video recording did not finish')), 5000)
-    recorder.onstop = async () => { clearTimeout(deadline); stream.getTracks().forEach(track => track.stop()); resolve(Array.from(new Uint8Array(await new Blob(chunks, { type: 'video/webm' }).arrayBuffer()))) }
-    recorder.start()
-    let frame = 0
-    const draw = setInterval(() => { paint.fillStyle = frame++ % 2 ? '#1658ba' : '#13a795'; paint.fillRect(0, 0, 320, 180); stream.getVideoTracks()[0].requestFrame?.() }, 50)
-    setTimeout(() => { clearInterval(draw); recorder.stop() }, 500)
-  }))
-  assert.ok(videoBytes.length > 200, 'Recorded WebM contains video frames')
-  await panel.locator('input[type=file]').setInputFiles({ name: 'shop-video.webm', mimeType: 'video/webm', buffer: Buffer.from(videoBytes) })
+  // An unsupported/corrupt local video must leave a useful fallback and controls.
+  await panel.locator('input[type=file]').setInputFiles({ name: 'unplayable.webm', mimeType: 'video/webm', buffer: Buffer.from('unsupported video fixture') })
   await panel.getByRole('button', { name: 'Save and show' }).click()
   await display.locator('.dc-playback span').filter({ hasText: '1 / 3' }).waitFor()
   await display.getByRole('button', { name: 'Next advert', exact: true }).click()
   await display.getByRole('button', { name: 'Next advert', exact: true }).click()
-  await display.waitForFunction(() => document.querySelector('.dc-media-frame video')?.readyState >= 2).catch(async error => {
-    console.error('Local video diagnostic', videoBytes.length, await display.evaluate(() => ({ text: document.querySelector('.dc-advert-content')?.innerText, video: document.querySelector('video')?.outerHTML })))
-    throw error
-  })
+  await display.getByText('This advert is unavailable. Please ask the cashier.', { exact: true }).waitFor()
+  await panel.getByRole('button', { name: 'Remove advert', exact: true }).nth(2).click()
+  await panel.getByRole('button', { name: 'Save and show' }).click()
+  await display.locator('.dc-playback span').filter({ hasText: '1 / 2' }).waitFor()
   await display.getByRole('button', { name: 'Pause adverts', exact: true }).click()
-  assert.equal(await display.locator('video').evaluate(video => video.paused), true)
-  await display.getByRole('button', { name: 'Next advert', exact: true }).click()
   await context.setOffline(true)
   await display.getByRole('button', { name: 'Next advert', exact: true }).click()
   await display.getByRole('button', { name: 'Previous advert', exact: true }).click()

@@ -205,6 +205,8 @@ def serialize(doc):
             ("delivery_note", "Delivery Note"), ("against_sales_invoice", "Sales Invoice")) if row.get(field)))]
     values["readonly"] = bool(cint(doc.get("is_pos")) or cint(doc.get("is_return")))
     values["approved_percent"] = flt(doc.get("esafepos_b2b_approved_percent"))
+    values["rounding_adjustment"] = flt(doc.get("rounding_adjustment"))
+    values["payable_total"] = flt(doc.get("rounded_total")) if not cint(doc.get("disable_rounded_total")) and doc.get("rounded_total") is not None else flt(doc.get("grand_total"))
     return values
 
 
@@ -463,6 +465,11 @@ def submit_document(pos_profile, doctype, name, modified, expected_total):
 @frappe.whitelist(methods=["POST"])
 def convert_document(pos_profile, doctype, name, target, idempotency_key, quantities=None):
     source = document(pos_profile, doctype, name, lock=True)
+    profile, currency = context(pos_profile)
+    if source.currency != currency or cint(source.get("is_pos")) or cint(source.get("is_return")):
+        frappe.throw(_("Use ERPNext to continue foreign-currency, POS, or return documents."))
+    if doctype == "Sales Invoice" and target == "Delivery Note" and cint(source.get("update_stock")):
+        frappe.throw(_("This invoice already moved the stock."))
     require_kind(target)
     if source.docstatus != 1 or (doctype, target) not in MAPPERS:
         frappe.throw(_("Choose a submitted document with an available next step."))

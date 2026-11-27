@@ -656,10 +656,10 @@
   },
   {
    "default": "1",
-   "description": "Allow this POS Profile's direct ERPNext Sales Invoice mode. POS Invoice mode continues to work when this is off.",
+   "description": "Enable the customer-oriented ESAFE B2B workspace and direct ERPNext Sales Invoices. Child selling, payment and cheque features remain independent.",
    "fieldname": "enable_regular_invoices",
    "fieldtype": "Check",
-   "label": "Regular Sales Invoices"
+   "label": "ESAFE B2B module and Sales Invoices"
   },
   {
    "default": "1",

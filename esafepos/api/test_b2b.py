@@ -227,6 +227,8 @@ class EndpointTests(unittest.TestCase):
             self.frappe.get_doc = Mock(return_value=invoice)
             with patch.object(self.b2b, "customer_doc", return_value=Doc()), self.assertRaises(ValueError):
                 self.b2b.document("Outlet", "Sales Invoice", "INV", "write")
+            with patch.object(self.b2b, "document", return_value=invoice), self.assertRaises(ValueError):
+                self.b2b.convert_document("Outlet", "Sales Invoice", "INV", "Delivery Note", "retry-identity-12345")
 
     def test_disabled_document_types_cannot_be_opened(self):
         self.frappe.get_doc = Mock(return_value=Doc(name="DISABLED", disabled=1))
@@ -238,6 +240,10 @@ class EndpointTests(unittest.TestCase):
             self.b2b.document("Outlet", "Sales Order", "SO")
 
     def test_submit_detects_stale_draft_and_reviewed_total(self):
+        rounded = self.b2b.serialize(Doc(doctype="Sales Invoice", items=[], taxes=[], grand_total=100.02, rounded_total=100,
+                                        rounding_adjustment=-0.02, disable_rounded_total=0))
+        self.assertEqual(rounded["payable_total"], 100)
+        self.assertEqual(rounded["rounding_adjustment"], -0.02)
         invoice = Doc(docstatus=0, modified="new", grand_total=100)
         with patch.object(self.b2b, "document", return_value=invoice):
             with self.assertRaises(ValueError):
@@ -274,12 +280,12 @@ class EndpointTests(unittest.TestCase):
         self.assertEqual(self.payments._amount("1.20", "LKR"), 1.2)
 
     def test_expired_quotation_cannot_convert(self):
-        source = Doc(name="QUOTE", docstatus=1, valid_till="2026-11-20")
+        source = Doc(name="QUOTE", docstatus=1, currency="LKR", valid_till="2026-11-20")
         with patch.object(self.b2b, "document", return_value=source), patch.object(self.b2b, "previous", return_value=None), self.assertRaises(ValueError):
             self.b2b.convert_document("Outlet", "Quotation", "QUOTE", "Sales Order", "retry-identity-12345")
 
     def test_partial_delivery_mapping_uses_delivery_item_reference(self):
-        source = Doc(name="DN", docstatus=1)
+        source = Doc(name="DN", docstatus=1, currency="LKR")
         mapped = Doc(doctype="Sales Invoice", name="DRAFT", items=[Doc(qty=6, rate=100, dn_detail="DN-LINE", so_detail="SO-LINE")])
         mapper = Mock(return_value=mapped)
         with patch.object(self.b2b, "document", return_value=source), patch.object(self.b2b, "previous", return_value=None), patch.object(self.b2b.importlib, "import_module", return_value=SimpleNamespace(make_sales_invoice=mapper)), patch.object(self.b2b, "serialize", return_value={}), patch.object(self.b2b, "audit"):

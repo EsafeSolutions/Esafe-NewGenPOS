@@ -20,6 +20,7 @@
   <table><tr><td>{{ _("Net total") }}</td><td class="num">{{ doc.get_formatted("net_total") }}</td></tr>
     {% for tax in doc.taxes or [] %}<tr><td>{{ tax.description | e }}</td><td class="num">{{ tax.get_formatted("tax_amount", doc) }}</td></tr>{% endfor %}
     <tr><td><strong>{{ _("Grand total") }} ({{ doc.currency | e }})</strong></td><td class="num"><strong>{{ doc.get_formatted("grand_total") }}</strong></td></tr>
+    {% if not doc.get("disable_rounded_total") and doc.get("rounded_total") is not none %}<tr><td>{{ _("Rounding adjustment") }}</td><td class="num">{{ doc.get_formatted("rounding_adjustment") }}</td></tr><tr><td><strong>{{ _("Payable total") }}</strong></td><td class="num"><strong>{{ doc.get_formatted("rounded_total") }}</strong></td></tr>{% endif %}
     {% if doc.doctype == "Sales Invoice" and doc.docstatus == 1 %}<tr><td>{{ _("Outstanding") }}</td><td class="num">{{ doc.get_formatted("outstanding_amount") }}</td></tr>{% endif %}
   </table>
   {% if doc.remarks %}<p>{{ doc.remarks | e }}</p>{% endif %}

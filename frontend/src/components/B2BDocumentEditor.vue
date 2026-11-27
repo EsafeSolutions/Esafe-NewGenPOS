@@ -76,7 +76,7 @@
     </div>
 
     <footer class="b2b-editor-footer">
-      <div class="b2b-document-totals"><span>{{ t('Net') }} <b>{{ money(draft.net_total || 0, draft.currency) }}</b></span><span>{{ t('Tax') }} <b>{{ money(draft.total_taxes_and_charges || 0, draft.currency) }}</b></span><strong>{{ t('Total') }} {{ money(draft.grand_total || 0, draft.currency) }}</strong></div>
+      <div class="b2b-document-totals"><span>{{ t('Net') }} <b>{{ money(draft.net_total || 0, draft.currency) }}</b></span><span>{{ t('Tax') }} <b>{{ money(draft.total_taxes_and_charges || 0, draft.currency) }}</b></span><span v-if="draft.rounding_adjustment">{{ t('Rounding') }} <b>{{ money(draft.rounding_adjustment, draft.currency) }}</b></span><strong>{{ t('Total') }} {{ money(draft.payable_total ?? draft.grand_total ?? 0, draft.currency) }}</strong></div>
       <div class="b2b-inline-actions">
         <label v-if="editable && options.can_edit_price" class="b2b-approval">{{ t('Discount approval passcode') }}<input v-model="passcode" type="password" autocomplete="off" :placeholder="t('If required')" /></label>
         <button v-if="editable && approvalNeeded" class="btn btn-outline" :disabled="busy" @click="approvalOpen = true"><Icon name="shield" /> {{ t('Get discount approval') }}</button>
@@ -152,7 +152,7 @@ async function refreshPreview() {
   try {
     const result = await call('esafepos.api.b2b.preview', { pos_profile: props.profile, payload: payload() })
     if (version !== revision) return
-    for (const key of ['grand_total', 'net_total', 'total_taxes_and_charges', 'taxes', 'currency', 'address_display', 'contact_display', 'contact_mobile', 'terms']) draft.value[key] = result[key]
+    for (const key of ['grand_total', 'payable_total', 'rounding_adjustment', 'net_total', 'total_taxes_and_charges', 'taxes', 'currency', 'address_display', 'contact_display', 'contact_mobile', 'terms']) draft.value[key] = result[key]
     for (let i = 0; i < result.items.length; i++) for (const key of ['base_rate', 'native_rate', 'rate', 'amount', 'price_list_rate', 'discount_amount', 'discount_percentage']) draft.value.items[i][key] = result.items[i][key]
     previewCurrent.value = true; error.value = ''
   } catch (err) { if (version === revision) error.value = err.message } finally { if (version === revision) previewing.value = false }

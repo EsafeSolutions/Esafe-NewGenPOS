@@ -83,7 +83,7 @@ watch(() => props.focus, focus => {
   if (!focus) return
   if (focus.doctype === 'Sales Order') allocationMode.value = 'deposit'
   else { allocationMode.value = 'selected'; chosen.value = [focus.name]; amounts.value[focus.name] = focus.outstanding_amount }
-  tenders.value[0].amount = focus.outstanding_amount || focus.grand_total || 0
+  tenders.value[0].amount = focus.doctype === 'Sales Invoice' ? Number(focus.outstanding_amount || 0) : (focus.payable_total ?? focus.grand_total ?? 0)
 }, { immediate: true })
 watch(() => props.existingReceipt, value => { receipt.value = value })
 watch(busy, value => emit('busy', value))

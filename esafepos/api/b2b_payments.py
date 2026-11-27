@@ -153,7 +153,7 @@ def _post_payment(profile, currency, customer, tender, references, posting_date,
         frappe.throw(_("Enter the transfer/cheque reference and its date."))
     if order:
         source = document(profile.name, "Sales Order", order)
-        if source.docstatus != 1 or source.customer != customer:
+        if source.docstatus != 1 or source.customer != customer or source.currency != currency:
             frappe.throw(_("Choose a submitted order belonging to this customer."))
         references = [{"reference_doctype": "Sales Order", "reference_name": order, "allocated_amount": amount}]
     for ref in references:
@@ -271,6 +271,10 @@ def receive_settlement(pos_profile, payload, idempotency_key):
                     frappe.throw(_("This customer already has an active cheque with that bank and number."))
         invoices = _open_invoices(profile, customer, currency, lock=True)
         as_advance = bool(cint(payload.get("as_advance")))
+        if payload.get("sales_order"):
+            order = document(pos_profile, "Sales Order", payload["sales_order"])
+            if not as_advance or order.docstatus != 1 or order.customer != customer or order.currency != currency:
+                frappe.throw(_("Choose a submitted company-currency order belonging to this customer for an advance."))
         selections = data(payload.get("allocations") or [], list)
         if as_advance and selections:
             frappe.throw(_("Choose invoice settlement or advance receipt."))

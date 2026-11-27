@@ -158,6 +158,10 @@ dates and transition history. Both are protected operational envelopes, not bala
 ledgers. Native documents carry origin, retry/save hashes and approval snapshots;
 Payment Entries additionally carry settlement and optional shift references.
 
+Verified locally: 155 backend tests, including 40 B2B cases; B2B, discount,
+checkout and Printing browser flows; Esafe orchestration checks; production build;
+Python 3.7 grammar, schemas and frontend API references.
+
 Checks: `python -m unittest esafepos.api.test_b2b`, relevant existing customer/
 buying/pricing/discount/register suites, `cd frontend && node b2b-browser-check.mjs`,
 shared checkout/printing regressions, production build, schema and Python 3.7 grammar.

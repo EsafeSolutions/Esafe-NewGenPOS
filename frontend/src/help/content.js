@@ -362,7 +362,7 @@ export const TOPICS = [
     title: 'Bank details on the customer display',
     steps: [
       'In General, Customer bank display, add receiving accounts and upload a bank logo and official payment QR. Set the outlet, currency, method and image sizes, preview, then Save bank display settings.',
-      'Enable Customer-facing display in Features and open Display from Sell on the customer monitor. Payment shows the bank details automatically, or after selecting the configured bank method.',
+      'Enable Customer-facing display in Features and open Display from Sell on the customer monitor. Select the bank-method trigger to show a popup with receiving details and the amount to send when Bank Transfer or Bank Draft is added. Leave the account method blank for both, or enter an exact method name.',
       'A QR scan does not confirm payment. Verify actual receipt and the reference before completing the sale. Closing payment clears the bank panel.',
     ],
   },

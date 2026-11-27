@@ -26,6 +26,8 @@ page.on('pageerror', error => errors.push(error.message))
 await page.route('https://fonts.googleapis.com/**', route => route.abort())
 await page.route('https://fonts.gstatic.com/**', route => route.abort())
 let invoiceNumber = 1, balance = 8500, failPayment = false, rejectPayment = false, nativePayments = 0
+let canCreateItem = true, canEditPrices = true, sellingPriceList = { name: 'Standard Selling', currency: 'LKR' }, loseItemResponse = false, holdItemCreation = null
+const createdItems = []
 const suppliers = [{ name: 'SUP-001', supplier_name: 'Greenfield Agri Supplies', supplier_group: 'Agriculture' }, { name: 'SUP-002', supplier_name: 'Lanka Seed Company', supplier_group: 'Agriculture' }]
 const invoices = [{ name: 'PINV-0001', posting_date: '2026-11-20', due_date: '2026-12-20', bill_no: 'GF-2947', grand_total: 8500, outstanding_amount: 8500, currency: 'LKR', credit_to: 'Creditors - WA', status: 'Unpaid' }]
 const payments = []
@@ -35,11 +37,21 @@ await page.route('**/api/method/**', async route => {
   const method = route.request().url().split('.').pop(), args = route.request().postDataJSON()
   calls.push({ method, args })
   let message
-  if (method === 'options') message = { company: 'Weerakoon Agro', currency: 'LKR', today: '2026-11-26', warehouse: 'Main Stores - WA', warehouses: ['Main Stores - WA', 'Shop - WA'], cost_accounts: ['Freight and handling - WA'], supplier_groups: ['Agriculture'], can_create_supplier: true, can_create_invoice: true, can_pay: true, payment_modes: [{ name: 'Cash', type: 'Cash', account: 'Cash - WA' }, { name: 'Bank Transfer', type: 'Bank', account: 'Commercial Bank - WA' }, { name: 'Cheque', type: 'Bank', account: 'Commercial Bank - WA' }] }
+  if (method === 'options') message = { company: 'Weerakoon Agro', currency: 'LKR', today: '2026-11-26', warehouse: 'Main Stores - WA', warehouses: ['Main Stores - WA', 'Shop - WA'], cost_accounts: ['Freight and handling - WA'], supplier_groups: ['Agriculture'], can_create_supplier: true, can_create_invoice: true, can_create_item: canCreateItem, can_edit_prices: canEditPrices, selling_price_list: canEditPrices ? sellingPriceList : null, item_groups: ['Agriculture'], stock_uoms: ['Kg', 'Packet'], can_pay: true, payment_modes: [{ name: 'Cash', type: 'Cash', account: 'Cash - WA' }, { name: 'Bank Transfer', type: 'Bank', account: 'Commercial Bank - WA' }, { name: 'Cheque', type: 'Bank', account: 'Commercial Bank - WA' }] }
   if (method === 'search_suppliers') message = suppliers.filter(row => !args.search || `${row.name} ${row.supplier_name}`.toLowerCase().includes(args.search.toLowerCase()))
   if (method === 'create_supplier') { message = { name: 'SUP-003', supplier_name: args.supplier_name, supplier_group: args.supplier_group }; if (!suppliers.some(row => row.name === message.name)) suppliers.push(message) }
   if (method === 'supplier_account') message = { currency: 'LKR', balance: args.supplier === 'SUP-001' ? balance : 0, open_invoices: args.supplier === 'SUP-001' ? invoices.filter(row => row.outstanding_amount > 0) : [], invoices: args.supplier === 'SUP-001' ? invoices : [], payments: args.supplier === 'SUP-001' ? payments : [] }
-  if (method === 'search_items') message = [item]
+  if (method === 'search_items') message = [item, ...createdItems].filter(row => `${row.name} ${row.item_name}`.toLowerCase().includes(args.search.toLowerCase()))
+  if (method === 'generate_identifier') message = { value: '00999' }
+  if (method === 'create_item') {
+    if (holdItemCreation) await holdItemCreation
+    if ([item, ...createdItems].some(row => row.name === args.item_code)) {
+      await route.fulfill({ status: 409, json: { exception: 'DuplicateEntryError: Item code already exists.' } }); return
+    }
+    createdItems.push({ name: args.item_code, item_name: args.item_name, stock_uom: args.stock_uom, is_stock_item: 1, last_purchase_rate: 0 })
+    message = { item_code: args.item_code }
+    if (loseItemResponse) { loseItemResponse = false; await route.abort('failed'); return }
+  }
   if (method === 'create_invoice') {
     if (!posted.has(args.idempotency_key)) {
       const cost = args.costs.reduce((sum, row) => sum + row.amount, 0)
@@ -169,7 +181,151 @@ try {
   await page.setViewportSize({ width: 390, height: 844 })
   await screenshot('account-mobile.png')
 
+  // Create a missing product without leaving or submitting the supplier draft.
+  await page.setViewportSize({ width: 1440, height: 1050 })
+  await page.getByRole('button', { name: 'New purchase invoice', exact: true }).click()
+  await page.getByLabel('Supplier invoice number', { exact: true }).fill('GF-EMERGENCY-1')
+  await page.getByLabel('Add items', { exact: true }).fill('Emergency rice')
+  await page.getByRole('button', { name: 'Create missing item', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: 'Emergency item entry' })
+  const createItem = () => dialog.getByRole('button', { name: 'Create and add item', exact: true })
+  assert.equal(await dialog.getByLabel('Item name', { exact: true }).inputValue(), 'Emergency rice')
+  assert.equal(await createItem().isDisabled(), true)
+  await dialog.getByLabel(/^Category/).selectOption('Agriculture')
+  await dialog.getByLabel(/^Stock unit/).selectOption('Kg')
+  await dialog.getByLabel('Quantity', { exact: true }).fill('2.5')
+  await dialog.getByLabel('Unit cost', { exact: false }).fill('125.50')
+  await dialog.getByLabel('Standard selling price', { exact: false }).fill('175.50')
+  await dialog.getByLabel('Item code', { exact: true }).fill('SEED-025')
+  await createItem().click()
+  await dialog.getByRole('alert').filter({ hasText: 'already exists' }).waitFor()
+  assert.equal(await dialog.getByLabel('Quantity', { exact: true }).inputValue(), '2.5')
+  await dialog.getByRole('button', { name: 'Generate item code', exact: true }).click()
+  await page.waitForFunction(() => document.querySelector('dialog .identifier-field input').value === '00999')
+  await dialog.getByLabel('Barcode (optional)', { exact: true }).fill('8901234567890')
+  for (const value of ['', '0', '-1', 'oops', 'Infinity']) {
+    await dialog.getByLabel('Quantity', { exact: true }).fill(value)
+    assert.equal(await createItem().isDisabled(), true)
+    await dialog.getByLabel('Quantity', { exact: true }).fill('2.5')
+    await dialog.getByLabel('Unit cost', { exact: false }).fill(value)
+    assert.equal(await createItem().isDisabled(), true)
+    await dialog.getByLabel('Unit cost', { exact: false }).fill('125.50')
+  }
+  for (const value of ['0', '-1', 'oops', 'Infinity']) {
+    await dialog.getByLabel('Standard selling price', { exact: false }).fill(value)
+    assert.equal(await createItem().isDisabled(), true)
+  }
+  await dialog.getByLabel('Standard selling price', { exact: false }).fill('175.50')
+  await dialog.getByText(/Saved to Standard Selling per stock unit \(Kg\)/).waitFor()
+  await screenshot('emergency-item-desktop.png')
+  await page.setViewportSize({ width: 390, height: 844 })
+  assert.ok(await dialog.evaluate(el => {
+    const body = el.querySelector('.modal-body'), footer = el.querySelector('.modal-footer')
+    return body.scrollHeight > body.clientHeight && body.getBoundingClientRect().bottom <= footer.getBoundingClientRect().top + 1
+      && footer.getBoundingClientRect().bottom <= window.innerHeight
+  }), 'Mobile form scrolls within its body and leaves the footer visible')
+  await dialog.getByLabel('Standard selling price', { exact: false }).scrollIntoViewIfNeeded()
+  await screenshot('emergency-item-mobile.png')
+  await page.evaluate(() => { test.session.offline = true })
+  assert.equal(await createItem().isDisabled(), true)
+  await dialog.getByRole('alert').filter({ hasText: 'Connect to the server' }).waitFor()
+  await page.evaluate(() => { test.session.offline = false })
+  // In-flight saves cannot be submitted twice or cancelled.
+  let finishCreation
+  holdItemCreation = new Promise(resolve => { finishCreation = resolve })
+  await createItem().click()
+  await dialog.getByRole('button', { name: 'Saving…', exact: true }).waitFor()
+  assert.equal(await dialog.getByRole('button', { name: 'Cancel', exact: true }).isDisabled(), true)
+  await page.keyboard.press('Escape')
+  assert.equal(await dialog.isVisible(), true)
+  finishCreation(); holdItemCreation = null
+  await dialog.waitFor({ state: 'detached' })
+  assert.equal(await page.getByLabel('Quantity for Emergency rice').inputValue(), '2.5')
+  assert.equal(await page.getByLabel('Unit cost for Emergency rice').inputValue(), '125.5')
+  assert.equal(await page.getByLabel('Supplier invoice number', { exact: true }).inputValue(), 'GF-EMERGENCY-1')
+  assert.match(await page.locator('.summary-total').innerText(), /313\.75/)
+  assert.equal(calls.filter(row => row.method === 'create_invoice').length, 1, 'Item creation does not post an invoice')
+  const created = calls.filter(row => row.method === 'create_item').at(-1).args
+  assert.equal(created.pos_profile, 'Main till')
+  assert.equal(created.barcode, '8901234567890')
+  assert.equal(created.item_code, '00999')
+  assert.equal(created.price_list, 'Standard Selling')
+  assert.deepEqual(JSON.parse(created.prices), [{ uom: 'Kg', price: 175.5 }], 'Separate selling price is saved per stock unit')
+  assert.equal(created.qty, undefined, 'Item creation does not receive stock')
+  await page.getByLabel('Quantity for Emergency rice').scrollIntoViewIfNeeded()
+  await screenshot('emergency-draft-mobile.png')
+  await page.setViewportSize({ width: 1440, height: 1050 })
+  await page.locator('.buying-workspace').evaluate(el => { el.scrollTop = 0 })
+  await screenshot('emergency-draft-desktop.png')
+  await page.getByRole('button', { name: 'Emergency item entry', exact: true }).click()
+  await page.keyboard.press('Escape')
+  await dialog.waitFor({ state: 'detached' })
+  assert.equal(await page.getByRole('button', { name: 'Emergency item entry', exact: true }).evaluate(el => el === document.activeElement), true)
+  // An uncertain item save is found by its original code, without automatic recreation.
+  await page.getByRole('button', { name: 'Emergency item entry', exact: true }).click()
+  await dialog.getByLabel('Item name', { exact: true }).fill('Recovery fertilizer')
+  await dialog.getByLabel('Item code', { exact: true }).fill('RECOVER-001')
+  await dialog.getByLabel(/^Category/).selectOption('Agriculture')
+  await dialog.getByLabel(/^Stock unit/).selectOption('Packet')
+  await dialog.getByLabel('Unit cost', { exact: false }).fill('50')
+  loseItemResponse = true
+  await createItem().click()
+  await dialog.getByRole('alert').filter({ hasText: 'may already be saved' }).waitFor()
+  assert.equal(await createItem().isDisabled(), true)
+  await dialog.getByRole('button', { name: 'Find saved item', exact: true }).click()
+  assert.equal(calls.filter(row => row.method === 'create_item').at(-1).args.prices, undefined, 'Blank selling price creates no Item Price')
+  await page.getByRole('button', { name: /Recovery fertilizer/ }).click()
+  assert.equal(createdItems.filter(row => row.name === 'RECOVER-001').length, 1)
+  await page.getByLabel('Unit cost for Recovery fertilizer').fill('50')
+  await page.getByRole('button', { name: 'Submit purchase invoice', exact: true }).click()
+  await page.getByRole('status').filter({ hasText: 'PINV-0003' }).waitFor()
+  assert.deepEqual(calls.filter(row => row.method === 'create_invoice').at(-1).args.items,
+    [{ item_code: '00999', qty: 2.5, rate: 125.5 }, { item_code: 'RECOVER-001', qty: 1, rate: 50 }])
+
+  // Price access is independent of item creation; a missing setup never chooses another list.
+  canEditPrices = false
+  await page.reload()
+  await page.getByRole('button', { name: /Greenfield Agri Supplies/ }).click()
+  await page.getByRole('button', { name: 'New purchase invoice', exact: true }).click()
+  await page.getByRole('button', { name: 'Emergency item entry', exact: true }).click()
+  assert.equal(await dialog.getByLabel('Standard selling price', { exact: false }).isDisabled(), true)
+  await dialog.getByLabel('Item name', { exact: true }).fill('No price access item')
+  await dialog.getByLabel('Item code', { exact: true }).fill('NOPRICE-001')
+  await dialog.getByLabel(/^Category/).selectOption('Agriculture')
+  await dialog.getByLabel(/^Stock unit/).selectOption('Kg')
+  await dialog.getByLabel('Unit cost', { exact: false }).fill('25')
+  await createItem().click()
+  await dialog.waitFor({ state: 'detached' })
+  assert.equal(calls.filter(row => row.method === 'create_item').at(-1).args.prices, undefined)
+  canEditPrices = true; sellingPriceList = null
+  await page.reload()
+  await page.getByRole('button', { name: /Greenfield Agri Supplies/ }).click()
+  await page.getByRole('button', { name: 'New purchase invoice', exact: true }).click()
+  await page.getByRole('button', { name: 'Emergency item entry', exact: true }).click()
+  assert.equal(await dialog.getByLabel('Standard selling price', { exact: false }).isDisabled(), true)
+  await dialog.getByText('Configure an enabled, accessible selling price list on this outlet to set a selling price.').waitFor()
+  await page.keyboard.press('Escape')
+  sellingPriceList = { name: 'Retail USD', currency: 'USD' }
+  await page.reload()
+  await page.getByRole('button', { name: /Greenfield Agri Supplies/ }).click()
+  await page.getByRole('button', { name: 'New purchase invoice', exact: true }).click()
+  await page.getByRole('button', { name: 'Emergency item entry', exact: true }).click()
+  assert.equal(await dialog.getByLabel('Standard selling price (USD)', { exact: true }).isEnabled(), true)
+  assert.equal(await dialog.getByLabel('Unit cost (LKR)', { exact: true }).isEnabled(), true)
+  await page.keyboard.press('Escape')
+
+  // Item creation can be withheld independently of buying/invoice access.
+  canCreateItem = false
+  await page.reload()
+  await page.getByRole('button', { name: /Greenfield Agri Supplies/ }).click()
+  await page.getByRole('button', { name: 'New purchase invoice', exact: true }).click()
+  assert.equal(await page.getByRole('button', { name: 'Emergency item entry', exact: true }).count(), 0)
+  await page.getByLabel('Add items', { exact: true }).fill('Unlisted product')
+  await page.getByText('No matching items. Ask a user with item creation access to add the product.').waitFor()
+  assert.equal(await page.getByRole('button', { name: 'Create missing item', exact: true }).count(), 0)
+
   // New supplier and offline/permission boundaries remain accessible on phones.
+  await page.setViewportSize({ width: 390, height: 844 })
   await page.getByRole('button', { name: 'Change supplier', exact: true }).click()
   await page.getByRole('button', { name: 'Add supplier', exact: true }).click()
   await page.getByLabel('Supplier name', { exact: true }).fill('Harvest Freight Services')
@@ -184,7 +340,7 @@ try {
   await page.getByRole('alert').filter({ hasText: 'does not have buying access' }).waitFor()
   assert.equal(await page.getByRole('button', { name: 'New purchase invoice', exact: true }).count(), 0)
   assert.deepEqual(errors, [])
-  console.log('PASS purchase with valuation charges, separate supplier drafts, cash/cheque/transfer, partial/full settlement, overpayment guard, lost-response retry, supplier creation, offline/access controls and desktop/mobile overflow/screenshots')
+  console.log('PASS purchase with valuation charges, separate supplier drafts, cash/cheque/transfer, partial/full settlement, overpayment guard, lost-response retry, emergency item creation/generation/duplicates/validation/recovery, supplier creation, offline/access controls and desktop/mobile overflow/screenshots')
 } finally {
   await browser.close()
   await server.close()

@@ -2,7 +2,7 @@
      SPDX-License-Identifier: AGPL-3.0-only
      "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md. -->
 <template>
-  <div v-if="!deleteSaleOpen" class="modal-backdrop" @click.self="$emit('close')">
+  <div v-if="!deleteSaleOpen && !greetingOpen" class="modal-backdrop" @click.self="dismissReceipt">
     <div class="modal" style="width: 440px">
       <div class="modal-header">
         {{
@@ -10,7 +10,7 @@
             ? receipt.offline ? t('Refund queued (offline)') : t('Refund complete')
             : receipt.offline ? t('Sale queued (offline)') : t('Sale complete')
         }}
-        <button class="btn-ghost" @click="$emit('close')"><Icon name="close" /></button>
+        <button v-if="!canThankCustomer" class="btn-ghost" :aria-label="t('Close receipt')" @click="dismissReceipt"><Icon name="close" /></button>
       </div>
       <div class="modal-body">
         <div v-if="receipt.offline && receipt.is_return" class="offline-banner">
@@ -27,6 +27,12 @@
               ? money(receipt.base_change_amount, receipt.company_currency)
               : money(receipt.change_amount, receipt.currency)
           }}</strong>
+        </div>
+        <div v-if="canThankCustomer" class="handover-note">
+          <p v-if="Number(receipt.loyalty_change_points) > 0"><Icon name="star" /> {{ t('{points} points saved from your change', { points: receipt.loyalty_change_points }) }}</p>
+          <p>{{ Number(receipt.change_amount) > 0
+            ? t('Hand over the change and receipt, then select Change handed over to thank the customer.')
+            : t('Hand over the receipt, then select Thank customer to finish the sale.') }}</p>
         </div>
         <div v-if="receipt.gift_card_no" class="giftcard-banner">
           <Icon name="gift" /> {{ t('Gift card') }} <strong>{{ receipt.gift_card_no }}</strong>,
@@ -124,12 +130,13 @@
           class="btn btn-outline" :disabled="session.offline || printing" @click="deleteSaleOpen = true">
           {{ t('Delete sale…') }}
         </button>
-        <button class="btn btn-primary" @click="$emit('close')">
-          {{ receipt.is_return ? t('Done') : t('New Sale') }}
+        <button ref="finishButton" class="btn btn-primary" :disabled="printing" :data-pos-sound="canThankCustomer ? 'off' : undefined" @click="finishReceipt">
+          {{ canThankCustomer ? Number(receipt.change_amount) > 0 ? t('Change handed over') : t('Thank customer') : receipt.is_return ? t('Done') : t('New Sale') }}
         </button>
       </div>
     </div>
   </div>
+  <SaleThankYou v-if="greetingOpen" :receipt="receipt" @close="$emit('close')" />
   <CustomerModal v-if="linkCustomerOpen" :invoice-receipt="receipt"
     @close="linkCustomerOpen = false" @linked="onCustomerLinked" />
   <DeleteSaleDialog v-if="deleteSaleOpen" :invoice="receipt.name" :doctype="receipt.doctype"
@@ -144,6 +151,9 @@ import ReceiptView from './ReceiptView.vue'
 import CashDrawerButton from './printing/CashDrawerButton.vue'
 import CustomerModal from './CustomerModal.vue'
 import DeleteSaleDialog from './DeleteSaleDialog.vue'
+import SaleThankYou from './SaleThankYou.vue'
+import { playSaleGreeting } from '../posSounds'
+import { displayReceipt } from '../customerDisplay'
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { call } from '../api'
 import { useSessionStore } from '../stores/session'
@@ -162,12 +172,32 @@ const props = defineProps({
   reprint: { type: Boolean, default: false },
   autoPrint: { type: Boolean, default: false },
   allowPermanentDelete: { type: Boolean, default: false },
+  checkoutCompletion: { type: Boolean, default: false },
 })
 const emit = defineEmits(['close', 'refund', 'exchange', 'open-in-history', 'updated', 'deleted'])
 
 const session = useSessionStore()
 const router = useRouter()
 const receiptView = ref(null)
+const finishButton = ref(null)
+const greetingOpen = ref(false)
+const canThankCustomer = computed(() => props.checkoutCompletion && !props.reprint && !props.receipt.is_return)
+function dismissReceipt() {
+  if (canThankCustomer.value) {
+    finishButton.value?.focus()
+    return
+  }
+  emit('close')
+}
+function finishReceipt() {
+  if (!canThankCustomer.value) { emit('close'); return }
+  if (greetingOpen.value) return
+  greetingOpen.value = true
+  if (displayReceipt.value?.receipt === props.receipt.name) {
+    displayReceipt.value = { ...displayReceipt.value, greeting: true }
+  }
+  playSaleGreeting()
+}
 const profileCustomer = computed(() => props.receipt.linked_customer ||
   (!props.receipt.walk_in_code && props.receipt.customer !== session.defaultCustomer ? props.receipt.customer : null))
 const linkCustomerOpen = ref(false)
@@ -297,6 +327,7 @@ async function connectManager() {
   finally { printing.value = false }
 }
 onMounted(async () => {
+  if (canThankCustomer.value) finishButton.value?.focus()
   if (props.autoPrint && !props.reprint && nativeConfig.value.automatic_receipt && useSilent.value) {
     await nextTick()
     await print(false, true)
@@ -391,6 +422,9 @@ async function print(forceBrowser = false, automatic = false) {
 </script>
 
 <style scoped>
+.handover-note { margin-bottom: 14px; padding: 14px; background: var(--surface-2); border-radius: var(--radius); line-height: 1.5; font-size: 13px; }
+.handover-note p { margin: 0; }
+.handover-note p + p { margin-top: 8px; }
 .reprint-note { align-self: center; max-width: 220px; }
 .offline-banner {
   background: rgba(245, 166, 35, 0.14);

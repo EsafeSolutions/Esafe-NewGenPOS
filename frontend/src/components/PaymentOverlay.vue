@@ -2,10 +2,10 @@
      SPDX-License-Identifier: AGPL-3.0-only
      "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md. -->
 <template>
-  <div class="pay-overlay">
+  <dialog ref="paymentDialog" class="pay-overlay" aria-labelledby="payment-title" @cancel.prevent="closePayment">
     <header class="pay-header">
-      <button class="btn-ghost back" @click="$emit('close')">‹ {{ t('Back to sale') }}</button>
-      <div class="pay-title">{{ t('Amount to Pay') }}</div>
+      <button class="btn-ghost back" :disabled="cart.submitting || switching" @click="closePayment">‹ {{ t('Back to sale') }}</button>
+      <h2 id="payment-title" class="pay-title">{{ t('Amount to Pay') }}</h2>
       <div />
     </header>
 
@@ -151,6 +151,7 @@
           step="0.01"
           v-model.number="amount"
           class="tender-input"
+          :aria-label="t('Payment amount')"
           @keydown.enter="payWithDefault"
         />
         <div class="quick-cash">
@@ -165,6 +166,7 @@
           v-for="mode in methodTiles"
           :key="mode.mode_of_payment"
           class="method card"
+          :aria-label="mode.mode_of_payment"
           :class="{ branded: mode.brand, blocked: !!blockedModes[mode.mode_of_payment] }"
           :disabled="!!blockedModes[mode.mode_of_payment]"
           :title="blockedModes[mode.mode_of_payment] || ''"
@@ -219,7 +221,7 @@
               = {{ money(payment.typed_amount, payment.typed_currency) }}
             </span>
           </span>
-          <button class="btn-ghost" @click="payments.splice(i, 1)"><Icon name="close" /></button>
+          <button class="btn-ghost" :aria-label="t('Remove {mode} payment', { mode: payment.mode_of_payment })" @click="payments.splice(i, 1)"><Icon name="close" /></button>
           <!-- Terminal / transfer reference, so a disputed card payment can be
                traced back later. Required when the shop configured it. -->
           <input
@@ -279,7 +281,7 @@
       @approved="onRefundApproved"
       @close="refundAsk = false"
     />
-  </div>
+  </dialog>
 </template>
 
 <script setup>
@@ -304,6 +306,7 @@ const amount = ref(0)
 const redeemPoints = ref(0)
 const saveChange = ref(false)
 const amountInput = ref(null)
+const paymentDialog = ref(null)
 const giftCardOpen = ref(false)
 const giftCardNo = ref('')
 const giftCardInfo = ref(null)
@@ -433,10 +436,24 @@ const localChange = computed(() => {
 })
 
 watchEffect(() => {
-  if (!session.settings?.enable_customer_display) return
+  if (!session.settings?.enable_customer_display) { displayPayment.value = null; return }
   const currency = sale.value.currency
+  const selected = payments.value.at(-1)
+  const config = session.settings.bank_transfer_display
+  const selectedCurrency = selected?.tender_currency || currency
+  const selectedAccounts = bankAccounts({ ...config, trigger: 'bank' }, session.posProfile, selectedCurrency, selected?.mode_of_payment || '')
+  const bankCurrency = selectedAccounts.length ? selectedCurrency : currency
+  const accounts = selectedAccounts.length ? selectedAccounts
+    : bankAccounts(config, session.posProfile, bankCurrency, selected?.mode_of_payment || '')
+  // Adding a tender reduces `remaining` to zero before money has been sent.
+  // Show the whole amount allocated to this method, in its receiving currency.
+  const bankAmount = selected && selectedAccounts.length
+    ? payments.value.filter(payment => payment.mode_of_payment === selected.mode_of_payment && payment.tender_currency === bankCurrency)
+      .reduce((sum, payment) => sum + payment.tender_amount, 0)
+    : Math.max(remaining.value, 0)
   displayPayment.value = {
-    bankAccounts: bankAccounts(session.settings.bank_transfer_display, session.posProfile, currency, payments.value.at(-1)?.mode_of_payment || ''),
+    bankAccounts: accounts,
+    bankAmount: accounts.length ? money(round2(bankAmount), bankCurrency) : '',
     total: money(total.value, currency),
     paid: money(paid.value, currency),
     due: remaining.value > 0 ? money(remaining.value, currency) : '',
@@ -453,7 +470,11 @@ watchEffect(() => {
     })),
   }
 })
-onBeforeUnmount(() => { displayPayment.value = null })
+onBeforeUnmount(() => { displayPayment.value = null; paymentDialog.value?.close() })
+
+function closePayment() {
+  if (!cart.submitting && !switching.value && !refundAsk.value) emit('close')
+}
 
 const canComplete = computed(() => {
   if (!referencesOk.value) return false
@@ -606,6 +627,7 @@ const quickAmounts = computed(() => {
 })
 
 onMounted(async () => {
+  paymentDialog.value?.showModal()
   amount.value = round2(Math.max(cart.inSale(cart.total), 0))
   amountInput.value?.focus()
   amountInput.value?.select()
@@ -910,15 +932,24 @@ function round2(n) {
 }
 .split-ref.missing { border-color: var(--red, #e23030); background: rgba(226, 48, 48, 0.06); }
 .pay-overlay {
-  position: fixed;
-  inset: 0;
+  width: min(720px, calc(100% - 32px));
+  max-width: none;
+  max-height: calc(100dvh - 48px);
+  margin: auto;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
   background: var(--page-bg);
-  z-index: 40;
-  display: flex;
+  color: var(--text);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
   flex-direction: column;
 }
+.pay-overlay[open] { display: flex; }
+.pay-overlay::backdrop { background: color-mix(in srgb, var(--text) 38%, transparent); }
 .pay-header {
-  height: 52px;
+  min-height: 52px;
+  flex-shrink: 0;
   background: var(--topbar-bg);
   color: #fff;
   display: grid;
@@ -928,13 +959,12 @@ function round2(n) {
 }
 .back { color: var(--on-pos-blue-muted); font-size: 14px; justify-self: start; }
 .back:hover { color: #fff; }
-.pay-title { font-weight: 700; font-size: 16px; }
+.pay-title { margin: 0; font-weight: 700; font-size: 16px; }
 .pay-body {
-  flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  width: min(640px, 94vw);
-  margin: 0 auto;
-  padding: 28px 0 40px;
+  width: 100%;
+  padding: 24px;
   display: flex;
   flex-direction: column;
   gap: 18px;
@@ -972,7 +1002,7 @@ function round2(n) {
   font-weight: 700;
   color: var(--text-muted);
 }
-.due-value { font-size: 52px; font-weight: 800; }
+.due-value { font-size: clamp(32px, 6vw, 48px); font-weight: 800; overflow-wrap: anywhere; }
 .due-value.change { color: var(--brand); }
 .due-sub { font-size: 17px; font-weight: 700; color: var(--text-muted); }
 .rate-note { margin-top: 4px; font-size: 12px; color: var(--text-muted); }
@@ -1097,4 +1127,16 @@ function round2(n) {
 .small { font-size: 12px; }
 .complete { margin-top: 6px; }
 .offline-note { text-align: center; margin: 0; }
+@media (max-width: 600px) {
+  .pay-overlay { width: calc(100% - 24px); max-height: calc(100dvh - 32px); }
+  .pay-header { padding: 0 12px; grid-template-columns: auto 1fr; gap: 12px; }
+  .pay-header > div:last-child { display: none; }
+  .pay-title { text-align: end; font-size: 15px; }
+  .pay-body { padding: 16px; gap: 14px; }
+  .methods { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .method { min-width: 0; padding: 14px 10px; font-size: 13px; gap: 8px; }
+  .giftcard-row, .giftcard-info { flex-wrap: wrap; }
+  .giftcard-row input { min-width: 0; }
+  .split-amount { flex-wrap: wrap; justify-content: flex-end; }
+}
 </style>

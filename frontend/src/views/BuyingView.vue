@@ -117,10 +117,11 @@
                 <label>{{ t('Due date') }}<input v-model="draft.dueDate" type="date" :min="draft.postingDate" required /></label>
               </div>
               <label class="warehouse-field">{{ t('Receive into warehouse') }}<select v-model="draft.warehouse" required><option value="">{{ t('Select warehouse') }}</option><option v-for="warehouse in options.warehouses" :key="warehouse">{{ warehouse }}</option></select></label>
-              <label class="item-search">{{ t('Add items') }}<input v-model="itemQuery" :placeholder="t('Search purchase item name or code')" autocomplete="off" @input="searchItems" /></label>
+              <div class="item-entry-heading"><label for="buying-item-search">{{ t('Add items') }}</label><button v-if="options.can_create_item" ref="emergencyItemButton" class="btn btn-outline" type="button" @click="openEmergencyItem">{{ t('Emergency item entry') }}</button></div>
+              <input id="buying-item-search" ref="itemSearch" v-model="itemQuery" :placeholder="t('Search purchase item name or code')" autocomplete="off" @input="searchItems" />
               <p v-if="itemLoading" class="muted" role="status">{{ t('Searching…') }}</p>
               <div v-if="itemResults.length" class="item-suggestions"><button v-for="item in itemResults" :key="item.name" type="button" @click="addItem(item)"><strong>{{ item.item_name }}</strong><small>{{ item.name }} · {{ item.stock_uom }}</small></button></div>
-              <p v-else-if="itemSearched && !itemLoading" class="muted">{{ t('No matching items. Create the item under Items; use ERPNext for serial, batch or asset purchases.') }}</p>
+              <div v-else-if="itemSearched && !itemLoading" class="missing-item" role="status"><p class="muted">{{ t(options.can_create_item ? 'No matching items. Use emergency item entry to add a missing product.' : 'No matching items. Ask a user with item creation access to add the product.') }}</p><button v-if="options.can_create_item" class="btn btn-outline" type="button" @click="openEmergencyItem">{{ t('Create missing item') }}</button><small class="muted">{{ t('Use ERPNext for serial, batch or asset purchases.') }}</small></div>
               <div v-for="(line, index) in draft.items" :key="line.id || line.item_code" class="purchase-line">
                 <div class="purchase-line-name"><strong>{{ line.item_name }}</strong><small>{{ line.item_code }} · {{ line.uom }}</small></div>
                 <label>{{ t('Qty') }}<input v-model="line.qty" inputmode="decimal" required :aria-label="t('Quantity for {name}', { name: line.item_name })" /></label>
@@ -162,6 +163,7 @@
         <div v-else class="card buying-empty choose-supplier">{{ t('Choose a supplier to view their balance or add a purchase invoice.') }}</div>
       </div>
     </template>
+    <BuyingItemCreateDialog v-if="emergencyItem && allowed && options.can_create_item" :key="session.posProfile" :options="options" :initial-name="emergencyItem.name" :currency="options.currency" @created="addEmergencyItem" @close="closeEmergencyItem" @find="findSavedItem" />
   </section>
 </template>
 
@@ -173,6 +175,7 @@ import { newId } from '../offline'
 import { useSessionStore } from '../stores/session'
 import { t } from '../i18n'
 import PurchaseInvoiceScanner from '../components/PurchaseInvoiceScanner.vue'
+import BuyingItemCreateDialog from '../components/BuyingItemCreateDialog.vue'
 
 const session = useSessionStore()
 const allowed = computed(() => session.settings.enable_buying && session.permissions.buying && !session.reportsOnly)
@@ -206,6 +209,9 @@ const itemQuery = ref('')
 const itemResults = ref([])
 const itemLoading = ref(false)
 const itemSearched = ref(false)
+const emergencyItem = ref(null)
+const emergencyItemButton = ref(null)
+const itemSearch = ref(null)
 let supplierTimer, itemTimer
 let contextVersion = 0, accountVersion = 0, supplierVersion = 0, itemVersion = 0
 const attempts = new Map()
@@ -250,6 +256,7 @@ async function initialize() {
   ready.value = false; loading.value = false; error.value = ''; success.value = ''
   uncertain.value = null
   scanOpen.value = false
+  emergencyItem.value = null
   suppliers.value = []; supplierQuery.value = ''; selectedInvoices.value = []
   supplierDrafts.clear()
   showPayment.value = false; showNewSupplier.value = false; tab.value = 'account'; historyStart.value = 0
@@ -378,6 +385,28 @@ function addItem(item) {
     is_stock_item: item.is_stock_item, qty: '1', rate: item.last_purchase_rate > 0 ? String(item.last_purchase_rate) : '' })
   ++itemVersion; clearTimeout(itemTimer); itemQuery.value = ''; itemResults.value = []; itemSearched.value = false; itemLoading.value = false
 }
+function openEmergencyItem() {
+  if (locked.value || session.offline || !options.value.can_create_item || !supplier.value) return
+  emergencyItem.value = { name: itemQuery.value.trim() }
+}
+async function closeEmergencyItem() {
+  emergencyItem.value = null
+  await nextTick()
+  emergencyItemButton.value?.focus()
+}
+async function addEmergencyItem({ item, qty, rate }) {
+  addItem(item)
+  const line = draft.value.items.find((row) => row.item_code === item.name)
+  line.qty = String(qty); line.rate = String(rate)
+  success.value = t('Item {name} created and added to the purchase draft.', { name: item.item_name })
+  await closeEmergencyItem()
+}
+async function findSavedItem(code) {
+  await closeEmergencyItem()
+  itemQuery.value = code
+  searchItems()
+  itemSearch.value?.focus()
+}
 function addCost() { draft.value.costs.push({ id: newId(), kind: 'valuation', description: '', account: options.value.cost_accounts?.[0] || '', amount: '' }) }
 function prepareSupplier(name) { showNewSupplier.value = true; showSuppliers.value = true; newSupplier.value.name = name || ''; nextTick(() => document.querySelector('.supplier-create input')?.focus()) }
 function applyScan(result) {
@@ -468,7 +497,11 @@ small, .muted { color: var(--text-muted); }
 .purchase-layout { display: grid; grid-template-columns: minmax(0, 1fr) 270px; gap: 16px; align-items: start; }
 .purchase-editor, .purchase-summary { padding: 18px; }
 .purchase-editor > .form-grid { margin-top: 20px; }
-.warehouse-field, .item-search { margin-top: 16px; }
+.warehouse-field { margin-top: 16px; }
+.item-entry-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin: 16px 0 6px; }
+.item-entry-heading .btn, .missing-item .btn { font-size: 12px; padding: 8px 10px; }
+.missing-item { display: grid; justify-items: start; gap: 8px; margin-top: 12px; font-size: 12px; line-height: 1.6; }
+.missing-item p { margin: 0; }
 .item-suggestions { display: grid; max-height: 280px; overflow-y: auto; margin-top: 6px; border: 1px solid var(--border); border-radius: 8px; }
 .item-suggestions button { display: grid; gap: 4px; text-align: start; background: var(--card-bg); color: var(--text); border: 0; border-bottom: 1px solid var(--border-subtle); padding: 12px; cursor: pointer; }
 .purchase-line { display: grid; grid-template-columns: minmax(0, 1fr) 65px 100px 90px 26px; gap: 10px; align-items: end; padding: 14px 0; border-bottom: 1px solid var(--border); }

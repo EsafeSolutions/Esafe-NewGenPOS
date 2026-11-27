@@ -61,6 +61,8 @@ class BuyingTests(unittest.TestCase):
         utils.nowdate = lambda: "2026-11-26"
         self.permissions = ModuleType("esafepos.api.permissions")
         self.permissions.allowed = Mock(return_value=True)
+        self.permissions.ITEM_CREATE = "Create items"
+        self.permissions.ITEM_PRICE_EDIT = "Edit item selling prices"
         self.permissions.assert_outlet = Mock()
         self.features = ModuleType("esafepos.features")
         self.features.enabled = Mock(return_value=True)
@@ -364,9 +366,68 @@ class BuyingTests(unittest.TestCase):
         self.assertFalse(result["can_create_invoice"])
         self.assertFalse(result["can_create_supplier"])
         self.assertFalse(result["can_pay"])
+        self.assertFalse(result["can_create_item"])
+        self.assertFalse(result["can_edit_prices"])
+        self.assertIsNone(result["selling_price_list"])
+        self.assertEqual(result["item_groups"], [])
+        self.assertEqual(result["stock_uoms"], [])
         self.assertEqual(result["warehouses"], [])
         self.assertEqual(result["payment_modes"], [])
         self.frappe.get_list.assert_not_called()
+
+    def test_emergency_item_options_require_capability_and_native_permissions(self):
+        for denied in (("Item", "create"), ("Item", "read"), ("Item Group", "read"), ("UOM", "read")):
+            with self.subTest(denied=denied):
+                self.frappe.has_permission.side_effect = lambda dt, action: (dt, action) != denied
+                self.frappe.get_list.reset_mock()
+                result = self.api.options("Till")
+                self.assertFalse(result["can_create_item"])
+                self.assertEqual(result["item_groups"], [])
+                self.assertEqual(result["stock_uoms"], [])
+                self.assertFalse(any(call.args[0] in ("Item Group", "UOM")
+                                     for call in self.frappe.get_list.call_args_list))
+        self.frappe.has_permission.side_effect = None
+        self.permissions.allowed.side_effect = lambda capability: capability != "Create items"
+        self.assertFalse(self.api.options("Till")["can_create_item"])
+
+    def test_emergency_item_options_use_permission_scoped_leaf_categories_and_units(self):
+        self.frappe.get_list.side_effect = lambda dt, **kw: {"Item Group": ["Goods"], "UOM": ["Kg", "Nos"]}.get(dt, [])
+        result = self.api.options("Till")
+        self.assertTrue(result["can_create_item"])
+        self.assertEqual(result["item_groups"], ["Goods"])
+        self.assertEqual(result["stock_uoms"], ["Kg", "Nos"])
+        self.frappe.get_list.assert_any_call("Item Group", filters={"is_group": 0}, pluck="name", order_by="name", limit_page_length=0)
+        for call in self.frappe.get_list.call_args_list:
+            self.assertNotIn("ignore_permissions", call.kwargs)
+
+    def test_emergency_selling_price_requires_price_capability_and_native_create_access(self):
+        self.profile.selling_price_list = "Standard Selling"
+        for denied in (("Item Price", "create"), ("Item Price", "read"), ("Price List", "read")):
+            with self.subTest(denied=denied):
+                self.frappe.has_permission.side_effect = lambda dt, action: (dt, action) != denied
+                self.frappe.get_list.reset_mock()
+                result = self.api.options("Till")
+                self.assertTrue(result["can_create_item"])
+                self.assertFalse(result["can_edit_prices"])
+                self.assertIsNone(result["selling_price_list"])
+                self.assertFalse(any(call.args[0] == "Price List" for call in self.frappe.get_list.call_args_list))
+        self.frappe.has_permission.side_effect = None
+        self.permissions.allowed.side_effect = lambda capability: capability != "Edit item selling prices"
+        self.assertFalse(self.api.options("Till")["can_edit_prices"])
+
+    def test_emergency_selling_price_uses_outlet_list_and_its_currency(self):
+        self.profile.selling_price_list = "Retail USD"
+        self.frappe.get_list.side_effect = lambda dt, **kw: [{"name": "Retail USD", "currency": "USD"}] if dt == "Price List" else []
+        result = self.api.options("Till")
+        self.assertTrue(result["can_edit_prices"])
+        self.assertEqual(result["selling_price_list"], {"name": "Retail USD", "currency": "USD"})
+        self.frappe.get_list.assert_any_call("Price List", filters={"name": "Retail USD", "enabled": 1, "selling": 1},
+                                           fields=["name", "currency"], limit_page_length=1)
+
+    def test_emergency_selling_price_has_no_fallback_for_missing_or_inaccessible_outlet_list(self):
+        self.assertIsNone(self.api.options("Till")["selling_price_list"])
+        self.profile.selling_price_list = "Disabled or inaccessible"
+        self.assertIsNone(self.api.options("Till")["selling_price_list"])
 
     def test_frappe_16_balance_uses_dictionary_aggregates_and_keeps_permissions(self):
         self.frappe.__version__ = "16.60.2"

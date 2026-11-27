@@ -6,14 +6,14 @@
     <p v-if="loading" role="status">{{ t('Loading…') }}</p>
     <template v-else>
       <label class="inline-check"><input type="checkbox" v-model="config.enabled" /> {{ t('Show bank details automatically') }}</label>
-      <label class="field"><span>{{ t('When to show') }}</span><select v-model="config.trigger"><option value="checkout">{{ t('When the payment page opens') }}</option><option value="bank">{{ t('When the configured bank payment method is selected') }}</option></select></label>
+      <label class="field"><span>{{ t('When to show') }}</span><select v-model="config.trigger"><option value="bank">{{ t('When a bank transfer or bank draft is selected') }}</option><option value="checkout">{{ t('When the payment page opens') }}</option></select></label>
       <div class="bank-account-tabs"><button v-for="(account, index) in config.accounts" :key="index" class="btn btn-outline" :aria-pressed="active === index" @click="active = index">{{ account.bank_name || t('Account {n}', { n: index + 1 }) }}</button><button class="btn btn-outline" :disabled="config.accounts.length >= 12" @click="addAccount"><Icon name="plus" /> {{ t('Add bank account') }}</button></div>
       <div v-if="current" class="bank-editor">
         <div class="bank-fields">
           <label v-for="field in fields" :key="field.key" class="field"><span>{{ t(field.label) }}</span><input v-model="current[field.key]" :maxlength="field.key === 'currency' ? 3 : 140" /></label>
           <label class="field"><span>{{ t('Register / outlet') }}</span><select v-model="current.pos_profile"><option value="">{{ t('All authorized outlets') }}</option><option v-for="profile in session.availableProfiles" :key="profile" :value="profile">{{ profile }}</option></select></label>
           <label class="field"><span>{{ t('Payment method') }}</span><input v-model="current.payment_mode" list="bank-payment-modes" :placeholder="t('Exact Mode of Payment name')" /><datalist id="bank-payment-modes"><option v-for="mode in session.paymentModes" :key="mode.mode_of_payment" :value="mode.mode_of_payment" /></datalist></label>
-          <p class="muted small span-all">{{ t('A blank currency matches any sale currency. For a bank-only trigger, enter the exact bank payment method. Accounts for another outlet or currency stay hidden.') }}</p>
+          <p class="muted small span-all">{{ t('Leave Payment method blank to show this account for Bank Transfer and Bank Draft. Enter an exact method name to restrict it. A blank currency matches any payment currency. Accounts for another outlet or currency stay hidden.') }}</p>
           <label class="field span-all"><span>{{ t('Customer instructions') }}</span><textarea v-model="current.instructions" maxlength="500" rows="2" /></label>
           <label class="field"><span>{{ t('Bank logo') }}</span><input type="file" accept="image/png,image/jpeg,image/webp" :disabled="!!uploading" @change="upload($event, 'logo')" /><button v-if="current.logo" class="btn btn-outline" @click="current.logo = ''">{{ t('Remove logo') }}</button></label>
           <label class="field"><span>{{ t('Official bank QR image') }}</span><input type="file" accept="image/png,image/jpeg,image/webp" :disabled="!!uploading" @change="upload($event, 'qr_image')" /><button v-if="current.qr_image" class="btn btn-outline" @click="current.qr_image = ''">{{ t('Remove QR image') }}</button></label>
@@ -40,7 +40,7 @@ import { t } from '../i18n'
 import Icon from './Icon.vue'
 import BankTransferCard from './BankTransferCard.vue'
 const session = useSessionStore()
-const config = ref({ enabled: false, trigger: 'checkout', accounts: [] })
+const config = ref({ enabled: false, trigger: 'bank', accounts: [] })
 const active = ref(0), loading = ref(true), saving = ref(false), uploading = ref(''), error = ref(''), saved = ref(false)
 const current = computed(() => config.value.accounts[active.value])
 const fields = [{ key: 'bank_name', label: 'Bank name *' }, { key: 'holder', label: 'Account holder *' }, { key: 'account_number', label: 'Account number *' }, { key: 'branch', label: 'Branch' }, { key: 'swift', label: 'SWIFT / bank code' }, { key: 'currency', label: 'Account currency (e.g. LKR)' }]
@@ -64,7 +64,6 @@ async function upload(event, field) {
 }
 async function save() {
   error.value = ''; saved.value = false
-  if (config.value.trigger === 'bank' && config.value.accounts.some(row => !row.payment_mode.trim())) { error.value = t('Choose a payment method for every bank account when using the bank-only trigger.'); return }
   saving.value = true
   try { config.value = await call('esafepos.api.bank_display.save_settings', { config: config.value }); session.settings.bank_transfer_display = config.value; saved.value = true }
   catch (e) { error.value = e.message }

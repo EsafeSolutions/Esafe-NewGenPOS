@@ -18,11 +18,17 @@ class BankDisplayTests(unittest.TestCase):
         self.assertEqual(config["accounts"][0]["currency"], "LKR")
         self.assertEqual(config["accounts"][0]["qr_payload"], "bank-payload")
 
-    def test_incomplete_accounts_and_bank_trigger_without_method_rejected(self):
-        for value in ({"enabled": True}, {"accounts": [{"bank_name": "Bank"}]},
-                      {"trigger": "bank", "accounts": [self.account()]}):
+    def test_incomplete_accounts_rejected(self):
+        for value in ({"enabled": True}, {"accounts": [{"bank_name": "Bank"}]}):
             with self.assertRaises(ValueError):
                 clean_config(value)
+
+    def test_bank_trigger_default_allows_shared_receiving_account(self):
+        config = clean_config({"enabled": True, "accounts": [self.account()]})
+        self.assertEqual(config["trigger"], "bank")
+        self.assertEqual(config["accounts"][0]["payment_mode"], "")
+        config = clean_config({"trigger": "checkout", "accounts": [self.account()]})
+        self.assertEqual(config["trigger"], "checkout")
 
     def test_only_local_raster_images_accepted(self):
         for path in ("javascript:alert(1)", "https://example.com/logo.svg", "/files/../../image.png", "/files/a.svg", "/private/files/a.png"):

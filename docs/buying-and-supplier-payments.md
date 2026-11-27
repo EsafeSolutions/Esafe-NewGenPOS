@@ -32,7 +32,7 @@ Screenshots: [desktop review](screenshots/buying-ocr/review-desktop.png), [phone
 
 1. Open **Buying** and choose a supplier, or use **Add supplier** to create one.
 2. Open **New purchase invoice**. Enter the supplier's invoice reference/date, posting date, due date, and receiving warehouse.
-3. Search for purchase items and enter quantities and unit costs. This simple entry uses each item's stock UOM. Serial, batch, asset, and template items use the full ERPNext buying workflow.
+3. Search for purchase items and enter quantities and unit costs. If a product is missing, choose **Emergency item entry**, or **Create missing item** after an empty search. This simple entry uses each item's stock UOM. Serial, batch, asset, and template items use the full ERPNext buying workflow.
 4. Add supplier-billed freight, handling, or other additional costs with their expense accounts.
 5. Review **Supplier payable** and the estimated receipt cost per stock unit, then select **Submit purchase invoice**.
 
@@ -47,6 +47,22 @@ For example, 10 units at LKR 100 plus LKR 100 freight creates LKR 1,100 payable 
 Costs billed by a separate carrier or discovered after submission must be booked separately and allocated through an ERPNext **Landed Cost Voucher**. They must not also be added to the goods supplier's payable. The simple POS form does not replace jurisdiction-specific tax entry, foreign-currency purchasing, alternate purchase UOMs, linked orders/receipts, returns, or later landed-cost adjustments.
 
 Supplier-specific invoice drafts stay separate while the Buying page is open. Switching outlet resets the buying context and its drafts.
+
+### Emergency item entry
+
+Enter the missing item's name, a unique item code (or use **Generate item code**), an accessible leaf category, stock unit, quantity and unit cost. An optional barcode is saved against the stock unit. Choose **Create and add item** to save a normal stock/sales/purchase Item and add it to the current supplier's draft with that quantity and cost. The supplier, invoice references, dates, warehouse, existing lines and additional costs are retained. Quantities and costs must be greater than zero; fractional stock quantities are supported where the selected ERPNext UOM allows them.
+
+**Standard selling price** is optional. Enter a positive price per stock unit to save an ERPNext **Item Price** in the outlet POS Profile's configured selling price list, usually **Standard Selling**. The form shows the list name and its currency; that currency can differ from the purchase currency. The selling price is entered independently of the supplier's unit cost. Leave it blank to create the Item without a selling price.
+
+This action requires the separate **Create items** POS capability, native Item read/create access and Item Group/UOM read access. Native linked-record and barcode/code validation still apply. Users without this access can continue searching existing items and ask an authorized user to create the missing product. Item creation is online only and cannot be queued.
+
+Setting the selling price additionally requires **Edit item selling prices**, native Item Price read/create and Price List read access. The configured list must be enabled, marked for selling and accessible to the user. The price field is disabled when access or setup is missing, and item-only creation remains available. The form does not silently select another list. The existing item-creation endpoint validates the list, stock unit, price and native Item Price create permission, then saves the Item and supplied price in the same transaction.
+
+The Item and any entered selling price are saved immediately and remain if the purchase draft is discarded. Stock and supplier accounting update only after **Submit purchase invoice**. Further selling-price changes are available in **Items & stock**.
+
+If an item save response is lost, the form blocks resubmission and offers **Find saved item**. Search the captured code before creating it again; an Item may already have been saved. Adding a found item uses the normal purchase line editor for quantity and cost. Cancelling or pressing Escape before saving leaves the invoice draft intact.
+
+Screenshots: [desktop entry](screenshots/buying/emergency-item-desktop.png), [phone entry](screenshots/buying/emergency-item-mobile.png), [desktop draft](screenshots/buying/emergency-draft-desktop.png), [phone draft](screenshots/buying/emergency-draft-mobile.png).
 
 ## Supplier balances and payments
 
@@ -73,6 +89,8 @@ The client retains an unchanged request ID after a failed response. A lost respo
 Affected modules: `api/buying.py`, `BuyingView.vue`, route/navigation/title, feature and permission configuration, manager grants, migration custom fields, and generated POS assets. There are no new accounting DocTypes.
 
 ## Verification
+
+Emergency item verification (2026-11-27): `python -m unittest esafepos.api.test_buying esafepos.api.test_items_inventory esafepos.api.test_item_identifiers esafepos.api.test_purchase_ocr` passes 80 focused tests. `cd frontend && node buying-check.mjs` covers the actual emergency dialog, empty-search entry/prefill, generated codes, duplicate errors, quantity/cost/selling-price validation, stock-unit Item Price payload, independent purchase cost, optional-price and price-permission/setup/currency boundaries, barcode payload, draft retention, immediate Item versus deferred invoice/stock posting, lost-save lookup, cancellation, in-flight/offline/access gates and desktop/phone layouts/screenshots. Production assets rebuilt; Python 3.7 grammar and whitespace checked. These checks use mocked APIs and do not create live ERPNext Items, Item Prices or accounting documents.
 
 Current scanner/compatibility verification: `python -m unittest esafepos.api.test_buying esafepos.api.test_purchase_ocr esafepos.api.test_credit_checkout` passes 52 focused tests; `cd frontend && node buying-check.mjs` and `node purchase-ocr-check.mjs` pass Chrome fixture workflows on desktop/phone. The latter covers setup/key masking, upload validation, Gemini failure/retry, item matching, explicit pack correction, tax/valuation separation, totals, duplicates, foreign currency, PDF upload, offline gating, account-error recovery and draft-only import. Production assets are rebuilt and Python 3.7 grammar/settings JSON/whitespace are checked. No live key was supplied, so Google extraction quality and live ERPNext postings remain unverified.
 

@@ -13,6 +13,7 @@
 import { newId } from './offline'
 import { shallowRef } from 'vue'
 import { money } from './format'
+import { normalizePresentation, loadPresentation, presentationKey, targetDisplay } from './displayContent'
 
 const NAME = 'esafepos-customer-display'
 let channel = null
@@ -21,6 +22,20 @@ export const displayTerminalId = newId()
 export const displayPayment = shallowRef(null)
 export const displayReceipt = shallowRef(null)
 export const displayContactRequest = shallowRef(null)
+export const displayPresentation = shallowRef(normalizePresentation())
+let presentationProfile = ''
+export function selectDisplayProfile(profile) {
+  presentationProfile = profile || ''
+  displayPresentation.value = loadPresentation(presentationProfile)
+}
+export function saveDisplayPresentation(value) {
+  const config = normalizePresentation(value)
+  localStorage.setItem(presentationKey(presentationProfile), JSON.stringify(config))
+  displayPresentation.value = config
+}
+export function setDisplayMode(mode) {
+  displayPresentation.value = normalizePresentation({ ...displayPresentation.value, mode })
+}
 
 export function requestDisplayContact(mode = 'overlay') {
   displayContactRequest.value = { id: newId(), mode }
@@ -40,6 +55,24 @@ export function displayCustomerName(name) {
 
 export function customerDisplayUrl() {
   return window.location.href.replace(/#.*$/, '') + '#/display?terminal=' + displayTerminalId
+}
+
+export async function openDisplayWindow(preference = '', details = null) {
+  const target = details && targetDisplay(details.screens, details.currentScreen, preference)
+  const placement = target ? `,left=${target.availLeft},top=${target.availTop},width=${target.availWidth},height=${target.availHeight}` : ',width=1024,height=720'
+  // Open during the click gesture, before any screen-permission prompt.
+  const child = window.open(customerDisplayUrl(), 'esafepos-customer-display-' + displayTerminalId, 'popup' + placement)
+  if (!child) throw new Error('Allow pop-ups for this site, then open the display again.')
+  try {
+    if (!details && window.getScreenDetails) details = await window.getScreenDetails()
+    const screen = details && targetDisplay(details.screens, details.currentScreen, preference)
+    if (screen) {
+      child.moveTo(screen.availLeft, screen.availTop)
+      child.resizeTo(screen.availWidth, screen.availHeight)
+      return details.screens.length > 1
+    }
+  } catch { /* The screen can still be moved manually when permission is denied. */ }
+  return false
 }
 
 function chan() {

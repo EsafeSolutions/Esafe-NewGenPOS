@@ -537,6 +537,22 @@ back. Parked sales survive across devices.
 Tap **Pay**. The payment screen shows the amount, a tender input with
 quick-cash buttons, and a tile per payment method.
 
+After **Complete Sale**, hand over the receipt and any cash change. Select
+**Change handed over** on the receipt to display the thank-you popup and play the
+greeting: “Thank you very much for your purchase. Come again. We wish you all the
+best!” If no cash change remains, select **Thank customer** instead. When change
+was saved as loyalty points, both the receipt and thank-you popup show the saved
+points. The connected customer display shows the farewell after this confirmation.
+Select **New Sale** to continue; **Replay greeting** repeats the voice if needed.
+
+The speaker button (**POS sounds**) in the Sell header controls **Ordering click
+sounds**, **Spoken thank-you greeting**, and **Volume** separately for this browser.
+Use **Test click sound** or **Test greeting** to check the till speakers. Choices
+save immediately. Voice uses an available English browser/device voice; if voice
+is unavailable, the popup still appears. Offline queued sales wait for the same
+handover confirmation. Opening an old receipt or completing a refund does not
+play a purchase greeting.
+
 - **Scheme logos**: each tile shows the card scheme / wallet logo detected from
   the Mode of Payment name, **Visa, Mastercard, mada, American Express,
   Tamara, Tabby, STC Pay, Apple Pay**, on a white chip (legible in light and

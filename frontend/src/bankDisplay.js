@@ -5,8 +5,11 @@ export function bankAccounts(config, profile, currency, selectedMode = '') {
   if (!config?.enabled) return []
   const accounts = (config.accounts || []).filter(row =>
     (!row.pos_profile || row.pos_profile === profile) && (!row.currency || row.currency === currency))
-  const matching = config.trigger === 'bank'
-    ? selectedMode ? accounts.filter(row => row.payment_mode === selectedMode) : []
+  // ERPNext also marks credit cards as type Bank. Use the configured exact
+  // method or a transfer/draft name so selecting a card never opens this popup.
+  const bankMethod = /\b(transfer|draft)\b/i.test(selectedMode) || (/\bbank\b/i.test(selectedMode) && !/\b(card|credit|debit)\b/i.test(selectedMode))
+  const matching = config.trigger !== 'checkout'
+    ? selectedMode ? accounts.filter(row => row.payment_mode ? row.payment_mode === selectedMode : bankMethod) : []
     : accounts
   // BroadcastChannel cannot clone Vue proxies. All account fields are scalar;
   // copy each account before it joins the payment snapshot.

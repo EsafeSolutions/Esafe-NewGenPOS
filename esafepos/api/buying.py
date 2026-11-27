@@ -143,6 +143,15 @@ def _summary(doc):
 def options(pos_profile):
     profile, currency = _context(pos_profile)
     has = frappe.has_permission
+    can_create_item = bool(permissions.allowed(permissions.ITEM_CREATE)
+                           and has("Item", "read") and has("Item", "create")
+                           and has("Item Group", "read") and has("UOM", "read"))
+    can_edit_prices = bool(can_create_item and permissions.allowed(permissions.ITEM_PRICE_EDIT)
+                           and has("Item Price", "create") and has("Item Price", "read")
+                           and has("Price List", "read"))
+    selling_lists = frappe.get_list("Price List", filters={"name": profile.get("selling_price_list"),
+                                    "enabled": 1, "selling": 1}, fields=["name", "currency"],
+                                   limit_page_length=1) if can_edit_prices and profile.get("selling_price_list") else []
     accounts = frappe.get_list("Account", filters={"company": profile.company, "is_group": 0, "disabled": 0},
                                fields=["name", "account_type", "account_currency", "root_type"], limit_page_length=0) if has("Account", "read") else []
     accounts = [row for row in accounts if (row.account_currency or currency) == currency]
@@ -162,6 +171,13 @@ def options(pos_profile):
             "payment_modes": modes,
             "supplier_groups": frappe.get_list("Supplier Group", filters={"is_group": 0}, pluck="name", limit_page_length=0) if has("Supplier Group", "read") else [],
             "can_create_supplier": bool(has("Supplier", "create") and has("Supplier Group", "read")),
+            "can_create_item": can_create_item,
+            "can_edit_prices": can_edit_prices,
+            "selling_price_list": selling_lists[0] if selling_lists else None,
+            "item_groups": frappe.get_list("Item Group", filters={"is_group": 0}, pluck="name",
+                                           order_by="name", limit_page_length=0) if can_create_item else [],
+            "stock_uoms": frappe.get_list("UOM", pluck="name", order_by="name",
+                                          limit_page_length=0) if can_create_item else [],
             "can_create_invoice": bool(has("Purchase Invoice", "create") and has("Purchase Invoice", "submit") and has("Account", "read") and has("Warehouse", "read") and has("Item", "read")),
             "can_pay": bool(has("Payment Entry", "read") and has("Payment Entry", "create") and has("Payment Entry", "submit") and has("Account", "read") and has("Mode of Payment", "read"))}
 

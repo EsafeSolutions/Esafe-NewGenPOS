@@ -289,7 +289,7 @@ def create_item(pos_profile, item_code, item_name, item_group, stock_uom, barcod
     cleaned_barcodes = _clean_barcodes(submitted_barcodes, item_code.strip(), allowed_units)
     doc = frappe.get_doc({"doctype": "Item", "item_code": item_code.strip(), "item_name": item_name.strip(),
                           "item_group": item_group, "stock_uom": stock_uom, "brand": brand or None,
-                          "is_stock_item": 1, "is_sales_item": 1,
+                          "is_stock_item": 1, "is_sales_item": 1, "is_purchase_item": 1,
                           "uoms": units, "barcodes": cleaned_barcodes})
     doc.check_permission("create")
     doc.insert()

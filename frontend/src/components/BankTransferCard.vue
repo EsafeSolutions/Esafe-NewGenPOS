@@ -5,6 +5,7 @@
       <Icon v-else name="bank" :size="36" />
       <div><small>{{ t('Pay by bank transfer') }}</small><h2>{{ account.bank_name }}</h2></div>
     </div>
+    <p v-if="amount" class="bank-amount"><span>{{ t('Amount to send') }}</span><strong>{{ amount }}</strong></p>
     <div class="bank-instructions">
       <dl>
         <div><dt>{{ t('Account holder') }}</dt><dd>{{ account.holder }}</dd></div>
@@ -16,7 +17,6 @@
       <div v-if="qr && !qrFailed" class="bank-qr"><img :src="qr" :style="{ width: `${account.qr_size || 240}px` }" :alt="t('Bank payment QR code')" @error="qrFailed = true" /><span>{{ t('Scan with your banking app') }}</span></div>
       <p v-else-if="qrFailed" role="status">{{ t('QR image unavailable. Use the account details.') }}</p>
     </div>
-    <p v-if="amount" class="bank-amount"><span>{{ t('Amount remaining') }}</span><strong>{{ amount }}</strong></p>
     <p v-if="account.instructions" class="bank-note">{{ account.instructions }}</p>
     <div class="bank-steps"><span><b>1</b> {{ t('Check the recipient') }}</span><span><b>2</b> {{ t('Send the transfer') }}</span><span><b>3</b> {{ t('Show confirmation to the cashier') }}</span></div>
     <small>{{ t('A QR scan does not confirm payment. The cashier verifies receipt before completing the sale.') }}</small>

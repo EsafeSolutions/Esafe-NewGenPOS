@@ -12,7 +12,7 @@ def clean_config(value):
     if not isinstance(accounts, list) or len(accounts) > 12:
         raise ValueError("Add at most 12 receiving bank accounts.")
     result = {"enabled": value.get("enabled") in (True, 1),
-              "trigger": "bank" if value.get("trigger") == "bank" else "checkout", "accounts": []}
+              "trigger": "checkout" if value.get("trigger") == "checkout" else "bank", "accounts": []}
     for row in accounts:
         if not isinstance(row, dict):
             raise ValueError("Invalid bank account details.")
@@ -21,8 +21,6 @@ def clean_config(value):
             account[key] = str(row.get(key) or "").strip()[:140]
         if not account["bank_name"] or not account["holder"] or not account["account_number"]:
             raise ValueError("Enter the bank, account holder and account number for each account.")
-        if result["trigger"] == "bank" and not account["payment_mode"]:
-            raise ValueError("Choose a payment method for every bank account when using the bank-only trigger.")
         account["currency"] = account["currency"].upper()
         if account["currency"] and not re.fullmatch(r"[A-Z]{3}", account["currency"]):
             raise ValueError("Use a three-letter bank account currency, for example LKR.")
@@ -50,7 +48,7 @@ def settings_value(doc):
     try:
         return clean_config(doc.get("bank_transfer_display") or {})
     except (ValueError, TypeError, OverflowError):
-        return {"enabled": False, "trigger": "checkout", "accounts": []}
+        return {"enabled": False, "trigger": "bank", "accounts": []}
 
 
 def client_config(doc, profile):

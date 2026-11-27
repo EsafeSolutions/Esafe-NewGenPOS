@@ -217,7 +217,8 @@ import { useSessionStore } from './stores/session'
 import { useCatalogStore } from './stores/catalog'
 import { useCartStore } from './stores/cart'
 import { money, shiftClock, isolate } from './format'
-import { displayContactRequest, displayCustomerName, displayPayment, displayReceipt, publishCart, onDisplayRequest, requestDisplayContact } from './customerDisplay'
+import { displayContactRequest, displayCustomerName, displayPayment, displayReceipt, displayPresentation, selectDisplayProfile, publishCart, onDisplayRequest, requestDisplayContact } from './customerDisplay'
+import { bankAccounts } from './bankDisplay'
 import { connectTillContact } from './displayContact'
 import { ensurePersistentStorage } from './offline'
 import { printManager } from './printing/index.js'
@@ -393,8 +394,10 @@ function publishDisplaySnapshot() {
     return
   }
   const contact = route.path === '/' ? displayContactRequest.value : null
+  const presentation = JSON.parse(JSON.stringify(displayPresentation.value))
+  const standbyBankAccounts = bankAccounts({ ...session.settings?.bank_transfer_display, trigger: 'checkout' }, session.posProfile, cart.saleCurrency.currency)
   if (!cart.lines.length && displayReceipt.value) {
-    publishCart({ logo: session.settings?.receipt_logo || '', ...displayReceipt.value, contact, canStart: route.path === '/' })
+    publishCart({ logo: session.settings?.receipt_logo || '', ...displayReceipt.value, contact, presentation, standbyBankAccounts, canStart: route.path === '/' })
     return
   }
   const saved = cart.promoSavings + cart.bundleSavings + cart.manualDiscountTotal + cart.orderDiscountTotal
@@ -407,6 +410,8 @@ function publishDisplaySnapshot() {
       ? money(Math.round(cart.total * mc.outlet_rate * 100) / 100, mc.company_currency)
       : ''
   publishCart({
+    presentation,
+    standbyBankAccounts,
     company: session.company,
     logo: session.settings?.receipt_logo || '',
     customer: displayCustomerName(cart.customer?.customer_name),
@@ -507,6 +512,7 @@ onMounted(async () => {
     if (session.queuedCount && !session.offline) session.flushQueue()
     // Mirror the cart to any open customer display, and answer a display that
     // opens later and asks for the current state.
+    displayCleanup.push(watch(() => session.posProfile, selectDisplayProfile, { immediate: true, flush: 'sync' }))
     displayCleanup.push(cart.$subscribe(() => {
       if (cart.lines.length) displayReceipt.value = null
       publishDisplaySnapshot()
@@ -522,7 +528,8 @@ onMounted(async () => {
           !displayReceipt.value && !displayContactRequest.value) requestDisplayContact('welcome')
     }, { immediate: true, flush: 'post' }))
     displayCleanup.push(watch(() => [route.path, session.settings?.enable_customer_display, session.locked,
-      displayPayment.value, displayReceipt.value, displayContactRequest.value], publishDisplaySnapshot))
+      displayPayment.value, displayReceipt.value, displayContactRequest.value, displayPresentation.value,
+      session.settings?.bank_transfer_display, session.posProfile], publishDisplaySnapshot))
     publishDisplaySnapshot()
     setupAutoLock()
     // Who sees the welcome, or what is new since their last visit.

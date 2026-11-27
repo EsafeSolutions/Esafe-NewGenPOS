@@ -2,16 +2,20 @@
      SPDX-License-Identifier: AGPL-3.0-only
      "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md. -->
 <template>
-  <div class="sell">
+  <div class="sell" @click.capture="playOrderingClick">
     <Teleport to="#sell-header-tools" defer>
+      <button type="button" class="btn btn-icon sell-header-tool" data-pos-sound="off"
+        :title="t('POS sounds')" :aria-label="t('POS sounds')" @click="soundSettingsOpen = true">
+        <Icon name="volume" :size="18" />
+      </button>
       <button v-if="session.settings.enable_price_checker" type="button"
         class="btn btn-icon sell-header-tool" :title="t('Look up a price without selling')"
         :aria-label="t('Price check')" @click="priceCheckOpen = true">
         <Icon name="tag" :size="18" />
       </button>
       <button v-if="session.settings.enable_customer_display" type="button"
-        class="btn btn-icon sell-header-tool" :title="t('Open the customer-facing display')"
-        :aria-label="t('Display')" @click="openCustomerDisplay">
+        class="btn btn-icon sell-header-tool" :title="t('Customer display options')"
+        :aria-label="t('Display')" @click="displayControlsOpen = true">
         <Icon name="monitor" :size="18" />
       </button>
       <label v-if="!showBundles && !showFavourites" class="sell-header-tool catalog-view" :title="t('Item view')">
@@ -23,6 +27,8 @@
         </select>
       </label>
     </Teleport>
+    <CustomerDisplayControls v-if="displayControlsOpen" @close="displayControlsOpen = false" />
+    <PosSoundSettings v-if="soundSettingsOpen" @close="soundSettingsOpen = false" />
     <!-- "Per cashier" shift scope: the drawer belongs to whoever opened it. -->
     <div v-if="session.shiftComputerBlocked" class="shift-owner-banner">
       <Icon name="warning" /> {{ t('This shift is assigned to another computer. Ask a manager to move it from the Register page.') }}
@@ -116,7 +122,7 @@
       <ProductGrid v-else :mode="itemMode" data-tour="sell-products" @select="addToCart" @inspect="inspectItem" />
     </section>
 
-    <CartPanel @pay="onPay" @park="parkOpen = true" @hold="openHold" @quotation="createQuotation" @invoice="createCustomerInvoice" @receipt="receipt = $event">
+    <CartPanel @pay="onPay" @park="parkOpen = true" @hold="openHold" @quotation="createQuotation" @invoice="createCustomerInvoice" @receipt="showReceipt">
       <template #header-actions>
         <button type="button" class="btn btn-outline btn-icon" data-tour="sell-parked"
           :title="t('Retrieve Sale')" :aria-label="t('Retrieve Sale')" @click="parkedOpen = true">
@@ -133,7 +139,7 @@
     <PaymentOverlay v-if="paymentOpen" @close="paymentOpen = false" @done="onSaleDone" />
     <HoldModal v-if="holdOpen" @close="holdOpen = false" @done="onHeld" />
     <ParkedSalesModal v-if="parkedOpen" @close="parkedOpen = false" />
-    <ReceiptModal v-if="receipt" :receipt="receipt" :auto-print="true" @close="receipt = null" @updated="receipt = $event" />
+    <ReceiptModal v-if="receipt" :receipt="receipt" :auto-print="true" :checkout-completion="checkoutCompletion" @close="receipt = null" @updated="receipt = $event" />
     <SerialModal
       v-if="serialItem"
       :item="serialItem"
@@ -171,7 +177,8 @@ import { computed, ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { t } from '../i18n'
 import { call } from '../api'
-import { customerDisplayUrl, displayContactRequest, displayReceipt, requestDisplayContact } from '../customerDisplay'
+import { displayContactRequest, displayReceipt, requestDisplayContact, setDisplayMode } from '../customerDisplay'
+import CustomerDisplayControls from '../components/CustomerDisplayControls.vue'
 import { money } from '../format'
 import { useSessionStore } from '../stores/session'
 import { scaleBarcodeOptions, useCatalogStore } from '../stores/catalog'
@@ -183,6 +190,8 @@ import PaymentOverlay from '../components/PaymentOverlay.vue'
 import ParkedSalesModal from '../components/ParkedSalesModal.vue'
 import HoldModal from '../components/HoldModal.vue'
 import ReceiptModal from '../components/ReceiptModal.vue'
+import PosSoundSettings from '../components/PosSoundSettings.vue'
+import { playOrderSound, playOrderingClick } from '../posSounds'
 import { nativeDocument, printStatusMessage, silentPrinting } from '../printing/index.js'
 import SerialModal from '../components/SerialModal.vue'
 import PasscodeModal from '../components/PasscodeModal.vue'
@@ -221,10 +230,13 @@ const parkedOpen = ref(false)
 const parkOpen = ref(false)
 const parkNote = ref('')
 const receipt = ref(null)
+const checkoutCompletion = ref(false)
+const soundSettingsOpen = ref(false)
 const searchInput = ref(null)
 const serialItem = ref(null)
 const serialEdits = ref(null)
 const priceCheckOpen = ref(false)
+const displayControlsOpen = ref(false)
 const detailItem = ref(null)
 const detailLine = computed(() => cart.lines.find((line) => line.item_code === detailItem.value?.item_code && !line.bundle_key && !line.selling_uom))
 const modeKey = 'esafepos-item-view'
@@ -297,7 +309,9 @@ function addToCart(item, serial = null, qty = 1) {
     session.notify(t('Serial {serial} is already in this sale', { serial }), true)
     return
   }
-  return cart.addItem(item, serial, addQty)
+  const added = cart.addItem(item, serial, addQty)
+  if (added) playOrderSound()
+  return added
 }
 
 function onSerialScanned(serial) {
@@ -381,13 +395,8 @@ async function toggleFavourites() {
   if (showFavourites.value && !favourites.value.length) await loadFavourites()
 }
 
-function openCustomerDisplay() {
-  // Same SPA, hash route, opens (or focuses) a dedicated second-screen window.
-  const url = customerDisplayUrl()
-  window.open(url, 'esafepos-customer-display', 'width=1024,height=720')
-}
-
 function askForContact() {
+  setDisplayMode('live')
   if (!cart.lines.length) displayReceipt.value = null
   requestDisplayContact(cart.lines.length ? 'overlay' : 'welcome')
 }
@@ -508,6 +517,12 @@ async function parkSale() {
 
 function onSaleDone(saleReceipt) {
   paymentOpen.value = false
+  checkoutCompletion.value = true
+  receipt.value = saleReceipt
+}
+
+function showReceipt(saleReceipt) {
+  checkoutCompletion.value = false
   receipt.value = saleReceipt
 }
 

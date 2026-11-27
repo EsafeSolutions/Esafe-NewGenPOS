@@ -39,7 +39,7 @@ class InventoryTests(unittest.TestCase):
                    "_profile": Mock(return_value=self.profile), "_can_adjust_stock": Mock(return_value=True),
                    "_can_create": Mock(return_value=True), "_stock_item": Mock(return_value=self.item),
                    "_warehouses": Mock(return_value=["Shelf"])}
-        names = {"_require", "_number", "_json_list", "_clean_selling_units", "_clean_barcodes", "adjust_stock", "create_item"}
+        names = {"_require", "_number", "_json_list", "_clean_selling_units", "_clean_barcodes", "_save_prices", "adjust_stock", "create_item"}
         tree = ast.parse(Path(__file__).with_name("items.py").read_text(encoding="utf-8"))
         selected = [node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name in names]
         exec(compile(ast.Module(body=selected, type_ignores=[]), "items.py", "exec"), self.ns)
@@ -135,6 +135,46 @@ class InventoryTests(unittest.TestCase):
         linked.check_permission.assert_called_with("read")
         self.doc.check_permission.assert_called_once_with("create")
         self.doc.insert.assert_called_once()
+        data = self.frappe.get_doc.call_args.args[0]
+        self.assertEqual(data["is_purchase_item"], 1)
+        self.assertEqual(data["is_stock_item"], 1)
+
+    def prepare_item_price(self):
+        linked = Mock(is_group=0)
+        self.frappe.get_doc.side_effect = [linked, linked, self.doc]
+        price_doc = Mock(price_list="Standard Selling", uom="Kg")
+        self.ns.update({"_can_edit_prices": Mock(return_value=True),
+                        "_selling_list": Mock(return_value=SimpleNamespace(name="Standard Selling")),
+                        "_standing_price": Mock(return_value=None),
+                        "_item_price_doc": Mock(return_value=price_doc)})
+        return price_doc
+
+    def test_create_saves_separate_standard_selling_price_in_stock_unit(self):
+        price_doc = self.prepare_item_price()
+        self.ns["create_item"]("Till", "NEW", "New item", "Goods", "Kg",
+                               prices='[{"uom":"Kg","price":175.5}]', price_list="Standard Selling")
+        self.ns["_selling_list"].assert_called_once_with(self.profile, "Standard Selling")
+        self.ns["_item_price_doc"].assert_called_once_with(None, "REC-1", "Standard Selling", "Kg")
+        price_doc.check_permission.assert_called_once_with("create")
+        self.assertEqual(price_doc.price_list_rate, 175.5)
+        price_doc.save.assert_called_once()
+
+    def test_create_rejects_selling_price_without_pos_price_capability(self):
+        price_doc = self.prepare_item_price()
+        self.ns["_can_edit_prices"].return_value = False
+        with self.assertRaises(PermissionError):
+            self.ns["create_item"]("Till", "NEW", "New item", "Goods", "Kg",
+                                   prices=[{"uom": "Kg", "price": 175.5}], price_list="Standard Selling")
+        self.doc.insert.assert_not_called()
+        price_doc.save.assert_not_called()
+
+    def test_create_selling_price_requires_native_item_price_create_permission(self):
+        price_doc = self.prepare_item_price()
+        price_doc.check_permission.side_effect = PermissionError
+        with self.assertRaises(PermissionError):
+            self.ns["create_item"]("Till", "NEW", "New item", "Goods", "Kg",
+                                   prices=[{"uom": "Kg", "price": 175.5}], price_list="Standard Selling")
+        price_doc.save.assert_not_called()
 
 
 if __name__ == "__main__":

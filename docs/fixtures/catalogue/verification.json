@@ -1,0 +1,25 @@
+{
+  "date": "2026-11-27",
+  "data": "Synthetic sample data only",
+  "itemCount": 235,
+  "pageCount": 50,
+  "pdf": "all-items.pdf",
+  "backendPages": 3,
+  "physicalPrintPerformed": false,
+  "imagesInColour": true,
+  "pdfQa": {
+    "item_count": 235,
+    "pdf_pages": 50,
+    "description_end_page": 32,
+    "colour": "DeviceRGB",
+    "physical_print_performed": false,
+    "sample-catalogue_pages": 3,
+    "sample-menu_pages": 3
+  },
+  "standaloneApiTests": 12,
+  "streamedAndDownloadedBytesIdentical": true,
+  "existingPrintingChecksPassed": true,
+  "productionBuildPassed": true,
+  "liveErpNextVerified": false,
+  "deployed": false
+}

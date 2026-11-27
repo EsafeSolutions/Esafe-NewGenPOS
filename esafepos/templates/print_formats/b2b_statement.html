@@ -1,0 +1,14 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+body{font:11px Arial,sans-serif;color:#25334a}h1{font-size:23px}table{width:100%;border-collapse:collapse;margin:18px 0}th,td{padding:7px 4px;border-bottom:1px solid #dfe8eb;text-align:left}.num{text-align:right;white-space:nowrap}thead{display:table-header-group}tr{page-break-inside:avoid}.muted{color:#68778d}
+</style></head><body>
+<h1>{{ _("Customer account statement") }}</h1><h2>{{ statement.customer_name | e }}</h2>
+<p>{{ statement.company | e }} · {{ statement.currency | e }} · {{ statement.from_date }} – {{ statement.to_date }}</p>
+<p>{{ _("Opening balance") }}: {{ "{:,.2f}".format(statement.opening) }} · {{ _("Closing balance") }}: {{ "{:,.2f}".format(statement.closing) }}</p>
+<table><thead><tr><th>{{ _("Date") }}</th><th>{{ _("Document") }}</th><th class="num">{{ _("Debit") }}</th><th class="num">{{ _("Credit") }}</th><th class="num">{{ _("Balance") }}</th></tr></thead><tbody>
+{% for row in statement.rows %}<tr><td>{{ row.date }}</td><td>{{ row.doctype | e }}<br>{{ row.name | e }}</td><td class="num">{{ "{:,.2f}".format(row.debit) }}</td><td class="num">{{ "{:,.2f}".format(row.credit) }}</td><td class="num">{{ "{:,.2f}".format(row.balance) }}</td></tr>{% endfor %}
+</tbody></table>
+<h3>{{ _("Current open invoices") }}</h3><table><thead><tr><th>{{ _("Invoice") }}</th><th>{{ _("Due date") }}</th><th>{{ _("Currency") }}</th><th class="num">{{ _("Outstanding") }}</th></tr></thead><tbody>{% for row in statement.current_invoices %}<tr><td>{{ row.name | e }}</td><td>{{ row.due_date or "" }}</td><td>{{ row.currency | e }}</td><td class="num">{{ "{:,.2f}".format(row.outstanding_amount) }}</td></tr>{% endfor %}</tbody></table>
+<h3>{{ _("Payments and allocations") }}</h3>{% for row in statement.payments %}<p><strong>{{ row.name | e }}</strong> · {{ row.date }} · {{ row.mode | e }} · {{ (row.reference or "") | e }} · {{ row.currency | e }}<br>{% for ref in row.allocations %}{{ ref.name | e }}: {{ "{:,.2f}".format(ref.amount) }}{% if not loop.last %}, {% endif %}{% endfor %} · {{ _("Unallocated") }}: {{ "{:,.2f}".format(row.unallocated) }}</p>{% endfor %}
+<h3>{{ _("Cheques awaiting clearance — excluded from the ledger balance") }}</h3><table><thead><tr><th>{{ _("Cheque") }}</th><th>{{ _("Bank") }}</th><th>{{ _("Cheque date") }}</th><th>{{ _("Status") }}</th><th class="num">{{ _("Amount") }}</th></tr></thead><tbody>{% for row in statement.pending_cheques %}<tr><td>{{ row.reference_no | e }}</td><td>{{ row.bank | e }}</td><td>{{ row.cheque_date }}</td><td>{{ row.status | e }}</td><td class="num">{{ "{:,.2f}".format(row.amount) }}</td></tr>{% endfor %}</tbody></table>
+<p class="muted">{{ _("Current open invoices and cheque status were refreshed at") }} {{ statement.refreshed_at }}</p>
+</body></html>

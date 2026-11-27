@@ -145,8 +145,8 @@ import { useCartStore } from '../stores/cart'
 import { useSessionStore } from '../stores/session'
 import { t } from '../i18n'
 
-const props = defineProps({ invoiceReceipt: Object })
-const emit = defineEmits(['close', 'linked'])
+const props = defineProps({ invoiceReceipt: Object, selectOnly: Boolean })
+const emit = defineEmits(['close', 'linked', 'selected'])
 const cart = useCartStore()
 const session = useSessionStore()
 
@@ -284,7 +284,8 @@ async function runSearch() {
 
 function select(customer) {
   if (props.invoiceReceipt) return linkReceipt({ customer: customer.name })
-  cart.setCustomer(customer)
+  if (props.selectOnly) emit('selected', customer)
+  else cart.setCustomer(customer)
   emit('close')
 }
 
@@ -309,6 +310,7 @@ async function linkReceipt(details) {
 
 async function create() {
   if (props.invoiceReceipt) return linkReceipt({ new_customer: form.value })
+  if (props.selectOnly && session.offline) { session.notify(t('Customer creation needs a connection.'), true); return }
   // Offline: save a LOCAL pending customer with a temp id. On reconnect the
   // flush resolves it (match existing by mobile, else create) and remaps the
   // queued sale. See session.flushQueue.
@@ -337,7 +339,8 @@ async function create() {
   }
   try {
     const customer = await call('esafepos.api.catalog.create_customer', { payload: form.value })
-    cart.setCustomer(customer)
+    if (props.selectOnly) emit('selected', customer)
+    else cart.setCustomer(customer)
     emit('close')
   } catch (e) {
     session.notify(e.message, true)

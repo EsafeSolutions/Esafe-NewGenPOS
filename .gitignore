@@ -8,6 +8,7 @@ __pycache__
 frontend/dist
 artifacts/labels/
 artifacts/esafe-printing/
+artifacts/catalogue/
 .vscode
 
 # Internal working documents, never committed to the public repository.

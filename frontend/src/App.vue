@@ -443,7 +443,8 @@ const pageTitle = computed(
       '/history': t('Sales History'),
       '/customers': t('Customers'),
       '/messages': t('Customer messaging'),
-      '/invoices': t('Customer invoice'),
+      '/invoices': t('ESAFE B2B MODULE'),
+      '/b2b': t('ESAFE B2B MODULE'),
       '/buying': t('Buying'),
       '/holds': t('Holds'),
       '/register': t('Register'),
@@ -488,7 +489,7 @@ onMounted(async () => {
     catalogSync = startCatalogSync({
       scope: () => session.posProfile,
       canSync: () => Boolean(session.loaded && !session.offline && !session.locked && !session.reportsOnly &&
-        !cart.submitting && ['/', '/items', '/invoices'].includes(route.path) &&
+        !cart.submitting && ['/', '/items', '/invoices', '/b2b'].includes(route.path) &&
         !document.querySelector('.pay-overlay, .modal-backdrop, [role="dialog"]')),
       readRevision: () => call('esafepos.api.catalog_sync.revision', { pos_profile: session.posProfile }),
       refresh: async () => {

@@ -78,6 +78,7 @@ import { useCartStore } from '../stores/cart'
 import { t } from '../i18n'
 
 const emit = defineEmits(['close', 'approved'])
+const props = defineProps({ discountContext: Object })
 const session = useSessionStore()
 const cart = useCartStore()
 
@@ -135,14 +136,14 @@ async function sendRequest() {
     const res = await call('esafepos.api.approval_requests.create_request', {
       request_type: 'Discount',
       pos_profile: session.posProfile,
-      discount_percent: cart.maxManualDiscount,
+      discount_percent: props.discountContext?.percent ?? cart.maxManualDiscount,
       reason: reason.value || null,
-      customer: cart.customer?.name || null,
-      customer_name: cart.customer?.customer_name || null,
-      cart_total: cart.total,
+      customer: props.discountContext?.customer || cart.customer?.name || null,
+      customer_name: props.discountContext?.customer_name || cart.customer?.customer_name || null,
+      cart_total: props.discountContext?.total ?? cart.total,
       // What is actually being discounted, an approver was otherwise asked to
       // approve a percentage with no idea what it applied to.
-      details: cart.lines
+      details: props.discountContext?.details || cart.lines
         .map(
           (l) =>
             l.qty + ' x ' + l.item_name +

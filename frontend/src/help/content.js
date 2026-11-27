@@ -269,12 +269,14 @@ export const TOPICS = [
   // Printing
   {
     route: '/printing',
-    title: 'Barcode and price labels',
+    title: 'Labels, menus and catalogue printing',
     steps: [
       'Scan a barcode or search for an item to add it. Each item prints as many labels as its copies.',
       ['{doc} adds every item a Purchase Receipt or a Stock Entry brought in, with its quantities.', { doc: 'From a document' }],
       ['{since} adds every item whose price changed since a date, one label each.', { since: 'Prices changed since' }],
       'Pick the label size and what prints on it. The preview shows the first labels.',
+      'Menu & catalogue loads all selling items for the selected outlet. Group by category and brand, choose a product catalogue or compact menu, then prepare the complete document.',
+      'Print catalogue opens the browser print dialog. Export one PDF downloads every prepared page in one full-colour file, with images, descriptions, current prices and applicable offers.',
       ['{print} opens the print window: choose the label printer, no margins, scale 100%.', { print: 'Print labels' }],
       'Receipt contains receipt design, outlet overrides and the live preview for whoever may edit Settings.',
       'Printers contains the outlet network printer, Print Format and a test receipt. Label stock and alignment stay with Labels.',

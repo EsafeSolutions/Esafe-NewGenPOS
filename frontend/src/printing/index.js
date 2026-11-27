@@ -48,10 +48,10 @@ export async function nativeDocument(doctype, name, { profile, key } = {}) {
     options: { copies: session.settings.esafe_printing?.copies || 1, size: paper, scale: 'actual' },
     reference: { doctype, name }, user: session.user })
 }
-export async function nativeElement(source, reference, { role = 'report', title, key } = {}) {
+export async function nativeElement(source, reference, { role = 'report', title, key, width = 80, receipt = true } = {}) {
   const session = useSessionStore()
   if (!silentPrinting(session)) return null
-  const doc = await selfContainedHtml(source, { receipt: true })
+  const doc = await selfContainedHtml(source, { receipt, width })
   return printManager.dispatch({ key: key || crypto.randomUUID(), profile: session.posProfile, role, format: 'html', data: doc.html,
     title: title || reference.name, reference, user: session.user, options: { copies: session.settings.esafe_printing?.copies || 1, size: { width: doc.width, height: doc.height }, margins: 0, scale: 'actual' } })
 }

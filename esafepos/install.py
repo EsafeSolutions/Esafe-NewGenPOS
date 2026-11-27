@@ -55,15 +55,19 @@ CORE_GRANTS = {
         "POS Opening Entry": ["read", "write", "create", "submit"],
         "POS Closing Entry": ["read", "write", "create", "submit"],
         "POS Invoice Merge Log": ["read", "write", "create", "submit"],
-        "Sales Invoice": ["read", "write", "create", "submit"],
+        "Sales Invoice": ["read", "write", "create", "submit", "print"],
         **CUSTOMER_GRANTS,
         **SALE_GRANTS,
     },
     "EsafePOS Manager": {
+        "Sales Order": ["read", "write", "create", "submit", "print", "cancel", "amend"],
+        "Delivery Note": ["read", "write", "create", "submit", "print", "cancel", "amend"],
+        "Payment Reconciliation": ["read", "write"],
+        "Bank Clearance": ["read", "write"],
         "Supplier": ["read", "write", "create"],
         "Supplier Group": ["read"],
         "Purchase Invoice": ["read", "write", "create", "submit", "print"],
-        "Payment Entry": ["read", "write", "create", "submit", "print"],
+        "Payment Entry": ["read", "write", "create", "submit", "print", "cancel"],
         "Mode of Payment": ["read"],
         "Warehouse": ["read"],
         "GL Entry": ["read"],
@@ -145,6 +149,8 @@ def ensure_setup():
     ensure_index_fields()
     make_custom_fields()
     make_buying_fields()
+    from esafepos.b2b_setup import setup as setup_b2b
+    setup_b2b()
     drop_deprecated_custom_fields()
     migrate_price_books()
     ensure_return_reasons()

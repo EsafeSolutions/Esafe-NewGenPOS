@@ -320,6 +320,7 @@ def get_user_permissions():
         "profit_report": reports_mod.can_see_profit(),
         # Barcode and price labels (0.67.0): the switch and the capability.
         "print_labels": labels_perm(),
+        "print_catalogue": bool(caps_mod.allowed(caps_mod.PRINT_LABELS) and has("Item", "read")),
         # The Stock count screen (0.69.0): the switches, the capability and ERPNext create on Stock Reconciliation.
         "stock_count": can_count_in_till(),
         "buying": can_buy(),

@@ -28,7 +28,7 @@ let product = { name: 'FLW-001', item_name: 'Roses flower bouquet', stock_uom: '
 let template = { name: 'TSHIRT', item_name: 'Cotton T-shirt', stock_uom: 'Nos', has_variants: true, disabled: false }
 let attributes = [{ name: 'Color', values: ['Red', 'Blue'] }, { name: 'Size', values: ['Small', 'Medium', 'Large'] }]
 let variantRows = [{ name: 'TSHIRT-R-S', item_name: 'Cotton T-shirt Red Small', stock_uom: 'Nos', disabled: false }]
-let quantity = 24, destination = 6, loseTransferResponse = true, rejectRetry = true, sellingPrice = 990, revision = 1, loseReceiptResponse = true
+let quantity = 24, destination = 6, loseTransferResponse = true, rejectRetry = true, sellingPrice = 990, revision = 1, loseReceiptResponse = true, longCatalog = false
 const receipts = new Map()
 const stockSnapshot = () => ({ stock_uom: 'Nos', currency: 'LKR', can_adjust: true, can_transfer: true, can_receive: true, can_view_movements: true, rows: [
   { warehouse: 'Showroom - Shop', actual_qty: quantity, reserved_qty: 3, available_qty: quantity - 3 }, { warehouse: 'Main stores - Shop', actual_qty: destination, reserved_qty: 0, available_qty: destination }] })
@@ -76,6 +76,9 @@ await page.route('**/api/method/**', async route => {
   else if (method.endsWith('count_lookup')) message = { found: true, item_code: product.name, item_name: product.item_name, has_serial_no: false, shelf: quantity }
   else if (method.endsWith('count_sessions')) message = []
   else throw new Error('Unexpected API: ' + method)
+  if (longCatalog && method.endsWith('search_items') && args.item_type !== 'template' && message.length) {
+    message = [message[0], ...Array.from({ length: 49 }, (_, index) => ({ ...message[0], name: 'FLW-' + (index + 2), item_name: 'Roses flower bouquet ' + (index + 2) }))]
+  }
   await route.fulfill({ json: { message } })
 })
 const url = server.resolvedUrls.local[0] + 'stock-manager-check.html'
@@ -215,6 +218,31 @@ try {
   assert.equal(cartAfterSync.price, 88); assert.equal(cartAfterSync.price_override, 88)
   assert.equal(cartAfterSync.qty, 2); assert.equal(cartAfterSync.manual_discount_percent, 5)
   assert.equal(cartAfterSync.catalog_price, 13000); assert.equal(cartAfterSync.actual_qty, 48)
+  // Compact toolbar and independent catalogue/editor scrolling.
+  longCatalog = true
+  await page.setViewportSize({ width: 1440, height: 620 })
+  await page.getByRole('tab', { name: 'Item details', exact: true }).click()
+  await page.evaluate(() => { window.test.catalog.liveRevision++ })
+  await page.waitForFunction(() => document.querySelectorAll('.item-result').length === 50)
+  const scrolling = await page.evaluate(() => {
+    const left = document.querySelector('.item-results'), right = document.querySelector('.edit-item')
+    right.scrollTop = 0; left.scrollTop = 0
+    left.scrollTop = 400
+    const rightBefore = right.scrollTop
+    right.scrollTop = 300
+    return { toolbar: document.querySelector('.manager-toolbar').getBoundingClientRect().height,
+      leftScrolls: left.scrollHeight > left.clientHeight, rightScrolls: right.scrollHeight > right.clientHeight,
+      leftPosition: left.scrollTop, rightBefore, rightPosition: right.scrollTop,
+      pageScrolls: document.querySelector('.items-page').scrollHeight > document.querySelector('.items-page').clientHeight }
+  })
+  assert.ok(scrolling.toolbar <= 48); assert.equal(scrolling.leftScrolls, true); assert.equal(scrolling.rightScrolls, true)
+  assert.equal(scrolling.leftPosition, 400); assert.equal(scrolling.rightBefore, 0); assert.equal(scrolling.rightPosition, 300)
+  assert.equal(scrolling.pageScrolls, false)
+  await page.evaluate(() => { document.querySelector('.item-results').scrollTop = 0; document.querySelector('.edit-item').scrollTop = 0 })
+  await page.screenshot({ path: path.join(output, 'compact-workspace-desktop.png'), fullPage: true })
+  await page.setViewportSize({ width: 390, height: 844 })
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true)
+  await page.screenshot({ path: path.join(output, 'compact-workspace-mobile.png'), fullPage: true })
   await page.evaluate(() => { window.test.session.permissions = { stock_count: true } })
   assert.equal(await page.getByRole('tab').count(), 1)
   assert.equal(await page.getByRole('tab').textContent(), 'Stock count')

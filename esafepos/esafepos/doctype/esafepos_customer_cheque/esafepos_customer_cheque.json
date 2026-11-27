@@ -1,0 +1,213 @@
+{
+ "doctype": "DocType",
+ "name": "EsafePOS Customer Cheque",
+ "module": "EsafePOS",
+ "engine": "InnoDB",
+ "autoname": "hash",
+ "track_changes": 1,
+ "field_order": [
+  "company",
+  "pos_profile",
+  "customer",
+  "currency",
+  "amount",
+  "allocations",
+  "status",
+  "bank",
+  "reference_no",
+  "cheque_date",
+  "received_date",
+  "deposit_date",
+  "clearance_date",
+  "mode_of_payment",
+  "settlement",
+  "session",
+  "sales_order",
+  "keep_advance",
+  "is_advance",
+  "payment_entry",
+  "reversal_reference",
+  "history"
+ ],
+ "fields": [
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "pos_profile",
+   "fieldtype": "Link",
+   "label": "Outlet",
+   "options": "POS Profile",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "label": "Customer",
+   "options": "Customer",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "currency",
+   "fieldtype": "Link",
+   "label": "Currency",
+   "options": "Currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "label": "Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "allocations",
+   "fieldtype": "Long Text",
+   "label": "Allocations",
+   "read_only": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Received\nDeposited\nCleared\nBounced\nReturned\nCancelled",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "bank",
+   "fieldtype": "Data",
+   "label": "Issuing bank",
+   "read_only": 1
+  },
+  {
+   "fieldname": "reference_no",
+   "fieldtype": "Data",
+   "label": "Cheque number",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cheque_date",
+   "fieldtype": "Date",
+   "label": "Cheque date",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "received_date",
+   "fieldtype": "Date",
+   "label": "Received date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "deposit_date",
+   "fieldtype": "Date",
+   "label": "Deposit date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "clearance_date",
+   "fieldtype": "Date",
+   "label": "Clearance date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "mode_of_payment",
+   "fieldtype": "Link",
+   "label": "Mode of payment",
+   "options": "Mode of Payment",
+   "read_only": 1
+  },
+  {
+   "fieldname": "settlement",
+   "fieldtype": "Link",
+   "label": "Settlement",
+   "options": "EsafePOS B2B Settlement",
+   "read_only": 1
+  },
+  {
+   "fieldname": "session",
+   "fieldtype": "Link",
+   "label": "Received in shift",
+   "options": "POS Register Session",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "sales_order",
+   "fieldtype": "Link",
+   "label": "Advance for order",
+   "options": "Sales Order",
+   "read_only": 1
+  },
+  {
+   "fieldname": "keep_advance",
+   "fieldtype": "Check",
+   "label": "Allow unallocated advance",
+   "read_only": 1
+  },
+  {
+   "fieldname": "is_advance",
+   "fieldtype": "Check",
+   "label": "Received as advance",
+   "read_only": 1
+  },
+  {
+   "fieldname": "payment_entry",
+   "fieldtype": "Link",
+   "label": "Cleared payment",
+   "options": "Payment Entry",
+   "read_only": 1
+  },
+  {
+   "fieldname": "reversal_reference",
+   "fieldtype": "Link",
+   "label": "Reversed payment",
+   "options": "Payment Entry",
+   "read_only": 1
+  },
+  {
+   "fieldname": "history",
+   "fieldtype": "Long Text",
+   "label": "Transition history",
+   "read_only": 1
+  }
+ ],
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "print": 1
+  },
+  {
+   "role": "EsafePOS Manager",
+   "read": 1,
+   "print": 1
+  },
+  {
+   "role": "EsafePOS Cashier",
+   "read": 1,
+   "print": 1
+  },
+  {
+   "role": "Accounts Manager",
+   "read": 1,
+   "print": 1
+  },
+  {
+   "role": "Accounts User",
+   "read": 1,
+   "print": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC"
+}
+

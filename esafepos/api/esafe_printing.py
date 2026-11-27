@@ -27,7 +27,8 @@ def _source(pos_profile, reference, role=None):
     if doctype in ("POS Invoice", "Sales Invoice"):
         from esafepos.api.sales import get_receipt
 
-        get_receipt(name)
+        if role != "document":
+            get_receipt(name)
         doc = frappe.get_doc(doctype, name)
         doc.check_permission("read")
         if role == "receipt" and cint(reference.get("reprint")) and not permissions.can_reprint():
@@ -49,9 +50,17 @@ def _source(pos_profile, reference, role=None):
         if payment.get("pos_profile") and payment["pos_profile"] != pos_profile:
             frappe.throw(_("This payment belongs to another outlet."), frappe.PermissionError)
         doc = frappe.get_doc(doctype, name)
-    elif doctype == "Quotation":
+    elif doctype in ("Quotation", "Sales Order", "Delivery Note", "Payment Entry"):
         doc = frappe.get_doc(doctype, name)
         doc.check_permission("read")
+    elif doctype == "EsafePOS B2B Settlement":
+        from esafepos.api.b2b_payments import settlement_receipt
+        settlement_receipt(pos_profile, name)
+        doc = frappe.get_doc(doctype, name)
+    elif doctype == "Customer" and role == "report":
+        from esafepos.api.b2b_reports import authorize
+        authorize(pos_profile, name)
+        doc = frappe.get_doc(doctype, name)
     elif doctype == "POS Profile" and name == pos_profile:
         from esafepos.api.printing_settings import _profile
 
@@ -63,7 +72,7 @@ def _source(pos_profile, reference, role=None):
             doc = _profile(name, write=True)
     else:
         frappe.throw(_("This document is not supported for POS printing."), frappe.PermissionError)
-    profile = doc.get("pos_profile") or doc.get("esafepos_pos_profile")
+    profile = doc.get("esafepos_b2b_profile") or doc.get("pos_profile") or doc.get("esafepos_pos_profile")
     if profile and profile != pos_profile:
         frappe.throw(_("The print document belongs to another outlet."), frappe.PermissionError)
     company = doc.get("company")
@@ -99,19 +108,24 @@ def document_pdf(doctype, name):
 
 
 def _print_document(doctype, name):
-    if doctype not in ("POS Invoice", "Sales Invoice", "Quotation"):
+    if doctype not in ("POS Invoice", "Sales Invoice", "Quotation", "Sales Order", "Delivery Note", "Payment Entry"):
         frappe.throw(_("Unsupported print document."), frappe.PermissionError)
     doc = frappe.get_doc(doctype, name)
     doc.check_permission("read")
     doc.check_permission("print")
     from esafepos.api import permissions
 
-    profile = doc.get("pos_profile") or doc.get("esafepos_pos_profile")
+    profile = doc.get("esafepos_b2b_profile") or doc.get("pos_profile") or doc.get("esafepos_pos_profile")
     if profile:
         permissions.assert_outlet(profile)
+    companies = permissions.allowed_companies()
+    if companies is not None and doc.get("company") not in companies:
+        frappe.throw(_("The print document belongs to another company."), frappe.PermissionError)
     fmt = frappe.db.get_value("POS Profile", profile, "print_format") if profile else None
     if fmt and frappe.db.get_value("Print Format", fmt, "doc_type") != doctype:
         fmt = None
+    if not fmt and doc.get("esafepos_b2b_profile") and frappe.db.exists("Print Format", "ESAFE B2B " + doctype):
+        fmt = "ESAFE B2B " + doctype
     return doc, fmt
 
 
@@ -133,7 +147,7 @@ def register_intent(pos_profile, request_id, workstation, payload_hash, referenc
     if role not in ("receipt", "labels", "document", "report", "drawer") or output not in ("raw", "html", "pdf", "image"):
         frappe.throw(_("Invalid print purpose or output."))
     allowed = {"receipt": ("POS Invoice", "Sales Invoice", "POS Profile"), "labels": ("EsafePOS Label Print Job", "POS Profile"),
-               "document": ("POS Invoice", "Sales Invoice", "Quotation"), "report": ("POS Register Session", "Journal Entry"),
+               "document": ("POS Invoice", "Sales Invoice", "Quotation", "Sales Order", "Delivery Note", "Payment Entry"), "report": ("POS Register Session", "Journal Entry", "EsafePOS B2B Settlement", "Customer"),
                "drawer": ("POS Profile", "POS Register Session", "POS Invoice", "Sales Invoice")}
     if source.doctype not in allowed[role]:
         frappe.throw(_("The source document does not match this print purpose."), frappe.PermissionError)

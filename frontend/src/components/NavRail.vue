@@ -21,9 +21,9 @@
       <svg viewBox="0 0 24 24"><path d="M4 4h16v12H8l-4 4V4zm4 4h8m-8 4h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <span class="rail-label">{{ t('Customer messaging') }}</span>
     </router-link>
-    <router-link v-if="!session.reportsOnly && session.settings.enable_regular_invoices && session.permissions.sell !== false" to="/invoices" class="rail-item" :title="t('Invoices')" active-class="active">
+    <router-link v-if="!session.reportsOnly && session.settings.enable_regular_invoices && session.permissions.sell !== false" to="/b2b" class="rail-item" :title="t('ESAFE B2B MODULE')" active-class="active">
       <svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14l-3-1.5L13 21l-3-1.5L7 21l-1-1V3zm9 0v5h5M9 12h6M9 16h6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      <span class="rail-label">{{ t('Invoices') }}</span>
+      <span class="rail-label">{{ t('B2B') }}</span>
     </router-link>
     <router-link v-if="!session.reportsOnly && session.settings.enable_buying && session.permissions.buying" to="/buying" class="rail-item" :title="t('Buying')" active-class="active">
       <svg viewBox="0 0 24 24"><path d="M3 7h18v14H3zM7 7V3h10v4M9 12l3 3 3-3m-3-2v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -46,7 +46,7 @@
       <span class="rail-label">{{ t('Items & stock') }}</span>
     </router-link>
     <!-- Barcode and price labels (0.67.0): the shop's switch and the person's permission. -->
-    <router-link v-if="session.permissions.settings || (!session.reportsOnly && (session.settings.esafe_printing?.silent || session.settings.enable_labels && session.permissions.print_labels))" to="/printing" class="rail-item" :title="t('Printing')" active-class="active" data-tour="labels-rail">
+    <router-link v-if="session.permissions.settings || (!session.reportsOnly && (session.settings.esafe_printing?.silent || session.permissions.print_catalogue || session.settings.enable_labels && session.permissions.print_labels))" to="/printing" class="rail-item" :title="t('Printing')" active-class="active" data-tour="labels-rail">
       <svg viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18H3V9h18v9h-3M6 14h12v7H6zM17 12h1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <span class="rail-label">{{ t('Printing') }}</span>
     </router-link>

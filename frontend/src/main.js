@@ -18,7 +18,7 @@ import InsightsView from './views/InsightsView.vue'
 import SettingsView from './views/SettingsView.vue'
 import PrintingView from './views/PrintingView.vue'
 import StockManagerView from './views/StockManagerView.vue'
-import InvoicesView from './views/InvoicesView.vue'
+import B2BView from './views/B2BView.vue'
 import BuyingView from './views/BuyingView.vue'
 import CustomerDisplayView from './views/CustomerDisplayView.vue'
 import './styles.css'
@@ -30,7 +30,8 @@ const router = createRouter({
     { path: '/history', component: HistoryView },
     { path: '/customers', component: CustomersView },
     { path: '/messages', component: MessagesView },
-    { path: '/invoices', component: InvoicesView },
+    { path: '/b2b', component: B2BView },
+    { path: '/invoices', redirect: to => ({ path: '/b2b', query: { ...to.query, tab: 'invoices' } }) },
     { path: '/buying', component: BuyingView },
     { path: '/holds', component: HoldsView },
     { path: '/register', component: RegisterView },

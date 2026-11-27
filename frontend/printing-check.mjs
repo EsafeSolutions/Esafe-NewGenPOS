@@ -143,7 +143,7 @@ try{
   await page.getByText('You need permission to edit this POS Profile to change its printer setup.').waitFor()
   assert.equal(await page.getByRole('button',{name:'Save printer settings',exact:true}).isDisabled(),true)
   await open('blocked')
-  await page.getByText('You do not have access to printing settings or labels.').waitFor()
+  await page.getByText('You do not have access to printing.').waitFor()
   assert.deepEqual(errors,[])
   console.log('PASS Printing navigation/legacy route, receipt defaults and overrides/reset, new visibility toggles, scoped printer save/test, mobile/tablet layouts and permission isolation')
 }catch(error){console.error(error);await page.screenshot({path:path.join(out,'failure.png'),fullPage:true});console.error(await page.locator('label').allTextContents());process.exitCode=1}finally{await browser.close();server.httpServer?.closeAllConnections();await server.close()}

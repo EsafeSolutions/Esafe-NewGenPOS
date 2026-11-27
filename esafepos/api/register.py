@@ -147,6 +147,18 @@ def _customer_payments(session_name, since=None, until=None):
                 "recorded_at": str(row.creation),
             }
         )
+    # Native B2B receipts never also create a legacy credit Journal Entry.
+    if frappe.get_meta("Payment Entry").has_field("esafepos_b2b_session"):
+        for row in frappe.get_all("Payment Entry", filters={"esafepos_b2b_session": session_name, "docstatus": 1,
+                                 "payment_type": "Receive", "party_type": "Customer"},
+                                 fields=["name", "mode_of_payment", "received_amount", "party", "creation"], order_by="creation asc"):
+            if not _in_window(row.creation, since, until):
+                continue
+            amount = flt(row.received_amount, 2)
+            by_mode[row.mode_of_payment] = flt(flt(by_mode.get(row.mode_of_payment)) + amount, 2)
+            listed.append({"name": row.name, "doctype": "Payment Entry", "mode_of_payment": row.mode_of_payment,
+                           "amount": amount, "customer": row.party,
+                           "customer_name": frappe.db.get_value("Customer", row.party, "customer_name"), "recorded_at": str(row.creation)})
     return by_mode, listed
 
 
@@ -1008,6 +1020,9 @@ def get_session_summary(session: str):
         "on_account": on_account,
         "customer_payments": received_rows,
         "customer_payments_total": flt(sum(row["amount"] for row in received_rows), 2),
+        "customer_cheques": frappe.get_all("EsafePOS Customer Cheque", filters={"session": doc.name},
+                                          fields=["name", "reference_no", "cheque_date", "amount", "status"], order_by="creation asc")
+        if frappe.db.exists("DocType", "EsafePOS Customer Cheque") else [],
         # The ERPNext days the shift closed while it sold on past midnight.
         "erpnext_days": _days_info(doc),
         # Who sold what on this shift (empty when nobody was named).

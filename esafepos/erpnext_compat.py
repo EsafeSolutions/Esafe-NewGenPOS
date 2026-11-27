@@ -316,3 +316,18 @@ def new_doc(doctype):
         if doc.get(df.fieldname) is None:
             doc.set(df.fieldname, [])
     return doc
+
+
+def set_payment_clearance(name, clearance_date):
+    """Use the native Bank Clearance controller on v13 through v16."""
+    payment = frappe.get_doc("Payment Entry", name)
+    payment.check_permission("write")
+    tool = frappe.new_doc("Bank Clearance")
+    tool.check_permission("write")
+    tool.account = payment.paid_to
+    tool.from_date, tool.to_date = payment.posting_date, payment.posting_date
+    tool.include_reconciled_entries = 0
+    table = "payment_entries" if tool.meta.has_field("payment_entries") else "journal_entries"
+    tool.set(table, [])
+    tool.append(table, {"payment_document": "Payment Entry", "payment_entry": payment.name, "clearance_date": clearance_date})
+    tool.update_clearance_date()

@@ -18,6 +18,7 @@ FIELDS = (
     "enable_cheque_tracking",
     "enable_quotations",
     "enable_sales_orders",
+    "enable_delivery_notes",
     "enable_hr_integration",
     "enable_attendance",
     "enable_expense_claims",
@@ -39,6 +40,7 @@ DEFAULTS = {
     "enable_cheque_tracking": 0,
     "enable_quotations": 1,
     "enable_sales_orders": 0,
+    "enable_delivery_notes": 0,
     "enable_hr_integration": 0,
     "enable_attendance": 0,
     "enable_expense_claims": 0,
@@ -54,8 +56,6 @@ DEFAULTS = {
 # visible makes the roadmap and dependencies clear without advertising a toggle
 # that currently has no operational effect.
 PENDING = {
-    "enable_cheque_tracking",
-    "enable_sales_orders",
     "enable_hr_integration",
     "enable_attendance",
     "enable_expense_claims",

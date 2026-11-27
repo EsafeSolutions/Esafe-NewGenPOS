@@ -97,6 +97,7 @@ export const useSessionStore = defineStore('session', {
       enable_cheque_tracking: 0,
       enable_quotations: 1,
       enable_sales_orders: 0,
+      enable_delivery_notes: 0,
       enable_hr_integration: 0,
       enable_attendance: 0,
       enable_expense_claims: 0,

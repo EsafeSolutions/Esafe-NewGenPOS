@@ -3,6 +3,11 @@
     <div class="register-metrics">
       <div v-for="metric in metrics" :key="metric.label" class="register-metric"><span><Icon :name="metric.icon" /> {{ t(metric.label) }}</span><strong>{{ metric.value }}</strong><small>{{ metric.hint }}</small></div>
     </div>
+    <details v-if="summary.customer_cheques?.length" class="tally-guide">
+      <summary><Icon name="clock" /> {{ t('Customer cheques received in this shift') }} ({{ summary.customer_cheques.length }})</summary>
+      <p class="muted small">{{ t('Custody only. Pending cheques are excluded from cash and bank payment tallies; clearance is posted separately.') }}</p>
+      <p v-for="row in summary.customer_cheques" :key="row.name">{{ row.reference_no }} · {{ row.cheque_date }} · {{ money(row.amount, currency) }} · {{ t(row.status) }}</p>
+    </details>
     <details class="tally-guide" :open="guideOpen">
       <summary><Icon name="help" /> {{ t('How payment tallies and the cash balance work') }}</summary>
       <div class="tally-guides">

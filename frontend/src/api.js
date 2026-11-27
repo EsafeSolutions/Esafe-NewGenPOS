@@ -24,7 +24,7 @@ const TIMEOUT_MS = 12000
 // Posting a sale, taking one back or pulling the whole catalogue legitimately
 // takes longer. A sale carries an idempotency key, so the retry after a
 // timeout can never post it twice.
-const SLOW_CALLS = /submit_sale|create_customer_invoice|create_return|sell_gift_card|close_register|get_full_catalog|buying\.(create_invoice|pay_supplier)/
+const SLOW_CALLS = /submit_sale|create_customer_invoice|create_return|sell_gift_card|close_register|get_full_catalog|buying\.(create_invoice|pay_supplier)|b2b\.(save_document|submit_document|convert_document|cancel_and_amend)|b2b_payments\./
 const LONG_TIMEOUT_MS = 20000
 const CATALOG_TIMEOUT_MS = 60000
 

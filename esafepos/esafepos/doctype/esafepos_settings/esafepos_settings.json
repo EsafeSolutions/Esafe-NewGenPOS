@@ -90,6 +90,7 @@
   "enable_cheque_tracking",
   "enable_quotations",
   "enable_sales_orders",
+  "enable_delivery_notes",
   "enable_hr_integration",
   "enable_attendance",
   "enable_expense_claims",
@@ -694,6 +695,13 @@
    "fieldname": "enable_sales_orders",
    "fieldtype": "Check",
    "label": "Sales Orders"
+  },
+  {
+   "default": "0",
+   "description": "Create, submit and print linked Delivery Notes in the ESAFE B2B module.",
+   "fieldname": "enable_delivery_notes",
+   "fieldtype": "Check",
+   "label": "Delivery Notes"
   },
   {
    "default": "0",

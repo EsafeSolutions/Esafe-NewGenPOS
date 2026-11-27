@@ -73,6 +73,15 @@ scheduler_events = {
 # history through Frappe's own hook instead of patching the framework at
 # runtime. It returns at once unless a demo run has set
 # frappe.flags.esafepos_demo_stamp, so a real sale is never touched.
+has_permission = {
+    "EsafePOS B2B Settlement": "esafepos.b2b_setup.has_permission",
+    "EsafePOS Customer Cheque": "esafepos.b2b_setup.has_permission",
+}
+permission_query_conditions = {
+    "EsafePOS B2B Settlement": "esafepos.b2b_setup.query_conditions",
+    "EsafePOS Customer Cheque": "esafepos.b2b_setup.query_conditions",
+}
+
 doc_events = {
     "Item": {"on_update": "esafepos.api.catalog_sync.changed", "on_trash": "esafepos.api.catalog_sync.changed"},
     "Item Price": {"on_update": "esafepos.api.catalog_sync.changed", "on_trash": "esafepos.api.catalog_sync.changed"},
@@ -104,7 +113,9 @@ doc_events = {
                              "on_submit": "esafepos.api.catalog_sync.changed", "on_cancel": "esafepos.api.catalog_sync.changed"},
     "POS Opening Entry": {"before_insert": "esafepos.demo_data.apply_demo_stamp"},
     "POS Closing Entry": {"before_insert": "esafepos.demo_data.apply_demo_stamp"},
-    "Payment Entry": {"before_insert": "esafepos.demo_data.apply_demo_stamp"},
+    "Payment Entry": {"before_insert": "esafepos.demo_data.apply_demo_stamp",
+                      "before_cancel": "esafepos.api.b2b_payments.guard_collection_cancel",
+                      "on_cancel": "esafepos.api.b2b_payments.payment_cancelled"},
     "Journal Entry": {"before_cancel": "esafepos.loyalty_change.guard_funding_cancel"},
 }
 

@@ -144,4 +144,45 @@ async function prepare(h){await h.journal.saveSetting('approved',true);await h.j
   assert.deepEqual(receiptHtmlOptions({width:72,height:195},2),{copies:2,size:{width:72,height:195},margins:0,orientation:'portrait',scale:'fit'})
   console.log('PASS receipt layout bounds, server authorization, per-roll/outlet storage, queue changes and exact HTML options')
 }
+{
+  let clock=0,scans=0,caps=0,release,auditReleased=false
+  const auditGate=new Promise(resolve=>{release=resolve}),h=harness({now:()=>clock,report:()=>auditGate})
+  await prepare(h)
+  h.client.printers.list=async()=>{scans++;return [{id:'receipt',name:'Receipt'}]}
+  h.client.printers.capabilities=async()=>{caps++;return {maxCopies:99}}
+  h.client.jobs.list=async()=>{throw Error('Accepted printing must not scan old native jobs')}
+  const timeout=setTimeout(()=>{auditReleased=true;release()},2000)
+  try {
+    const first=await h.service.dispatch(request)
+    assert.ok(first.agentJobId)
+    assert.equal(auditReleased,false,'The first print must return before the blocked audit is released')
+    // A blocked ERP audit cannot hold the accepted print response.
+    let returned=false
+    const next=h.service.dispatch({...request,key:'next-sale'}).then(()=>{returned=true})
+    for(let i=0;i<30&&!returned;i++)await new Promise(resolve=>setTimeout(resolve,0))
+    assert.equal(returned,true,'Native acceptance returns while ERP reporting is blocked')
+    await next
+    assert.equal(scans,1);assert.equal(caps,1)
+    clock=30001
+    await h.service.dispatch({...request,key:'after-cache-expiry'})
+    assert.equal(scans,2);assert.equal(caps,2)
+    await h.service.refreshPrinters()
+    await h.service.dispatch({...request,key:'after-explicit-refresh'})
+    assert.equal(scans,3);assert.equal(caps,3)
+    assert.equal(h.service.state.jobs.length,4,'Accepted jobs appear immediately without a full queue scan')
+    assert.equal((await h.service.dispatch(request)).intentId,first.intentId)
+    assert.equal(h.client.calls.length,4,'Duplicate original does not rescan or resend')
+  } finally {release();clearTimeout(timeout)}
+  console.log('PASS fast acceptance independent of audit/history, bounded discovery/capability cache and explicit refresh')
+}
+{
+  const h=harness();await prepare(h);await h.service.resume()
+  const record=await h.service.dispatch(request)
+  const job=h.client.accepted[0]
+  for(const state of ['submitted','queued'])for(const fn of h.client.events.get('job.changed'))fn({...job,state})
+  for(let i=0;i<20;i++)await new Promise(resolve=>setTimeout(resolve,0))
+  assert.equal((await h.journal.get(record.key)).state,'submitted','Late queued events cannot erase submission')
+  h.service.dispose()
+  console.log('PASS serialized status observations preserve confirmed receipt submission')
+}
 console.log('All Esafe printing orchestration checks passed')

@@ -7,6 +7,8 @@ const DISCOVERY = { action: 'printers.list', resources: ['printers'] }
 const TERMINAL = new Set(['completed', 'failed', 'cancelled'])
 const REFRESH_ERRORS = new Set(['PERMISSION_DENIED', 'UNAUTHORIZED', 'AUTH_REQUIRED', 'PAIRING_DENIED'])
 const MAX_PAYLOAD = 10 * 1024 * 1024
+const PRINTER_CACHE_MS = 30000
+const PROGRESS = ['prepared', 'queued', 'preparing', 'submitting', 'submitted', 'completed']
 export function recoveryMessage(error) {
   const code = error?.code || ''
   if (REFRESH_ERRORS.has(code)) return 'Approval is missing or was revoked. Connect and approve this website again in Esafe Printer Manager.'
@@ -23,6 +25,9 @@ export function createEsafeService({ client = new EsafeClient(), journal = print
   let connecting, reconnecting = false, stopped = false, pairing = false, initialized = false
   const off = []
   const busyKeys = new Map()
+  const reports = new Map(), reported = new Map(), capabilityTimes = new Map()
+  let printerScanAt = null, scanning
+  function invalidatePrinters() { printerScanAt = null; capabilityTimes.clear() }
   const bindingKey = (profile) => `binding:${profile}`
   async function binding(profile) { return await journal.setting(bindingKey(profile)) || { profile, receipt: '', labels: '', document: '', report: '' } }
   async function rememberDocument(value) {
@@ -50,6 +55,7 @@ export function createEsafeService({ client = new EsafeClient(), journal = print
     connecting = (async () => {
       state.connection = 'connecting'; state.error = ''
       try {
+        invalidatePrinters()
         if (client.isConnected) client.disconnect()
         const result = await client.connect({ timeoutMs: 1800 })
         state.port = result.port
@@ -79,22 +85,31 @@ export function createEsafeService({ client = new EsafeClient(), journal = print
     return connecting
   }
   async function refreshPrinters() {
+    if (scanning) return scanning
     if (!client.isConnected || !client.isPaired) throw new Error('Connect and approve this website before choosing printers.')
+    scanning = scanPrinters().finally(() => { scanning = null })
+    return scanning
+  }
+  async function scanPrinters() {
     try {
       const [printers, defaultPrinter] = await Promise.all([client.printers.list(), client.printers.getDefault()])
       state.printers = printers; state.defaultPrinter = defaultPrinter; state.error = ''
+      printerScanAt = now(); capabilityTimes.clear()
       if (state.connection !== 'approval-required') state.connection = 'connected'
       return printers
     } catch (error) {
+      invalidatePrinters()
       state.error = recoveryMessage(error)
       if (REFRESH_ERRORS.has(error.code)) { state.connection = 'approval-required'; await journal.saveSetting('approved', false) }
       throw error
     }
   }
-  async function capabilities(id) {
+  async function capabilities(id, { cached = false } = {}) {
     if (!id) return null
+    if (cached && capabilityTimes.has(id) && now() - capabilityTimes.get(id) < PRINTER_CACHE_MS) return state.capabilities[id]
     const info = await client.printers.capabilities(id)
     state.capabilities[id] = info
+    capabilityTimes.set(id, now())
     return info
   }
   async function saveBinding(profile, selected, guard) {
@@ -135,14 +150,33 @@ export function createEsafeService({ client = new EsafeClient(), journal = print
     }
     finally { pairing = false; state.busy = false }
   }
+  function queueReport(record) {
+    const signature = JSON.stringify([record.state, record.agentJobId, record.certainty, record.error])
+    const task = (reports.get(record.intentId) || Promise.resolve()).catch(() => {}).then(async () => {
+      if (reported.get(record.intentId) === signature) return
+      await report(record)
+      reported.delete(record.intentId); reported.set(record.intentId, signature)
+      if (reported.size > 1000) reported.delete(reported.keys().next().value)
+    })
+    reports.set(record.intentId, task)
+    const clear = () => { if (reports.get(record.intentId) === task) reports.delete(record.intentId) }
+    task.then(clear, clear) // Reporting errors must not turn native acceptance into uncertainty.
+    return task
+  }
   async function observe(record, job) {
-    const updated = { ...record, state: job.state, agentJobId: job.id, certainty: job.certainty, error: job.error || '', updatedAt: now() }
-    // A known native job is recovered/reprinted by ID. Retain bytes only until acceptance
-    // is resolved; keep the metadata tombstone to prevent another original dispatch.
-    if (job.id || TERMINAL.has(job.state)) delete updated.request
-    await journal.put(updated)
-    try { await report(updated) } catch { /* Print acceptance never depends on ERP audit availability. */ }
-    return updated
+    return lock(`esafepos-print-state:${record.key}`, async () => {
+      const current = await journal.get(record.key) || record
+      // Late queued responses/events must not erase a confirmed submission.
+      const stale = current.agentJobId && (TERMINAL.has(current.state) || (PROGRESS.indexOf(current.state) >= 0 && PROGRESS.indexOf(job.state) >= 0 && PROGRESS.indexOf(current.state) > PROGRESS.indexOf(job.state)))
+      const updated = stale ? current : { ...current, state: job.state, agentJobId: job.id, certainty: job.certainty, error: job.error || '', updatedAt: now() }
+      // A known native job is recovered/reprinted by ID. Retain bytes only until acceptance
+      // is resolved; keep the metadata tombstone to prevent another original dispatch.
+      if (job.id || TERMINAL.has(job.state)) delete updated.request
+      await journal.put(updated)
+      state.jobs = [updated, ...state.jobs.filter((row) => row.key !== updated.key)].sort((a, b) => b.createdAt - a.createdAt).slice(0, 100)
+      queueReport(updated)
+      return updated
+    })
   }
   async function refreshJobs() {
     const local = await journal.list()
@@ -170,15 +204,15 @@ export function createEsafeService({ client = new EsafeClient(), journal = print
     if (busyKeys.has(key)) return busyKeys.get(key)
     const pending = lock(`esafepos-print:${key}`, async () => {
       const existing = await journal.get(key)
-      if (existing) { await refreshJobs(); return await journal.get(key) }
+      if (existing) return existing
       if (!client.isConnected || !client.isPaired) await connect()
       if (!client.isConnected || !client.isPaired) throw new Error('Approve this website in Esafe Printer Manager first.')
       const selected = await binding(profile), printerId = selected[role === 'drawer' ? 'receipt' : role]
       if (role === 'drawer' && (format !== 'raw' || options.copies !== 1 || !state.printGrants.includes(printerId))) throw new Error('Drawer pulses require one raw copy and the saved printer grant.')
       if (!printerId) throw new Error(`Choose a ${role} printer in Printing → Printers.`)
-      await refreshPrinters()
+      if (printerScanAt === null || now() - printerScanAt >= PRINTER_CACHE_MS) await refreshPrinters()
       if (!state.printers.some((p) => p.id === printerId)) throw new Error('The assigned printer is missing or renamed. Choose a printer again; no other queue was selected.')
-      const limits = await capabilities(printerId)
+      const limits = await capabilities(printerId, { cached: true })
       options = { ...(format === 'raw' ? {} : selected.options?.[role] || {}), ...options }
       if (format !== 'raw' && (options.color === true && !limits?.color || options.duplex && options.duplex !== 'none' && !limits?.duplex)) throw new Error('The selected printer does not support these color/duplex options.')
       const copies = options.copies ?? 1
@@ -213,11 +247,11 @@ export function createEsafeService({ client = new EsafeClient(), journal = print
       const { dataBase64, ...request } = record.request
       const job = await client.print({ ...request, data: fromBase64(dataBase64) })
       const updated = await observe(sending, job)
-      await refreshJobs()
       return updated
     } catch (error) {
       // No alternate output, no implicit retry: the native queue may have accepted.
       const rejected = REFRESH_ERRORS.has(error.code) || ['PRINTER_NOT_FOUND', 'UNSUPPORTED_OPTION', 'PAYLOAD_LIMIT', 'IDEMPOTENCY_CONFLICT', 'INVALID_PARAMS'].includes(error.code)
+      invalidatePrinters()
       const updated = { ...sending, state: rejected ? 'failed' : 'unknown', error: recoveryMessage(error), updatedAt: now() }
       await journal.put(updated)
       if (REFRESH_ERRORS.has(error.code)) { state.connection = 'approval-required'; await journal.saveSetting('approved', false) }
@@ -249,7 +283,7 @@ export function createEsafeService({ client = new EsafeClient(), journal = print
   }
   async function createReprint(key) {
     const original = await journal.get(key)
-    if (original?.role === 'drawer') throw new Error('Drawer pulses cannot be reprinted. Use an explicit new opening with a reason.')
+    if (original?.role === 'drawer') throw new Error('Drawer pulses cannot be reprinted. Use an explicit new opening.')
     if (!original?.agentJobId) throw new Error('Refresh the original job before requesting another copy.')
     await connect()
     const id = crypto.randomUUID()
@@ -278,6 +312,7 @@ export function createEsafeService({ client = new EsafeClient(), journal = print
         if (found) await observe(found, job)
         state.jobs = (await journal.list()).sort((a, b) => b.createdAt - a.createdAt).slice(0, 100)
       })().catch((e) => { state.error = recoveryMessage(e) }) }), client.on('resync', () => { refreshJobs().catch((e) => { state.error = recoveryMessage(e) }) }), client.on('connection.closed', () => {
+        invalidatePrinters()
         state.connection = 'disconnected'
         if (!pairing && !connecting && !stopped) reconnect().catch(() => {})
       }))
@@ -293,7 +328,7 @@ export function createEsafeService({ client = new EsafeClient(), journal = print
     try { for (const delay of [1000, 2500, 5000]) { await wait(delay); if (stopped) break; try { await connect(); break } catch { if (state.connection === 'approval-required') break } } }
     finally { reconnecting = false }
   }
-  function disconnect() { stopped = true; client.disconnect(); state.connection = 'disconnected' }
+  function disconnect() { stopped = true; invalidatePrinters(); client.disconnect(); state.connection = 'disconnected' }
   function dispose() { disconnect(); off.splice(0).forEach((f) => f()); initialized = false }
   async function saveDrawer(profile, config, save) {
     return lock('esafepos-drawer-settings', async () => {
@@ -325,23 +360,38 @@ export function createEsafeService({ client = new EsafeClient(), journal = print
     })
   }
   async function waitSubmitted(record, timeoutMs = 20000) {
+    record = await journal.get(record?.key) || record
     if (!record?.agentJobId || ['failed', 'cancelled', 'unknown'].includes(record.state)) throw new Error('Receipt submission is not confirmed; the drawer was not opened.')
-    if (['submitted', 'completed'].includes(record.state)) return record
+    async function confirmed(value) {
+      // The server requires this receipt state before authorizing its drawer.
+      // Retry only the audit update, never the print or drawer pulse.
+      try { await queueReport(value) } catch { await queueReport(value) }
+      return value
+    }
+    if (['submitted', 'completed'].includes(record.state)) return confirmed(record)
     return new Promise((resolve, reject) => {
-      let done = false
+      let done = false, polling = false, pollTimer
       const stops = [], finish = (error, job) => {
-        if (done) return; done = true; clearTimeout(timer); stops.forEach((off) => off())
+        if (done) return; done = true; clearTimeout(timer); clearTimeout(pollTimer); stops.forEach((off) => off())
         if (error) reject(error)
-        else observe(record, job).then(resolve, reject)
+        else observe(record, job).then(confirmed).then(resolve, reject)
       }
       const check = (job) => {
         if (job?.id !== record.agentJobId) return
         if (['submitted', 'completed'].includes(job.state)) finish(null, job)
         else if (['failed', 'cancelled', 'unknown'].includes(job.state)) finish(new Error('Receipt failed or is uncertain; the drawer was not opened.'))
       }
+      const poll = async () => {
+        if (done || polling) return
+        clearTimeout(pollTimer)
+        polling = true
+        try { check(await client.jobs.get(record.agentJobId)) }
+        catch { /* A missed status read can recover on the next poll/event. */ }
+        finally { polling = false; if (!done) pollTimer = setTimeout(poll, 500) }
+      }
       const timer = setTimeout(() => finish(new Error('Receipt submission was not confirmed in time. The drawer was not opened.')), timeoutMs)
-      stops.push(client.on('job.changed', check), client.on('connection.closed', () => finish(new Error('Connection lost; automatic drawer opening was stopped.'))), client.on('resync', () => finish(new Error('Receipt events were interrupted; inspect the queue before opening the drawer.'))))
-      client.jobs.get(record.agentJobId).then(check, (e) => finish(e))
+      stops.push(client.on('job.changed', check), client.on('connection.closed', () => finish(new Error('Connection lost; automatic drawer opening was stopped.'))), client.on('resync', poll))
+      poll()
     })
   }
   return { state, binding, saveBinding, saveReceiptLayout, saveDrawer, waitSubmitted, rememberDocument, connect, refreshPrinters, capabilities, refreshJobs, dispatch, retry, reprint, cancel, preview, resume, disconnect, dispose }

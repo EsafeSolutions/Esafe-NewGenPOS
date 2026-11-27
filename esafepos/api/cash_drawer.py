@@ -74,8 +74,11 @@ def authorize(profile_name, workstation, printer_id, source, values, existing=Fa
         from esafepos.api.register import _assert_owner_or_manager
         _assert_owner_or_manager(source)
         source.check_permission("write")
-        if source.status != "Open" or source.pos_profile != profile_name or not reason or len(reason) > 140:
-            frappe.throw(_("Use your open register and enter a reason of at most 140 characters."), frappe.PermissionError)
+        if source.status != "Open" or source.pos_profile != profile_name:
+            frappe.throw(_("Use your open register at this outlet."), frappe.PermissionError)
+        if len(reason) > 140:
+            frappe.throw(_("The optional drawer note must be at most 140 characters."))
+        reason = reason or "Manual cash drawer opening"
     elif mode == "payment":
         if not saved.get("automatic"):
             frappe.throw(_("Automatic drawer opening is disabled."), frappe.PermissionError)

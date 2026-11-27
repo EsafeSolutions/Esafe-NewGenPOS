@@ -166,5 +166,16 @@ class DrawerTests(unittest.TestCase):
         with self.assertRaises(PermissionError):
             self.register(drawer=dict(self.settings,mode="manual",reason="Changed reason"),**args)
 
+    def test_manual_open_does_not_require_a_reason(self):
+        args = dict(role="drawer", output="raw", printer_id="receipt-id",
+                    reference={"doctype": "POS Register Session", "name": "SHIFT"})
+        values = dict(self.settings, mode="manual")
+        self.register(drawer=values, **args)
+        self.assertEqual(base.STORE[base.ID].drawer_reason, "Manual cash drawer opening")
+        self.assertEqual(self.register(drawer=values, **args)["name"], base.ID)
+        self.shift["status"] = "Closed"
+        with self.assertRaises(PermissionError):
+            self.register(drawer=values, **args)
+
 
 if __name__=="__main__":unittest.main()

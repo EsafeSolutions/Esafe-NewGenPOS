@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { DEFAULT_STOCK,DEFAULT_PRINTER,geometry,layoutJob,stockForPreset,mm,calibrationKey,migrateOptions,normalizePrinter } from './src/labels/stock.js'
-import { DEFAULT_DESIGN,designFor } from './src/labels/design.js'
+import { DEFAULT_DESIGN,designFor,fontFamily } from './src/labels/design.js'
+import { labelMoney } from './src/labels/prices.js'
 import { labelScene,validateJob,barcodeMetrics,pageSvg,safeImage } from './src/labels/render.js'
 const item={item_code:'LP1',item_name:'Tea',barcode:'LP1',price_text:'LKR 450',qty:25}
 const triple={...DEFAULT_STOCK,w:30,h:20,columns:3,gapX:2,left:2,right:2}
@@ -47,3 +48,25 @@ assert.ok(svg.includes('width="30" height="20"'));assert.equal((svg.match(/width
 assert.ok(!safeImage('javascript:alert(1)'));assert.ok(!safeImage('//evil.example/image'));assert.ok(safeImage('/files/logo.png'))
 assert.ok(labelScene({...item,item_name:'<script>alert(1)</script>'},DEFAULT_STOCK,{...design,show:{...design.show,barcode:false}}).svg.includes('&lt;'))
 console.log('PASS label geometry, quantities, skips, exact units, calibration keys, SVG bounds, barcode and QR validation')
+const retail=designFor('bold-retail'),reference={item_code:'30820392',barcode:'30820392',item_name:'FOLDING WASHING.M 9L',price_text:labelMoney(3990,'LKR'),shop:'OSAKA CITY (PVT) LTD'}
+assert.equal(retail.font,'Impact');assert.equal(retail.show.shop,true)
+assert.equal(retail.elements.find(el=>el.id==='price').rotation,90)
+assert.equal(retail.elements.find(el=>el.id==='digits').font,'Arial')
+for(const [w,h] of [[58,40],[60,30],[50,30],[38,25]])assert.deepEqual(labelScene(reference,{...DEFAULT_STOCK,w,h},retail).errors,[])
+assert.equal(designFor('classic',retail).font,DEFAULT_DESIGN.font,'Changing back restores normal template typography')
+const retailSvg=labelScene(reference,DEFAULT_STOCK,retail).svg
+assert.ok(retailSvg.includes('Impact, &quot;Arial Narrow&quot;'));assert.ok(retailSvg.includes('stroke-dasharray'))
+assert.equal(fontFamily('bad\" onload=\"alert(1)'),'Arial,sans-serif')
+assert.ok(labelScene({...reference,item_name:'W'.repeat(2000)},DEFAULT_STOCK,retail).errors.some(error=>error.includes('Text does not fit')),'Unfittable single-line names are refused instead of truncated')
+assert.ok(labelScene({...reference,item_name:'<b>Tea & coffee</b>'},DEFAULT_STOCK,retail).svg.includes('&lt;b&gt;Tea &amp; coffee&lt;/b&gt;'))
+console.log('PASS bold retail vertical-price template, safe font stack, preserved barcode, bounds and single-line overflow refusal')
+for(const currency of ['LKR','USD','EUR','KWD','JPY','CUSTOM']) {
+  assert.doesNotMatch(labelMoney(3990,currency),/[.,]0{2,3}(?:\D*)$/)
+  assert.ok(labelMoney(3990,currency).replace(/,/g,'').includes('3990'))
+}
+assert.match(labelMoney(1250.75,'LKR'),/1,250\.75/)
+assert.match(labelMoney(1250.5,'LKR'),/1,250\.50/)
+assert.match(labelMoney(1.125,'KWD'),/1\.125/)
+assert.match(labelMoney(-20,'USD'),/-/)
+assert.ok(labelMoney(0,'LKR').includes('0'))
+console.log('PASS label-only whole prices omit zero fractions; fractional, three-decimal, zero, negative and custom currency values remain valid')

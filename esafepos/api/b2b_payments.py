@@ -250,15 +250,22 @@ def receive_settlement(pos_profile, payload, idempotency_key):
         for tender in tenders:
             tender["amount"] = _amount(tender.get("amount"), currency)
         total = float(sum(number(row["amount"]) for row in tenders))
+        seen_cheques = set()
         for tender in tenders:
             _mode(profile, currency, tender.get("mode_of_payment"), tender.get("method"))
             if tender["method"] != "Cash":
                 if not str(tender.get("reference_no") or "").strip() or not tender.get("reference_date"):
                     frappe.throw(_("Enter each transfer/cheque reference and date."))
+                tender["reference_no"] = str(tender["reference_no"]).strip()[:140]
                 tender["reference_date"] = str(getdate(tender["reference_date"]))
             if tender["method"] == "Cheque":
                 if not enabled("enable_cheque_tracking") or not str(tender.get("bank") or "").strip():
                     frappe.throw(_("Enable cheque tracking and enter the issuing bank."))
+                tender["bank"] = str(tender["bank"]).strip()[:140]
+                duplicate_key = (tender["bank"].casefold(), tender["reference_no"].casefold())
+                if duplicate_key in seen_cheques:
+                    frappe.throw(_("Enter each cheque only once in a settlement."))
+                seen_cheques.add(duplicate_key)
                 if frappe.db.exists(CHEQUE, {"company": profile.company, "customer": customer, "bank": tender["bank"],
                                              "reference_no": tender["reference_no"], "status": ["in", ["Received", "Deposited", "Cleared"]]}):
                     frappe.throw(_("This customer already has an active cheque with that bank and number."))
@@ -428,8 +435,11 @@ def transition_cheque(pos_profile, name, action, modified, event_date=None, reas
         invoices = _open_invoices(profile, doc.customer, currency, lock=True)
         selected = data(allocations, list) if allocations is not None else json.loads(doc.allocations or "[]")
         allow_excess = cint(keep_advance) if keep_advance is not None else cint(doc.keep_advance)
+        if allocations is not None and not selected and not allow_excess:
+            frappe.throw(_("Select invoice allocations or explicitly keep the cheque as an advance."))
+        candidates = [] if not selected and (allocations is not None or doc.get("is_advance")) else invoices
         try:
-            references, extra = allocate([] if doc.get("is_advance") and not selected else invoices, doc.amount, selected, allow_advance=bool(allow_excess), precision=_precision(currency))
+            references, extra = allocate(candidates, doc.amount, selected, allow_advance=bool(allow_excess), precision=_precision(currency))
         except ValueError as error:
             frappe.throw(str(error))
         tender = {"method": "Cheque", "mode_of_payment": doc.mode_of_payment, "amount": doc.amount,

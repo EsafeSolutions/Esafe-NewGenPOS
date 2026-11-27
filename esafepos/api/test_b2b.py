@@ -19,7 +19,7 @@ from esafepos.b2b_rules import allocate, cheque_transition, line_discount, numbe
 class Doc:
     def __init__(self, **values):
         object.__setattr__(self, "values", values)
-        object.__setattr__(self, "meta", SimpleNamespace(has_field=lambda field: True))
+        object.__setattr__(self, "meta", SimpleNamespace(has_field=lambda field: True, get_table_fields=lambda: []))
         object.__setattr__(self, "flags", DocFlags())
         object.__setattr__(self, "check_permission", Mock())
         object.__setattr__(self, "has_permission", Mock(return_value=True))
@@ -181,6 +181,7 @@ class EndpointTests(unittest.TestCase):
         import esafepos.api as api
         self.api_permissions = getattr(api, "permissions", None)
         api.permissions = permission
+        importlib.reload(importlib.import_module("esafepos.erpnext_compat"))
         self.b2b = importlib.reload(importlib.import_module("esafepos.api.b2b"))
         self.payments = importlib.reload(importlib.import_module("esafepos.api.b2b_payments"))
         self.profile = Doc(name="Outlet", company="Company", warehouse="Stores", selling_price_list="Retail", allow_rate_change=1)
@@ -228,6 +229,10 @@ class EndpointTests(unittest.TestCase):
                 self.b2b.document("Outlet", "Sales Invoice", "INV", "write")
 
     def test_disabled_document_types_cannot_be_opened(self):
+        self.frappe.get_doc = Mock(return_value=Doc(name="DISABLED", disabled=1))
+        self.assertEqual(self.b2b.customer_doc("DISABLED").name, "DISABLED")
+        with self.assertRaises(ValueError):
+            self.b2b.customer_doc("DISABLED", for_sale=True)
         self.feature.enabled.return_value = False
         with self.assertRaises(PermissionError):
             self.b2b.document("Outlet", "Sales Order", "SO")
@@ -315,6 +320,36 @@ class EndpointTests(unittest.TestCase):
         self.assertEqual(doc.ignore_pricing_rule, 1)
         self.assertEqual(json.loads(doc.esafepos_b2b_manual)[0]["base_rate"], 80)
 
+    def prepare_linked_draft(self, manual=False):
+        source = Doc(doctype="Sales Invoice", name="DRAFT", company="Company", currency="LKR", customer="C", docstatus=0,
+                     modified="old", items=[Doc(name="LINE", item_code="FEED", rate=63 if manual else 70, price_list_rate=100,
+                                               sales_order="SO", so_detail="SO-LINE")], taxes=[])
+        if manual:
+            source.esafepos_b2b_manual = json.dumps([{"item_code": "FEED", "native_rate": 70, "base_rate": 70, "discount_value": 10}])
+        item = Doc(name="FEED", stock_uom="Kg", is_sales_item=1, is_stock_item=1, disabled=0, has_variants=0)
+        self.frappe.get_doc = Mock(return_value=Doc(company="Company", is_group=0, disabled=0))
+        self.frappe.get_cached_doc = Mock(return_value=item)
+        self.frappe.get_cached_value = Mock(return_value=None)
+        sales = ModuleType("esafepos.api.sales")
+        sales._check_price_edit_permission, sales._check_discount_passcode = Mock(), Mock(return_value=None)
+        with patch.dict(sys.modules, {"esafepos.api.sales": sales}), patch.object(self.b2b, "customer_doc", return_value=Doc(name="C")), patch.object(self.b2b, "document", return_value=source):
+            return self.b2b._prepare("Outlet", {"doctype": "Sales Invoice", "name": "DRAFT", "modified": "old", "customer": "C", "grand_total": 999999,
+                "items": [{"name": "LINE", "item_code": "FEED", "qty": 2, "discount_value": 10 if manual else 0, "discount_method": "Percent"}]})
+
+    def test_mapped_agreed_price_and_source_link_survive_draft_edit(self):
+        doc = self.prepare_linked_draft()
+        self.assertEqual(doc.items[0].rate, 70)
+        self.assertEqual(doc.items[0].so_detail, "SO-LINE")
+        self.assertEqual(doc.grand_total, 140)
+
+    def test_saved_linked_discount_is_not_applied_twice(self):
+        self.assertEqual(self.prepare_linked_draft(manual=True).items[0].rate, 63)
+
+    def test_manual_discount_permission_is_checked_before_save(self):
+        self.permission.can_edit_price.return_value = False
+        with self.assertRaises(PermissionError):
+            self.prepare_linked_draft(manual=True)
+
     def test_settlement_retry_survives_closed_register(self):
         with patch.object(self.payments, "_pay_context", return_value=(self.profile, "LKR")), patch.object(self.payments, "customer_doc", return_value=Doc(name="C")), patch.object(self.payments, "_prior", return_value=Doc()), patch.object(self.payments, "_receipt", return_value={"name": "RECEIPT"}), patch.object(self.payments, "_session") as session:
             result = self.payments.receive_settlement("Outlet", {"customer": "C"}, "retry-identity-12345")
@@ -343,6 +378,21 @@ class EndpointTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 self.payments.transition_cheque("Outlet", "CHEQUE", "clear", "old")
             post.assert_not_called()
+
+    def test_duplicate_cheques_in_same_settlement_fail_before_recording(self):
+        tender = {"method": "Cheque", "amount": 100, "bank": "Bank", "mode_of_payment": "Cheque", "reference_no": "0001", "reference_date": "2026-12-01"}
+        payload = {"customer": "C", "collection_context": "Back office", "tenders": [tender, dict(tender, bank=" Bank ", reference_no=" 0001 ")]}
+        with patch.object(self.payments, "_pay_context", return_value=(self.profile, "LKR")), patch.object(self.payments, "customer_doc", return_value=Doc(name="C")), patch.object(self.payments, "_prior", return_value=None), patch.object(self.payments, "_session"), patch.object(self.payments, "lock_customer"), patch.object(self.payments, "_mode"), patch.object(self.payments, "_record") as record, self.assertRaises(ValueError):
+            self.payments.receive_settlement("Outlet", payload, "retry-identity-12345")
+        record.assert_not_called()
+
+    def test_explicit_cheque_advance_does_not_allocate_to_another_invoice(self):
+        cheque = Doc(name="CHEQUE", company="Company", pos_profile="Outlet", customer="C", modified="new", status="Deposited", amount=100,
+                     received_date="2026-11-20", deposit_date="2026-11-22", cheque_date="2026-11-23", mode_of_payment="Cheque", reference_no="0001", settlement="SETTLEMENT", history="[]")
+        self.frappe.get_doc = Mock(return_value=cheque)
+        with patch.object(self.payments, "_pay_context", return_value=(self.profile, "LKR")), patch.object(self.payments, "customer_doc"), patch.object(self.payments, "lock_customer"), patch.object(self.payments, "_open_invoices", return_value=[Doc(name="OTHER", outstanding_amount=100)]), patch.object(self.payments, "_post_payment", return_value=Doc(name="PAY")) as post, patch("esafepos.erpnext_compat.set_payment_clearance"), patch.object(self.payments, "_save"), patch.object(self.payments, "audit"):
+            self.payments.transition_cheque("Outlet", "CHEQUE", "clear", "new", allocations=[], keep_advance=1)
+        self.assertEqual(post.call_args.args[4], [])
 
     def test_cheque_retry_returns_recorded_outcome_without_second_posting(self):
         key, fingerprint = self.b2b.identity("retry-identity-12345", {"action": "clear", "event_date": None, "reason": None, "allocations": None, "keep_advance": None})
@@ -412,6 +462,18 @@ class EndpointTests(unittest.TestCase):
         with patch.object(reports, "context", return_value=(self.profile, "LKR")), patch.object(reports, "customer_doc", return_value=Doc()), self.assertRaises(PermissionError):
             reports.customer_statement("Outlet", "C")
         self.frappe.get_list.assert_not_called()
+
+    def test_bank_clearance_adapter_supports_native_old_and_new_tables(self):
+        compat = importlib.reload(importlib.import_module("esafepos.erpnext_compat"))
+        for table in ("payment_entries", "journal_entries"):
+            tool = Doc()
+            tool.meta.has_field = lambda name: name == table
+            tool.update_clearance_date = Mock()
+            self.frappe.get_doc = Mock(return_value=Doc(name="PAY", paid_to="Bank", posting_date="2026-11-27"))
+            self.frappe.new_doc = Mock(return_value=tool)
+            compat.set_payment_clearance("PAY", "2026-11-27")
+            self.assertEqual(tool.get(table)[0].payment_entry, "PAY")
+            tool.update_clearance_date.assert_called_once()
 
 
 if __name__ == "__main__":

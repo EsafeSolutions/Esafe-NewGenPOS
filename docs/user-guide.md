@@ -335,11 +335,11 @@ a label printer (a roll) or on an A4 sheet of labels.
   changed since a date, one label each. Change the copies of any line before printing.
 - **The price** is what a walk-in customer pays at this outlet, price books included and **tax included**, as
   ERPNext works it out for the item (its item tax template too). Where your shop shows other currencies, the
-  label can show the price in them as well, at today's rate.
+  label can show the price in them as well, at today's rate. Whole amounts omit `.00` (for example, **LKR 3,990**); prices with non-zero cents retain them.
 - **The barcode** is the item's own (an EAN-13 or UPC-A first, from the item's Barcodes table); an item without
   one prints its item code as a Code 128 barcode, which the till scans too.
 - **Stock:** choose an editable metric/inch preset or enter the measured width/height. Exact inch stock remains distinct from rounded metric stock. Select Single, Double, Triple or custom columns, then enter horizontal and feed gaps separately. Liner width can be calculated or measured explicitly. Sheets support A4/A5/Letter/Legal/custom paper, rows, margins and gaps. **Empty slots before first label** and **Skip used slots** support partially used stock; slot numbers start at 1.
-- **Design:** choose one of 15 layouts, including left/right/rotated barcodes, large price, company logo, shelf, batch/expiry, second name, QR/dual code and split tags. Choose the fields to include. Logos can come from the outlet receipt, Company master or a PNG/JPEG/WebP upload. **Advanced** exposes element positions/dimensions in mm, rotation, alignment, bold, position locking, duplicate/delete and undo/redo. Drag elements or use numeric inputs. Name, price and other text have independent font sizes. Screen zoom does not change printed size.
+- **Design:** choose one of 16 layouts, including left/right/rotated barcodes, large price, company logo, shelf, batch/expiry, second name, QR/dual code and split tags. **Bold retail** follows the supplied sample: condensed Impact lettering, product name at the top, a wide barcode with clear Arial digits, company name below, and a large vertical price separated by a dotted rule. Select your actual stock size first; existing sizes and saved designs stay unchanged. The price automatically fills its column at the largest size that fits. The sample appears only while the queue is empty; real items use the actual product, company and full selling price. Choose the fields to include. Logos can come from the outlet receipt, Company master or a PNG/JPEG/WebP upload. **Advanced** exposes element positions/dimensions in mm, rotation, alignment, font override, **Keep on one line**, **Fill text box**, bold, position locking, duplicate/delete and undo/redo. Drag elements or use numeric inputs. Name, price and other text have independent font sizes. Screen zoom does not change printed size. [Bold retail sample and setup](label-printing-module-plan.md#bold-retail-design--2026-11-27).
 - **Preview:** Label shows the selected product; Roll/Sheet shows actual copies, gaps and final blank slots. Page arrows inspect the whole job. Test rows include boundaries and measurement ticks. Shape choices guide placement on existing stock; they do not cut stock. If text/barcodes cannot fit, printing is blocked with a reason. Standard retail barcode height can be required in Barcode settings.
 - **Long barcodes on small labels:** **Make barcode fit** applies compact sizing without shortening the item value. Automatic fitting is enabled by default, uses whole printer dots, and keeps the required quiet zones and minimum module widths. A full-width linear barcode may borrow unused design padding while retaining 0.5 mm edge clearance. For the code `O1D34340021` on 38 × 25 mm stock at 203.2 DPI, Code 128 fits at 35.75 mm instead of the previous 53.625 mm. Screen zoom still has no effect on physical size.
 - **Alternative formats:** use **Data Matrix** or **QR** in the Barcode size panel or Design → Barcode settings to encode the same full item value in a square symbol. These require a compatible 2D imager; a laser-only scanner cannot read them. A separate custom QR element can still hold its explicitly configured link, while choosing QR as the barcode format always encodes the item barcode/code. Code 93 is also available when enabled on the scanner; it retains both mandatory checksums and may need more space than Code 128 for numeric-heavy values. EAN/UPC selection still requires valid data/check digits. No format conversion truncates the identifier, assigns a new GTIN or creates a GS1 symbol. Print and scan a test label on the actual device before using a new format in a batch.
@@ -357,7 +357,7 @@ a label printer (a roll) or on an A4 sheet of labels.
 
 **Printing** groups label output, receipt adjustment and printer configuration in one workspace:
 
-**Cash drawer:** Printers now also offers default-off workstation drawer controls for the saved receipt queue. Choose pin 2 or pin 5 and even ON/OFF times from 2–510 ms (defaults 100/500), save, and explicitly confirm **Test / open cash drawer**. This sends a physical pulse without printing or feeding paper. Optional opening after a new paid cash sale is also off by default; printed receipts must reach submitted/completed first, and reprints/offline/card-only/on-account/returned sales do not open it. Manual opening from Register requires Cash out permission, an open authorized session and a reason. Disable driver automation that could cause a second pulse. See [setup, migration and recovery](cash-drawer-controls.md).
+**Cash drawer:** Printers now also offers default-off workstation drawer controls for the saved receipt queue. Choose pin 2 or pin 5 and even ON/OFF times from 2–510 ms (defaults 100/500), save, and explicitly confirm **Test / open cash drawer**. This sends a physical pulse without printing or feeding paper. Optional opening after a new paid cash sale is also off by default; printed receipts must reach submitted/completed first, and reprints/offline/card-only/on-account/returned sales do not open it. Manual opening from Register requires Cash out permission and an open authorized session, with no reason prompt; the opening is still audited. Automatic opening also checks status when a manager event is missed. Disable driver automation that could cause a second pulse. See [setup, migration and recovery](cash-drawer-controls.md).
 
 - **Receipt:** choose a template, paper width, logo, header/contact/footer, visible fields and custom fields. The live preview follows changes. Use **Save default receipt** for all outlets, or select an outlet and use **Save for this outlet**. **Reset to default** removes that outlet's override. **Print preview** prints the sample receipt through the browser; it does not post a sale. Receipt editing is no longer under General Settings.
 - **Printers:** select an outlet, enter its ESC/POS network printer host/port or leave the address empty for browser/Print Format printing, choose an ERPNext Print Format for the outlet's sale document type, and use **Save printer settings**. These choices remain stored on the existing POS Profile. Saving the active outlet updates the current till immediately. Save changes before **Print test receipt**; a successful submission does not prove paper output.
@@ -590,25 +590,29 @@ Everything the client computed is **re-validated server-side** at submit:
 prices, promotions, serials, balances, passcodes. The client math is
 display-only.
 
-### Regular customer invoices
+### ESAFE B2B module and customer invoices
 
-Use **Invoices** in the left menu to create a standard ERPNext Sales Invoice
-without opening a register, or choose a customer in the Sell cart and tap
-**Invoice**. Select a named customer, search and add items, adjust quantities,
-choose an optional due date and salesperson where enabled, then create the
-invoice. The server rechecks item prices, discounts, taxes and stock against the
-selected outlet; ERPNext applies the customer's payment terms and records the
-outstanding receivable. No payment is taken on this action.
-The invoice opens in ERPNext's print view, and its balance appears in the
-customer account when **Customer balances** is enabled. To collect later, open
-the customer in **Customers** and use **Take a payment**; that till receipt
-still requires an open register and the user's customer-payment permission.
+Open **B2B** to select a customer and manage quotations, orders, deliveries,
+invoices, payments, cheques and statements in tabs. **Save draft**, **Submit** and
+**Print** are separate actions. Invoice lines support UOM, quantity, warehouse,
+permitted rates and percentage/per-unit discounts using native ERPNext pricing.
+The icon-based Overview follows the connected sale through fulfilment and payment.
 
-The **Regular Sales Invoices** switch in **Settings → General → Features**
-controls the new invoice action and the POS Profile's direct Sales Invoice
-checkout mode. The cashier needs Sales Invoice create and submit permissions.
-The invoice workspace is online-only and uses the active POS Profile's company,
-price list, taxes, warehouse and currency settings.
+Payments support partial/split cash, bank transfer and cheque collections, deposits
+and native advance reconciliation. Till collections belong to an open shift;
+authorized back-office collections use company accounts. Cheques remain pending
+until actual clearance posts a Payment Entry. Customer Summary prints the party
+ledger, current open invoices, allocations and pending cheques.
+
+Enable the B2B master and required child features in **Modules & Features** after
+site migration. Native document and accounting permissions still apply. B2B is
+online-only and creates/settles in company currency. See the [B2B setup and
+workflow guide](b2b-module.md) for stock handling, cheque dates, safe amendments,
+permissions, printing and verification.
+
+The Sell cart's **Invoice** action retains its original immediate-submit flow;
+it creates a standard receivable without collecting money. Existing Customers →
+Take a payment retains its shift-linked Journal Entry workflow.
 
 ### Buying and supplier payments
 

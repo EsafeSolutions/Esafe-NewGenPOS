@@ -12,11 +12,9 @@ const ready = computed(() => manager.state.connection === 'connected' && manager
 async function load() { const binding = await manager.binding(session.posProfile); printerId.value = binding.receipt; enabled.value = !!binding.drawer?.enabled && binding.drawer.printerId === binding.receipt }
 async function open() {
   if (busy.value || !ready.value) return
-  const reason = window.prompt(t('Reason for opening the cash drawer (required, up to 140 characters):'))
-  if (!reason?.trim()) return
   busy.value = true
   try {
-    const result = await cashDrawer.open({ profile: session.posProfile, reference: { doctype: 'POS Register Session', name: session.registerSession.name }, user: session.user, mode: 'manual', reason: reason.trim() })
+    const result = await cashDrawer.open({ profile: session.posProfile, reference: { doctype: 'POS Register Session', name: session.registerSession.name }, user: session.user, mode: 'manual' })
     session.notify(t(result.state === 'unknown' ? 'Drawer pulse outcome is unknown. Inspect the drawer and Print jobs before another opening.' : result.state === 'failed' ? `Drawer pulse failed: ${result.error}` : 'Drawer pulse accepted. Check the physical drawer.'))
   } catch (e) { session.notify(e.message, true) } finally { busy.value = false }
 }

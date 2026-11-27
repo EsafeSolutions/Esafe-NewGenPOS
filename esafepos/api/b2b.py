@@ -57,10 +57,10 @@ def require_kind(doctype):
         frappe.throw(_("This B2B document type is unavailable."), frappe.PermissionError)
 
 
-def customer_doc(customer):
+def customer_doc(customer, for_sale=False):
     doc = frappe.get_doc("Customer", customer)
     doc.check_permission("read")
-    if doc.get("disabled"):
+    if for_sale and doc.get("disabled"):
         frappe.throw(_("This customer is disabled."))
     return doc
 
@@ -169,7 +169,13 @@ def list_documents(pos_profile, doctype, customer=None, search="", status="", st
     elif status:
         filters["status"] = status
     if from_date and to_date:
+        if getdate(from_date) > getdate(to_date):
+            frappe.throw(_("The start date must not follow the end date."))
         filters[date_field] = ["between", [str(getdate(from_date)), str(getdate(to_date))]]
+    elif from_date:
+        filters[date_field] = [">=", str(getdate(from_date))]
+    elif to_date:
+        filters[date_field] = ["<=", str(getdate(to_date))]
     if doctype == "Sales Invoice":
         filters["is_pos"] = 0
     fields = _fields(doctype, ["name", "customer_name", "status", "docstatus", date_field, "grand_total", "currency", "outstanding_amount", "due_date", "per_delivered", "per_billed", "modified"])
@@ -242,7 +248,7 @@ def _prepare(pos_profile, payload):
     profile, currency = context(pos_profile)
     kind = payload.get("doctype")
     require_kind(kind)
-    customer = customer_doc(payload.get("customer"))
+    customer = customer_doc(payload.get("customer"), for_sale=True)
     rows = data(payload.get("items"), list)
     if not rows or len(rows) > 200:
         frappe.throw(_("Add between 1 and 200 invoice items."))
@@ -255,7 +261,8 @@ def _prepare(pos_profile, payload):
         if (doc.get("party_name") if kind == "Quotation" else doc.customer) != customer.name:
             frappe.throw(_("Create a new draft to change its customer."))
     else:
-        doc = frappe.new_doc(kind)
+        from esafepos.erpnext_compat import new_doc
+        doc = new_doc(kind)
         doc.check_permission("create")
         doc.company = profile.company
         if kind == "Quotation":

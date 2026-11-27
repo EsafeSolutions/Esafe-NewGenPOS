@@ -1,6 +1,6 @@
 <template>
   <section class="b2b-workspace" :data-b2b-dirty="dirty || busy ? 'true' : 'false'">
-    <header class="b2b-heading"><div><h1>ESAFE B2B MODULE</h1><p>{{ t('Customer sales, from quotation to settlement.') }}</p></div><span class="b2b-company"><Icon name="company" /> {{ options?.company || session.company }}</span><button class="btn btn-outline" :disabled="loading || offline" @click="refresh"><Icon name="refresh" /> {{ t('Refresh') }}</button></header>
+    <header class="b2b-heading"><div><h1>ESAFE B2B MODULE</h1><p>{{ t('Customer sales, from quotation to settlement.') }}</p></div><span class="b2b-company"><Icon name="company" /> {{ options?.company || session.company }}</span><button class="btn btn-outline" :disabled="loading || offline || dirty || busy" @click="refresh"><Icon name="refresh" /> {{ t('Refresh') }}</button></header>
     <div v-if="session.posProfile !== profile" class="b2b-error">{{ t('The outlet changed. Discard this workspace before loading the selected outlet.') }} <button class="btn btn-outline" @click="switchOutlet">{{ t('Discard and switch outlet') }}</button></div>
     <p v-if="offline" class="b2b-notice">{{ t('B2B needs a connection. Your current entries remain here for retry.') }}</p>
     <p v-if="error" class="b2b-error" role="alert">{{ error }}</p>
@@ -102,7 +102,7 @@ const deskUrl = (kind,name) => `/app/${kind.toLowerCase().replaceAll(' ','-')}/$
 const docStatus = value => ({0:'Draft',1:'Submitted',2:'Cancelled'}[value] || 'Draft')
 const parseRows = value => { try { return JSON.parse(value || '[]') } catch { return [] } }
 const chequeActions = status => ({Received:['deposit','bounce','return','cancel'],Deposited:['clear','bounce','return'],Cleared:['bounce']}[status] || [])
-let customerTimer, documentTimer, customerRequest = 0, listRequest = 0, customerLoad = 0, progressRequest = 0, chequeAttempt = null
+let customerTimer, documentTimer, customerRequest = 0, listRequest = 0, customerLoad = 0, progressRequest = 0, paymentRequest = 0, statementRequest = 0, chequeAttempt = null
 
 function canLeave() { return !busy.value && (!dirty.value || window.confirm(t('Discard unsaved B2B entries? Saved drafts remain available.'))) }
 function setTab(tab) { if (tab === activeTab.value || !canLeave()) return; dirty.value = false; editor.value = null; router.replace({query:{...route.query,tab}}) }
@@ -112,6 +112,7 @@ async function selectCustomer(row) {
   if (!canLeave()) return
   dirty.value = false; editor.value = null; process.value = null; processAnchor.value = null; paymentFocus.value = null; existingReceipt.value = null
   customer.value = row; customerQuery.value = ''; customerResults.value = []; customerModal.value = false; statement.value = null; account.value = null; customerOptions.value = {}
+  paymentRequest++;statementRequest++;payments.value=[];settlements.value=[]
   await refreshCustomer(); await loadActive()
 }
 function changeCustomer() { if (!canLeave()) return; customerLoad++; dirty.value=false; customer.value=null; account.value=null; editor.value=null; process.value=null; processAnchor.value=null; paymentFocus.value=null; statement.value=null; loadActive() }
@@ -171,10 +172,20 @@ function closeEditor(){if(!canLeave())return;dirty.value=false;editor.value=null
 async function loadProgress(row){const request=++progressRequest;try{const result=await call('esafepos.api.b2b.sales_progress',{pos_profile:profile.value,doctype:row.doctype,name:row.name});if(request===progressRequest){process.value=result;processAnchor.value={doctype:row.doctype,name:row.name}}}catch(err){if(request===progressRequest)error.value=err.message}}
 async function showProcess(row){if(!canLeave())return;await loadProgress(row);setTab('overview')}
 async function takePayment(doc){paymentFocus.value=doc;dirty.value=false;editor.value=null;await router.replace({query:{...route.query,tab:'payments'}});await refreshCustomer()}
-async function loadPayments(){if(!customer.value||!options.value.can_pay)return;try{const result=await call('esafepos.api.b2b_payments.list_payments',{pos_profile:profile.value,customer:customer.value.name});payments.value=result.items;settlements.value=result.settlements}catch(err){error.value=err.message}}
+async function loadPayments(){if(!customer.value||!options.value.can_pay)return;const request=++paymentRequest,name=customer.value.name;try{const result=await call('esafepos.api.b2b_payments.list_payments',{pos_profile:profile.value,customer:name});if(request===paymentRequest&&customer.value?.name===name){payments.value=result.items;settlements.value=result.settlements}}catch(err){if(request===paymentRequest)error.value=err.message}}
 async function openReceipt(name){if(!canLeave())return;try{existingReceipt.value=await call('esafepos.api.b2b_payments.settlement_receipt',{pos_profile:profile.value,name})}catch(err){error.value=err.message}}
-async function loadCheques(){loading.value=true;try{const result=await call('esafepos.api.b2b_payments.list_cheques',{pos_profile:profile.value,customer:customer.value?.name||null,status:chequeStatus.value,start:page.value*30});cheques.value=result.items;hasMore.value=result.has_more}catch(err){error.value=err.message}finally{loading.value=false}}
-async function openChequeAction(row,action){chequeError.value='';chequeReason.value='';chequeEventDate.value=options.value.today;chequeAllocations.value=Object.fromEntries(parseRows(row.allocations).map(ref=>[ref.name,ref.amount]));chequeKeepAdvance.value=Boolean(row.keep_advance);chequeAccount.value=null;chequeDialog.value={row,action};if(action==='clear'){try{chequeAccount.value=await call('esafepos.api.b2b_payments.customer_account',{pos_profile:profile.value,customer:row.customer})}catch(err){chequeError.value=err.message}}}
+async function loadCheques(){const request=++listRequest;loading.value=true;try{const result=await call('esafepos.api.b2b_payments.list_cheques',{pos_profile:profile.value,customer:customer.value?.name||null,status:chequeStatus.value,start:page.value*30});if(request===listRequest){cheques.value=result.items;hasMore.value=result.has_more}}catch(err){if(request===listRequest)error.value=err.message}finally{if(request===listRequest)loading.value=false}}
+async function openChequeAction(row,action){
+  chequeError.value='';chequeReason.value='';chequeEventDate.value=options.value.today
+  chequeAllocations.value=Object.fromEntries(parseRows(row.allocations).map(ref=>[ref.name,ref.amount]));chequeKeepAdvance.value=Boolean(row.keep_advance)
+  chequeAccount.value=null;chequeDialog.value={row,action}
+  if(action==='clear'){
+    try{
+      chequeAccount.value=await call('esafepos.api.b2b_payments.customer_account',{pos_profile:profile.value,customer:row.customer})
+      chequeAllocations.value=Object.fromEntries(chequeAccount.value.invoices.map(invoice=>[invoice.name,Math.min(Number(chequeAllocations.value[invoice.name]||0),Number(invoice.outstanding_amount))]))
+    }catch(err){chequeError.value=err.message}
+  }
+}
 async function transitionCheque(){
   busy.value=true
   try {
@@ -185,13 +196,13 @@ async function transitionCheque(){
     chequeAttempt=null;chequeDialog.value=null;await loadCheques();await refreshCustomer();session.notify(t('Cheque updated'))
   }catch(err){chequeError.value=err.message}finally{busy.value=false}
 }
-async function loadStatement(){if(!customer.value||!options.value.can_statement)return;loading.value=true;statement.value=null;try{statement.value=await call('esafepos.api.b2b_reports.customer_statement',{pos_profile:profile.value,customer:customer.value.name,from_date:statementFrom.value,to_date:statementTo.value})}catch(err){error.value=err.message}finally{loading.value=false}}
+async function loadStatement(){if(!customer.value||!options.value.can_statement)return;const request=++statementRequest,name=customer.value.name;loading.value=true;statement.value=null;try{const result=await call('esafepos.api.b2b_reports.customer_statement',{pos_profile:profile.value,customer:name,from_date:statementFrom.value,to_date:statementTo.value});if(request===statementRequest&&customer.value?.name===name)statement.value=result}catch(err){if(request===statementRequest)error.value=err.message}finally{if(request===statementRequest)loading.value=false}}
 async function printStatement(){busy.value=true;try{await printB2BStatement({pos_profile:profile.value,customer:statement.value.customer,from_date:statement.value.from_date,to_date:statement.value.to_date})}catch(err){error.value=err.message}finally{busy.value=false}}
 async function printDocument(kind,name){try{await printB2BDocument(kind,name)}catch(err){error.value=err.message}}
 async function refresh(){if(dirty.value||busy.value)return;error.value='';if(customer.value)await refreshCustomer();await loadActive()}
 async function switchOutlet(){if(!canLeave())return;customerLoad++;listRequest++;profile.value=session.posProfile;dirty.value=false;editor.value=null;customer.value=null;account.value=null;options.value=null;process.value=null;processAnchor.value=null;await initialize()}
 function beforeUnload(event){if(dirty.value||busy.value){event.preventDefault();event.returnValue=''}}
-watch(activeTab,()=>{page.value=0;listRequest++;loadActive()})
+watch(activeTab,()=>{page.value=0;listRequest++;loading.value=false;loadActive()})
 function scrollActiveTab(){const nav=tabBar.value,current=nav?.querySelector('[aria-selected="true"]');if(current&&nav.scrollWidth>nav.clientWidth)current.scrollIntoView({block:'nearest',inline:'center',behavior:'instant'})}
 watch([activeTab,options],async()=>{await nextTick();scrollActiveTab()})
 watch(()=>session.posProfile,()=>{if(!dirty.value&&!busy.value)switchOutlet()})
@@ -199,5 +210,5 @@ watch(()=>session.offline,value=>{if(!value&&!dirty.value)refresh()})
 onBeforeRouteLeave(()=>canLeave())
 onBeforeRouteUpdate(()=>!dirty.value||canLeave())
 onMounted(()=>{window.addEventListener('beforeunload',beforeUnload);window.addEventListener('resize',scrollActiveTab);initialize()})
-onBeforeUnmount(()=>{customerRequest++;customerLoad++;listRequest++;progressRequest++;clearTimeout(customerTimer);clearTimeout(documentTimer);window.removeEventListener('beforeunload',beforeUnload);window.removeEventListener('resize',scrollActiveTab)})
+onBeforeUnmount(()=>{customerRequest++;customerLoad++;listRequest++;progressRequest++;paymentRequest++;statementRequest++;clearTimeout(customerTimer);clearTimeout(documentTimer);window.removeEventListener('beforeunload',beforeUnload);window.removeEventListener('resize',scrollActiveTab)})
 </script>

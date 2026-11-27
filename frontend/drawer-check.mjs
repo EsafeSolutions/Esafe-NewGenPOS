@@ -7,7 +7,7 @@ assert.deepEqual([...encodeCashDrawerPulse()], [27,112,0,50,250])
 assert.deepEqual([...encodeCashDrawerPulse({pin:1,onMs:2,offMs:510})], [27,112,1,1,255])
 assert.equal(validateDrawer().enabled,false);assert.equal(validateDrawer().automatic,false)
 for(const value of [{pin:2},{pin:true},{onMs:3},{onMs:0},{offMs:512},{onMs:2.5},{onMs:'100'}]) assert.throws(()=>validateDrawer(value))
-function harness(shared={}) {
+function harness(shared={},options={}) {
   const settings=shared.settings || new Map(),rows=shared.rows || new Map(),locks=shared.locks || new Map(),events=new Map(),calls=[],jobs=[]
   const clone=(v)=>v===undefined ? undefined : structuredClone(v)
   const journal={setting:async(k)=>clone(settings.get(k)),saveSetting:async(k,v)=>settings.set(k,clone(v)),settings:async()=>[...settings.values()].map(clone),get:async(k)=>clone(rows.get(k)),put:async(v)=>rows.set(v.key,clone(v)),list:async()=>[...rows.values()].map(clone)}
@@ -17,7 +17,7 @@ function harness(shared={}) {
     connect:async()=>({paired:true,port:17651}),disconnect:()=>{},pair:async()=>{},preview:async()=>({dataBase64:'',pageCount:1}),
     on:(name,fn)=>{const set=events.get(name)||new Set();set.add(fn);events.set(name,set);return()=>set.delete(fn)}}
   const lock=(key,fn)=>{const task=(locks.get(key)||Promise.resolve()).then(fn);locks.set(key,task.catch(()=>{}));return task}
-  const authorized=[],service=createEsafeService({client,journal,lock,device:async()=>'device',authorize:async(r)=>authorized.push(clone(r))})
+  const authorized=[],service=createEsafeService({client,journal,lock,device:async()=>'device',report:options.report,authorize:async(r)=>{if(options.authorize)await options.authorize(r);authorized.push(clone(r))}})
   service.state.printGrants=['receipt']
   const drawer=createDrawerController(service,async()=>({eligible:true}))
   return {service,drawer,journal,client,calls,jobs,events,authorized,shared:{settings,rows,locks}}
@@ -76,4 +76,50 @@ const tick=()=>new Promise((r)=>setTimeout(r,0))
   console.log('PASS lost acknowledgement remains manual; identical retry preserves bytes/title/key; new opening gets a new intent')
 }
 function cloneRequest(r){return {...r,data:[...r.data]}}
+{
+  let submittedReports=0,confirmed=false
+  const h=harness({}, {report:async row=>{
+    if(row.role==='receipt'&&row.state==='submitted'){
+      if(++submittedReports===1)throw Error('Transient ERP audit failure')
+      confirmed=true
+    }
+  },authorize:async row=>{if(row.role==='drawer')assert.equal(confirmed,true,'ERP must know submission before drawer authorization')}})
+  await setup(h)
+  const receipt=await h.service.dispatch({key:'receipt-missed-event',profile:'Till',role:'receipt',format:'html',data:'test',options:{copies:1},title:'Receipt',reference:sale.receipt,user:'cashier'})
+  const result=h.drawer.afterSale({...sale,receiptJob:receipt})
+  for(let i=0;i<10;i++)await tick()
+  h.jobs[0].state='submitted' // Deliberately do not emit job.changed.
+  h.events.get('resync').forEach(fn=>fn())
+  await result
+  assert.equal(h.calls.length,2);assert.equal(submittedReports,2)
+  console.log('PASS missed receipt events/resync recover by status read; transient audit retries before one pulse')
+}
+{
+  const h=harness();await setup(h)
+  const receipt=await h.service.dispatch({key:'receipt-poll',profile:'Till',role:'receipt',format:'html',data:'test',title:'Receipt',reference:sale.receipt,user:'cashier'})
+  const ready=h.service.waitSubmitted(receipt,1500)
+  await tick();h.jobs[0].state='completed'
+  assert.equal((await ready).state,'completed','Polling recovers without any native events')
+  assert.equal(h.calls.length,1,'Status polling never resends a receipt or pulse')
+  const blocked={...receipt,key:'blocked',state:'queued'};await h.journal.put(blocked)
+  h.jobs[0].state='queued'
+  const timed=h.service.waitSubmitted(blocked,20)
+  await assert.rejects(timed,/not confirmed in time/)
+  const disconnected=h.service.waitSubmitted(blocked,1500)
+  await tick();h.events.get('connection.closed').forEach(fn=>fn())
+  await assert.rejects(disconnected,/Connection lost/)
+  assert.equal(h.calls.length,1)
+  console.log('PASS bounded event-free polling, timeout and disconnect never replay output')
+}
+{
+  const h=harness({}, {report:async row=>{if(row.role==='receipt')throw Error('ERP audit unavailable')}})
+  await setup(h)
+  const print=h.client.print
+  h.client.print=async request=>{const job=await print(request);job.state='submitted';return job}
+  const receipt=await h.service.dispatch({key:'receipt-audit-failed',profile:'Till',role:'receipt',format:'html',data:'test',title:'Receipt',reference:sale.receipt,user:'cashier'})
+  assert.equal(receipt.state,'submitted','ERP audit failure does not hide native acceptance')
+  await assert.rejects(h.drawer.afterSale({...sale,receiptJob:receipt}),/ERP audit unavailable/)
+  assert.equal(h.calls.length,1,'An unconfirmed ERP audit never authorizes a linked pulse')
+  console.log('PASS already-submitted acknowledgement still needs ERP confirmation; persistent audit failure does not pulse')
+}
 console.log('All cash drawer software checks passed; no hardware was opened')

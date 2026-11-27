@@ -116,6 +116,13 @@ try {
   await tab('Overview').click();await page.getByRole('button',{name:'New invoice',exact:true}).waitFor();await page.screenshot({path:path.join(output,'process-desktop.png'),fullPage:true})
   await page.setViewportSize({width:390,height:844});await page.screenshot({path:path.join(output,'process-mobile.png'),fullPage:true})
   await page.evaluate(()=>window.test.session.offline=true);assert.equal(await page.getByRole('button',{name:'New invoice',exact:true}).isDisabled(),true)
+  permissions=false
+  await page.reload({waitUntil:'networkidle'})
+  await page.locator('#b2b-customer').fill('farm');await page.getByRole('button',{name:/Weerakoon Farm Supplies/}).click()
+  await page.getByRole('button',{name:'New Sales Invoice',exact:true}).click();await page.locator('#b2b-item-search').fill('feed');await page.getByRole('button',{name:/Super Feed/}).click()
+  assert.equal(await page.getByRole('spinbutton',{name:'Rate',exact:true}).isDisabled(),true)
+  assert.equal(await page.getByRole('spinbutton',{name:'Line discount',exact:true}).isDisabled(),true)
+  await tab('Payments').first().click();assert.equal(await page.getByRole('button',{name:'Confirm settlement',exact:true}).isDisabled(),true)
   assert.equal(errors.length,0,errors.join('\n'))
-  console.log('B2B browser checks passed: drafts, discounts, retry/stale guards, submission, native print, split settlement, cheque lifecycle, statement PDF, quote/order mapping, responsive layouts and offline controls.')
+  console.log('B2B browser checks passed: drafts, discounts, retry/stale guards, submission, native print, split settlement, cheque lifecycle, statement PDF, quote/order mapping, responsive layouts, offline and permission controls.')
 } finally { if(errors.length)console.error(errors);await browser.close();await server.close() }

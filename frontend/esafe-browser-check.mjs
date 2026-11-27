@@ -222,10 +222,24 @@ try{
   assert.equal(await page.evaluate(()=>testBridge.prints.length),beforePulse+3,'Duplicate checkout callback must not pulse twice')
   await page.evaluate(()=>esafeTest.printManager.refreshJobs())
   assert.equal(await page.evaluate(()=>testBridge.prints.length),beforePulse+3,'Refreshing jobs must not pulse')
+  const drawerAuthorization=apiCalls.findIndex(c=>c.method.endsWith('.register_intent')&&c.args.role==='drawer'&&c.args.drawer.receiptIntent)
+  assert.ok(apiCalls.slice(0,drawerAuthorization).some(c=>c.method.endsWith('.record_event')&&c.args.request_id===apiCalls[drawerAuthorization].args.drawer.receiptIntent&&['submitted','completed'].includes(c.args.state)),'Receipt submission is recorded on ERP before drawer authorization')
+  await page.evaluate(()=>{
+    esafeTest.session.permissions.can_cash_out=true
+    esafeTest.session.registerSession={name:'SHIFT-1',status:'Open'}
+    window.prompt=()=>{throw Error('Cash drawer must not ask for a reason')}
+  })
+  await page.getByRole('button',{name:'Open cash drawer',exact:true}).click()
+  await page.waitForFunction((n)=>testBridge.prints.length===n+4,beforePulse)
+  assert.ok(apiCalls.some(c=>c.method.endsWith('.register_intent')&&c.args.role==='drawer'&&c.args.drawer.mode==='manual'&&c.args.drawer.reason===''))
+  await page.screenshot({path:path.join(out,'manual-drawer-desktop.png')})
+  await page.setViewportSize({width:390,height:900})
+  await page.getByRole('button',{name:'Open cash drawer',exact:true}).scrollIntoViewIfNeeded()
+  await page.screenshot({path:path.join(out,'manual-drawer-mobile.png')})
   assert.ok(!apiCalls.some((c)=>/submit_sale|take_payment|qz_printing|sign_request/.test(c.method)))
   assert.ok(await page.evaluate(()=>testBridge.signed>10))
   assert.ok(await page.evaluate(()=>!window.nativeMockError),await page.evaluate(()=>window.nativeMockError))
   assert.ok((await page.evaluate(()=>testBridge.connections)).every((url)=>/^wss:\/\/localhost:1765[1-9]|^wss:\/\/localhost:17660/.test(url)))
   assert.deepEqual(errors,[])
-  console.log('PASS actual Esafe 0.2.0 SDK authentication/signatures, discovery-before-print pairing, exact scopes, workstation/outlet isolation, silent setup/test, Unicode 58/80mm HTML, automatic-original dedupe, deliberate reprint, PDF document dispatch/failure fallback, revocation repair, drawer setup/validation/pin bytes, three-copy receipt submission gate and responsive UI')
+  console.log('PASS actual Esafe 0.2.0 SDK authentication/signatures, discovery-before-print pairing, exact scopes, workstation/outlet isolation, silent setup/test, Unicode 58/80mm HTML, automatic-original dedupe, deliberate reprint, PDF document dispatch/failure fallback, revocation repair, drawer setup/validation/pin bytes, three-copy receipt submission/audit gate, reason-free manual opening and responsive UI')
 }catch(error){console.error(error);await page.screenshot({path:path.join(out,'failure.png')});console.error(errors);process.exitCode=1}finally{await browser.close();server.httpServer?.closeAllConnections();await server.close()}

@@ -22,6 +22,7 @@ sys.modules["frappe.utils"] = utils
 permissions = types.ModuleType("esafepos.api.permissions")
 permissions.assert_outlet = Mock()
 permissions.can_reprint = Mock(return_value=True)
+permissions.allowed_companies = Mock(return_value={"Company"})
 sys.modules[permissions.__name__] = permissions
 sales = types.ModuleType("esafepos.api.sales")
 sales.get_receipt = Mock(return_value={"name": "INV-1"})
@@ -64,6 +65,7 @@ class EsafePrintingTests(unittest.TestCase):
         STORE.clear()
         fake.session.user = "cashier"
         permissions.can_reprint.return_value = True
+        permissions.allowed_companies.return_value = {"Company"}
         permissions.assert_outlet.reset_mock(side_effect=True)
         self.invoice = Doc(doctype="POS Invoice", name="INV-1", company="Company", pos_profile="Till")
         fake.get_doc = lambda doctype, name=None: Doc(doctype) if isinstance(doctype, dict) else self.invoice if doctype == "POS Invoice" else STORE[name]
@@ -141,6 +143,11 @@ class EsafePrintingTests(unittest.TestCase):
         self.invoice["deny"] = True
         with self.assertRaises(PermissionError):
             api.document_printview("POS Invoice", "INV-1")
+
+    def test_print_document_respects_company_scope(self):
+        permissions.allowed_companies.return_value = {"Other Company"}
+        with self.assertRaises(PermissionError):
+            api.document_pdf("POS Invoice", "INV-1")
 
     def test_repeatable_field_setup_preserves_business_and_saved_values(self):
         tree = ast.parse((Path(__file__).resolve().parent.parent / "esafepos/install.py").read_text(encoding="utf-8"))

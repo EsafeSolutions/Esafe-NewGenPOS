@@ -18,7 +18,7 @@
     <tbody>{% for row in doc.items %}<tr><td>{{ row.item_code | e }}<br>{{ row.item_name | e }}</td><td>{{ row.uom | e }}</td><td class="num">{{ row.qty }}</td><td class="num">{{ row.get_formatted("price_list_rate", doc) }}</td><td class="num">{{ row.get_formatted("discount_amount", doc) }}</td><td class="num">{{ row.get_formatted("rate", doc) }}</td><td class="num">{{ row.get_formatted("amount", doc) }}</td></tr>{% endfor %}</tbody>
   </table>
   <table><tr><td>{{ _("Net total") }}</td><td class="num">{{ doc.get_formatted("net_total") }}</td></tr>
-    {% for tax in doc.taxes %}<tr><td>{{ tax.description | e }}</td><td class="num">{{ tax.get_formatted("tax_amount", doc) }}</td></tr>{% endfor %}
+    {% for tax in doc.taxes or [] %}<tr><td>{{ tax.description | e }}</td><td class="num">{{ tax.get_formatted("tax_amount", doc) }}</td></tr>{% endfor %}
     <tr><td><strong>{{ _("Grand total") }} ({{ doc.currency | e }})</strong></td><td class="num"><strong>{{ doc.get_formatted("grand_total") }}</strong></td></tr>
     {% if doc.doctype == "Sales Invoice" and doc.docstatus == 1 %}<tr><td>{{ _("Outstanding") }}</td><td class="num">{{ doc.get_formatted("outstanding_amount") }}</td></tr>{% endif %}
   </table>

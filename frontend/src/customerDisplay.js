@@ -23,18 +23,33 @@ export const displayPayment = shallowRef(null)
 export const displayReceipt = shallowRef(null)
 export const displayContactRequest = shallowRef(null)
 export const displayPresentation = shallowRef(normalizePresentation())
+export const displayPreviewOpen = shallowRef(false)
+export const displayMonitorState = shallowRef(null)
+let monitorSeenAt = 0
+let projectedWindow = null
+export function isDisplayWindowOpen() { return Boolean(projectedWindow && !projectedWindow.closed) || Date.now() - monitorSeenAt < 5000 }
 let presentationProfile = ''
 export function selectDisplayProfile(profile) {
   presentationProfile = profile || ''
-  displayPresentation.value = loadPresentation(presentationProfile)
+  displayPresentation.value = { ...loadPresentation(presentationProfile), requestId: newId() }
+  displayMonitorState.value = null
 }
 export function saveDisplayPresentation(value) {
-  const config = normalizePresentation(value)
+  const config = normalizePresentation({ ...value, hideLive: false, requestId: newId() })
   localStorage.setItem(presentationKey(presentationProfile), JSON.stringify(config))
   displayPresentation.value = config
 }
 export function setDisplayMode(mode) {
-  displayPresentation.value = normalizePresentation({ ...displayPresentation.value, mode })
+  displayPresentation.value = normalizePresentation({ ...displayPresentation.value, mode, hideLive: mode === 'adverts', requestId: newId() })
+}
+
+export function onDisplayMonitorState() {
+  const connection = connectContactChannel(displayTerminalId, message => {
+    if (message?.kind === 'display-ready') displayPreviewOpen.value = true
+    if (message?.kind === 'display-state') { displayMonitorState.value = message.state; monitorSeenAt = Date.now() }
+  })
+  connection?.postMessage({ kind: 'request-display-state' })
+  return () => connection?.close()
 }
 
 export function requestDisplayContact(mode = 'overlay') {
@@ -63,6 +78,8 @@ export async function openDisplayWindow(preference = '', details = null) {
   // Open during the click gesture, before any screen-permission prompt.
   const child = window.open(customerDisplayUrl(), 'esafepos-customer-display-' + displayTerminalId, 'popup' + placement)
   if (!child) throw new Error('Allow pop-ups for this site, then open the display again.')
+  projectedWindow = child
+  displayPreviewOpen.value = true
   try {
     if (!details && window.getScreenDetails) details = await window.getScreenDetails()
     const screen = details && targetDisplay(details.screens, details.currentScreen, preference)

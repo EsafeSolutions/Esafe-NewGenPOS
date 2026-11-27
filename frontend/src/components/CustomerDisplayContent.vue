@@ -1,5 +1,5 @@
 <template>
-  <main class="display-content" :class="'display-content-' + mode">
+  <main class="display-content" :class="['display-content-' + mode, { 'is-background': background }]">
     <section v-if="mode === 'closed'" class="dc-notice">
       <Icon name="ban" :size="64" /><h1>{{ t('Counter closed') }}</h1><p>{{ config.closedMessage || t('Please use the next counter. Thank you.') }}</p>
     </section>
@@ -24,7 +24,7 @@
         <iframe v-else-if="media?.type === 'embed' && !mediaError && online && !paused" :key="media.source" :src="media.source" :title="current.title || t('Advert video')" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin" />
         <div v-else class="dc-empty" role="status"><Icon :name="paused ? 'pause' : 'image'" :size="48" /><p>{{ paused ? t('Adverts paused') : loading ? t('Loading advert…') : t('This advert is unavailable. Please ask the cashier.') }}</p></div>
       </div>
-      <p v-else class="dc-empty">{{ t('Adverts will appear here once added by the cashier.') }}</p>
+      <div v-else class="dc-empty dc-advert-welcome"><Icon name="store" :size="64" /><h1>{{ t('Welcome') }}</h1><p>{{ t('Thank you for visiting us.') }}</p></div>
       <div v-if="current" class="dc-playback"><div><strong>{{ current.title || t('Advert') }}</strong><span class="muted">{{ index + 1 }} / {{ config.adverts.length }}</span></div><button class="btn btn-outline" :aria-label="t('Previous advert')" :disabled="config.adverts.length < 2" @click="advance(-1)">‹</button><button class="btn btn-outline" :aria-pressed="paused" @click="paused = !paused"><Icon :name="paused ? 'chevron-right' : 'pause'" /> {{ paused ? t('Play adverts') : t('Pause adverts') }}</button><button class="btn btn-outline" :aria-label="t('Next advert')" :disabled="config.adverts.length < 2" @click="advance(1)">›</button></div>
       <div v-if="current?.url && (media?.type === 'embed' || mediaError)" class="dc-online-link"><img :src="bankQrSource({ qr_payload: current.url })" :alt="t('Open advert QR code')" /><span>{{ t('If the video cannot play, scan to open it on your phone.') }}</span></div>
     </section>
@@ -38,7 +38,8 @@ import { advertSource, displayMedia, LOCAL_MEDIA_TYPES } from '../displayContent
 import { bankQrSource } from '../bankDisplay'
 import BankTransferCard from './BankTransferCard.vue'
 import Icon from './Icon.vue'
-const props = defineProps({ mode: String, config: { type: Object, required: true }, accounts: { type: Array, default: () => [] } })
+const props = defineProps({ mode: String, config: { type: Object, required: true }, accounts: { type: Array, default: () => [] }, background: Boolean, mirror: Boolean, visualState: { type: Object, default: null } })
+const emit = defineEmits(['visual'])
 const bankIndex = ref(0), index = ref(0), paused = ref(false), media = ref(null), mediaError = ref(false), loading = ref(false), video = ref(null)
 const online = ref(navigator.onLine)
 const connectivity = () => { online.value = navigator.onLine }
@@ -47,6 +48,15 @@ const social = computed(() => props.config.social.map(row => ({ ...row, host: ne
 const current = computed(() => props.config.adverts[index.value] || props.config.adverts[0])
 watch(() => JSON.stringify(props.accounts), () => { bankIndex.value = 0 })
 watch(() => JSON.stringify(props.config.adverts), () => { index.value = 0; paused.value = false })
+watch(() => props.visualState, state => {
+  if (!props.mirror || !state) return
+  index.value = Math.max(0, Math.min(props.config.adverts.length - 1, Number(state.index) || 0))
+  paused.value = Boolean(state.paused)
+  bankIndex.value = Math.max(0, Number(state.bankIndex) || 0)
+}, { deep: true, immediate: true })
+watch([index, paused, bankIndex], () => {
+  if (!props.mirror) emit('visual', { index: index.value, paused: paused.value, bankIndex: bankIndex.value })
+}, { immediate: true, flush: 'post' })
 watch(() => JSON.stringify(current.value), async (_, previous, onCleanup) => {
   let cancelled = false, objectUrl = ''
   onCleanup(() => { cancelled = true; if (objectUrl) URL.revokeObjectURL(objectUrl) })
@@ -73,7 +83,7 @@ async function syncVideo() {
 }
 watch([paused, () => props.config.interval, () => props.mode, index], () => {
   clearInterval(timer)
-  if (!paused.value && props.mode === 'adverts') timer = setInterval(() => advance(), props.config.interval * 1000)
+  if (!props.mirror && !paused.value && props.mode === 'adverts') timer = setInterval(() => advance(), props.config.interval * 1000)
   syncVideo()
 }, { immediate: true })
 onBeforeUnmount(() => { clearInterval(timer); window.removeEventListener('online', connectivity); window.removeEventListener('offline', connectivity) })
@@ -83,8 +93,8 @@ onBeforeUnmount(() => { clearInterval(timer); window.removeEventListener('online
 .display-content { flex: 1; min-height: 0; overflow: auto; color: var(--text); }
 .dc-notice { min-height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 40px 10px; text-align: center; }
 .dc-notice > .icon { color: var(--brand); margin-bottom: 24px; }
-.dc-notice h1 { margin: 0; font-size: clamp(36px, 6vw, 108px); line-height: 1.12; overflow-wrap: anywhere; }
-.dc-notice p { margin: 24px 0 0; max-width: 950px; font-size: clamp(20px, 2.3vw, 38px); line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.dc-notice h1 { margin: 0; font-size: clamp(32px, 4vw, 64px); line-height: 1.12; overflow-wrap: anywhere; }
+.dc-notice p { margin: 24px 0 0; max-width: 950px; font-size: clamp(18px, 2vw, 28px); line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
 .dc-bank-content { max-width: 1100px; margin: auto; padding-bottom: 24px; }
 .dc-bank-content h1, .dc-social-content h1 { font-size: clamp(26px, 3vw, 46px); margin: 12px 0 24px; }
 .dc-bank-options { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
@@ -96,13 +106,23 @@ onBeforeUnmount(() => { clearInterval(timer); window.removeEventListener('online
 .dc-qr-grid span { color: var(--text-muted); font-size: 14px; overflow-wrap: anywhere; }
 .dc-advert-content { display: flex; flex-direction: column; min-height: 100%; gap: 12px; }
 .dc-media-frame { position: relative; display: flex; align-items: center; justify-content: center; flex: 1; min-height: 240px; height: max(240px, calc(100dvh - 270px)); background: var(--card-bg); border-radius: var(--radius); overflow: hidden; }
-.dc-media-frame > img, .dc-media-frame > video { width: 100%; height: 100%; object-fit: contain; }
-.dc-media-frame > iframe { width: 100%; height: 100%; border: 0; }
+.dc-media-frame > img, .dc-media-frame > video, .dc-media-frame > iframe { position: absolute; inset: 0; width: 100%; height: 100%; }
+.dc-media-frame > img, .dc-media-frame > video { object-fit: contain; }
+.dc-media-frame > iframe { border: 0; }
 .dc-playback { display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
 .dc-playback > div { display: grid; flex: 1; gap: 4px; min-width: 0; overflow-wrap: anywhere; }
 .dc-playback span { font-size: 14px; }
 .dc-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; font-size: clamp(18px, 2vw, 30px); padding: 30px; line-height: 1.5; }
 .dc-online-link { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--text-muted); }
 .dc-online-link img { width: 68px; height: 68px; flex-shrink: 0; }
+.dc-advert-welcome { min-height: 100%; gap: 16px; }
+.dc-advert-welcome h1, .dc-advert-welcome p { margin: 0; }
+.is-background { position: absolute; inset: 0; overflow: hidden; background: var(--page-bg); }
+.is-background .dc-advert-content { position: absolute; inset: 0; min-height: 0; }
+.is-background .dc-media-frame { position: absolute; inset: 0; height: 100%; min-height: 0; border-radius: 0; background: var(--page-bg); }
+.is-background .dc-media-frame > img, .is-background .dc-media-frame > video { object-fit: cover; }
+.is-background .dc-playback { position: absolute; inset: auto 16px 16px; padding: 10px 14px; border-radius: var(--radius); background: color-mix(in srgb, var(--card-bg) 94%, transparent); color: var(--text); }
+.is-background .dc-online-link { position: absolute; bottom: 90px; left: 16px; max-width: 340px; padding: 8px; border-radius: var(--radius); background: var(--card-bg); }
+.is-background .dc-online-link img { width: 48px; height: 48px; }
 @media (max-width: 600px) { .dc-qr-grid { grid-template-columns: minmax(0, 1fr); } .dc-media-frame { height: 42dvh; flex: none; } .dc-playback > div { flex-basis: 100%; } }
 </style>

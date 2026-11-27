@@ -40,11 +40,12 @@ export function advertSource(value) {
 
 export function normalizePresentation(value = {}) {
   if (!value || typeof value !== 'object') value = {}
-  const defaultMode = modes.has(value.defaultMode) ? value.defaultMode : 'live'
+  const defaultMode = modes.has(value.defaultMode) ? value.defaultMode : 'adverts'
   return {
     defaultMode,
     mode: modes.has(value.mode) ? value.mode : defaultMode,
-    followSale: value.followSale !== false,
+    requestId: text(value.requestId, 100),
+    hideLive: Boolean(value.hideLive),
     screen: text(value.screen, 200),
     closedMessage: text(value.closedMessage, 500),
     messageTitle: text(value.messageTitle, 160),
@@ -67,11 +68,19 @@ export function normalizePresentation(value = {}) {
   }
 }
 
+export function displayLayers(snapshot, liveDismissed = false) {
+  const mode = normalizePresentation(snapshot?.presentation).mode
+  return {
+    live: !liveDismissed && Boolean(snapshot?.items?.length || snapshot?.receipt || snapshot?.contact || mode === 'live'),
+    popup: ['closed', 'bank', 'social', 'message'].includes(mode) ? mode : '',
+  }
+}
+
 export function presentationKey(profile) { return 'esafepos-display-content:' + encodeURIComponent(profile || '') }
 export function loadPresentation(profile) {
   try {
     const saved = normalizePresentation(JSON.parse(localStorage.getItem(presentationKey(profile)) || '{}'))
-    return { ...saved, mode: saved.defaultMode }
+    return { ...saved, mode: saved.defaultMode, hideLive: false }
   } catch { return normalizePresentation() }
 }
 

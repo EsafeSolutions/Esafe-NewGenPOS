@@ -1,7 +1,7 @@
 import { watch } from 'vue'
 import { call } from './api'
 import { t } from './i18n'
-import { connectContactChannel, displayContactRequest, displayPayment, displayReceipt, displayTerminalId, requestDisplayContact } from './customerDisplay'
+import { connectContactChannel, displayContactRequest, displayPayment, displayReceipt, displayTerminalId, setDisplayMode } from './customerDisplay'
 
 export function connectTillContact(cart, session, route) {
   const canUse = () => route.path === '/' && session.posProfile && !session.locked &&
@@ -12,7 +12,8 @@ export function connectTillContact(cart, session, route) {
     if (!message || !canUse()) return
     if (message.kind === 'next' && displayReceipt.value && !cart.lines.length) {
       displayReceipt.value = null
-      if (!session.offline) requestDisplayContact('welcome')
+      clear()
+      setDisplayMode('adverts')
       return
     }
     const request = displayContactRequest.value

@@ -233,7 +233,7 @@ if (!process.argv.includes('--serve')) {
     assert.equal(submitted.receipt_contact, '0770000000')
     assert.equal(await till.evaluate(() => cart.receiptContact), '')
     await till.evaluate(() => showContact('overlay'))
-    const dialog = display.getByRole('dialog')
+    const dialog = display.getByRole('dialog', { name: 'Membership', exact: true })
     await dialog.waitFor()
     if (output) {
       await display.setViewportSize({ width: 1024, height: 768 })

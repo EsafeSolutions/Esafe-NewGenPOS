@@ -12,10 +12,10 @@
         <p class="muted dc-wide">{{ monitorMessage || t('Allow window placement when asked. You can also move the display window to the second monitor and use its Full screen button.') }}</p>
       </section>
       <section :aria-label="t('Display content')">
-        <h3>{{ t('Show on the display') }}</h3>
+        <h3>{{ t('Popup layers over adverts') }}</h3>
         <div class="dc-modes"><button v-for="mode in DISPLAY_MODES" :key="mode.value" class="btn btn-outline" :aria-pressed="draft.mode === mode.value" @click="switchMode(mode.value)"><Icon :name="mode.icon" :size="20" /> {{ t(mode.label) }}</button></div>
-        <label class="dc-check"><input type="checkbox" v-model="draft.followSale" /> {{ t('Show live sale during a basket or payment, then return to this content') }}</label>
-        <p class="muted">{{ t('Counter closed always stays visible until you switch it. Changing the display does not close the register.') }}</p>
+        <p class="muted">{{ t('Adverts stay in the background. Sales appear automatically as a popup. Bank details, counter status and QR codes open as layers above it. Adverts hides the popups until the next sale update.') }}</p>
+        <p class="muted">{{ t('Opening the second display also opens a movable mini preview in the POS. Use the quick-switch bar on Sell to change layers without this editor.') }}</p>
       </section>
       <section v-if="draft.mode === 'closed'">
         <h3>{{ t('Counter closed') }}</h3>

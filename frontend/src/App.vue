@@ -195,6 +195,7 @@
     <HelpPanel />
     <HelpCard v-if="!session.locked" />
     <TourOverlay />
+    <CustomerDisplayPreview v-if="!session.reportsOnly" />
   </div>
 
   <div v-else-if="!isDisplay && session.error" class="boot-error">
@@ -217,7 +218,8 @@ import { useSessionStore } from './stores/session'
 import { useCatalogStore } from './stores/catalog'
 import { useCartStore } from './stores/cart'
 import { money, shiftClock, isolate } from './format'
-import { displayContactRequest, displayCustomerName, displayPayment, displayReceipt, displayPresentation, selectDisplayProfile, publishCart, onDisplayRequest, requestDisplayContact } from './customerDisplay'
+import { displayContactRequest, displayCustomerName, displayPayment, displayReceipt, displayPresentation, selectDisplayProfile, setDisplayMode, publishCart, onDisplayRequest, onDisplayMonitorState, requestDisplayContact } from './customerDisplay'
+import CustomerDisplayPreview from './components/CustomerDisplayPreview.vue'
 import { bankAccounts } from './bankDisplay'
 import { connectTillContact } from './displayContact'
 import { ensurePersistentStorage } from './offline'
@@ -389,12 +391,16 @@ async function openXReport() {
 
 // Push a fully-formatted cart snapshot to any open customer display.
 function publishDisplaySnapshot() {
-  if (!session.settings?.enable_customer_display || session.locked) {
+  if (!session.settings?.enable_customer_display) {
     publishCart({ items: [] })
     return
   }
-  const contact = route.path === '/' ? displayContactRequest.value : null
   const presentation = JSON.parse(JSON.stringify(displayPresentation.value))
+  if (session.locked) {
+    publishCart({ items: [], company: session.company, presentation: { ...presentation, mode: 'adverts', hideLive: true } })
+    return
+  }
+  const contact = route.path === '/' ? displayContactRequest.value : null
   const standbyBankAccounts = bankAccounts({ ...session.settings?.bank_transfer_display, trigger: 'checkout' }, session.posProfile, cart.saleCurrency.currency)
   if (!cart.lines.length && displayReceipt.value) {
     publishCart({ logo: session.settings?.receipt_logo || '', ...displayReceipt.value, contact, presentation, standbyBankAccounts, canStart: route.path === '/' })
@@ -513,6 +519,8 @@ onMounted(async () => {
     // Mirror the cart to any open customer display, and answer a display that
     // opens later and asks for the current state.
     displayCleanup.push(watch(() => session.posProfile, selectDisplayProfile, { immediate: true, flush: 'sync' }))
+    displayCleanup.push(onDisplayMonitorState())
+    displayCleanup.push(watch(() => JSON.stringify(cart.lines.map(line => [line.item_code, line.selling_uom || line.uom, line.qty])), (items, previous) => { if (cart.lines.length && items !== previous) setDisplayMode('live') }))
     displayCleanup.push(cart.$subscribe(() => {
       if (cart.lines.length) displayReceipt.value = null
       publishDisplaySnapshot()
@@ -525,7 +533,7 @@ onMounted(async () => {
     ], () => {
       if (route.path === '/' && session.settings?.enable_customer_display && session.posProfile &&
           !session.locked && !session.offline && !cart.submitting && !cart.lines.length && !cart.customer &&
-          !displayReceipt.value && !displayContactRequest.value) requestDisplayContact('welcome')
+          displayPresentation.value.mode === 'live' && !displayReceipt.value && !displayContactRequest.value) requestDisplayContact('welcome')
     }, { immediate: true, flush: 'post' }))
     displayCleanup.push(watch(() => [route.path, session.settings?.enable_customer_display, session.locked,
       displayPayment.value, displayReceipt.value, displayContactRequest.value, displayPresentation.value,

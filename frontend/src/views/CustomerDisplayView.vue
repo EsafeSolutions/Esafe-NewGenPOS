@@ -2,10 +2,12 @@
      SPDX-License-Identifier: AGPL-3.0-only
      "EsafePOS" is a trademark of Esafe (PVT) LTD. See TRADEMARKS.md. -->
 <template>
-  <div class="cdisplay">
-    <div class="cd-screen-tools"><strong v-if="contentMode !== 'live'">{{ snap.company || t('Welcome') }}</strong><span v-if="fullscreenError" role="status">{{ fullscreenError }}</span><button v-if="fullscreenAvailable" class="btn btn-outline btn-sm" @click="toggleFullscreen"><Icon name="monitor" /> {{ fullscreen ? t('Exit full screen') : t('Full screen') }}</button></div>
-    <CustomerDisplayContent v-if="contentMode !== 'live'" :key="contentMode" :mode="contentMode" :config="presentation" :accounts="snap.standbyBankAccounts || []" />
-    <section v-else-if="snap.receipt && snap.greeting" class="cd-farewell" role="status">
+  <div ref="screenRoot" class="cdisplay" :inert="isPreview || undefined">
+    <CustomerDisplayContent mode="adverts" background :config="presentation" :mirror="isPreview" :visual-state="mirrorState?.playback" @visual="playback = $event" />
+    <div class="cd-screen-tools"><strong>{{ snap.company || t('Welcome') }}</strong><span v-if="fullscreenError" role="status">{{ fullscreenError }}</span><button v-if="fullscreenAvailable && !isPreview" class="btn btn-outline btn-sm" @click="toggleFullscreen"><Icon name="monitor" /> {{ fullscreen ? t('Exit full screen') : t('Full screen') }}</button></div>
+    <section v-if="showLive" class="cd-live-popup" role="dialog" aria-modal="false" :aria-label="t('Live sale')" @keydown.esc="dismissLive">
+    <button class="btn-icon cd-live-close" :aria-label="t('Hide live sale popup')" @click="dismissLive"><Icon name="close" /></button>
+    <section v-if="snap.receipt && snap.greeting" class="cd-farewell" role="status">
       <Icon name="check" :size="64" />
       <h1>{{ t('Thank you very much for your purchase!') }}</h1>
       <p>{{ t('Come again. We wish you all the best!') }}</p>
@@ -91,19 +93,26 @@
       <div v-if="snap.change || snap.due" class="cd-balance"><span>{{ snap.change ? t('Change') : t('Balance due') }}</span><strong>{{ snap.change || snap.due }}</strong></div>
     </footer>
     <small v-if="snap.receipt" class="cd-receipt-brand muted">{{ RECEIPT_BRAND }}</small>
-    <dialog ref="bankDialog" class="cd-bank-dialog" aria-labelledby="bank-display-title" @cancel.prevent="bankDismissed = true">
+    <Teleport :to="screenRoot || 'body'" :disabled="!isPreview || !screenRoot">
+    <component :is="isPreview ? 'section' : 'dialog'" ref="bankDialog" class="cd-bank-dialog" :class="{ 'cd-mirror-bank': isPreview }" :hidden="isPreview && (!hasBankDetails || bankDismissed)" aria-labelledby="bank-display-title" @cancel.prevent="bankDismissed = true">
       <template v-if="hasBankDetails">
         <header class="cd-bank-title"><Icon name="bank" :size="26" /><div><h2 id="bank-display-title">{{ t('Bank transfer details') }}</h2><span>{{ t('Choose the receiving account, then confirm the recipient in your banking app.') }}</span></div><button autofocus class="btn-icon" :aria-label="t('Close bank details')" @click="bankDismissed = true"><Icon name="close" /></button></header>
         <div v-if="snap.bankAccounts.length > 1" class="cd-bank-tabs"><button v-for="(account, index) in snap.bankAccounts" :key="index" class="btn btn-outline" :aria-pressed="bankIndex === index" @click="bankIndex = index">{{ account.bank_name }} · {{ account.account_number.slice(-4) }}</button></div>
         <Transition name="bank-panel" mode="out-in"><BankTransferCard :key="bankIndex" :account="snap.bankAccounts[bankIndex] || snap.bankAccounts[0]" :amount="snap.bankAmount || snap.due" /></Transition>
       </template>
-    </dialog>
+    </component>
+    </Teleport>
     <div v-if="snap.contact" class="cd-overlay" @keydown.esc="skipContact">
       <div class="cd-dialog" role="dialog" aria-modal="true" aria-labelledby="display-contact-title">
         <DisplayContactPad :key="snap.contact.id" :busy="busy" :error="error" @submit="submitContact" @skip="skipContact" @edit="error = ''" />
       </div>
     </div>
     </template>
+    </section>
+    <section v-if="popupMode" class="cd-popup-sheet" role="dialog" aria-modal="false" :aria-label="t(popupLabel)" @keydown.esc="manualDismissed = true">
+      <header class="cd-popup-heading"><span>{{ snap.company || t('Welcome') }}</span><button class="btn-icon" :aria-label="t('Close display popup')" @click="manualDismissed = true"><Icon name="close" /></button></header>
+      <CustomerDisplayContent :key="popupMode" :mode="popupMode" :config="presentation" :accounts="snap.standbyBankAccounts || []" :mirror="isPreview" :visual-state="{ bankIndex: mirrorState?.popupBankIndex || 0 }" @visual="popupBankIndex = $event.bankIndex" />
+    </section>
   </div>
 </template>
 
@@ -117,17 +126,25 @@ import DisplayProductIcon from '../components/DisplayProductIcon.vue'
 import Icon from '../components/Icon.vue'
 import BankTransferCard from '../components/BankTransferCard.vue'
 import CustomerDisplayContent from '../components/CustomerDisplayContent.vue'
-import { normalizePresentation } from '../displayContent'
+import { normalizePresentation, displayLayers, DISPLAY_MODES } from '../displayContent'
 import esafeMark from '../assets/esafe-solutions-favicon.png'
 
 const snap = ref({ items: [] })
+const screenRoot = ref(null)
+const parameters = new URLSearchParams(location.hash.split('?')[1] || '')
+const isPreview = parameters.get('preview') === '1'
+const manualDismissed = ref(false), liveDismissed = ref(false), mirrorState = ref(null), playback = ref({ index: 0, paused: false }), popupBankIndex = ref(0)
 const presentation = computed(() => normalizePresentation(snap.value.presentation))
-const contentMode = computed(() => {
-  const config = presentation.value
-  if (config.mode === 'closed') return 'closed'
-  if (config.followSale && (snap.value.items.length || snap.value.receipt || snap.value.bankAccounts?.length)) return 'live'
-  return config.mode
+const layers = computed(() => displayLayers(snap.value, liveDismissed.value))
+const showLive = computed(() => layers.value.live || (hasBankDetails.value && !bankDismissed.value))
+const popupMode = computed(() => manualDismissed.value || (hasBankDetails.value && !bankDismissed.value) ? '' : layers.value.popup)
+const popupLabel = computed(() => DISPLAY_MODES.find(row => row.value === popupMode.value)?.label || '')
+watch([() => presentation.value.requestId, () => presentation.value.mode], () => {
+  manualDismissed.value = false
+  liveDismissed.value = presentation.value.hideLive
+  bankDismissed.value = presentation.value.mode !== 'bank'
 })
+function dismissLive() { liveDismissed.value = true; bankDismissed.value = true }
 const fullscreenAvailable = Boolean(document.fullscreenEnabled)
 const fullscreen = ref(Boolean(document.fullscreenElement)), fullscreenError = ref('')
 const updateFullscreen = () => { fullscreen.value = Boolean(document.fullscreenElement) }
@@ -145,11 +162,11 @@ const bankAccountKey = computed(() => JSON.stringify((snap.value.bankAccounts ||
 watch(bankAccountKey, () => { bankIndex.value = 0 })
 watch([bankAccountKey, () => snap.value.bankAmount], () => { bankDismissed.value = false })
 watch([hasBankDetails, bankDismissed, bankDialog], ([hasDetails, dismissed, dialog]) => {
-  if (!dialog) return
+  if (!dialog || isPreview || dialog.tagName !== 'DIALOG') return
   if (hasDetails && !dismissed) { if (!dialog.open) dialog.showModal() }
   else if (dialog.open) dialog.close()
 }, { flush: 'post' })
-const terminalId = new URLSearchParams(location.hash.split('?')[1] || '').get('terminal')
+const terminalId = parameters.get('terminal')
 let stop = null
 let channel = null
 const busy = ref(false)
@@ -157,6 +174,19 @@ const error = ref('')
 const latestIndex = ref(0)
 const latest = computed(() => snap.value.items[latestIndex.value])
 let timeout
+let heartbeat
+
+function publishVisual() {
+  if (isPreview || !snap.value.terminalId) return
+  channel?.postMessage({ kind: 'display-state', state: {
+    manualDismissed: manualDismissed.value, liveDismissed: liveDismissed.value,
+    bankDismissed: bankDismissed.value, bankIndex: bankIndex.value, popupBankIndex: popupBankIndex.value,
+    bankOpen: hasBankDetails.value && !bankDismissed.value,
+    popup: popupMode.value, live: showLive.value, playback: { ...playback.value },
+    width: innerWidth, height: innerHeight,
+  } })
+}
+watch([manualDismissed, liveDismissed, bankDismissed, bankIndex, popupBankIndex, playback, showLive, popupMode], publishVisual, { deep: true, flush: 'post' })
 
 function clearContactResult() {
   clearTimeout(timeout)
@@ -216,12 +246,22 @@ onMounted(() => {
   document.addEventListener('fullscreenchange', updateFullscreen)
   document.documentElement.dataset.theme = 'light'
   channel = connectContactChannel(terminalId, (message) => {
+    if (message?.kind === 'request-display-state') { publishVisual(); return }
+    if (message?.kind === 'display-state' && isPreview) {
+      mirrorState.value = message.state
+      manualDismissed.value = Boolean(message.state.manualDismissed)
+      liveDismissed.value = Boolean(message.state.liveDismissed)
+      bankDismissed.value = Boolean(message.state.bankDismissed)
+      bankIndex.value = Number(message.state.bankIndex) || 0
+      return
+    }
     if (message?.kind !== 'result' || message.id !== snap.value.contact?.id) return
     clearContactResult()
     error.value = message.error
   })
   stop = onCart((snapshot) => {
     if (!terminalId || snapshot?.terminalId !== terminalId) return
+    if (JSON.stringify([snapshot.items, snapshot.receipt, snapshot.contact?.id]) !== JSON.stringify([snap.value.items, snap.value.receipt, snap.value.contact?.id])) liveDismissed.value = false
     let changed = -1
     snapshot.items.forEach((item, index) => {
       const previous = snap.value.items[index]
@@ -230,13 +270,17 @@ onMounted(() => {
     if (changed >= 0) latestIndex.value = changed
     else if (latestIndex.value >= snapshot.items.length) latestIndex.value = Math.max(0, snapshot.items.length - 1)
     snap.value = snapshot
+    nextTick(publishVisual)
   })
+  if (isPreview) channel?.postMessage({ kind: 'request-display-state' })
+  else { channel?.postMessage({ kind: 'display-ready' }); heartbeat = setInterval(publishVisual, 1500) }
 })
 onBeforeUnmount(() => {
   document.removeEventListener('fullscreenchange', updateFullscreen)
   stop?.()
   channel?.close()
   clearTimeout(timeout)
+  clearInterval(heartbeat)
 })
 </script>
 
@@ -263,7 +307,19 @@ onBeforeUnmount(() => {
 .bank-panel-enter-active, .bank-panel-leave-active { transition: opacity .18s ease, transform .18s ease; }
 .bank-panel-enter-from, .bank-panel-leave-to { opacity: 0; transform: translateY(6px); }
 @media (prefers-reduced-motion: reduce) { .bank-panel-enter-active, .bank-panel-leave-active { transition: none; } }
-.cdisplay { height: 100dvh; display: flex; flex-direction: column; padding: clamp(12px, 2vw, 38px) clamp(12px, 2.8vw, 54px) clamp(12px, 1.5vw, 28px); background: #f2f6fc; color: #142e53; font-size: clamp(14px, .94vw, 18px); }
+.cdisplay { position: relative; width: 100%; height: 100dvh; overflow: hidden; background: var(--page-bg); color: var(--text); font-size: clamp(14px, .94vw, 18px); }
+.cd-screen-tools { position: absolute; inset: 14px 20px auto; z-index: 40; margin: 0; pointer-events: none; }
+.cd-screen-tools > strong { max-width: 70%; padding: 8px 12px; border-radius: var(--radius); background: color-mix(in srgb, var(--card-bg) 94%, transparent); }
+.cd-screen-tools > button { pointer-events: auto; }
+.cd-live-popup { position: absolute; z-index: 10; right: 4vw; top: 50%; transform: translateY(-50%); width: min(1080px, 78vw); height: min(760px, calc(100% - 164px)); display: flex; flex-direction: column; padding: clamp(14px, 1.8vw, 28px); background: var(--page-bg); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); min-height: 0; }
+.cd-live-close { position: absolute; top: 10px; right: 10px; z-index: 2; background: var(--card-bg); }
+.cd-live-popup .cd-head { padding-inline-end: 30px; flex-shrink: 0; }
+.cd-live-popup .cd-overlay { position: absolute; border-radius: inherit; }
+.cd-popup-sheet { position: absolute; z-index: 30; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(860px, calc(100% - 96px)); max-height: calc(100% - 170px); display: flex; flex-direction: column; padding: 18px 24px 24px; background: var(--page-bg); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); overflow: hidden; }
+.cd-popup-heading { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding-bottom: 12px; color: var(--text-muted); }
+.cd-popup-heading > button { flex-shrink: 0; }
+.cd-popup-sheet :deep(.dc-notice) { min-height: 280px; }
+.cd-mirror-bank { position: fixed; z-index: 60; inset: 50% auto auto 50%; transform: translate(-50%, -50%); }
 .cd-head { min-height: clamp(44px, 3.5vw, 66px); display: flex; align-items: center; gap: 10px; margin-bottom: clamp(10px, .9vw, 17px); }
 .cd-head h1 { margin: 0; font-size: clamp(18px, 1.85vw, 36px); overflow-wrap: anywhere; }
 .cd-head > div { min-width: 0; }
@@ -322,6 +378,10 @@ onBeforeUnmount(() => {
   .cd-items { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 600px) {
+  .cd-screen-tools { inset: 10px 12px auto; gap: 6px; }
+  .cd-screen-tools > strong { font-size: 14px; padding: 8px; }
+  .cd-live-popup { left: 12px; right: 12px; width: auto; height: calc(100% - 176px); padding: 12px; }
+  .cd-popup-sheet { width: calc(100% - 28px); max-height: calc(100% - 170px); padding: 12px; }
   .cd-bank-dialog { width: calc(100% - 24px); max-height: calc(100dvh - 40px); padding: 12px; }
   .cd-bank-title { gap: 8px; }
   .cd-bank-title h2 { font-size: 18px; }

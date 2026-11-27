@@ -6,20 +6,28 @@ Enable **Customer-facing display** in Settings, then select the monitor-shaped *
 
 Choose **Find monitors** and allow window placement, then choose a monitor under **Project to**. **Second monitor (automatic)** prefers a screen other than the cashier's current screen. **Open second display** opens or reuses this till tab's window. If the browser cannot detect/place monitors, or permission is denied, move the new window manually. Select **Full screen** on the customer window to fill the monitor. Connect the monitor in the operating system's extended-display mode before detecting it. Automatic placement follows the browser's [Window Management API](https://developer.chrome.com/docs/capabilities/web-apis/window-management).
 
-Select a content button to switch the open customer window immediately:
+Adverts are the permanent background. Content buttons open popup layers over that background:
 
 | Content | Customer screen |
 |---|---|
-| Live sale | Existing membership, basket, checkout and completed receipt |
-| Counter closed | Large closed-counter notice and your optional instructions; this does not close the register |
-| Bank details | Configured receiving accounts matching this register and sale currency, with official bank QR when configured |
-| Adverts | Ordered playlist of up to 20 local images/videos or supported online links |
-| Social QR codes | Up to 12 labeled QR codes for social pages, WhatsApp, reviews, websites or other public HTTPS links |
-| Custom message | Your heading and multiline notice |
+| Live sale | Bounded basket, membership, checkout or receipt popup, automatically raised when items are added/scanned |
+| Counter closed | Closed-counter popup with your instructions; this does not close the register |
+| Bank details | Receiving-account popup matching this register and sale currency, with official bank QR when configured |
+| Adverts | Background playlist of up to 20 local images/videos or supported links; hides popups until the next sale update |
+| Social QR codes | Popup containing up to 12 labeled social, WhatsApp, review or website QR codes |
+| Custom message | Popup with your heading and multiline notice |
 
-Edit the selected content and choose **Save and show** to publish it. **Show live sale during a basket or payment** temporarily shows baskets, checkout and completed receipts, then returns to the selected content after the receipt is cleared. Turn it off to keep adverts, bank instructions, QR codes or a message visible while selling. **Counter closed** always stays visible until you switch it. **Ask for contact number** switches back to Live sale.
+Edit the selected content and choose **Save and show**. The advert player stays mounted and continues its playlist while popups are open. A new scan or changed basket quantity brings the live-sale popup forward automatically. You can then open bank details, QR codes, counter status or a message above the basket. Close a popup to see the layer beneath it. The live popup also has a hide button; the next sale update brings it back. **Ask for contact number** switches back to the live popup. **Start next sale** clears the completed receipt and returns to the advert background.
 
-Choose **Default content when the till opens** and save. Content, default mode and monitor preference are saved per register in this browser. Selecting a different register loads its own defaults. The display window belongs to the cashier tab that opened it; other till tabs cannot overwrite it. These preferences are not site-wide settings and add no DocTypes or migration. Clearing the browser's site data removes these preferences and local media.
+### Quick-switch bar and movable POS preview
+
+Sell has a compact **Customer screen** switch bar above the product search, with Adverts, Live sale, Counter closed, Bank details, Social QR codes, Custom message, Preview and settings. Use it to change popups immediately without opening the editor. The bar scrolls horizontally on small screens.
+
+**Open second display** also opens a small **Customer display** preview inside the POS. Drag its title bar to move it, or focus the title bar and use the arrow keys (Shift moves farther). Its position is remembered on this browser and kept inside the viewport when the screen size changes. Minimize, expand or close it; **Preview** on the quick-switch bar brings it back. The mini screen stays available while checkout or the display editor is open.
+
+The preview is read-only and follows the customer screen's popup visibility, bank-account selection, selected advert and playlist pause state. It cannot submit a contact number or activate a customer-screen control, and it does not take keyboard focus from the cashier. Video frames play separately in the two windows, so their playback timing may differ. **Customer screen connected** indicates that the projected window remains open. Locking the till hides the preview and clears sale/bank popups while the public advert background continues; unlocking restores the current sale and mini screen.
+
+Choose **Default content when the till opens** and save. New configurations start with the advert background; a saved bank, status, social or message default opens that popup above it. Content, default popup and monitor preference are saved per register in this browser. Selecting a different register loads its own defaults. The display window belongs to the cashier tab that opened it; other till tabs cannot overwrite it. These preferences are not site-wide settings and add no DocTypes or migration. Clearing the browser's site data removes these preferences and local media. Legacy full-screen content settings load as popup layers; the former optional live-sale priority switch is superseded by automatic sale popups.
 
 ### Adverts and local files
 
@@ -33,7 +41,7 @@ Use the arrow controls in the editor to reorder adverts and set **Seconds per ad
 
 Choose **Add QR code**, enter a label and public HTTPS link, then save. Codes are generated locally from the exact link, including non-English paths, without a remote QR service. Invalid links are rejected. The display lays out all configured codes and scrolls when needed. Social QR codes are separate from official bank-payment QR instructions.
 
-`node display-content-check.mjs` checks the real Sell toolbar and app snapshot publisher, second-window fallback, content modes, register/currency-filtered bank details, links/QR validation, local IndexedDB media with the browser offline, saved defaults, register/terminal isolation and desktop/mobile layouts. [Desktop controls](screenshots/customer-display/controls-desktop.png), [mobile controls](screenshots/customer-display/controls-mobile.png), [social QR display](screenshots/customer-display/social-qr-desktop.png), [mobile QR display](screenshots/customer-display/social-qr-mobile.png).
+`node display-content-check.mjs` checks the real Sell toolbar and app publisher, second-window fallback, popup layers, persistent advert element and full-height video frame, quick switches, synchronized mini screen, drag/keyboard movement, mobile bounds, focus retention, bank register/currency filters, links/QR validation, offline local media, saved defaults and register/terminal isolation. [Layered display](screenshots/customer-display/layers-desktop.png), [POS mini preview](screenshots/customer-display/pos-mini-preview-desktop.png), [mobile display](screenshots/customer-display/layers-mobile.png), [mobile preview](screenshots/customer-display/pos-mini-preview-mobile.png), [controls](screenshots/customer-display/controls-desktop.png).
 
 ## Live sale and membership
 

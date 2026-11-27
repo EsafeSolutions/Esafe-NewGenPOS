@@ -50,6 +50,7 @@
       <button class="btn btn-ghost btn-sm" @click="cart.cancelExchange()">{{ t('Cancel exchange') }}</button>
     </div>
     <section class="catalog">
+      <CustomerDisplayQuickBar v-if="session.settings.enable_customer_display" @settings="displayControlsOpen = true" />
       <div class="catalog-toolbar">
         <div class="search-box" data-tour="sell-search">
           <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="m21 21-4.3-4.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
@@ -179,6 +180,7 @@ import { t } from '../i18n'
 import { call } from '../api'
 import { displayContactRequest, displayReceipt, requestDisplayContact, setDisplayMode } from '../customerDisplay'
 import CustomerDisplayControls from '../components/CustomerDisplayControls.vue'
+import CustomerDisplayQuickBar from '../components/CustomerDisplayQuickBar.vue'
 import { money } from '../format'
 import { useSessionStore } from '../stores/session'
 import { scaleBarcodeOptions, useCatalogStore } from '../stores/catalog'

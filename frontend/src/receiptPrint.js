@@ -59,6 +59,7 @@ export async function createReceiptPrintFrame(source, layout = {}) {
       #receipt-print.tpl-table { --table-rule: #000; }
       #receipt-print.receipt table { width: 100%; border-collapse: collapse; table-layout: fixed; }
       #receipt-print.receipt :is(.retail-item-values td, .row > :last-child) { white-space: nowrap; }
+      #receipt-print.receipt :is(.retail-item-qty, .receipt-item-details) { white-space: normal; }
       #receipt-print.receipt .row > :last-child, #receipt-print.receipt .retail-savings strong { flex-shrink: 0; }
       #receipt-print.receipt .row > :first-child { min-width: 0; overflow-wrap: anywhere; }
       #receipt-print.tpl-table :is(.retail-totals, .retail-loyalty) { display: grid; grid-template-columns: minmax(0, 1fr) max-content; }

@@ -81,7 +81,7 @@
             </td>
           </tr>
           <tr class="retail-item-values">
-            <td></td><td>{{ qty(item.qty) }}<template v-if="receipt.has_alternate_units"> {{ item.uom }}</template></td><td v-if="showMrp">{{ itemMoney(originalRate(item)) }}</td><td v-if="showLineDiscount">{{ itemMoney(lineSaving(item)) }}</td><td>{{ itemMoney(item.amount) }}</td>
+            <td></td><td class="retail-item-qty"><span class="retail-quantity">{{ qty(item.qty) }}</span><span v-if="receipt.has_alternate_units" class="retail-unit"> {{ item.uom }}</span></td><td v-if="showMrp">{{ itemMoney(originalRate(item)) }}</td><td v-if="showLineDiscount">{{ itemMoney(lineSaving(item)) }}</td><td>{{ itemMoney(item.amount) }}</td>
           </tr>
         </tbody>
       </table>

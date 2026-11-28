@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Esafe (PVT) LTD
 // SPDX-License-Identifier: AGPL-3.0-only
 import receiptStyles from './styles/receipt.css?inline'
-import { receiptRollWidth, validateReceiptLayout } from './receiptLayout.js'
+import { receiptRollWidth, validateReceiptLayout, AUTOMATIC_RECEIPT_SPACING } from './receiptLayout.js'
 import { fitReceiptContent } from './receiptFit.js'
 
 // Print only the receipt. Hiding the rest of the POS with visibility:hidden
@@ -13,7 +13,7 @@ export async function createReceiptPrintFrame(source, layout = {}) {
   const geometry = validateReceiptLayout(isReceipt ? layout : { paperWidth: roll, printableWidth: roll, ...layout }, roll)
   const width = geometry.paperWidth
   const sourceStyle = source.ownerDocument.defaultView.getComputedStyle(source)
-  const designWidth = ['Left', 'Right'].reduce((sum, side) => sum + (Number.parseFloat(sourceStyle.getPropertyValue('--rc-padding' + side)) || 0), 0)
+  const designWidth = ['Left', 'Right'].reduce((sum, side) => { const value = Number.parseFloat(sourceStyle.getPropertyValue('--rc-padding' + side)) || 0; return sum + (layout.automatic ? Math.min(1, value) : value) }, 0)
   if (isReceipt && geometry.printableWidth - geometry.margins.left - geometry.margins.right - designWidth < 10) throw new Error('Receipt design padding and printer margins must leave at least 10 mm for content.')
   const frame = document.createElement('iframe')
   frame.id = 'receipt-print-frame'
@@ -77,9 +77,28 @@ export async function createReceiptPrintFrame(source, layout = {}) {
       #receipt-print.receipt .retail-meta-row > :last-child { flex: 1 1 60%; }
     `
     doc.head.appendChild(paper)
+    if (layout.automatic) paper.textContent += `
+      #receipt-print.receipt-automatic .receipt-company { line-height: 1.1 !important; margin-bottom: 3px; }
+      #receipt-print.receipt-automatic .receipt-extra { margin: 2px 0; }
+      #receipt-print.receipt-automatic .retail-head { padding-bottom: 5px; }
+      #receipt-print.receipt-automatic .retail-meta { padding: 5px 0; }
+      #receipt-print.receipt-automatic .receipt-terms { padding-block: 5px; }
+      #receipt-print.receipt-automatic .receipt-item-detail { padding-block: 1px; }
+    `
     const receipt = source.cloneNode(true)
+    if (layout.automatic) for (const side of ['Left', 'Right']) receipt.style.setProperty('--rc-padding' + side, `${Math.min(1, Number.parseFloat(sourceStyle.getPropertyValue('--rc-padding' + side)) || 0)}mm`)
     receipt.id = 'receipt-print'
     receipt.classList.add('receipt-paper')
+    if (layout.automatic) {
+      receipt.classList.add('receipt-automatic')
+      for (const [key, value] of Object.entries(AUTOMATIC_RECEIPT_SPACING)) {
+        receipt.style.setProperty('--rc-' + key, value); receipt.classList.add('rc-' + key)
+      }
+    }
+    if (layout.automatic) for (const row of receipt.querySelectorAll('.retail-item-values')) {
+      const unit = row.querySelector('.retail-unit'), name = row.closest('tbody')?.querySelector('.retail-item-name td:last-child')
+      if (unit && name) { unit.style.fontWeight = '400'; name.appendChild(unit) }
+    }
     // Resolve relative logo/custom-field image URLs against the POS document.
     const originalImages = source.querySelectorAll('img')
     receipt.querySelectorAll('img').forEach((img, index) => {

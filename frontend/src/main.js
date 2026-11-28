@@ -20,6 +20,7 @@ import PrintingView from './views/PrintingView.vue'
 import StockManagerView from './views/StockManagerView.vue'
 import B2BView from './views/B2BView.vue'
 import BuyingView from './views/BuyingView.vue'
+import HRView from './views/HRView.vue'
 import CustomerDisplayView from './views/CustomerDisplayView.vue'
 import './styles.css'
 
@@ -33,6 +34,7 @@ const router = createRouter({
     { path: '/b2b', component: B2BView },
     { path: '/invoices', redirect: to => ({ path: '/b2b', query: { ...to.query, tab: 'invoices' } }) },
     { path: '/buying', component: BuyingView },
+    { path: '/hr', component: HRView },
     { path: '/holds', component: HoldsView },
     { path: '/register', component: RegisterView },
     { path: '/insights', component: InsightsView },

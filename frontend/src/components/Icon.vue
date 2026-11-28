@@ -22,10 +22,11 @@ const STROKE = new Set([
   'ban', 'barcode', 'gift', 'bike', 'plus', 'check', 'warning',
   'search', 'tag', 'report', 'image', 'clock', 'globe', 'help', 'return',
   'monitor', 'folder-open', 'phone', 'grid', 'list', 'detail', 'pause', 'trash',
-  'settings', 'chevron-down', 'chevron-right', 'moon', 'sun', 'logout', 'volume',
+  'settings', 'chevron-down', 'chevron-right', 'moon', 'sun', 'logout', 'volume', 'eye',
 ])
 
 const PATHS = {
+  eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
   volume: '<path d="M11 5 6 9H3v6h3l5 4zM15 8a6 6 0 0 1 0 8M18 5a10 10 0 0 1 0 14"/>',
   close: '<path d="M6 6 18 18M18 6 6 18"/>',
   menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',

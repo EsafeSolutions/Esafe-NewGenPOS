@@ -2733,6 +2733,7 @@ const generalForm = ref({
   credit_default_limit: 0,
   enable_regular_invoices: 1,
   enable_buying: 1,
+  enable_item_stock_totals: 0,
   enable_customer_balances: 1,
   enable_customer_payments: 1,
   enable_cheque_tracking: 0,
@@ -2806,6 +2807,7 @@ const generalForm = ref({
 })
 
 const moduleFeatureRows = [
+  { field: 'enable_item_stock_totals', title: 'Show total stock on POS dashboard', description: 'Show each product’s total stock across permitted warehouses in the active company. Sales still use the register’s own warehouse stock.' },
   { field: 'enable_buying', title: 'Buying and supplier payments', description: 'Receive purchases, include extra costs in stock valuation, and settle supplier invoices by cash, bank transfer or cheque.' },
   { field: 'enable_regular_invoices', title: 'ESAFE B2B module and Sales Invoices', description: 'Manage customer quotations, orders, deliveries, draft invoices, payments, cheques and account statements.' },
   { field: 'enable_customer_balances', title: 'Customer balances', description: 'Show customer receivables and open invoices from ERPNext.' },
@@ -2814,12 +2816,12 @@ const moduleFeatureRows = [
   { field: 'enable_quotations', title: 'Quotations', description: 'Create and print ERPNext Quotations from the POS.' },
   { field: 'enable_sales_orders', title: 'Sales Orders', description: 'Create and continue ERPNext Sales Orders in B2B.' },
   { field: 'enable_delivery_notes', title: 'Delivery Notes', description: 'Deliver and print linked customer shipments, including partial deliveries.' },
-  { field: 'enable_hr_integration', title: 'Frappe HR integration', description: 'Connect POS entry points to Frappe HR.', needsHr: true, pending: true },
-  { field: 'enable_attendance', title: 'Employee attendance', description: 'Enable attendance actions for authorized staff.', needsHr: true, requires: ['enable_hr_integration'], pending: true },
-  { field: 'enable_expense_claims', title: 'Employee expense claims', description: 'Enable staff Expense Claim actions and status.', needsHr: true, requires: ['enable_hr_integration'], pending: true },
-  { field: 'enable_day_salary', title: 'Daily salary', description: 'Use attendance and the approved day-rate policy in payroll.', needsHr: true, requires: ['enable_hr_integration', 'enable_attendance'], pending: true },
+  { field: 'enable_hr_integration', title: 'Frappe HR integration', description: 'Connect POS entry points to Frappe HR.', needsHr: true },
+  { field: 'enable_attendance', title: 'Employee attendance', description: 'Enable attendance actions for authorized staff.', needsHr: true, requires: ['enable_hr_integration'] },
+  { field: 'enable_expense_claims', title: 'Employee expense claims', description: 'Enable staff Expense Claim actions and status.', needsHr: true, requires: ['enable_hr_integration'] },
+  { field: 'enable_day_salary', title: 'Daily salary', description: 'Preview and create Salary Slip drafts using existing Frappe HR payroll rules.', needsHr: true, requires: ['enable_hr_integration', 'enable_attendance'] },
   { field: 'enable_sales_commissions', title: 'Salesperson commissions', description: 'Show salesperson incentive reporting for submitted sales.' },
-  { field: 'enable_commission_payroll', title: 'Commission payroll payout', description: 'Pay approved commissions through configured payroll.', needsHr: true, requires: ['enable_hr_integration', 'enable_sales_commissions'], pending: true },
+  { field: 'enable_commission_payroll', title: 'Commission payroll payout', description: 'Pay approved commissions through configured payroll.', needsHr: true, requires: ['enable_hr_integration', 'enable_sales_commissions'] },
   { field: 'enable_sales_rep_mode', title: 'Sales Rep Mode', description: 'Turn on the customer sales workflow, then choose which sales-representative features to enable.' },
   { field: 'enable_erp_pricing_rules', title: 'ERPNext automatic discounts', description: 'Use ERPNext Pricing Rules in POS sales, quotations and regular invoices.', requires: ['enable_sales_rep_mode'] },
   { field: 'enable_customer_sales_progress', title: 'Customer sales progress', description: 'Show quotations, orders, deliveries, invoices, balances, receipts and pending tasks.', requires: ['enable_sales_rep_mode'] },
@@ -3346,6 +3348,7 @@ async function load() {
     credit_default_limit: info.credit_default_limit || 0,
     enable_regular_invoices: info.enable_regular_invoices ?? 1,
     enable_buying: info.enable_buying ?? 1,
+    enable_item_stock_totals: info.enable_item_stock_totals ?? 0,
     enable_customer_balances: info.enable_customer_balances ?? 1,
     enable_customer_payments: info.enable_customer_payments ?? 1,
     enable_cheque_tracking: info.enable_cheque_tracking ?? 0,
@@ -4152,6 +4155,7 @@ async function saveGeneral() {
     session.settings.enable_service_charge = info.enable_service_charge || 0
     session.settings.service_charge_percent = info.service_charge_percent || 0
     session.settings.enable_price_checker = info.enable_price_checker ?? 1
+    session.settings.enable_item_stock_totals = info.enable_item_stock_totals ?? 0
     session.settings.enable_labels = info.enable_labels ?? 1
     session.settings.enable_scale_barcodes = info.enable_scale_barcodes ?? 1
     session.settings.scale_barcode_prefixes = info.scale_barcode_prefixes || '20,21,22,23,24,25,26,27,28,29,02'

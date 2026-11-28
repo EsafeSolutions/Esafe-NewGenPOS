@@ -2,10 +2,12 @@
 
 **Project:** ESAFE POS (Frappe app package `esafepos`)
 **Snapshot:** v0.70.0, repository and product guide updated 2026-11-28<br>
-**Purpose:** engineering overview of the product, its features, modules, data model, and release history.  
+**Purpose:** engineering overview of the product, its features, modules, data model, release history, problems and fixes.
 **Audience:** maintainers, integrators, reviewers, and technical stakeholders.
 
-> This document describes the implementation visible in this repository. For cashier procedures and settings instructions, use the [user guide](user-guide.md) and [website guide](website-guide.md). The complete per-release history is maintained in [section 19 of the user guide](user-guide.md#19-changelog); this document summarizes its engineering milestones.
+> This document records the features, engineering history, problems encountered, fixes and verification visible in this repository. For cashier procedures and settings instructions, use the [user guide](user-guide.md) and [website guide](website-guide.md). The [user guide changelog](user-guide.md#19-changelog) retains the operational release wording; this log also includes inherited history, source commits and unresolved deployment checks.
+
+**Find a record:** [Feature inventory](#2-product-features) · [Dated engineering log](#8-project-logbook--release-milestones) · [Historical releases](#historical-release-index) · [Problems and fixes](#problems-encountered-and-fixes) · [Remaining verification](#remaining-verification-and-known-limitations) · [Complete commit history](#complete-commit-history).
 
 ## 1. Project at a glance
 
@@ -24,6 +26,12 @@ EsafePOS is a browser-based point-of-sale application for ERPNext and Frappe. It
 ## 2. Product features
 
 ### Unreleased
+
+- Added **Show total stock on POS dashboard** under **Settings → General → Features** and the native ERP settings Features section. The default-off `enable_item_stock_totals` switch changes Sell product tiles to each item's total stock across permitted, enabled warehouses in the active company, in its stock unit and adjusted for pending POS sales/returns. Register stock remains separate for sale checks and out-of-stock filtering. Catalogue/live refreshes supply the optional total; shared `itemStock.js` updates it with online/offline stock changes and IndexedDB, with user/register/company scope checks preventing another cached context's total from being displayed. No new DocType or ERP role grants. Verification and desktop/mobile evidence are recorded in the Unreleased logbook below.
+
+- Made automatic safe receipt fitting the default for existing/new workstations: unverified legacy dimensions are ignored unless calibration is explicitly enabled. Built-in receipts and setup tests are frozen into a monochrome PDF before Esafe dispatch, preserving the measured layout instead of asking a second HTML engine to reflow it. Headings/metadata adapt, item headers stay readable and automatic-mode units use the full product-name width. Existing queues, copies, sale amounts, original/reprint identities and drawer gates remain intact. No schema/dependency change. [Behavior and verification](receipt-right-edge-fit.md).
+
+- Added the optional **HR** workspace for native Employee/Attendance review, HR Manager attendance exceptions, employee Expense Claim drafts and native receipt/submission entry points, native Salary Slip calculation/drafts and monthly commission preparation, approval and submitted Additional Salary hand-off. HR switches are operational and remain independently default-off; salesperson reporting remains independent of HR. The new `EsafePOS HR Payroll Batch` holds commission source snapshots and approvals. Existing native Frappe HR rules are the only salary authority; there is no POS daily-rate policy or salary ledger. Migration adds request metadata to native Attendance/Expense Claim/Salary Slip only when HRMS is installed. Native roles/permissions, company/employee gates, online-only controls, unique period/request identities, stale-input checks and retained posted locks protect the workflow. See [HR setup, scope and verification](hr-module.md).
 
 - Fixed repeated receipt-width errors for alternate units such as **150 kg Pack**. Quantity digits and unit text now fit independently; print preparation redistributes numeric columns and switches crowded item rows to labelled details while retaining every amount. Browser and Esafe built-in HTML share the fix; genuinely impossible geometry is still blocked. No accounting, schema or saved-printer setting changes. [Details and verification](receipt-right-edge-fit.md).
 
@@ -78,10 +86,10 @@ EsafePOS is a browser-based point-of-sale application for ERPNext and Frappe. It
 - Added currency-aware **Note and coin counter** controls to cashier and manager closing screens, plus optional manager-linked **Combined cash drawer** groups with refreshed totals and one physical closing count. Invoices remain on their original shifts; all group members enter Closing together and consolidate independently. Added company-scoped default loyalty opt-in for existing/new unassigned customers and default program provisioning at migration, preserving explicit memberships and accounting validation. New `cash_count.py`, `cash_denominations.json`, `loyalty_defaults.py`, `api/shared_drawer.py`, `CashDenominationCounter.vue` and `SharedDrawerPanel.vue`; extended `POS Register Session` with group and physical-count snapshots. See [setup, workflows and verification](register-cash-counting-and-shared-drawers.md). Verification: 53 focused Python tests plus three isolated credit-checkout regressions, Chrome desktop/mobile register and loyalty flows, production build, Python 3.7 grammar, schema/JSON and whitespace checks. Site migration and live ERPNext reconciliation are required.
 
 - Fixed long barcodes failing to fit small labels. Labels now automatically fit the selected symbol using whole printer dots, required quiet zones and minimum module widths, with a **Make barcode fit** action and explicit **Data Matrix / QR** alternatives. The screenshot's `O1D34340021` fits 38 × 25 mm stock at 203.2 DPI as a 35.75 mm Code 128 instead of 53.625 mm; a full-width symbol can borrow spare design padding while retaining 0.5 mm edge clearance. Added Code 93 with mandatory checksums and scanner-enablement guidance. Every format retains the full value, including leading zeroes; 2D formats require an imager and never become an automatic fallback. Affected: `labels/symbols.js`, design/render helpers, `LabelsView.vue`, bounded Python configuration validation and the pinned offline BWIPP encoder/license. Existing JSON stores `autoFit`/format choices; no DocType change. Verification: label compact/layout and shared barcode checks, 11 Python validation tests, independent decoding of eight rendered examples and an actual exported Data Matrix PDF, desktop/mobile browser checks and production build. Live printer/scanner qualification remains required.
-- Added default-off workstation **Cash drawer** controls under Printing → Printers with SDK 0.2.0 from the supplied manager 0.2.1 kit. Exact receipt-queue pulses use validated pin/timings, one raw copy, the durable intent journal and authoritative ERP setup/manual/payment checks. Optional successful cash-payment opening waits for the original native receipt to reach submitted/completed, excludes offline/credit/card-only/refunded/history cases, and has a server unique original identity. Manual opening requires the existing Cash out capability and an authorized open session/reason. Added server-mirrored per-workstation configuration on POS Profile, an offline-origin invoice marker and drawer/printer metadata on Print Intent. See [setup and migration](cash-drawer-controls.md).
+- Added default-off workstation **Cash drawer** controls under Printing → Printers with SDK 0.2.0 from the supplied manager 0.2.1 kit. Exact receipt-queue pulses use validated pin/timings, one raw copy, the durable intent journal and authoritative ERP setup/manual/payment checks. Optional successful cash-payment opening waits for the original native receipt to reach submitted/completed, excludes offline/credit/card-only/refunded/history cases, and has a server unique original identity. Manual opening requires the existing Cash out capability and an authorized open session; the current flow supplies an automatic audit label without a reason prompt. Added server-mirrored per-workstation configuration on POS Profile, an offline-origin invoice marker and drawer/printer metadata on Print Intent. See [setup and migration](cash-drawer-controls.md).
 
 - Added optional **Save change as points** below checkout change: LKR 8 becomes 8 ERPNext points, with cents returned as cash. **Use points** pays later sales fully or alongside cash/card. The online LKR flow requires a selected customer, an active same-company program with conversion factor 1 and valid accounting defaults, and respects the Accounts Settings loyalty switch. Purchase collection rules and expiry remain intact. `loyalty_change.py` posts funding and native point entries, tracks register Cash In, completes legacy redemption omissions, preserves saved cash on returns and reverses unspent funding on cancellation. Invoice custom fields and `POS Cash Movement.loyalty_change_entry` link the accounting records; no separate points wallet is introduced. Affected: loyalty/sales APIs, install/hooks, checkout/cart, receipts and customer display. Verified: 23 focused saved-change tests, 75 Python tests overall, Chrome checkout/loyalty checks, production build, Python 3.7 grammar and DocType JSON. See the dated logbook for screenshots, the endpoint-guard limitation and live-site verification requirements.
-- Repaired the checkout quote endpoint's undefined pricing flag, which caused the entire pricing/credit response to fail and silently hid **Put on account**. Checkout now checks credit independently, displays recoverable errors with **Retry**, and waits for a confirmed payable before adding debt. Added automatic deployed-build checks every 15 seconds and on focus/reconnect: idle tills update themselves, while carts, checkout, editing, sync and active printing defer reload. The release number need not change. Existing installations need to reopen once to load the updater; subsequent builds are detected after deployment, not from a Git push alone. No DocType changes. Verification and desktop/mobile screenshots are in the dated entry below.
+- Repaired the checkout quote endpoint's undefined pricing flag, which caused the entire pricing/credit response to fail and silently hid **Put on account**. Checkout now checks credit independently, displays recoverable errors with **Retry**, and waits for a confirmed payable before adding debt. Deployed-build checks run every 15 seconds and on focus/reconnect. The initial idle-reload implementation was superseded on 2026-11-26 by explicit **Agree and update / Later** consent; carts, checkout, editing, sync and active printing also defer activation. The release number need not change. Existing installations need an online reopen to load the updater; subsequent builds are detected after deployment, not from a Git push alone. No DocType changes. Verification and desktop/mobile screenshots are in the dated entries below.
 - Integrated the supplied private **Esafe Printer Manager SDK 0.1.0** into Printing. The POS now supports explicit native connection/approval, exact installed-queue roles per browser/workstation/outlet, profile-level silent/automatic receipt defaults, HTML/PDF/raw receipts, PDF labels/A4 invoices/quotations, thermal reports/payment receipts and explicit browser fallback. Stable persisted intents, cross-tab locks, native job reconciliation, manual identical retry and authorized reprints keep print outcomes separate from sales/accounting. Added `EsafePOS Print Intent` metadata and five POS Profile defaults; both silent/automatic switches default off. The SDK is vendored with a relative dependency and lockfile. See [deployment, cashier setup, rollback and hardware qualification](esafe-print-manager.md) and the dated logbook entry.
 
 - Consolidated receipt adjustment, label output and printer setup into **Printing** (`/printing`) with Labels, Receipt and Printers sections. Existing `/labels` bookmarks redirect to Labels. The extracted receipt editor retains global/outlet defaults, custom fields and live preview, adds sample preview printing, and persists all cashier/terminal/invoice-barcode switches. Printer setup edits the existing POS Profile host, port and compatible ERPNext Print Format and submits a bounded, drawer-free test receipt. Settings users can configure printing even when labels are disabled; label-only cashiers cannot open receipt/printer configuration. Narrow APIs and partial receipt updates prevent General Settings and the receipt editor from overwriting each other's configuration. The workspace consolidation preserves the existing label and receipt data model; the subsequent Esafe integration is recorded above. Verification and UI evidence are recorded in the dated logbook.
@@ -119,7 +127,7 @@ EsafePOS is a browser-based point-of-sale application for ERPNext and Frappe. It
 - Printable receipts with a default ESAFE footer, configurable details, independent discount/savings visibility, adjustable shop-name branding and a lightly lined Table template. The invoice barcode opens the matching sale in History. Includes browser printing, ESC/POS network printing, reprints, and cash-drawer kick where configured.
 - Three catalog views with quick Add, progressive loading and a tap-to-open item editor for quantity, stock unit, authorized price edits and discounts.
 - Sell loose items by entering an amount in the item popup or cart; quantity follows the active unit price while rates and discounts retain their normal controls.
-- A second-screen customer display with a persistent advert background and popup layers for live sales, membership, receipts, bank details, counter-closed notices, social QR codes and custom messages. Sell includes a quick-switch bar and a movable read-only mini screen synchronized to the selected advert, pause state and popup/account selections. Monitor placement, saved workstation/register defaults and local/online playlists remain available.
+- A second-screen customer display with a persistent advert background, a full-screen foreground for live sales, membership and receipts, and compact popups for bank details, counter-closed notices, social QR codes and custom messages. Sell's blue header has an expandable icon-only display menu and a movable read-only mini screen synchronized to the selected advert, pause state and popup/account selections. Monitor placement, saved workstation/register defaults and local/online playlists remain available.
 
 ### 2.2 Pricing, promotions, and offers
 
@@ -186,6 +194,13 @@ EsafePOS is a browser-based point-of-sale application for ERPNext and Frappe. It
 - Partial or full payments allocated oldest first to selected invoices by Cash, Bank Transfer or Cheque, with bank references/dates and native reconciliation links.
 - Online-only, manager-default capability and native ERPNext permissions; no register required. Cash taken from a till requires its normal Cash out record. Later/third-party landed costs and advanced buying workflows remain in ERPNext.
 
+### 2.9 HR and payroll
+
+- Optional HRMS workspace with company context, installed versions, native Employee links and independent attendance/claims/day salary/commission payroll switches.
+- HR Manager attendance exceptions use native submitted Attendance and comments; staff Expense Claim drafts open native attachments, submission, approval and reimbursement.
+- Native Salary Slip previews/drafts use existing Payroll Settings, salary structures/assignments, attendance/leave/holidays, formulas and deductions; no POS daily-rate rules. Native Sales Team incentives are net of returns, with consolidated sales excluded.
+- Completed-month native salary simulation/draft, and commission source snapshots with Payroll Manager approval/Additional Salary posting; Salary Slips/accounting/payment remain in Frappe HR. Employee/period/type uniqueness, transaction locks, source freshness and native permissions protect each hand-off.
+
 ## 3. Architecture and request flow
 
 ```text
@@ -230,6 +245,7 @@ Typical startup calls `esafepos.api.session.get_bootstrap`, which supplies the s
 | `/messages` | `MessagesView.vue` | Customer selection, editable SMS/WhatsApp API drafts and outlet/owner-scoped recent message records |
 | `/invoices` | `InvoicesView.vue` | Build and submit a named-customer ERPNext Sales Invoice without a register session |
 | `/buying` | `BuyingView.vue` | Receive purchases with valuation costs and emergency item creation; manage suppliers, ledger balances, invoice history and payments |
+| `/hr` | `HRView.vue` | Native attendance/claims, native Salary Slip preview/drafts, monthly commission review, approval and payroll hand-off |
 | `/holds` | `HoldsView.vue` | Find and manage layaways, installments, completion, and cancellation |
 | `/register` | `RegisterView.vue`, `AllRegisters.vue`, `RegisterSummary.vue` | Open, monitor, reconcile and close shifts; authorized register directory, cash adjustments, full historical summaries and reviewed bulk closing |
 | `/items` | `StockManagerView.vue`, `ItemsView.vue` | Unified item details/status, inventory/transfers, variants and stock counts; preserves working panels between tabs |
@@ -237,7 +253,7 @@ Typical startup calls `esafepos.api.session.get_bootstrap`, which supplies the s
 | `/settings` | `SettingsView.vue`, `UpdatesPanel.vue` | In-POS configuration, permissions-aware setup, numbered release history and manual update review |
 | `/printing` | `PrintingView.vue` | Permission-aware Labels, Menu & catalogue, Receipt, Printers and Print jobs workspace; `/labels` redirects to its Labels section |
 | `/count` | Redirect to `/items?section=count` | Legacy count links open the unified manager; `StockCountView.vue` keeps individual/shared reconciliation workflows |
-| `/display` | `CustomerDisplayView.vue`, `CustomerDisplayContent.vue`, `BankTransferCard.vue` | Persistent advert base with bounded sale/bank/notice/QR popup layers and a read-only preview route, synchronized over terminal-scoped `BroadcastChannel` |
+| `/display` | `CustomerDisplayView.vue`, `CustomerDisplayContent.vue`, `BankTransferCard.vue` | Persistent advert base, full-screen live/membership/receipt foreground, compact bank/notice/QR popups and a read-only preview route, synchronized over terminal-scoped `BroadcastChannel` |
 
 ### 4.2 Shared Vue components
 
@@ -288,6 +304,7 @@ Typical startup calls `esafepos.api.session.get_bootstrap`, which supplies the s
 |---|---|
 | `stores/session.js` | Bootstrap, identity, outlet/profile, shift, settings, permissions, connectivity and queued work |
 | `stores/catalog.js`, `catalogSync.js` | Paginated browsing, bounded live catalog/cart/favourite snapshots, committed-change polling, cross-tab refresh, race protection and offline cache patches |
+| `itemStock.js` | Selects scoped optional product-tile stock totals and applies register quantity changes consistently to live and IndexedDB records |
 | `stores/cart.js` | Current sale, lines, customer, coupon, discounts, totals and complete-bundle count/discount updates |
 | `stores/help.js` | Help panel and guided-tour state |
 | `api.js` | Frappe method calls, request errors and offline-aware request handling |
@@ -301,9 +318,9 @@ Typical startup calls `esafepos.api.session.get_bootstrap`, which supplies the s
 | `labels/stock.js`, `labels/design.js`, `labels/render.js`, `labels/prices.js`, `labels/printing.js`, `components/labels/LabelNumberField.vue` | Physical stock/slot geometry, 16 editable designs including Bold retail, label-only whole-price formatting, measured full-box/single-line fitting and per-element fonts, validated SVG scenes, PDF/browser/native-file output and calibration |
 | `catalogue/document.js`, `catalogue/output.js`, `PrintCatalogueView.vue` | Complete item selection, category/brand grouping, paginated menus/catalogues, embedded images and browser/colour PDF output |
 | `labels/symbols.js` | Cached Code 128/EAN/UPC/Code 93/Data Matrix/QR encoding, physical module metrics, whole-dot fitting, quiet zones and bounded full-width padding recovery |
-| `customerDisplay.js`, `displayContact.js`, `displayContent.js`, `CustomerDisplayControls.vue`, `CustomerDisplayQuickBar.vue`, `CustomerDisplayPreview.vue` | Per-till snapshots and visual-state feedback, contact lifecycle, monitor placement, local presentation/media storage, layer editing, quick switches and a movable synchronized mini screen that stays available in native checkout/settings dialogs |
+| `customerDisplay.js`, `displayContact.js`, `displayContent.js`, `CustomerDisplayControls.vue`, `CustomerDisplayQuickBar.vue`, `CustomerDisplayPreview.vue` | Per-till snapshots and visual-state feedback, contact lifecycle, monitor placement, local presentation/media storage, layer editing, the header icon menu and a movable synchronized mini screen that stays available in native checkout/settings dialogs |
 | `receiptPrint.js`, `receiptLayout.js`, `receiptFit.js`, `receiptDesign.js`, `styles/receipt.css`, `receiptOptions.js` | Dedicated receipt styling, separate quantity/unit wrapping, measured item-column allocation and crowded-row reflow, shared browser/native geometry validation, fitted paper length and POS receipt footer |
-| `printing/esafe.js`, `printing/journal.js`, `printing/documents.js`, `printing/index.js` | Singleton SDK lifecycle/scopes, bounded printer cache, fast native acceptance with ordered background reporting, cross-tab immutable intents, IndexedDB recovery/deduplication, receipt submission polling/audit gate and self-contained Unicode dispatch |
+| `printing/esafe.js`, `printing/journal.js`, `printing/documents.js`, `printing/receiptPdf.js`, `printing/index.js` | SDK lifecycle/scopes, bounded printer cache, ordered background reporting, immutable intents/IndexedDB deduplication, drawer submission/audit gate, automatic receipt geometry and fixed monochrome PDF receipt dispatch |
 | `format.js` | Currency, date/time, number, and display formatting |
 | `theme.js`, `i18n.js`, `messages.js`, `locales/` | Theme selection, locale/RTL initialization, translations |
 | `help/content.js` | Screen-level help and tour content |
@@ -322,6 +339,7 @@ Typical startup calls `esafepos.api.session.get_bootstrap`, which supplies the s
 | `item_variants.py` | Native Item Attribute and template creation, paginated variants, ERPNext combination validation and duplicate-safe variant creation |
 | `sales.py` | Sale quote/submission, resolved rate/discount freezing, invoice creation, validation, receipt data and idempotency |
 | `buying.py` | Native Purchase Invoice/Payment Entry posting, supplier creation and balances, valuation costs, company-currency allocation, document permissions, row locks and request deduplication |
+| `hr.py` | Optional native HR access/actions, role/company/employee gates, native Salary Slip simulation/draft, monthly commission preview/snapshot, approval and idempotent Additional Salary posting |
 | `b2b.py`, `b2b_payments.py`, `b2b_reports.py` | Scoped native selling documents and mappings, optimistic drafts, pricing/approval and retry validation, connected fulfilment progress, native receipts/advance reconciliation, cheque lifecycle, shift integration and permission-scoped party-ledger statements/PDF |
 | `purchase_ocr.py` | Encrypted-key scanner settings, bounded inline Gemini extraction, untrusted-output normalization and permission-scoped supplier/product suggestions; no document posting |
 | `register.py` | Open/close, cash movements, counts, shift summaries, consolidation and recovery |
@@ -342,6 +360,8 @@ Typical startup calls `esafepos.api.session.get_bootstrap`, which supplies the s
 | `stock_app.py` | Shared stock count, devices, merge and reconciliation integration |
 
 ### 5.2 Business rule and integration modules (`esafepos/`)
+
+- **HR adapter:** `hr_payroll.py` provides Decimal-based pure monthly/commission rules; `hr_setup.py` installs optional HR request metadata/roles and protects commission source-approval audit records. HRMS retains all employee, attendance, expense and salary business records.
 
 - **Offers and pricing:** `promotions/engine.py`, `promotions/loader.py`, `price_books.py`, `coupons.py`, `cashback_rules.py`, `cashback.py`, `scale_barcode.py`.
 - **Money and customer balances:** `currency.py`, `store_credit.py`, `gift_cards.py`, `credit_sales.py`, `deposits.py`, `paid_in.py`.
@@ -381,6 +401,7 @@ B2B adds native-document request/save hashes, origin/outlet and discount-approva
 
 | Group | EsafePOS DocTypes | Purpose |
 |---|---|---|
+| Commission payroll approval | `EsafePOS HR Payroll Batch` | Unique company/employee/month/type commission source snapshot, selected native earning component, approval/posting actors and native Additional Salary reference; native HR owns Salary Slips/rules and payments |
 | B2B settlement and cheque custody | `EsafePOS B2B Settlement`, `EsafePOS Customer Cheque` | Immutable receipt grouping/retry references and controlled cheque dates, intended allocations, native clearance/reversal links and action history; neither is a balance ledger |
 | Customer messaging | `POS Customer Message` | Deduplicated outbound request journal with outlet/owner access, provider submission outcomes and retained invoice audit names; no delivery/read or inbound-chat state is claimed |
 | Core configuration | `EsafePOS Settings`, `EsafePOS Company Setting`, `EsafePOS Profile Receipt`, `EsafePOS Payment Method Rule`, `POS Delivery App`, `POS Sale Currency`, `POS Customer Form Field` | Site/company settings, receipt configuration, tender policy, delivery channels, currencies, customer form schema; hidden `bank_transfer_display` JSON holds validated public receiving accounts, routing, logo/QR paths and sizes; bank images use native File attachments |
@@ -407,12 +428,12 @@ B2B adds native-document request/save hashes, origin/outlet and discount-approva
 
 ## 8. Project logbook / release milestones
 
-Entries are summarized from the release notes. The [user guide changelog](user-guide.md#19-changelog) contains the full release-by-release wording and should be updated alongside each release.
+Entries are reconciled against the [user guide changelog](user-guide.md#19-changelog), package-version changes, committed source and the existing dated engineering records. Historical verification statements describe checks recorded at the time; they do not mean those checks were rerun for this documentation update. Changes without an assigned release remain Unreleased even when committed.
 
 ### Unreleased
 - **Sales Rep Mode:** Added a master switch and separate ERPNext automatic discount and customer-sales-progress switches. ERPNext Pricing Rules can be resolved in the shared POS, quotation and regular-invoice builder; the cart quote supplies the server-confirmed total and rule labels. A permission-scoped customer progress API and responsive panel show the ERPNext document path, outstanding, undelivered Sales Order quantities, receipts by tender/reference/date, and open customer ToDos. Customer profile totals now tolerate an uninstalled invoice-origin custom field, as shown in the live-site screenshot. The settings fields require site migration; live Pricing Rule and document reconciliation still need site verification.
 - **Customer payment overages:** The cashier can opt to leave money above selected invoice balances as unallocated customer credit. The receipt records the full drawer movement, applies only the invoice amount, and leaves the remainder on the same receivable account for ERPNext Payment Reconciliation. `api/credit.py` computes and returns the unapplied amount; `CustomerCredit.vue` shows the available POS advance and receipt line. The customer payment form wraps for phone and tablet widths.
-- **Printing integration:** QZ Tray was removed on 2026-11-22. Receipts use server-network, ERPNext Print Format or browser printing; labels use browser printing and file exports. The separate Print Manager will be integrated later. Retired connector setup/signing fields and endpoints are no longer available.
+- **Printing integration:** QZ Tray was integrated on 2026-11-20 and removed on 2026-11-22. Esafe Printer Manager integration followed on 2026-11-23, with explicit native approval, workstation queue assignments, durable print intents and later cash-drawer controls. Server-network, ERPNext Print Format, browser and file-export paths remain available where supported. Retired QZ setup/signing fields and endpoints are no longer available. See [manager setup and qualification](esafe-print-manager.md).
 - **Receipt branding and Table layout:** Built-in receipts show `ESAFE ERP+POS - pos.esafe.lk` automatically. The Table template adds a light grid and can be selected for all outlets or saved as an outlet override.
 - **Item price access:** System Managers and EsafePOS Managers can edit saved selling prices when their ERPNext permissions allow it. Managers can delegate the POS capability to a role or person under Approvals and permissions. Item name and photo edits use ERPNext Item permissions.
 - **Items editor:** Added category and brand filters, product image upload and a selling price-list selector. Item photos are attached to ERPNext Item records and unit prices are saved to the selected ERPNext price list.
@@ -438,11 +459,11 @@ Entries are summarized from the release notes. The [user guide changelog](user-g
 | 0.62.0 | Added Insights sales summary, cashier, product, profit, customer, and outlet reports with permissions. |
 | 0.61.x | Added app-screen/desk integration, stronger cash-out controls, shift-ownership defaults, customer debt/hold separation, and foreign-currency support improvements. |
 | 0.60.x | Added sales on account, customer credit ledger interactions, and supporting shift behavior. |
-| 0.58.x–0.59.x | Added contextual help, guided tours, update notices, and expanded till help workflows. |
+| 0.58.x–0.59.x | Added contextual help and guided tours, locked-accounting-period warnings and recovery guidance, and closing-variance reasons. |
 | 0.57.x | Added configurable salesperson requirement/off behavior and salesperson reporting. |
 | 0.55.x–0.56.x | Improved overnight shifts, recovery of offline refusals, cross-currency sales, price edits, and stock availability after same-shift returns. |
-| 0.53.x–0.54.x | Expanded localized UI/server messages and currency/receipt handling; tightened serialized item validation and cart presentation. |
-| 0.52.x | Improved Frappe/ERPNext 16 compatibility, permissions, register operation, and resilience. |
+| 0.53.x–0.54.x | Expanded localized UI/server messages, optional one-shift-per-person enforcement, manager recovery and cashier-only permissions; fixed parent item-group matching. |
+| 0.52.x | Added automatic exchange rates and per-currency change; verified Frappe/ERPNext 16 compatibility and repaired aggregate queries, closing metadata and loyalty-paid status. |
 | 0.50.0 | Added layaway/holds, deposits, reserved stock, installments, hand-over, cancellation, and deposit accounting. |
 | 0.49.x | Added full offline app-shell support so the till can reopen without a connection on supported versions. |
 | 0.47.x–0.48.x | Added one-step exchanges, configurable role/user capabilities, and the first consolidated permission model. |
@@ -457,9 +478,23 @@ Entries are summarized from the release notes. The [user guide changelog](user-g
 
 ### Unreleased logbook
 
+2026-11-28 (automatic receipt spacing follow-up): Automatic mode now overrides excessive legacy line height, section gaps, item-cell padding and extra vertical design padding, with tighter heading/contact/terms spacing. Calibrated mode preserves manual spacing. The fixed-PDF/default path passed 35 browser/simulated-SDK cases before this spacing follow-up; all resulting PDFs have one fitted page and automatic-mode images have verified white side borders. The final spacing code passed syntax, orchestration/drawer and production-build checks. Added visual assertions and automatic-mode save screenshots await rerun: automatic approval review could not run either headless browser command because its usage limit was reached (not an unsafe-action rejection). A broad receipt rerun had first timed out during unrelated workspace HMR; fixtures now disable HMR. Final spacing appearance, installed-manager output and deployment remain unverified. [Verification status](receipt-right-edge-fit.md).
+
+2026-11-28 (optional total stock on Sell product tiles): Added the default-off `EsafePOS Settings.enable_item_stock_totals` field, shared feature serialization/saving, native ERP/POS Features controls, batched company/warehouse-scoped catalogue totals, scoped display metadata, and `itemStock.js` for consistent tile/cache updates. Totals subtract unposted POS sales and reflect pending returns without replacing the register's `actual_qty` or granting inventory-management access. Existing Warehouse User Permissions and outlet/company checks apply; cached totals are displayed only for the matching user/register/company. Verification: 60 standalone Python catalogue/feature/inventory tests, actual Vue Features on/off/save/reload and product-tile/IndexedDB browser checks, production build and desktop/mobile inspection passed. Site migration and live ERPNext stock verification remain deployment checks. Evidence: [Features control](screenshots/stock-totals/features-desktop.png), [desktop tiles](screenshots/stock-totals/dashboard-desktop.png), [mobile tiles](screenshots/stock-totals/dashboard-mobile.png).
+
+2026-11-28 (automatic receipt defaults and frozen print output): `receiptLayoutFor` now ignores old unverified dimensions/margins at preparation time and selects 72/48 mm pages with safe margins; the existing workstation JSON records an explicit `calibrated` opt-in for measured hardware. Automatic mode caps excessive horizontal designer padding, moves unit captions to the product-name width and fits common headings/metadata labels; column minimums include their headings. New `printing/receiptPdf.js` freezes the validated self-contained HTML directly into one lossless 203.2-DPI monochrome PDF without running another computed-style cloner. `nativeReceipt` and printer setup test/preview send that PDF with portrait/fit/zero external margin settings, preventing native HTML reflow. Existing `html` settings retain their API value and are labelled Built-in receipt (safe PDF). Printer UI defaults to automatic mode; advanced manual calibration remains available and permission-gated. No new DocType, dependency, pricing, account, stock or drawer behavior. Verified 35 actual-component/simulated-SDK receipt cases, four automatic-mode legacy/shifted-margin/large-padding cases, PDF structure/ink bounds/render inspection, setup/approval/outlet isolation, duplicate/reprint/drawer gates, browser receipt regressions, orchestration/drawer suites, production build and whitespace checks. Test fixtures disable HMR to avoid unrelated parallel workspace edits reloading an active test. No live ERP changes, production deployment or physical printing. [Details and current evidence](receipt-right-edge-fit.md).
+
+2026-11-28 (compact POS header and customer display icon menu): Removed the labelled customer-screen row above product search. `CustomerDisplayQuickBar.vue` now provides a single monitor disclosure in Sell's blue header, opening a viewport-clamped 3 × 3 icon toolbar for the six display modes, preview, direct projection and settings. Every icon retains a tooltip, accessible name and active state; arrow/Home/End navigation, Escape, outside pointer/focus dismissal and focus return preserve keyboard access. `SellView.vue` mounts it in the existing header tools slot. `App.vue` tightens header padding/control sizes, prevents desktop wrapping, shortens the shift label at intermediate widths, and bounds the outlet/company fields; smaller screens retain responsive wrapping. Added the existing-line-style eye icon in `Icon.vue`. Display layers, bank routing, saved configuration and preview synchronization retain their existing behavior. No API, DocType, storage or dependency change. Verification: npm run build, node display-content-check.mjs, JavaScript syntax and diff whitespace checks passed. Real-component Chrome checks verify a single compact desktop header at 1366 px with both clocks retained, product search directly beneath it, nine icon-only actions with tooltips/accessibility labels, bounded menu positioning at desktop/mobile sizes, arrow/Home/End navigation, Escape/focus return, outside dismissal, settings/preview actions, direct-projection error recovery and existing sale/bank/advert/preview/offline/terminal-isolation flows. Updated desktop/mobile screenshots are linked in the guide; APIs and provider frames use fixtures. [Operation and screenshots](customer-display.md#customer-display-icon-menu-and-movable-pos-preview).
+
+- **2026-11-28 — HR implementation:** Added `api/hr.py`, pure monthly/commission rules, optional HR setup, `HRView.vue`, navigation/session capability and live Settings switches. The requested policy uses existing Frappe HR payroll rules only: day salary invokes native Salary Slip validation, rolls back preview writes and saves native drafts for native approval/submission/payment. No POS daily rates, half-day policy or salary-rule record is added. Commission uses stored native incentives with returns/consolidation deduplication, immutable approval snapshots, company/month source-set locks against reassignment/duplicate payouts, native component/account/assignment/currency checks and idempotent Additional Salary hand-off. Migration adds request identity/hash metadata to Attendance, Expense Claim and Salary Slip and creates missing payroll approval roles without native privilege grants. Verification: 8 pure-rule tests and 33 mocked API tests passed, including native salary delegation, preview rollback on success/failure, changed native calculations, overlapping slips and draft-only saves. Vue browser fixture checks and production build are recorded in [HR setup and verification](hr-module.md); screenshots are in `docs/screenshots/hr/`. Source/controller compatibility was reviewed against HRMS version 16 (upstream latest v16.60.1 observed), with installed versions shown in the workspace. Migration and live HR approval, native payroll/GL/payment reconciliation remain staging requirements.
+
+2026-11-28 (feature, history and problem/fix reconciliation): Consolidated this log's feature inventory, historical release index, problems/fixes, outstanding verification and source audit trail. Indexed all 116 standalone and 59 inherited version rows from the user guide, plus five Git-only/intermediate version records (0.50.2, 0.51.2, 0.69.2, 0.69.3 and 0.69.5); retained the separate lineage of overlapping version numbers. Recorded all 264 commits reachable from `df98178` (2026-06-30 through 2026-11-28), including original subjects and source references. Added problem/cause/fix/evidence tables and deployment/hardware follow-ups; corrected stale current descriptions of printing integration, automatic updates and manual drawer prompts while retaining their dated history. Existing working-tree display documentation and its verification status are preserved. Documentation only: no application, generated bundle, dependency, API, DocType or migration change. Verification: all 180 indexed version records reconciled against the guide and five recovered Git records; all 264 commit hashes, dates and subjects matched Git exactly; all 84 pre-existing dated records retained; all source hashes and seven newly introduced local link targets/anchors checked; Markdown details balanced and git diff --check passed. The problem register contains 65 entries. Historical application test results remain attributed to their original records and were not rerun for this documentation-only update.
+
+2026-11-28 (full customer-facing live display): `CustomerDisplayView.vue` expands the live sale, welcome/membership and completed receipt foreground to the full customer viewport above the still-mounted advert player. Removed the offset, width/height caps, transform and framed-shell styling; the live hide action now shares the top control bar with fullscreen. Membership spans the available width and uses larger keypad, heading and contact-number text. Bank details, counter-closed, social and message popups retain their compact geometry, and the POS mini preview uses the same full-size renderer automatically. No API, state, storage, DocType, dependency or migration change. Verification: npm run build, node display-content-check.mjs, node display-check.mjs --display-only (bundled Playwright) and diff whitespace checks passed. Real-component Chrome checks assert full-viewport sale/membership geometry at desktop and phone sizes, membership width on a 1920 × 1080 monitor, retained advert DOM, bank layering and preview/focus/lock recovery; refreshed desktop/mobile screenshots are linked in the guide. The first legacy regression attempt stopped during Vite shutdown while rebuilding; its isolated rerun passed. APIs and provider frames remain simulated; no live deployment or physical-monitor verification was performed. See [operation and screenshots](customer-display.md#second-monitor-and-content-controls).
+
 2026-11-28 (pack-unit receipt width failures): The print frame forced the whole quantity/UOM cell into one unbroken numeric value. `ReceiptView.vue` now gives quantity and unit separate spans, with wrapped unit styling in `styles/receipt.css`; `receiptPrint.js` permits that wrapping in the measured print frame. `receiptFit.js` checks numeric quantity independently, allocates item columns using measured minimum numeric widths, and converts crowded item grids to labelled full-width details when required. Every enabled field and full numeric amount remains present; fonts keep the existing 9 px floor, page height is measured after reflow, and impossible geometry still stops before dispatch. Browser and Esafe HTML use the same content, with geometry-only diagnostics. No API, DocType, stock, tax, payment or accounting change. Verification: 31 actual-component/simulated-SDK width/export cases over six templates and both rolls, the prior one-line unit rule reproduced at minimum font size, pack-unit and large-number reflow checks, complete browser/silent text and dimensions, existing receipt/RTL/Unicode/offline/editor/history regressions, screenshots, production build and whitespace checks. Physical printer output and deployment remain unverified. [Setup and evidence](receipt-right-edge-fit.md).
 
-2026-11-28 (layered customer screen and POS mini preview): Replaced exclusive full-screen content modes with a persistent advert background. `CustomerDisplayView.vue` renders bounded live-sale, membership/receipt, counter-closed, social, bank and message popup layers; item/quantity updates raise the sale popup, and the next-sale action returns to adverts. Existing receiving-account restrictions and automatic payment-bank dialogs remain intact. `CustomerDisplayContent.vue` keeps its media element mounted while layers switch and sizes image/video/iframe content explicitly across the background, fixing the narrow-height embedded player. Added `CustomerDisplayQuickBar.vue` on Sell and automatically opened `CustomerDisplayPreview.vue`: a read-only same-renderer iframe with terminal-scoped advert/pause/popup/account feedback, drag/keyboard movement, remembered/clamped position, minimize/close/reopen and mounting within active native dialogs so checkout does not cover it. Preview documents never bootstrap the till, start a second playlist timer, take contact input or open a native bank dialog. Legacy stored modes become overlays; new configurations default to adverts. No new endpoint, DocType, dependency or migration. Verification: npm run build, node display-content-check.mjs, node display-check.mjs --display-only (bundled Playwright), node register-bank-check.mjs, JavaScript syntax and diff whitespace checks passed. Real-component Chrome checks cover advert DOM continuity, full-height embedded video, bounded popup geometry, quick switches and repeat-scan priority, synchronized popup/advert/bank preview state and bank-popup position, cashier focus and inert membership controls, drag/keyboard positioning, minimize/close/reopen, lock/unlock recovery with public adverts retained, register/terminal isolation and desktop/mobile bounds. Updated screenshots are linked in the guide; provider frames and ERP APIs use fixtures. Physical multi-monitor placement and live provider/codec behavior remain hardware checks. See [operation and screenshots](customer-display.md#quick-switch-bar-and-movable-pos-preview).
+2026-11-28 (layered customer screen and POS mini preview): Replaced exclusive full-screen content modes with a persistent advert background. `CustomerDisplayView.vue` renders bounded live-sale, membership/receipt, counter-closed, social, bank and message popup layers; item/quantity updates raise the sale popup, and the next-sale action returns to adverts. Existing receiving-account restrictions and automatic payment-bank dialogs remain intact. `CustomerDisplayContent.vue` keeps its media element mounted while layers switch and sizes image/video/iframe content explicitly across the background, fixing the narrow-height embedded player. Added `CustomerDisplayQuickBar.vue` on Sell and automatically opened `CustomerDisplayPreview.vue`: a read-only same-renderer iframe with terminal-scoped advert/pause/popup/account feedback, drag/keyboard movement, remembered/clamped position, minimize/close/reopen and mounting within active native dialogs so checkout does not cover it. Preview documents never bootstrap the till, start a second playlist timer, take contact input or open a native bank dialog. Legacy stored modes become overlays; new configurations default to adverts. No new endpoint, DocType, dependency or migration. Verification: npm run build, node display-content-check.mjs, node display-check.mjs --display-only (bundled Playwright), node register-bank-check.mjs, JavaScript syntax and diff whitespace checks passed. Real-component Chrome checks cover advert DOM continuity, full-height embedded video, bounded popup geometry, quick switches and repeat-scan priority, synchronized popup/advert/bank preview state and bank-popup position, cashier focus and inert membership controls, drag/keyboard positioning, minimize/close/reopen, lock/unlock recovery with public adverts retained, register/terminal isolation and desktop/mobile bounds. Updated screenshots are linked in the guide; provider frames and ERP APIs use fixtures. Physical multi-monitor placement and live provider/codec behavior remain hardware checks. See [operation and screenshots](customer-display.md#customer-display-icon-menu-and-movable-pos-preview).
 
 2026-11-28 (ordering sounds and purchase farewell): Added `posSounds.js` for short Web Audio click/chime envelopes, throttled rapid taps, disconnected audio nodes, guarded browser API failures, and an owned English speech-synthesis greeting with explicit replay/cancel. `PosSoundSettings.vue` exposes independent click/voice switches and volume in Sell's header; localStorage preferences survive reload and unavailable storage retains the tab choice. `SellView.vue` adds click feedback for ordering controls and successful scanner additions. Only receipts originating from a just-completed PaymentOverlay opt into the `ReceiptModal.vue` handover step; historical and cart-only receipts retain their existing close behavior. The cashier selects **Change handed over** when cash remains or **Thank customer** after an exact/points-funded settlement, then `SaleThankYou.vue` shows the farewell with the server/queue receipt's actual cash-change and saved-points values. Receipt printing/drawer handling retains its existing receipt lifecycle; dismissing the thank-you popup stops its voice. Confirming the handover marks the existing terminal-scoped display receipt with a plain `greeting` flag, rendered by `CustomerDisplayView.vue` without duplicate speech. Refunds/reprints never speak a purchase greeting. No backend endpoint, dependency, business-data schema or migration change. Verification: production build, node sounds-check.mjs, node checkout-check.mjs, node loyalty-check.mjs and whitespace checks passed. The focused Chrome suite exercises real Sell/payment/receipt/display components with synthetic APIs and speech instrumentation: cash handover, full/partial point saving and fractional cash, actual foreign-change drawer currency, exact tender, failed/queued sales, independent mute/volume persistence, unavailable/denied audio, stale suspended taps, replay/cancel, reprints/refunds, desktop/mobile layout and zero browser errors. Checkout/loyalty regressions ran with external font requests blocked after an initial page-load timeout. Physical speakers and installed voice quality require checking at the till. [Cashier procedure](user-guide.md#3-payments); screenshots: [desktop popup](screenshots/sounds/greeting-desktop.png), [mobile popup](screenshots/sounds/greeting-mobile.png), [handover](screenshots/sounds/handover-mobile.png), [points](screenshots/sounds/points-mobile.png), [sound controls](screenshots/sounds/settings-mobile.png), [customer monitor](screenshots/sounds/display-desktop.png).
 
@@ -573,6 +608,628 @@ Validation note for the 2026-11-22 account-checkout/app-update repair: Python 3.
 | 2026-11-14 | Renamed the application to ESAFE POS and moved its Python package, six named DocType controllers, Desk definitions and built frontend to `esafepos`. | Updated API and asset paths, roles, POS-owned field names and browser storage. Added an [in-place site upgrade](esafepos-upgrade.md) for existing settings, permissions, audit logs and POS records. Verified the production build, Python 3.7 syntax, DocType metadata and controller discovery, 50 Python tests, endpoint resolution, scheduling, frontend parity, and browser checks for discounts, receipts and customer display. The site upgrade still needs verification on a restored ERPNext site. |
 | 2026-11-09 | Established a standing project-documentation rule: every project change and upgrade updates this logbook in the same change. | Added the rule to the repository guidelines so it persists across future work. |
 
+### Historical release index
+
+This index includes every version row in the [user guide changelog](user-guide.md#19-changelog), plus package/source versions recovered from Git. Short labels identify the update; the linked guide, dated entries and problem register retain its full behavior and verification. Dates below are repository commit dates, not independently confirmed release or deployment dates. The guide uses current branding retrospectively; original LumenPOS commit subjects are preserved in the audit trail.
+
+#### Standalone application releases
+
+This lineage starts with the standalone fork on 2026-06-30. Versions from the earlier POS lineage below remain separate even when their numbers match. Numbered in-app tracking starts only at v0.70.0; these historical rows do not invent F/I/X IDs or feature counts.
+
+| Version | Feature / update | First matching commit / recorded date |
+|---|---|---|
+| 0.70.0 | Register summaries/switching/reviewed close, bank display and numbered Updates & versions. | `fe797ba` · 2026-11-26 |
+| 0.69.5 | POS quotations and repaired store-credit clearing/refund account routing. | `57f710d` · 2026-11-07 |
+| 0.69.3 | Signed customer e-invoice pages, receipt sharing and full-receipt print preparation. | `bb61dcf` · 2026-11-07 |
+| 0.69.2 | Repair Credit Sale clearing-account setup for ERPNext 16 without moving historical GL. | `687eca8` · 2026-11-07 |
+| 0.69.0 | Stock count from the till. | `293e485` · 2026-10-26 |
+| 0.68.1 | Block count save/merge for open-shift held items; recover released shared/device counts. | `209c825` · 2026-10-26 |
+| 0.68.0 | Stock mobile/handheld workflows, shared counts, approvals and barcode linking. | `0b6b5ee` · 2026-10-26 |
+| 0.67.0 | Barcode/price labels from scans, items, stock documents and changed prices. | `004b0a7` · 2026-10-26 |
+| 0.66.0 | Tender/report amounts in transaction currencies; chronological recent-customer sorting. | `9b25aea` · 2026-10-25 |
+| 0.65.0 | Reports-only management access without a till profile. | `42db62b` · 2026-10-24 |
+| 0.64.0 | Group registers into outlets and expose register/outlet/company reporting. | `0705194` · 2026-10-24 |
+| 0.63.0 | Supervisor refund approval and tray visibility for all enabled request types. | `e535790` · 2026-10-21 |
+| 0.62.0 | Insights sales/cash summary, cashier, product, profit, customer and outlet reports. | `04cd0f8` · 2026-10-17 |
+| 0.61.3 | Frappe apps-screen entry plus v16 Desk tile/sidebar. | `f88cda3` · 2026-10-17 |
+| 0.61.2 | Accept other-currency tender on local-currency sales. | `c1d4835` · 2026-10-07 |
+| 0.61.1 | Separate posted customer debt from holds; site-time shift clock. | `366da00` · 2026-10-04 |
+| 0.61.0 | Separate Cash in/out rights, reasons and optional supervisor cash-out approval. | `7b78fb9` · 2026-10-04 |
+| 0.60.1 | New-site cashier-owned shifts while preserving existing-site scope. | `1a3cd34` · 2026-10-03 |
+| 0.60.0 | POS on-account sales, immediate debt, payment allocation and controlled reprints. | `c9a15f3` · 2026-10-03 |
+| 0.59.0 | Closing-variance reasons and follow-up notes. | `6a281e6` · 2026-10-03 |
+| 0.58.1 | Accounting-period warnings, readable close failures and retry guidance. | `88282e5` · 2026-10-01 |
+| 0.58.0 | Contextual help/tours in thirteen locales; preserve store-credit refund settings. | `b812eae` · 2026-10-01 |
+| 0.57.0 | Optional/required/off salesperson modes, salesperson reports, system checks and four more locales. | `4d13280` · 2026-10-01 |
+| 0.56.2 | Restore whitelisted Hold, tax-free gift-card issuance and original-tax return handling. | `b3d71a4` · 2026-10-01 |
+| 0.56.1 | Immediate resale of returned items/serials and correct same-shift consolidation. | `f507c7f` · 2026-09-30 |
+| 0.56.0 | Offline returns, background queue sync, storage warnings and duplicate-post protection. | `d311986` · 2026-09-30 |
+| 0.55.0 | Overnight v16 shifts, refused-offline-sale recovery, offline foreign sales and permitted typed prices. | `d8451d2` · 2026-09-30 |
+| 0.54.1 | Parent item-group catalog/offer matching and amended-opening closing recovery. | `762f919` · 2026-09-29 |
+| 0.54.0 | Optional one-shift-per-person policy, manager recovery and cashier-only native permissions. | `a8199f9` · 2026-09-28 |
+| 0.53.0 | Add seven interface languages and server replies in the selected till language. | `0b8813b` · 2026-09-27 |
+| 0.52.1 | Real v16 testing; repair aggregate queries, closing metadata, loyalty-paid status and change prerequisites. | `1dbc81b` · 2026-09-27 |
+| 0.52.0 | Automatic exchange rates, fixed/margined rates and per-currency change accounts. | `5e72618` · 2026-09-26 |
+| 0.51.2 | Refresh screen context on outlet switch and finish cache-backed loading; subsequently folded into 0.52.0. | `7c4ed14` · 2026-09-26 |
+| 0.51.1 | An item missing from a customer's own price list is converted. | `4acd2f4` · 2026-09-26 |
+| 0.51.0 | Foreign-currency sales, custom customer forms, multi-company balance/settlement work and network recovery. | `8215556` · 2026-09-26 |
+| 0.50.2 | Restore Sales Invoice custom-field setup; guard customer billing-currency mismatch. | `4968595` · 2026-09-25 |
+| 0.50.1 | A hold now quotes the price with tax on it. | `845db6b` · 2026-09-23 |
+| 0.50.0 | Holds/deposits, reserved stock, installments, completion, cancellation and liability accounting. | `a41aecd` · 2026-09-23 |
+| 0.49.0 | Reopen the cached app shell offline. | `3c1327a` · 2026-09-23 |
+| 0.48.0 | Role/person capability rules enforced by UI and server. | `e39f6a4` · 2026-09-23 |
+| 0.47.0 | One-step return/replacement exchange with net settlement. | `4b0979a` · 2026-09-23 |
+| 0.46.4 | Live sellable stock and faster network-loss/reconnect handling. | `3a260fc` · 2026-09-23 |
+| 0.46.3 | Plain interface wording and completed Arabic coverage. | `f46fee2` · 2026-09-23 |
+| 0.46.2 | The Arabic in the till is written the way people write it. | `6b0132e` · 2026-09-20 |
+| 0.46.1 | Fixes two cards that the new General grouping put in the wrong place: the gift card settings on the Loyalty and gift cards tab, and the Audit log tab, both of which could come up empty. | `b1f8df7` · 2026-09-20 |
+| 0.46.0 | Item/group/brand/tag return restrictions and grouped General settings. | `254ef5b` · 2026-09-20 |
+| 0.45.3 | A promotion with no dates and no times works again, wherever it was created. | `ea24d2c` · 2026-09-20 |
+| 0.45.2 | The performance indexes are now kept by Frappe instead of being rebuilt on every update. | `d75d73b` · 2026-09-20 |
+| 0.45.1 | The performance indexes are now rebuilt reliably when EsafePOS is updated. | `7257233` · 2026-09-19 |
+| 0.45.0 | Cashback earning, redemption, expiry and accounting; completed after the original WIP. | `b760596` · 2026-09-17 |
+| 0.44.3 | The Insights dashboard now uses the full width of the screen. | `4024404` · 2026-09-17 |
+| 0.44.2 | Insights never sits on "Loading…" when something is wrong. | `8955087` · 2026-09-16 |
+| 0.44.1 | Insights now works on Frappe v14. | `5539a64` · 2026-09-16 |
+| 0.44.0 | A new Insights page: full sales statistics inside the till. | `33cbe77` · 2026-09-15 |
+| 0.43.1 | Public contact unified to hello@esafe.lk. | `21cdb54` · 2026-09-13 |
+| 0.43.0 | Relicensed to the GNU Affero General Public License v3.0, and a trademark policy added. | `ea15e07` · 2026-09-13 |
+| 0.42.1 | Demo builder: customers are now enrolled on the loyalty programme, so the demo actually shows points being earned. | `07d55e9` · 2026-08-31 |
+| 0.42.0 | A one-call demo builder, for showing the app to somebody. | `fdb6117` · 2026-08-31 |
+| 0.41.0 | Real v13/v14/v15 shift tests; fix older closing, unset promotion times and store credit; explain loyalty prerequisites. | `fa5c94b` · 2026-08-30 |
+| 0.40.0 | Installs on v13 as well, so all four versions are covered. | `bacc391` · 2026-08-30 |
+| 0.39.1 | Cleared the marketplace security audit. | `1f9a2b6` · 2026-08-24 |
+| 0.39.0 | Licence changed to GPL-3.0-or-later. | `105eda2` · 2026-08-24 |
+| 0.38.0 | Also installs on v14, and serial handling adapts to the version. | `e950b07` · 2026-08-18 |
+| 0.37.0 | Runs on Frappe/ERPNext v16 as well as v15. | `4d3da12` · 2026-08-18 |
+| 0.36.0 | Split a refund across payment methods. | `16221a1` · 2026-08-16 |
+| 0.35.0 | Shift schedules and a forgotten-shift alert. | `13ed285` · 2026-08-16 |
+| 0.34.0 | Every cashier gets their own till PIN. | `13f4008` · 2026-08-16 |
+| 0.33.0 | Jump from a customer's purchase straight to History. | `f600967` · 2026-08-16 |
+| 0.32.0 | Approvals you can actually judge, and no dangling shift paperwork. | `b38866b` · 2026-08-16 |
+| 0.31.0 | Basket payment restrictions and required payment references. | `b43bc5e` · 2026-08-16 |
+| 0.30.0 | Other-warehouse stock, manager outlet access, stale-response guards and RTL amounts. | `0679062` · 2026-08-16 |
+| 0.29.0 | Serialized returns work again, and refunding to credit is a choice. | `d9e0b56` · 2026-08-16 |
+| 0.28.0 | Outlet/cashier shift ownership and closing-variance email alerts. | `0363426` · 2026-08-16 |
+| 0.27.0 | A return belongs to the outlet handling it. | `a2caf2a` · 2026-08-13 |
+| 0.26.0 | Locale-safe money parsing, stale-closing protection and queued-sale closing guard. | `e82da88` · 2026-08-13 |
+| 0.25.0 | A shift can never be resumed, opening is always a fresh shift. | `603506e` · 2026-08-13 |
+| 0.24.0 | Indexed search probes, index diagnostics and slow-sale tracing. | `98e386b` · 2026-08-13 |
+| 0.23.0 | Host-site field adaptation and customer identity by mobile. | `bbb510d` · 2026-08-13 |
+| 0.22.0 | Pilot fixes for effective prices, drawer expectations, X-reports and indexes. | `6c538c1` · 2026-08-13 |
+| 0.21.0 | Dynamic receipt fields, pull any field from the POS Profile or the sale onto the receipt (incl. | `d69d2f4` · 2026-07-17 |
+| 0.20.0 | A slow or failed close never blocks the next shift. | `8f80d2c` · 2026-07-06 |
+| 0.19.2 | "You still have another register open" warning. | `d2c67fd` · 2026-07-05 |
+| 0.19.1 | Outlet choice moved into the Open Register dialog. | `0941761` · 2026-07-05 |
+| 0.19.0 | Outlet switcher. | `5bdfd37` · 2026-07-05 |
+| 0.18.1 | Multi-outlet shifts, a shift on one outlet no longer blocks opening another. | `f07c76d` · 2026-07-05 |
+| 0.18.0 | Per-outlet receipts (first per-profile setting). | `84859c7` · 2026-07-05 |
+| 0.17.6 | Publisher metadata update; original branding remains in the commit history. | `48c5b37` · 2026-07-02 |
+| 0.17.5 | Cleared the Frappe Marketplace submission-gate audit (security + code quality). | `4ce18f8` · 2026-07-02 |
+| 0.17.4 | Pricing Rules stay ignored at the till (the fix that actually sticks). | `76752f5` · 2026-07-02 |
+| 0.17.3 | Redeeming a gift card (or store credit) no longer errors on the Receivable account. | `f898f01` · 2026-07-01 |
+| 0.17.2 | Gift cards (and coupons/approvals) now work in Sales-Invoice mode. | `ee0d73d` · 2026-07-01 |
+| 0.17.1 | Bring your own receipt format (Print Format), clarified + fixed for Sales-Invoice mode. | `9547b0e` · 2026-07-01 |
+| 0.17.0 | Offline sales log. | `8a1ae5f` · 2026-07-01 |
+| 0.16.3 | Gift-card warehouse error, final fix (stop re-saving the Item). | `49de00e` · 2026-07-01 |
+| 0.16.2 | Gift-card warehouse error, actual root cause fixed. | `fe747c5` · 2026-07-01 |
+| 0.16.1 | Gift-card warehouse fix (multi-company), for real this time. | `95478ba` · 2026-07-01 |
+| 0.16.0 | Live clock + "Shift Open" timer in the top bar. | `1d2aac0` · 2026-07-01 |
+| 0.15.3 | Gift-card placeholder item hidden from the product grid. | `f2ba0e3` · 2026-07-01 |
+| 0.15.2 | Real fix: gift-card sale "Warehouse … doesn't belong to Company". | `d1c2303` · 2026-07-01 |
+| 0.15.1 | X-report moved to the top bar. | `5a3d2d4` · 2026-07-01 |
+| 0.15.0 | Offline customer creation, mobile match-or-create and idempotent invoice sync. | `8cd5129` · 2026-07-01 |
+| 0.14.0 | Search/select a cached recent/frequent customer subset offline. | `de8aa71` · 2026-07-01 |
+| 0.13.0 | Persistent-storage request and strict offline queue durability. | `6e4b030` · 2026-07-01 |
+| 0.12.1 | Fix: "Require scanning for serial numbers" was bypassable from the search box. | `0545daf` · 2026-07-01 |
+| 0.12.0 | POS sales always ignore ERPNext Pricing Rules (the Ignore ERPNext Pricing Rules POS-Profile toggle is retired). | `01a2033` · 2026-07-01 |
+| 0.11.3 | Fix: ERPNext Pricing Rule overriding the price book → "Partly Paid". | `dbbf47f` · 2026-07-01 |
+| 0.11.2 | Non-stock items (services, fees) never carry a warehouse. | `033d11f` · 2026-06-30 |
+| 0.11.1 | Fix: selling a gift card failed on a multi-company site with "Warehouse … doesn't belong to Company …". | `845bb70` · 2026-06-30 |
+| 0.11.0 | Multi-company accounts (Settings → General → Company Accounts). | `7a005c3` · 2026-06-30 |
+| 0.10.0 | Receipt templates, field toggles and live design preview. | `6e01fb9` · 2026-06-30 |
+| 0.9.1 | Brand-colour cleanup. | `2711c56` · 2026-06-30 |
+| 0.9.0 | Optional native POS Opening/Closing Entries for direct Sales Invoice shifts. | `f22e9bf` · 2026-06-30 |
+| 0.8.1 | Fix: sales failing with 'POSProfile' object has no attribute 'update_stock'. | `87f6dcb` · 2026-06-30 |
+| 0.8.0 | PIN lock screen and automatic locking. | `d9bc543` · 2026-06-30 |
+| 0.7.0 | Terminal-synchronized customer-facing display. | `35d5e85` · 2026-06-30 |
+| 0.6.0 | Quick keys/favourites, emailed receipts and audited POS actions. | `b8b2ef5` · 2026-06-30 |
+| 0.5.0 | Toggle whole-order discounts, service charge/tip, price/stock check, X-report and receipt branding. | `294d62c` · 2026-06-30 |
+| 0.4.0 | Choose POS Invoice consolidation or direct Sales Invoice per profile. | `2dae364` · 2026-06-30 |
+| 0.3.0 | Separate price-edit, return and return-window permissions. | `d40546c` · 2026-06-30 |
+| 0.2.0 | Remove earlier warranty Exchange; add pricing-rule switch and automatic add on scan. | `b161e10` · 2026-06-30 |
+| 0.1.0 | Standalone fork and Lumen brand identity; inherited POS foundation retained. | `1d231ac` · 2026-06-30 |
+
+Package diffs on 2026-11-07 show **0.69.0 → 0.69.2 → 0.69.3 → 0.69.5**; no separate 0.69.1 or 0.69.4 release is asserted. Version 0.50.2 has multiple follow-ups; 0.51.2 was intermediate work folded into 0.52.0. The original WIP cashback commit preceded the completed 0.45.0 accounting implementation.
+
+#### Earlier POS lineage
+
+These documented releases precede the standalone fork. Individual dates and source commits are unavailable in this checkout, so none are invented. Their warranty Exchange, price-book and printing designs include intermediate behavior later changed or replaced; use the current inventory for supported behavior.
+
+| Inherited version | Recorded feature / update |
+|---|---|
+| 0.1 | Sell screen, payments, matching Python/JavaScript promotions, register sessions and parked sales. |
+| 0.2 | Offline mode, returns/refunds, loyalty redemption, store credit and ESC/POS printing. |
+| 0.3 | Bundle promotions, offer suggestions, salespeople, coupons, stock guards and strict serial handling. |
+| 0.4 | Native POS Invoice/opening/closing migration, price books, delivery channels, history and workspace. |
+| 0.5 | Validated item pickers, barcode lookup, approver PINs, expanded offline cache and promotion dry runs. |
+| 0.6 | Standalone bundles, optional schedules, include/exclude matching and price-book editing. |
+| 0.7 | Line-level offer suggestions, gift-card liability accounting, loyalty setup and profile Print Formats. |
+| 0.8 | Allocated bundle prices, price-book fallback, session history, closing results and rounding-gap handling. |
+| 0.8.1 | Cart tax-template calculations, linked register status and visible closing errors/retry. |
+| 0.8.2 | Status shows active VAT/tax configuration and inclusive versus exclusive pricing. |
+| 0.8.3 | Apply discounts after defaults and reconcile tax-inclusive promotion payments. |
+| 0.8.4 | Use supported percentage discounts and keep closing available when expected totals fail. |
+| 0.8.5 | Reuse existing host-site delivery/exchange fields rather than create duplicates. |
+| 0.8.6 | Background native closing consolidation avoids request timeouts. |
+| 0.9.0 | Per-device dark mode with operating-system default and black-on-white receipts. |
+| 0.9.1 | Limit the open-register prompt to Sell so other workspaces remain accessible. |
+| 0.10.0 | Guided warranty return/replacement exchange with net clearing-account settlement. |
+| 0.10.1 | Item-specific warranty days and an exchange feature switch. |
+| 0.10.2 | Default to the ERPNext Desk theme while retaining the device override. |
+| 0.10.3 | Barcode-aware item pickers, price-book CSV/Excel exchange and delivery-app price lists. |
+| 0.11.0 | Native role permissions, shipped cashier/manager roles, strict closing state and refund rules. |
+| 0.11.1 | Replace legacy color tokens with the then-current brand palette. |
+| 0.11.2 | Use one reusable line-icon component across the interface. |
+| 0.11.3 | Recognize payment scheme logos on tender tiles. |
+| 0.11.4 | Repair import/export icons and start price-book editing with an empty selection. |
+| 0.11.5 | Add online-order history filters and badges. |
+| 0.11.6 | Intermediate design: dedicated price lists for new books protect master prices. |
+| 0.11.7 | Honor mandatory site fields in auto-created tenders/items and accelerate exchange lookup. |
+| 0.11.8 | Configurable gift-card accounts and authorized even-swap replacement prices. |
+| 0.11.9 | Protect base selling lists and show the book’s own saved items. |
+| 0.12.0 | Choose standard-price or price-book basis for promotions. |
+| 0.13.0 | Replace dedicated price lists with plain item price-book overrides. |
+| 0.14.0 | Return reasons and a fresh shift after failed closing. |
+| 0.15.0 | Arabic/RTL interface while preserving master-data names. |
+| 0.15.1 | Initial refund/exchange rounding attempt; later entries record why it was insufficient. |
+| 0.15.2 | Refund consolidated sales through the current outlet/shift. |
+| 0.15.3 | Use actual rounded-or-grand payable instead of an unavailable POS Invoice switch. |
+| 0.15.4 | Server-quoted payable prevents phantom card change. |
+| 0.15.5 | Expose exact version, paid, total, write-off and payment facts for refund diagnosis. |
+| 0.15.6 | Rebuild copied return paid amount from actual refund payment rows. |
+| 0.15.7 | Batch exchange invoice/item/return/serial queries. |
+| 0.16.0 | Cashier/timestamp/exchange history labels and a same-item replacement default. |
+| 0.17.0 | Tag-based promotions and bulk brand/group/tag price-book additions. |
+| 0.18.0 | Generate/import/export coupon pools with expiry and use policy. |
+| 0.19.0 | Coupon use limits and rounded bulk price-book discounts. |
+| 0.20.0 | History payment filters and corrected coupon usage wording. |
+| 0.21.0 | Focused settings list/editor flows with type-aware offer controls. |
+| 0.21.1 | Persist/display only used tenders and improve history tag contrast. |
+| 0.22.0 | Hide out-of-stock items, rescan returned serials and start exchanges from invoices. |
+| 0.23.0 | Role-based requests supplement discount passcodes. |
+| 0.24.0 | Return windows and generalized typed approval requests. |
+| 0.25.0 | Searchable customer profiles, balances, statistics and paginated transactions. |
+| 0.26.0 | Exchange source links and cash-movement details on closing reports. |
+| 0.26.1 | Reuse the existing exchange-against-invoice field. |
+| 0.26.2 | Cross-profile request visibility for eligible approvers and manager self-approval. |
+| 0.27.0 | Bundle expiry, expired badges, warranty from the original sale and sale notes. |
+| 0.28.0 | Whole-set bundle/Buy X Get Y returns and optional serial scan-only enforcement. |
+| 0.28.1 | Readable offer suggestion chips in both themes. |
+| 0.28.2 | Sales/returns scan-only scope; typed exchange serials must match the original sale. |
+
+### Problems encountered and fixes
+
+This register brings the recorded failures together by area. **Recorded fix** means the source/history documents a correction; it does not imply installation on a live site. Commit references can be inspected with `git show <commit>`. For recent work, the dated entries above and linked feature guides retain the test commands, screenshots and deployment limitations. Earlier fixes use the [release changelog](user-guide.md#19-changelog) as their recorded evidence, including its separate inherited lineage.
+
+#### Earlier accounting, pricing and offline problems
+
+| When / source | Problem encountered | Cause and recorded fix | Evidence / qualification |
+|---|---|---|---|
+| Inherited 0.8–0.8.4 | Promotion sales failed with partial-payment errors or disagreed with the till total. | ERPNext default filling reset discounts, percentage and amount fields behaved differently, and rounding/tax changed the payable. Apply discounts after defaults, post supported discount percentages, calculate template taxes in the cart and reconcile against the invoice total. | Inherited changelog; these are earlier steps in the pricing history, followed by server-confirmed quotes. |
+| Inherited 0.8.6 | Register closing timed out with HTTP 504. | Synchronous consolidation held the request open. Save the session close first, consolidate in a background job, poll its result and expose retry for missing closing entries. | Inherited changelog; later closing recovery builds on this design. |
+| Inherited 0.11.6–0.13.0 | Price-book edits could overwrite master selling prices. | Books initially shared selling lists. First isolate their lists and protect base lists; later use plain item overrides without creating ERPNext Price Lists for books. | Inherited changelog; records the intermediate and replacement designs separately. |
+| Inherited 0.15.1–0.15.6 | Partial refunds failed with paid amount greater than total. | A copied return retained the original sale's paid amount; an early rounded-total switch did not exist on POS Invoice. Refund the actual payable and explicitly rebuild the return paid amount from its refund rows. | Inherited changelog records the diagnostics, failed attempts and final root cause. |
+| Inherited 0.15.4 | Card checkout showed phantom change on tax-inclusive promotions. | Browser and ERPNext rounding differed. Quote through the server's sale-pricing path before collecting payment. | Inherited changelog; current checkout still treats the server quote as authoritative. |
+| Inherited 0.15.7 / 0.26.2 | Exchange search was slow and approval requests did not reach the correct approvers. | Batch invoice/item/return/serial queries instead of loading each candidate; list eligible open-shift requests across profiles rather than only the approver's profile. | Inherited changelog; manager self-approval and request visibility were recorded there. |
+| 2026-06-30, `87f6dcb` | Sales crashed because POS Profile lacked `update_stock`. | Stop assuming the field exists and retain stock-updating sale behavior. | Standalone 0.8.1 changelog and source commit. |
+| 2026-06-30–07-01, `845bb70`–`49de00e` | Gift-card sales repeatedly failed with warehouse/company mismatch. | Initial invoice-line fixes were insufficient: ERPNext reapplied global defaults, then Item validation found a bad Item Default before invoice creation. Set company-valid invoice context, keep the helper non-stock, remove invalid item-default warehouses and stop re-saving the faulty helper Item. | Standalone 0.11.1/0.11.2, 0.15.2 and 0.16.1–0.16.3 changelog; documents the repeated attempts and final cause. |
+| 2026-07-01–02, `dbbf47f`, `76752f5` | ERPNext Pricing Rules overrode the till price book and left sales Partly Paid. | Clear stamped pricing rules, bypass reapplication and persist Ignore Pricing Rule on the profile. | Standalone 0.11.3, 0.12.0 and 0.17.4; the later opt-in Sales Rep Mode deliberately restores native pricing through shared server quotes. |
+| 2026-07-01, `0545daf` | Typing a serial in Sell bypassed scan-only restrictions. | Apply the same scan-versus-typed guard to search-box resolution as to the serial dialog. | Standalone 0.12.1 changelog and source commit. |
+| 2026-07-01, `6e4b030`, `8cd5129` | Offline sales risked storage eviction, lost acknowledgements and duplicate uploads. | Request persistent storage, use strict IndexedDB writes where supported, keep stable sale keys and match/create offline customers before idempotent invoice sync. | Standalone 0.13.0–0.15.0; persistent storage remains browser-dependent. |
+| 2026-07-01, `9547b0e`, `ee0d73d`, `f898f01` | Sales Invoice mode rejected wallet/coupon/approval references or used the wrong print format; redemption could post to Receivable without a party. | Remove POS-Invoice-only reference assumptions, select the compatible document format and pin redemption to the intended payment account. | Standalone 0.17.1–0.17.3; later clearing-account repairs below refine ERPNext 16 compatibility. |
+| 2026-07-05–06, `f07c76d`, `8f80d2c` | Another outlet's shift or unfinished consolidation prevented new work. | Scope shift checks by outlet and separate unfinished closing recovery from permission to open the next shift where the ERPNext mode permits it. | Standalone 0.18.1 and 0.20.0; ERPNext 16 still requires its prior opening to finish. |
+| 2026-08-24, `1f9a2b6` | Marketplace security scanning flagged install-time SQL construction. | Bind values rather than interpolating them into SQL. | Standalone 0.39.1 changelog records the security-audit repair. |
+| 2026-08-30, `fa5c94b` | Older-version closing, undated promotions, store-credit operations and loyalty checkout diverged from declared compatibility. | Initialize older Frappe child tables correctly, normalize unset time windows, repair wallet paths and explain the native Allow Partial Payment prerequisite. | 0.41.0 records full-shift runs on real v13/v14/v15 benches; preserve that historical result without implying a new bench run. |
+| 2026-09-16–17, `5539a64`, `8955087`, `4024404` | Insights blocked supported v14 sites, stayed on Loading after failures and wasted available width. | Trust the installed Reports app's support, show its error and retry state, and use the available workspace width. | 0.44.1–0.44.3 changelog and commits. |
+| 2026-09-19–20, `7257233`, `d75d73b`, `ea24d2c` | Migrations removed performance indexes; promotions with no explicit schedule could fail to apply. | Rebuild indexes on update and use migration-stable names; treat truly unset date/time restrictions as unrestricted. | 0.45.1–0.45.3 changelog; demo generation also became Administrator-only. |
+
+#### Compatibility, shifts, stock and permissions
+
+| When / source | Problem encountered | Cause and recorded fix | Evidence / qualification |
+|---|---|---|---|
+| 2026-09-20, `b1f8df7` | Gift-card and Audit log settings could open empty. | Restore cards to their correct General/Loyalty/Audit groups after the settings reorganization. | 0.46.1 changelog. |
+| 2026-09-23, `3a260fc` | Product tiles overstated available stock and did not recover promptly after a network interruption. | Include unposted shift reservations, refresh after sales/returns and respond to connectivity recovery. | 0.46.4 changelog; later live catalog synchronization extends this behavior. |
+| 2026-09-23–26, `845db6b`, `4968595`, `d3de033`, `f701316`, `438649c` | Holds omitted tax, Sales Invoice customization failed, and basic cashier users could not create customers. | Quote tax-inclusive payable correctly, repair custom-field setup, choose leaf Customer Groups and grant the required native Customer/Contact/Address/group/territory permissions. | 0.50.1/0.50.2 and 0.51.0-era commits; account and Item selection required further v15/v16 grants below. |
+| 2026-09-26, `4acd2f4`, `5b49607`, `e992e21`, `0f52746` | Missing customer-list prices were charged as outlet numbers in the wrong currency; currency setup could choose a wrong-currency drawer or fail silently. | Convert fallback prices, use leaf walk-in groups, roll back failed setup, validate drawer currencies and rerun setup for added companies/outlets. | 0.51.1 changelog and follow-up commits. |
+| 2026-09-26, `7c4ed14`, `f53eceb` | Switching outlets retained old screen state; cached cold starts could stay on Loading. | Key route content by POS Profile and finish loading when the latest request resolves from the device. | 0.51.2 work, folded into 0.52.0. |
+| 2026-09-26, `348c773`, `4061b9a`, `b35ebbf` | Currency settings failed to render, disabled foreign selling still requested foreign floats, and unsupported change accounts slipped through validation. | Share the currency-row loop, gate opening floats on the feature switch and compute change before validating its account currency. | 0.52.0 follow-up commits. |
+| 2026-09-27, `1dbc81b`, `6109f22` | Frappe 16 rejected string SQL aggregates, closing metadata differed and loyalty-paid invoices showed Partly Paid. | Replace unsupported aggregate expressions/sorts, adapt the closing invoice-table field and correct paid-status handling; explain v16 opening/date/POS-mode/change prerequisites. | 0.52.1 records testing on a real Frappe 16.35 / ERPNext 16.36 bench. |
+| 2026-09-28, `fc6644a`, `566c066`, `4a875f6` | Stuck shifts locked people out; managers could not reach another cashier's close; cashier-only users lacked selection/read rights. | Exclude closing/inaccessible shifts from one-open-shift enforcement, expose manager recovery, retain counts when summary calculation fails and add native Account select plus Item/POS Profile read rights. | 0.54.0 records strict cashier-only open/sell/close/consolidate tests. |
+| 2026-09-29, `762f919`, `6a15e7d`, `3163209` | All Item Groups outlets appeared empty; group promotions missed descendants; cancelled openings broke closing. | Expand parent groups, apply descendant matching to offers/cashback and resolve the amended opening entry. | 0.54.1 changelog and commits. |
+| 2026-09-30, `d8451d2` | ERPNext 16 rejected sales after midnight and refused queued sales prevented closing. | Handle posting-day transitions and separate refused offline records from work still awaiting upload; retain actionable recovery. | 0.55.0 changelog; never treats a refused sale as successfully posted. |
+| 2026-09-30, `10faa09`, `f507c7f`, `fdc0e96` | Offline refund rounding varied by version; returned stock and serials could not immediately sell again. | Match native payable facts and account for same-shift return stock/serial availability without applying stock twice. | 0.56.0–0.56.1; rounding discovery is attributed to the recorded v13–v15 suite. |
+| 2026-10-01, `b3d71a4`, `4296f84` | Hold was no longer whitelisted; gift-card sales gained VAT; returns could refund tax the original never charged. | Restore the endpoint decorator, keep gift-card issuance tax-free and derive return tax from the original sale. | 0.56.2 changelog notes that direct-function tests missed the HTTP whitelist regression. |
+| 2026-10-01, `850361c`, `88282e5` | Saving General disabled store-credit refunds; locked accounting periods appeared only as failed closing errors with raw HTML. | Preserve unrelated settings, warn before opening/posting, retain readable period-specific recovery instructions and keep Retry closing available. | 0.58.0–0.58.1 changelog. |
+| 2026-10-04, `366da00` | Customer Owes included uninvoiced holds; shift elapsed time depended on the device timezone. | Read posted ledger debt separately from hold/order exposure and use site-time clock facts. | 0.61.1 changelog; ERPNext's credit-limit exposure still includes holds. |
+| 2026-10-17–25, `f88cda3`, `57b8d6e`, `7bfb581` | The Frappe 16 launcher was missing, some approval types had no tray and recent customers sorted by textual time. | Ship supported app/Desk entries, derive tray visibility from all enabled request types and sort recent activity using actual timestamps. | 0.61.3, 0.63.0 and 0.66.0 changelog. |
+| 2026-10-26, `be46920`, `312462a`, `209c825`, `0efada0` | Disabled label items failed whole batches; v16 lost a stock-default field; open-shift stock made count differences disappear. | Skip disabled label items, resolve version-correct warehouse defaults, block saving/merging held count items until closing, and recover shared/device lines when merged drafts are released. | 0.67.0–0.68.1 changelog records the stock app's reproduction. |
+| 2026-11-24–25, dated recovery entries | Closing screens hid the useful cause, retried noisily or lost count/recovery state. | Add Check and prepare, explicit signed/non-cash counts, queued retry state, shared polling, capped-session scheduling and item-first valuation diagnostics in `closing_diagnostics.py`. | Recorded cash-count, recovery, schedule and browser checks. Missing live item costs and actual register counts still need operator correction. |
+| 2026-11-25, dated Frappe 16 diagnostic entry | Shared-drawer, loyalty and cash-mode queries raised multiple values for argument fields. | Five positional-filter calls collided with the fields-first v16 contract. Pass `filters=` explicitly and retain native permission checks. | Recorded 39 focused tests, six recovery tests and a 218-call argument-binding audit; deployment remains unverified. |
+
+#### Checkout, customers and item management
+
+| When / source | Problem encountered | Cause and recorded fix | Evidence / qualification |
+|---|---|---|---|
+| 2026-11-07, `687eca8` / 0.69.2 | ERPNext 16 refused the untyped liability account used by Credit Sale. | `credit_sales.py` provisions an enabled Bank-type clearing ledger; repairs an unused legacy account or creates a replacement when ledger history exists. Remap only the app-owned legacy payment mapping. | Source diff and install repair; historical GL is not moved across the balance sheet. Live posting was not rerun for this log update. |
+| 2026-11-07, `57f710d` / 0.69.5 | Store-credit refunds/redemptions could resolve to an unsuitable payment account. | Use a valid clearing payment account, move liability through the matching Journal Entry and pin the refund payment row's account. | `store_credit.py`, sales and install diffs; the same commit adds POS quotations. |
+| 2026-11-15, dated catalog entry | Sell showed only the offline subset and Items stopped at its first page. | Fetch permission-scoped online pages, retain cache fallback during outages and expose more Items results. | Recorded build, endpoint checks, Python suite and Chrome pagination/offline fixtures. |
+| 2026-11-16, dated walk-in entry | Anonymous checkout failed when the outlet lacked a default customer. | `walk_in.py` resolves selected, outlet-default then shared billing customers; setup provisions the shared record when enabled. Keep anonymous customers out of credit and loyalty redemption. | Recorded mocked walk-in tests and build; native checkout still requires live verification. |
+| 2026-11-16, dated display-contact entries | A new phone number could not be used without a full membership match. | `displayContact.js` accepts a receipt-only contact for an unassigned cart; preserve it through parked/offline payloads and keep ERPNext billing identity separate. | Recorded browser tests and a live display-entry check; live invoice posting remained unverified. |
+| 2026-11-16, dated receipt-link and customer-edit entries | Posted walk-in purchases were hard to identify or attribute to the later customer. | Store receipt contact/name and an indexed POS Receipt Customer link; show/search them in History and customer transactions while keeping the original posted billing customer. | Recorded authorization/duplicate/browser tests; migration and live saves remain separate checks. |
+| 2026-11-16, dated header/cart entries | Long shop names overlapped actions and cart content pushed checkout controls out of view. | Bound the header brand/shop regions, stack phone navigation, constrain cart scrolling and retain accessible payment actions. | Recorded desktop/tablet/phone browser checks and builds; later visual iterations remain in the dated history above. |
+| 2026-11-20, dated Sales Rep entry | Customer profiles failed before the optional invoice-origin field was migrated. | Inspect metadata before using the custom field in `api/customers.py`; keep progress queries permission-scoped. | Recorded live-site reproduction and browser/build checks; native pricing and reconciliation still need site verification. |
+| 2026-11-20, dated excess-payment entry | Extra customer payments could not remain as future credit. | `api/credit.py` allocates only selected debt, posts an explicitly accepted remainder as unallocated receivable credit and prints the full collection and advance. | Recorded production build; live Payment Reconciliation not exercised. |
+| 2026-11-22, dated native-pricing entry | Products showed a false full-value discount and full/split account checkout failed. | Enable native pricing before defaults, resolve rates before freezing consistent rate/discount fields, preserve genuine free-item rules and request fresh account quotes. Never queue on-account sales after a network failure. | Recorded 60 standalone pricing/discount/bundle tests plus browser/build checks; no schema change. |
+| 2026-11-22, dated checkout-repair entry | Put on account disappeared because the quote failed with an undefined `erp_pricing_rules` flag. | Read resolved flags from the invoice, load eligibility independently through `checkout_credit`, show Retry and require a confirmed payable before adding debt. | Recorded quote/credit checks and responsive screenshots; the later consent updater supersedes this entry's first automatic-reload design. |
+| 2026-11-25–26, dated identifiers/live-sync entries | Numeric identifiers lost meaningful zeroes; remote price/stock changes left stale catalogs or overwrote drafts. | Keep identifiers as strings and check generated collisions; synchronize catalog generations, distinguish dirty prices from saved prices and offer reload on remote conflicts. | Recorded identifier, scheduler, inventory and Chrome checks; native Item/Item Price saves remain deployment checks. |
+| 2026-11-26, dated offline/update entry | Maintenance pages could be treated as sale refusals; incomplete or unsolicited shell updates threatened offline continuity. | Classify unstructured 5xx as outages, retain structured ERP refusals, pin each window's agreed build, cache its full asset manifest and require explicit update consent. | Recorded worker/IndexedDB/actual-App fixture checks and build; first installation requires a complete online visit. |
+| 2026-11-26, dated Buying/OCR entry | Frappe 16 supplier balances failed and Buying offered little recovery. | Use a version-aware dictionary aggregate helper; expose account retry and full-width layout. Keep scanned tax separate from valuation charges and require reviewed OCR drafts. | Recorded 52 focused tests, Buying/OCR fixtures and build; no live Gemini or ERPNext posting. |
+| 2026-11-26–27, dated inventory/emergency-item entries | Lost responses could duplicate inventory documents; a missing product interrupted purchase entry. | Retain stable request identity/fingerprints and resolve uncertain saves; add permission-scoped Item creation within the purchase draft, with optional separately authorized selling price. | Recorded inventory, identifier, buying and lost-response browser checks; stock and supplier debt post only on native submission. |
+| 2026-11-26–28, dated B2B entry | One standalone customer invoice page did not cover the connected sales and settlement process. | Add native quotation/order/delivery/invoice mapping, partial fulfilment, settlement and cheque custody; pending cheques leave debt outstanding until clearance posts. | [B2B module](b2b-module.md) and recorded rule/API/browser checks; migration and native stock/accounting/clearance remain required. |
+
+#### Receipts, labels, printing and the customer monitor
+
+| When / source | Problem encountered | Cause and recorded fix | Evidence / qualification |
+|---|---|---|---|
+| 2026-11-19–20, receipt-sharing entry | Copy link failed when the signed-link request outlasted clipboard activation or clipboard access was denied. | Add a legacy copy attempt and a selectable read-only URL for manual copying in `ReceiptModal.vue`. | Historical entry records pending build and no tests at that point; do not upgrade that statement to a verified live result. |
+| 2026-11-20–23, printing transition entries | Printing depended on QZ setup and needed a separate native manager path. | Record the sequence: QZ introduced on Nov 20, removed with signing fields/endpoints on Nov 22, Esafe Print Manager SDK integrated on Nov 23 and upgraded for drawers. Preserve browser/network/export alternatives and explicit uncertain-job recovery. | [Print Manager guide](esafe-print-manager.md), retired-connector regressions and recorded SDK fixtures; the earlier Windows-bridge plan is a plan, not evidence that every proposed component shipped. |
+| 2026-11-23, compact-label entry | A complete barcode did not fit the reported 38 × 25 mm label. | Centralize symbol sizing and use whole-dot fitting; retain checksum/quiet zones and offer explicit Code 93, Data Matrix and QR alternatives without truncating identifiers. | Recorded independent symbol/PDF decodes; physical scanner qualification remains pending. |
+| 2026-11-23–27, drawer entries | A missed native status event could stop automatic drawer opening; late queue events could regress print status. | Cache printer discovery, serialize observations, reconcile the active native job and confirm ERP receipt status before one authorized pulse. Keep receipt/pulse bytes from being automatically resent. | [Drawer controls](cash-drawer-controls.md), recorded SDK/API/orchestration tests; physical pulses were not rerun for this documentation change. |
+| 2026-11-26, browser/silent-layout entry | Silent HTML lost borders, local styling and SVG barcodes; amounts clipped and paper geometry differed. | Share receipt CSS and measured geometry, embed vector barcodes correctly and persist exact queue/workstation/outlet printable width. | [Silent receipt diagnosis](silent-receipt-diagnosis.md), synthetic exports and isolated native previews with zero jobs; physical feed/cut remains unverified. |
+| 2026-11-26, margin/right-edge entries | Metadata, amounts and counts ran beyond one paper boundary. | Add four independent margins, safe initial printable widths, measured overflow fitting and explicit refusal when content still cannot fit. Measure final content height after reflow. | [Right-edge fit](receipt-right-edge-fit.md), synthetic layouts, rejection checks and native previews; explicit saved printer geometry is retained. |
+| 2026-11-26, receipt-editor entry | Advanced styling and section visibility were inconsistent across preview, browser and silent output. | Share validated design/visibility rules and add printer padding once; preserve mandatory financial totals and payment redemption facts. | [Receipt editor](receipt-custom-editor.md), recorded Python/browser/native-preview checks; new settings fields require migration. |
+| 2026-11-26, messaging/e-invoice entry | The hosted e-invoice returned HTTP 500: builtin_function_or_method object is not iterable. | Jinja attribute access selected `dict.items`; use `receipt['items']` in `www/einvoice.html` and test the actual template, escaping and signed-link boundaries. | [Messaging guide](customer-messaging-and-einvoices.md), recorded public-template/provider tests; hosted recovery and real delivery still need deployment verification. |
+| 2026-11-26, messaging entry | Retrying an uncertain message submission could send it twice or imply delivery. | Persist unique request keys, distinguish explicit refusal from uncertain outcomes and report provider acceptance separately from delivery/read status. | Recorded mocked SMS/Meta tests; delivery/read webhooks and an inbound inbox are not implemented. |
+| 2026-11-27, retail-label entries | Prices used unnecessary .00 fractions or failed to fill the intended price area. | Format zero-only fractions away while retaining real cents/precision; measure the same font stack as rendered and fit full-box price text without changing transaction amounts. | [Label module](label-printing-module-plan.md#bold-retail-design--2026-11-27), independent barcode/PDF/browser checks; physical labels remain unverified. |
+| 2026-11-28, checkout-bank and v0.70.0 entries | Customer bank details showed zero remaining after tender allocation or failed to synchronize Vue proxy data. | Show the amount assigned to the selected bank method in receiving currency, publish scalar snapshots, retain routing and preserve selected receiving accounts. | [Customer display](customer-display.md#bank-transfer-instructions-during-payment), bank/register unit and real-component fixture suites. |
+| 2026-11-28, layered-display entry | Advert/player content collapsed to a narrow height or restarted on mode changes; checkout covered the mini preview. | Keep the background media mounted, size its full viewport, layer sale/notice content above it and mount the inert same-renderer preview within active dialogs. | Recorded display/bank/preview fixture checks and responsive screenshots; provider playback and physical monitor placement remain hardware checks. |
+| 2026-11-28, pack-unit receipt entry | Alternate-unit text such as 150 kg Pack repeatedly triggered receipt-width rejection. | Split numeric quantity from wrapping unit text, redistribute measured numeric columns and convert crowded rows to labelled details while retaining complete amounts and the existing minimum font size. | [Right-edge fit](receipt-right-edge-fit.md), recorded 31 actual-component/simulated-SDK width/export cases; impossible geometry still blocks dispatch. |
+| 2026-11-28, current working-tree display entry | The live sale/membership foreground occupied only a capped part of the customer monitor. | Expand live/membership/receipt foreground to the viewport, enlarge membership controls and share the top control bar; the advert player stays mounted beneath it. | Existing uncommitted entry and source/screenshots; retain that entry's own verification status rather than treating this log update as a UI test. |
+
+### Remaining verification and known limitations
+
+These are recorded follow-ups, rather than additional fixes claimed by this history update. Check the owning guide and dated entry before deployment.
+
+| Area | What remains / why | Owning records |
+|---|---|---|
+| Migration and native ERPNext behavior | Migrate required settings/custom fields and operational records, then validate native invoice, stock, GL, permissions, settlements and cheque clearance on the target site. Fixture checks do not substitute for those postings. | [B2B](b2b-module.md), [Buying](buying-and-supplier-payments.md), [registers](all-registers-and-payment-tallies.md), [receipt editor](receipt-custom-editor.md) and dated inventory/loyalty/deletion entries. |
+| Existing failed closes | Correct missing live item valuation before retrying REG-0011/REG-0019; REG-0013 needs an actual closing count. Diagnostic/recovery code does not supply costs or invent drawer counts. | 2026-11-25 live-system-check entry above; [register procedure](user-guide.md#12-register--cash-management). |
+| Physical printing and drawers | Qualify the exact Windows queue, paper width/margins, feed/cut, scanner readability and authorized drawer pulse. Synthetic PDFs and job-free native previews establish software layout only. | [Silent diagnosis](silent-receipt-diagnosis.md), [right-edge fit](receipt-right-edge-fit.md), [Print Manager](esafe-print-manager.md), [drawer setup](cash-drawer-controls.md). |
+| Public receipts and external providers | Confirm the hosted e-invoice after deployment, live SMS/Meta configuration and actual acceptance/delivery; verify Gemini extraction with an authorized key and reviewed inputs. | [Messaging](customer-messaging-and-einvoices.md), [purchase OCR](buying-and-supplier-payments.md#scan-an-invoice-with-gemini). |
+| Customer monitor and audio | Verify physical second-monitor placement, real media codecs/provider embeds, browser audio permission and speech availability. The current full-screen display edit keeps its own completion status above. | [Customer display](customer-display.md), 2026-11-28 sound/display entries and screenshot evidence. |
+| Offline installation and updates | A complete initial online visit, installed assets/catalog and an open shift are prerequisites; service-worker reopening needs a supported secure origin. Consent controls the interface update, while server deployments/migrations happen separately. | 2026-11-26 offline-continuity entry; [Updates & versions](updates-and-versions.md). |
+| Historical verification gaps | Preserve entries marked not run, pending or mocked. Earlier unavailable Python runtimes, standalone Frappe imports, isolated inventory mocks and endpoint-checker ambiguities are recorded limitations, not newly fixed product defects. | Dated identifiers, messaging, endpoint-audit and receipt-sharing entries above. |
+| Planned or excluded scope | The old Windows-bridge plan is not an installed bridge release. Advanced buying/third-party landed costs stay in ERPNext; messaging has no embedded inbox/inbound sync or delivery/read webhook implementation. | [Bridge plan](print-manager-and-windows-bridge-plan.md), [Buying](buying-and-supplier-payments.md), [messaging](customer-messaging-and-einvoices.md). |
+
+### Complete commit history
+
+The audit trail includes **all 264 commits reachable from `df98178`** at reconciliation time, including features, repairs, documentation, branding and merges. Subjects are preserved as written; terse subjects are not expanded into unverified claims. Later working-tree changes remain in Unreleased above.
+
+Reproduce with `git log HEAD --reverse --date=short --format="%h %ad %s"`; inspect an implementation with `git show <commit>`. This is source history, not a list of successful deployments.
+
+<details>
+<summary>2026-06 — committed changes</summary>
+
+| Commit date | Source | Original subject |
+|---|---|---|
+| 2026-06-30 | `1d231ac` | LumenPOS 0.1.0 — standalone fork for the Frappe Marketplace |
+| 2026-06-30 | `dc5d11f` | Match LumenPOS UI to the Lumen brand identity |
+| 2026-06-30 | `b161e10` | v0.2.0 — remove Exchange; add pricing-rule toggle + add-on-scan |
+| 2026-06-30 | `d40546c` | v0.3.0 — granular permissions (edit price / make returns / exceed return window) |
+| 2026-06-30 | `2dae364` | v0.4.0 — invoice backend: POS Invoice or Sales Invoice (direct) per profile |
+| 2026-06-30 | `903d266` | docs: remove stale Exchange how-to sections |
+| 2026-06-30 | `294d62c` | LumenPOS 0.5.0 — five toggleable till features |
+| 2026-06-30 | `b8b2ef5` | LumenPOS 0.6.0 — quick keys, email receipt, audit log |
+| 2026-06-30 | `35d5e85` | LumenPOS 0.7.0 — customer-facing display |
+| 2026-06-30 | `d9bc543` | LumenPOS 0.8.0 — PIN lock screen |
+| 2026-06-30 | `87f6dcb` | LumenPOS 0.8.1 — fix sale crash: POS Profile update_stock |
+| 2026-06-30 | `f22e9bf` | LumenPOS 0.9.0 — POS Opening/Closing Entries in Sales Invoice mode |
+| 2026-06-30 | `2711c56` | LumenPOS 0.9.1 — brand-colour cleanup (Lumen blue everywhere) |
+| 2026-06-30 | `6e01fb9` | LumenPOS 0.10.0 — receipt designer (templates + field toggles + live preview) |
+| 2026-06-30 | `7a005c3` | LumenPOS 0.11.0 — multi-company accounts (company picker in Settings) |
+| 2026-06-30 | `845bb70` | LumenPOS 0.11.1 — fix gift-card sale warehouse↔company error |
+| 2026-06-30 | `033d11f` | LumenPOS 0.11.2 — non-stock lines carry no warehouse (multi-company robustness) |
+
+</details>
+
+<details>
+<summary>2026-07 — committed changes</summary>
+
+| Commit date | Source | Original subject |
+|---|---|---|
+| 2026-07-01 | `dbbf47f` | LumenPOS 0.11.3 — fix Pricing Rule overriding the price book (Partly Paid) |
+| 2026-07-01 | `01a2033` | LumenPOS 0.12.0 — POS sales always ignore ERPNext Pricing Rules |
+| 2026-07-01 | `0545daf` | LumenPOS 0.12.1 — enforce serial scan-only in the sell search box |
+| 2026-07-01 | `6e4b030` | LumenPOS 0.13.0 — offline queue durability hardening (Phase 1) |
+| 2026-07-01 | `de8aa71` | LumenPOS 0.14.0 — offline customer select (Phase 2) |
+| 2026-07-01 | `8cd5129` | LumenPOS 0.15.0 — offline customer create + idempotent sync (Phase 3) |
+| 2026-07-01 | `5a3d2d4` | LumenPOS 0.15.1 — move X-report to the top bar |
+| 2026-07-01 | `d1c2303` | LumenPOS 0.15.2 — real fix for gift-card warehouse-vs-company error |
+| 2026-07-01 | `f2ba0e3` | LumenPOS 0.15.3 — hide the gift-card placeholder item from the grid |
+| 2026-07-01 | `1d2aac0` | LumenPOS 0.16.0 — live clock + Shift Open timer in the top bar |
+| 2026-07-01 | `95478ba` | LumenPOS 0.16.1 — fix gift-card warehouse on multi-company sites (set_warehouse up front) |
+| 2026-07-01 | `fe747c5` | LumenPOS 0.16.2 — fix the ACTUAL gift-card warehouse root cause (bad Item Default, not the invoice) |
+| 2026-07-01 | `49de00e` | LumenPOS 0.16.3 — gift-card warehouse: stop re-saving the Item, scrub stray warehouse in the DB |
+| 2026-07-01 | `8a1ae5f` | LumenPOS 0.17.0 — offline sales log (what synced, what didn't, and why) |
+| 2026-07-01 | `9547b0e` | LumenPOS 0.17.1 — bring-your-own receipt Print Format: clarify + fix Sales-Invoice mode |
+| 2026-07-01 | `ee0d73d` | LumenPOS 0.17.2 — gift cards/coupons/approvals work in Sales-Invoice mode (Link→Data) |
+| 2026-07-01 | `f898f01` | LumenPOS 0.17.3 — fix gift-card/store-credit redemption posting to Receivable (party error) |
+| 2026-07-01 | `deaf742` | docs: add Frappe Marketplace listing copy + website documentation |
+| 2026-07-01 | `350891a` | docs: clarify LumenPOS vs ERPNext Pricing Rules (accurate note) |
+| 2026-07-01 | `5816f84` | docs: add publishable LumenPOS case study (composite + placeholders) |
+| 2026-07-02 | `76752f5` | LumenPOS 0.17.4 — make "ignore Pricing Rules" stick by setting it on the POS Profile |
+| 2026-07-02 | `4ce18f8` | LumenPOS 0.17.5 — clear all 15 Frappe Marketplace submission-gate audit findings |
+| 2026-07-02 | `48c5b37` | LumenPOS 0.17.6 — align publisher metadata to Lumen Solutions |
+| 2026-07-04 | `74c4ae4` | docs: add LumenPOS -> VPOS backport guide |
+| 2026-07-05 | `84859c7` | LumenPOS 0.18.0 (branch) — per-outlet receipts: first per-profile setting |
+| 2026-07-05 | `f07c76d` | LumenPOS 0.18.1 — multi-outlet shifts: a shift on one outlet no longer blocks another |
+| 2026-07-05 | `5bdfd37` | LumenPOS 0.19.0 — outlet switcher: choose which outlet you operate |
+| 2026-07-05 | `0941761` | LumenPOS 0.19.1 — move the outlet choice into the Open Register dialog |
+| 2026-07-05 | `d2c67fd` | LumenPOS 0.19.2 — warn when opening a register while another outlet's shift is open |
+| 2026-07-06 | `8f80d2c` | LumenPOS 0.20.0 — a stuck/slow POS Closing never blocks opening the next shift |
+| 2026-07-06 | `ee27612` | docs: add standalone VPOS register-fix instructions |
+| 2026-07-17 | `d69d2f4` | LumenPOS 0.21.0 — dynamic custom receipt fields (POS Profile / sale invoice, incl. ZATCA QR) |
+| 2026-07-25 | `a154178` | docs: refresh Marketplace listing copy for shipped features |
+| 2026-07-25 | `38ace46` | docs: shorten Marketplace summary to 130 chars (140 cap) |
+
+</details>
+
+<details>
+<summary>2026-08 — committed changes</summary>
+
+| Commit date | Source | Original subject |
+|---|---|---|
+| 2026-08-13 | `6c538c1` | LumenPOS 0.22.0 — port the live-pilot money fixes from VPOS (price-in-effect, drawer, X-report, indexes) |
+| 2026-08-13 | `bbb510d` | LumenPOS 0.23.0 — host-site adaptation: detect by type, identify customers by mobile |
+| 2026-08-13 | `98e386b` | LumenPOS 0.24.0 — performance block: indexed search probes, index health, slow-sale tracing |
+| 2026-08-13 | `603506e` | LumenPOS 0.25.0 — a shift can never be resumed; opening is always a fresh shift |
+| 2026-08-13 | `e82da88` | LumenPOS 0.26.0 — closing correctness: money parser, stale-close guard, queued sales block close |
+| 2026-08-13 | `a2caf2a` | LumenPOS 0.27.0 — a return posts on the outlet handling it (VPOS 0.76 + 0.84) |
+| 2026-08-16 | `0363426` | LumenPOS 0.28.0 — shift scope (who owns a shift) + closing-variance email alert |
+| 2026-08-16 | `d9e0b56` | LumenPOS 0.29.0 — serialized returns from our own ledger + store-credit refund switch |
+| 2026-08-16 | `0679062` | LumenPOS 0.30.0 — per-warehouse stock, manager outlet access, stale-response guard, RTL amounts |
+| 2026-08-16 | `b43bc5e` | LumenPOS 0.31.0 — payment restrictions + required transaction references |
+| 2026-08-16 | `b38866b` | LumenPOS 0.32.0 — approval-request details, void-on-close, session<->opening link |
+| 2026-08-16 | `f600967` | LumenPOS 0.33.0 — open a customer's sale in History (one money-flow path) |
+| 2026-08-16 | `13f4008` | LumenPOS 0.34.0 — personal per-user till PIN (replaces the shared unlock passcode) |
+| 2026-08-16 | `13ed285` | LumenPOS 0.35.0 — shift schedules + forgotten-shift alert (alert only, never auto-close) |
+| 2026-08-16 | `16221a1` | LumenPOS 0.36.0 — split refunds across payment methods |
+| 2026-08-18 | `4d3da12` | LumenPOS 0.37.0 — support Frappe/ERPNext v16 (marketplace review blocker) |
+| 2026-08-18 | `e950b07` | LumenPOS 0.38.0 — support v14 as well as v15/v16; version-aware serial handling |
+| 2026-08-18 | `db03a79` | docs: website guide intro says v14/v15/v16 |
+| 2026-08-24 | `105eda2` | LumenPOS 0.39.0 — relicense to GPL-3.0-or-later (from MIT) |
+| 2026-08-24 | `1f9a2b6` | LumenPOS 0.39.1 — clear the marketplace Semgrep Security findings (install.py) |
+| 2026-08-24 | `1e0e2f7` | docs: bring the product guide up to date with v0.39.1 |
+| 2026-08-24 | `01427a9` | docs: remove internal working documents from the public repository |
+| 2026-08-30 | `bacc391` | LumenPOS 0.40.0 — support v13 as well; one branch now covers v13 through v16 |
+| 2026-08-30 | `fa5c94b` | LumenPOS 0.41.0 — v13/v14 verified on real benches; four real bugs found and fixed |
+| 2026-08-31 | `fdb6117` | LumenPOS 0.42.0 — demo data builder: a month of real trade in one call |
+| 2026-08-31 | `07d55e9` | LumenPOS 0.42.1 — demo builder: enrol customers on the loyalty programme |
+
+</details>
+
+<details>
+<summary>2026-09 — committed changes</summary>
+
+| Commit date | Source | Original subject |
+|---|---|---|
+| 2026-09-13 | `ea15e07` | LumenPOS 0.43.0: AGPL-3.0-only, trademark policy, marketplace audit fixes |
+| 2026-09-13 | `21cdb54` | LumenPOS 0.43.1: public contact unified to hello@lumen-solutions.co |
+| 2026-09-15 | `33cbe77` | LumenPOS 0.44.0: Insights page, a Lumen Reports dashboard embedded in the POS |
+| 2026-09-16 | `2138303` | WIP LumenPOS 0.45.0: customizable cashback (local only, not for release yet) |
+| 2026-09-16 | `5539a64` | LumenPOS 0.44.1: Insights runs on Frappe v14 with Lumen Reports 1.2.0 |
+| 2026-09-16 | `8955087` | LumenPOS 0.44.2: Insights never sits on "Loading…" when something is wrong |
+| 2026-09-17 | `4024404` | LumenPOS 0.44.3: the Insights dashboard uses the full screen width |
+| 2026-09-17 | `3af6d45` | docs(website-guide): Insights section lists what the dashboard shows, corrects v14 minimum |
+| 2026-09-17 | `579b1d1` | Merge parked cashback work onto 0.44.3 |
+| 2026-09-17 | `b760596` | LumenPOS 0.45.0: cashback is booked to the chart of accounts (full accrual) |
+| 2026-09-19 | `7257233` | LumenPOS 0.45.1: performance indexes rebuild on every update, demo builder needs Administrator |
+| 2026-09-20 | `5710253` | docs(website-guide): add the Cashback section, and cashback in the tender and offline lists |
+| 2026-09-20 | `d75d73b` | LumenPOS 0.45.2: Frappe keeps the performance indexes, instead of dropping them every migrate |
+| 2026-09-20 | `ea24d2c` | LumenPOS 0.45.3: a promotion with no dates and no times works wherever it was created |
+| 2026-09-20 | `254ef5b` | LumenPOS 0.46.0: return restrictions, and a General tab split into groups |
+| 2026-09-20 | `53f668b` | Remove a stray copy of messages.js left by a local check script |
+| 2026-09-20 | `b1f8df7` | LumenPOS 0.46.1: put two cards back where they belong |
+| 2026-09-20 | `6b0132e` | LumenPOS 0.46.2: no more tashkeel in the Arabic interface |
+| 2026-09-20 | `c3daf16` | docs(website-guide): what the shop will not take back, in Returns and refunds |
+| 2026-09-23 | `f46fee2` | LumenPOS 0.46.3: text a person would write, and Arabic everywhere |
+| 2026-09-23 | `3a260fc` | LumenPOS 0.46.4: live stock on the tiles, a till that notices the network |
+| 2026-09-23 | `4b0979a` | LumenPOS 0.47.0: exchange in one step |
+| 2026-09-23 | `e39f6a4` | LumenPOS 0.48.0: who can do what, by role or by person |
+| 2026-09-23 | `3c1327a` | LumenPOS 0.49.0: the till opens with no connection |
+| 2026-09-23 | `a41aecd` | LumenPOS 0.50.0: holds and deposits |
+| 2026-09-23 | `845db6b` | LumenPOS 0.50.1: a hold quotes the price with the tax on it |
+| 2026-09-25 | `4968595` | LumenPOS 0.50.2: new fields can be added to Sales Invoice again |
+| 2026-09-26 | `1bfb61f` | LumenPOS 0.50.2: refuse a customer billed in another currency |
+| 2026-09-26 | `773be3c` | Multi-currency, server side (work in progress) |
+| 2026-09-26 | `27cdc2e` | Multi-currency: change always comes back in local money |
+| 2026-09-26 | `277f332` | Multi-currency: v13's frappe._dict.update takes no keywords |
+| 2026-09-26 | `effa324` | Multi-currency, the till side (work in progress) |
+| 2026-09-26 | `5d3ccf9` | Multi-currency: the settings picker can look up currencies |
+| 2026-09-26 | `1b01505` | Refund screen fills its refund line again; cash in/out form fits a drawer picker |
+| 2026-09-26 | `748f516` | One refund line takes the whole refund; the exchange clearing tender is not a refund choice |
+| 2026-09-26 | `ff4a17b` | Multi-currency: rate lines read right in Arabic |
+| 2026-09-26 | `8215556` | LumenPOS 0.51.0: sell in other currencies |
+| 2026-09-26 | `21836f1` | The shop's own new-customer form (work in progress) |
+| 2026-09-26 | `d3de033` | New customers get a real customer group (v15 refuses a group node) |
+| 2026-09-26 | `c0fd7eb` | The shop's own new-customer form |
+| 2026-09-26 | `b6c84f4` | Multi-company, part one (work in progress) |
+| 2026-09-26 | `e603a37` | Multi-company, part two (work in progress): customer balances shared or separate, Inter Company Journal Entry settlement, settings screens |
+| 2026-09-26 | `c953573` | inter_company: commit inside the try, as the audit expects |
+| 2026-09-26 | `f314796` | Multi-company: customer figures and history skip consolidated invoices, settlement card and Book now scoped to the user's companies, patch reads issued_invoice |
+| 2026-09-26 | `8139b28` | inter_company.status: lines is a reserved word in MariaDB |
+| 2026-09-26 | `9b23cb4` | wallet_companies patch: match NULL companies (an in list never does) |
+| 2026-09-26 | `64774f2` | Settings save keeps every approver's PIN; guide: several companies on one site; drop duplicate translation keys |
+| 2026-09-26 | `5c4bfd8` | Arabic: invoice statuses in History and weekday chips; entries between companies as a table, links readable in dark mode |
+| 2026-09-26 | `f701316` | LumenPOS Cashier (and Manager) get read and create on Customer, Contact and Address: a cashier with only that role can add customers and open the Customers screen |
+| 2026-09-26 | `438649c` | LumenPOS roles also read Customer Group and Territory: ERPNext reads them to enrol a new customer in a loyalty program (refused on v15) |
+| 2026-09-26 | `4acd2f4` | LumenPOS 0.51.1: an item missing from a customer's own price list is converted, not charged as its outlet number; the cart shows the customer's own list |
+| 2026-09-26 | `5b49607` | 0.51.1: setting up another currency works on v15 (walk-in customer in a leaf group), a failed setup is rolled back and its reason shown, rates visible to anyone who sees Settings |
+| 2026-09-26 | `e992e21` | 0.51.1: a same-named payment method in another currency is not taken as a currency's cash drawer; the setup says why |
+| 2026-09-26 | `0f52746` | 0.51.1: currency setup runs on every save (new outlets and companies get their drawers; ERPNext's new-company cash row on a drawer is put right); walk-in saved only when changed |
+| 2026-09-26 | `7c4ed14` | LumenPOS 0.51.2: switching the outlet rebuilds the open screen for the new outlet (router-view keyed by the POS Profile, as in Lumen Restaurants) |
+| 2026-09-26 | `f53eceb` | 0.51.2: the product grid clears Loading when the newest request is answered from the device (a cold start stuck on Loading) |
+| 2026-09-26 | `5e72618` | LumenPOS 0.52.0: automatic exchange rates, per currency (fixed or automatic, margin below the published rate), daily at 00:15 and Update now, a typed rate wins; folds the unreleased 0.51.2 fixes |
+| 2026-09-26 | `348c773` | 0.52.0: the currency row and its automatic-rate status share one loop (the General tab failed to render) |
+| 2026-09-26 | `b68cbfe` | 0.52.0: currency rows line up (one picker width), the automatic-rate update time shows as a time and reads right in Arabic |
+| 2026-09-26 | `ad42dbb` | 0.52.0: currency picker 170px, so an English row with a margin fits on one line at 1024 to 1440 and the placeholder still shows in full |
+| 2026-09-26 | `4061b9a` | 0.52.0: with Sell in other currencies off, a new shift takes no float for another currency's drawer (screen and server) |
+| 2026-09-26 | `37f57bf` | 0.52.0: change in the sale's currency, per currency (Settings, Other currencies): from that currency's drawer, fixed per shift with the rate; the till shows change in the money of the account ERPNext books it from; a change account in a third currency is refused at the sale |
+| 2026-09-26 | `b35ebbf` | 0.52.0: the change-account guard works out the change itself (a POS Invoice has no change_amount until submit, so a change account in a third currency went through) |
+| 2026-09-27 | `1dbc81b` | 0.52.1: Frappe 16 refuses SQL functions written as text in get_all fields and order_by (the X-report failed): the shift totals, store credit balances, offline customers, returned quantities and cashback order use plain SQL or a Python sort |
+| 2026-09-27 | `6109f22` | 0.52.1: runs on Frappe/ERPNext 16, tested on a real v16 bench |
+| 2026-09-27 | `0b8813b` | 0.53.0: the till in more languages, and the server answers in the till's language |
+| 2026-09-27 | `e3f4216` | 0.53.0: Chinese (Simplified) and French join the till, screens and server messages |
+| 2026-09-28 | `e60a857` | 0.53.0: Thai and Indonesian join the till, screens and server messages |
+| 2026-09-28 | `8695b0a` | 0.53.0: Vietnamese joins the till, the cart keeps its room for the goods, the top bar stays on one line |
+| 2026-09-28 | `f1da4fb` | 0.53.0: a held serial is what LumenPOS sees in the unbooked window plus what ERPNext itself holds |
+| 2026-09-28 | `a8199f9` | 0.54.0: one open shift per person, when a shop wants it |
+| 2026-09-28 | `fc6644a` | 0.54.0: nobody is locked out by a shift that will not close |
+| 2026-09-28 | `566c066` | 0.54.0: a cashier-only user sells on ERPNext 15 and 16; pending figures are filled in again |
+| 2026-09-28 | `4a875f6` | 0.54.0: a pending close still records its sales; the dialog's out-of-reach note reads cleanly |
+| 2026-09-29 | `762f919` | 0.54.1: an outlet listing "All Item Groups" shows its products; the grid says why it is empty |
+| 2026-09-29 | `6a15e7d` | 0.54.1: an offer or a cashback rule on an item group covers its sub-groups, as ERPNext pricing rules do |
+| 2026-09-29 | `3163209` | 0.54.1: a shift whose POS Opening Entry was cancelled in ERPNext closes against its amendment |
+| 2026-09-30 | `d8451d2` | 0.55.0: a shift sells on past midnight on ERPNext 16; refused offline sales never hold the close |
+| 2026-09-30 | `fee0ef7` | 0.55.0: sell in another currency offline; a price typed at the till where the outlet allows it |
+| 2026-09-30 | `d311986` | 0.56.0: returns without a connection; queued sales sent in the background; a warning when offline data is not protected; a sale never posts twice |
+| 2026-09-30 | `10faa09` | 0.56.0: rounding facts right on every version (found by suite 71 on v13 to v15) |
+| 2026-09-30 | `a150c86` | refund.js: say plainly when ERPNext keeps the inclusive-price total (comment only) |
+| 2026-09-30 | `9199788` | 0.56.0: offline, the search box narrows the device's own sales; the count stays by its word in Arabic |
+| 2026-09-30 | `f507c7f` | 0.56.1: a returned item is back on sale at once, on every version |
+| 2026-09-30 | `fdc0e96` | 0.56.1: a returned serial number sells again at once on ERPNext 15 and 16 too |
+
+</details>
+
+<details>
+<summary>2026-10 — committed changes</summary>
+
+| Commit date | Source | Original subject |
+|---|---|---|
+| 2026-10-01 | `b3d71a4` | 0.56.2: the till's Hold works again; a gift card carries no tax where the outlet adds VAT |
+| 2026-10-01 | `4296f84` | 0.56.2: a return gives back only the tax its sale charged |
+| 2026-10-01 | `3f88f84` | 0.56.2 docs: the salesperson reaches ERPNext's Sales Person reports only at a Sales Invoice outlet |
+| 2026-10-01 | `4d13280` | 0.57.0: salespeople at the till, sales by salesperson, the system check |
+| 2026-10-01 | `f6857fc` | 0.57.0: four more languages (pt-BR, fa, ru, tr) and the new texts in all of them |
+| 2026-10-01 | `fa380da` | 0.57.0: the release's new texts in pt-BR, fa, ru and tr; two settings texts lose their semicolons |
+| 2026-10-01 | `506e9ea` | 0.57.0: the salesperson report is the Salespeople tab of Insights, not a page of its own |
+| 2026-10-01 | `f888d77` | 0.57.0: the Salespeople tab scrolls as one on a phone; dark theme scrollbars are dark |
+| 2026-10-01 | `b812eae` | 0.58.0: help on every screen of the till |
+| 2026-10-01 | `61b8cd9` | 0.58.0: the help in all thirteen languages; tidier cards; the History tour skips refunds |
+| 2026-10-01 | `f64f191` | 0.58.0: the Arabic label of the parked sales reads المبيعات المعلقة |
+| 2026-10-01 | `850361c` | 0.58.0: saving Settings, General no longer switches off refunds to store credit |
+| 2026-10-01 | `88282e5` | 0.58.1: a locked ERPNext accounting period is explained, and seen before it bites |
+| 2026-10-01 | `5bbcd2f` | 0.58.1: a period's dates are never cut at their hyphens on a narrow screen |
+| 2026-10-03 | `6a281e6` | 0.59.0: a reason for a short or over at the close |
+| 2026-10-03 | `7ca2611` | 0.59.0: the Register page fits a phone, reasons show in the screen's language |
+| 2026-10-03 | `c9a15f3` | 0.60.0 (server): sales on account as POS invoices |
+| 2026-10-03 | `f5bf5e7` | 0.60.0 (server): entries posted without the cashier's read on accounts, as ERPNext 13 makes its own |
+| 2026-10-03 | `2385bb7` | 0.60.0: sales on account at the till, a reprint kept to whoever may |
+| 2026-10-03 | `0ab7ebc` | 0.60.0: debts settled oldest first by the hour too, money back never on account |
+| 2026-10-03 | `bc5590c` | 0.60.0: the bundle built from the source as checked out |
+| 2026-10-03 | `1a3cd34` | 0.60.1: "The cashier" is the default for "A shift belongs to" |
+| 2026-10-04 | `7b78fb9` | 0.61.0 (server and till): cash out under control |
+| 2026-10-04 | `b39d562` | 0.61.0: cash out under control, in thirteen languages |
+| 2026-10-04 | `366da00` | 0.61.1: what a customer owes, without their holds, and the shift clock |
+| 2026-10-07 | `c1d4835` | 0.61.2: other currencies on any sale |
+| 2026-10-17 | `f88cda3` | 0.61.3: LumenPOS on Frappe's apps screen and on the Frappe 16 desk |
+| 2026-10-17 | `04cd0f8` | 0.62.0: sales reports in Insights (phase 1: the sales and cash summary, the cashiers) |
+| 2026-10-17 | `38b1b7b` | 0.62.0: the returns count beside an hour reads (−18) in Arabic too |
+| 2026-10-17 | `9f96366` | 0.62.0: Products, Profit, Customers and Outlets in Insights (phases 2 and 3) |
+| 2026-10-21 | `e535790` | 0.63.0: a supervisor approves refunds |
+| 2026-10-21 | `57b8d6e` | 0.63.0: the Approvals tray shows whenever any request is in use |
+| 2026-10-24 | `0705194` | 0.64.0: outlets and their registers |
+| 2026-10-24 | `42db62b` | 0.65.0: reports for management without a till |
+| 2026-10-25 | `9b25aea` | 0.66.0: payments in their own currency |
+| 2026-10-25 | `7bfb581` | 0.66.0: the recent customers sort by a real time |
+| 2026-10-26 | `004b0a7` | 0.67.0: barcode and price labels |
+| 2026-10-26 | `6906659` | Labels screen fits a phone: tighter table below 520px |
+| 2026-10-26 | `be46920` | 0.67.0: labels leave a disabled item out instead of failing the whole list |
+| 2026-10-26 | `0b6b5ee` | 0.68.0: the Lumen Stock app on LumenPOS |
+| 2026-10-26 | `312462a` | 0.68.0: the app's default warehouse on ERPNext 16 (Stock Settings lost the field) |
+| 2026-10-26 | `bca6f79` | docs(website-guide): labels, stock take with Lumen Stock, thirteen languages |
+| 2026-10-26 | `209c825` | 0.68.1: a stock count waits for the close of an open shift |
+| 2026-10-26 | `0efada0` | 0.68.1: count_session_device, and a released shared count says so |
+| 2026-10-26 | `293e485` | 0.69.0: stock count from the till, app download links in Settings |
+| 2026-10-27 | `45b5d1c` | 0.69.0: count screen on a phone, a separator Vue keeps, an English result without 1 items |
+| 2026-10-27 | `eb5faf7` | Branding |
+
+</details>
+
+<details>
+<summary>2026-11 — committed changes</summary>
+
+| Commit date | Source | Original subject |
+|---|---|---|
+| 2026-11-07 | `19ba568` | Main Push |
+| 2026-11-07 | `cfe5c22` | Main Major Updates |
+| 2026-11-07 | `6756c88` | label |
+| 2026-11-07 | `bd20a5d` | registry setup |
+| 2026-11-07 | `ff0034d` | rcpt |
+| 2026-11-07 | `5d3e338` | rcpt options |
+| 2026-11-07 | `3e7fd7a` | front end |
+| 2026-11-07 | `687eca8` | Credit sales repaird |
+| 2026-11-07 | `bb61dcf` | Rcpt and E inv |
+| 2026-11-07 | `57f710d` | qt |
+| 2026-11-07 | `50901a1` | discounts |
+| 2026-11-08 | `bf14b8d` | customer display |
+| 2026-11-08 | `4beaf65` | Filters |
+| 2026-11-08 | `2e3e45f` | Grp and brand |
+| 2026-11-12 | `747a0fd` | scale barcode |
+| 2026-11-14 | `dbff649` | Complete rebrand |
+| 2026-11-15 | `7095a44` | Item Viewe and Customer display |
+| 2026-11-15 | `5d5e586` | Walk in customer |
+| 2026-11-15 | `17bc128` | Scale aBarcode and UOM |
+| 2026-11-15 | `2ab3c71` | Customer display fix |
+| 2026-11-15 | `dc28628` | Item load |
+| 2026-11-15 | `3deafae` | item manager and rcpt table |
+| 2026-11-16 | `d9d5db7` | walk in |
+| 2026-11-16 | `a02cc21` | customer edit |
+| 2026-11-16 | `f7890b0` | number |
+| 2026-11-16 | `a3030ce` | customer number |
+| 2026-11-16 | `dd93d35` | UI updates |
+| 2026-11-16 | `62135fe` | Main UI SPACING |
+| 2026-11-16 | `3aab533` | Layout fixes |
+| 2026-11-16 | `8d92a32` | Major Nav Bare Changed |
+| 2026-11-16 | `f9b7c57` | overflow fixed |
+| 2026-11-16 | `1c94f63` | icon updated |
+| 2026-11-16 | `2000ef0` | auto image finder |
+| 2026-11-16 | `e01dfb4` | item link |
+| 2026-11-19 | `f260e86` | Pos RCPT settings |
+| 2026-11-19 | `f65cb38` | New INV feature |
+| 2026-11-20 | `c216a02` | Major INV fix |
+| 2026-11-20 | `4b9553b` | Qz tray option |
+| 2026-11-21 | `0524fef` | Pack and Bundle Setup |
+| 2026-11-22 | `8cac721` | Label Setup and Bundle Option |
+| 2026-11-23 | `03801dd` | Print Manager and Sale on account Fixes |
+| 2026-11-23 | `c7796f8` | All latest Updates |
+| 2026-11-23 | `f7e6dfa` | Cash drawer |
+| 2026-11-23 | `d2a0e4d` | Barcode Adjustment,Cash Counter Loyality |
+| 2026-11-25 | `8ea1ee1` | Major Update FOR ITEM CONTROLE AND SHIFT |
+| 2026-11-26 | `af2fc29` | Customer management |
+| 2026-11-26 | `53073ab` | Stock manager,Purchase manager,rcpt manager |
+| 2026-11-26 | `fe797ba` | Life Update |
+| 2026-11-27 | `d1db54a` | catalog print |
+| 2026-11-27 | `ad885c8` | B2B Update |
+| 2026-11-27 | `09bd24a` | B2B Built |
+| 2026-11-28 | `72ac854` | Major Changes |
+| 2026-11-28 | `9f32132` | Welcome Sound |
+| 2026-11-28 | `30cdc18` | Customer Display Ad Fix |
+| 2026-11-28 | `df98178` | Print over flow Fixed |
+
+</details>
+
 ### Current engineering focus areas
 
 - Maintain behavior parity between Python and JavaScript promotion evaluators.
@@ -636,6 +1293,7 @@ artifacts/                      Captured project/browser artifacts
 - Keep endpoint functions narrowly scoped under `esafepos.api.*`; put pure promotion rules in the promotion engine.
 - Update source and generated assets together when frontend changes are intended for deployment.
 - Add focused tests beside changed behavior and cover boundary cases such as permissions, currencies, dates, quantities, and offline submission.
-- Treat `docs/user-guide.md` as the operational guide and its changelog as the canonical complete release record.
+- Treat `docs/user-guide.md` as the operational guide and its changelog as the operational release wording. Reconcile this log's historical index with source/version diffs, keeping the inherited lineage separate and unassigned changes under Unreleased.
+- For a resolved problem, record the symptom, known cause, fix, affected component, source/date and verification evidence. Keep failed intermediate attempts when they explain the final fix, and retain explicit pending deployment, provider and hardware checks. Add new commits to the audit trail when reconciling history; never infer a release or successful deployment from a generic commit subject.
 - Update this file in the same change for every project code, configuration, schema, dependency, asset, or version upgrade. Add an `Unreleased` entry until a release number exists; summarize it under the release when one is assigned. Keep this document's feature inventory, module/component catalog, architecture, and DocType list synchronized whenever those structures change.
 

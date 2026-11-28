@@ -14,6 +14,7 @@ import {
 } from '../offline'
 import { useSessionStore } from './session'
 import { notifyCatalogChanged } from '../catalogSync'
+import { applyStockLevel } from '../itemStock'
 
 const PAGE_SIZE = 80
 
@@ -201,7 +202,7 @@ export const useCatalogStore = defineStore('catalog', {
       if (!codes.length) return
       this.signalChange()
       for (const item of this.items) {
-        if (item.item_code in levels) item.actual_qty = levels[item.item_code]
+        if (item.item_code in levels) applyStockLevel(item, levels[item.item_code])
       }
       patchCatalogStock(levels).catch(() => {
         /* the tiles are already right, the cache catches up on the next refresh */
@@ -226,7 +227,7 @@ export const useCatalogStore = defineStore('catalog', {
       this._catalogEpoch++; this._liveRequest++
       for (const item of this.items) {
         if (item.is_stock_item && item.item_code in deltas) {
-          item.actual_qty = (Number(item.actual_qty) || 0) - deltas[item.item_code]
+          applyStockLevel(item, (Number(item.actual_qty) || 0) - deltas[item.item_code])
         }
       }
       patchCatalogStockBy(deltas).catch(() => {

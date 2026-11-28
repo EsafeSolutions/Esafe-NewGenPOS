@@ -92,6 +92,7 @@ export const useSessionStore = defineStore('session', {
       can_approve_requests: false,
       enable_regular_invoices: 1,
       enable_buying: 1,
+      enable_item_stock_totals: 0,
       enable_customer_balances: 1,
       enable_customer_payments: 1,
       enable_cheque_tracking: 0,

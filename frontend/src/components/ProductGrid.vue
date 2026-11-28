@@ -25,8 +25,9 @@
         </button>
         <div class="tile-foot">
           <div><strong class="tile-price">{{ money(item.price) }}</strong>
-            <small v-if="item.is_stock_item" class="tile-stock" :class="{ 'tile-stock--empty': item.actual_qty <= 0 }">
-              {{ t('{qty} in stock', { qty: item.actual_qty }) }}
+            <small v-if="item.is_stock_item" class="tile-stock" :class="{ 'tile-stock--empty': displayedStock(item, session) <= 0 }"
+              :title="showsTotalStock(item, session) ? t('{qty} at this register', { qty: item.actual_qty }) : undefined">
+              {{ t(showsTotalStock(item, session) ? '{qty} total in stock' : '{qty} in stock', { qty: displayedStock(item, session) }) }}
             </small>
           </div>
           <button type="button" class="btn btn-icon tile-add" :title="t('Add {item} to cart', { item: item.item_name })"
@@ -49,6 +50,7 @@ import { useCatalogStore } from '../stores/catalog'
 import { useSessionStore } from '../stores/session'
 import { money, plainText } from '../format'
 import { t } from '../i18n'
+import { displayedStock, showsTotalStock } from '../itemStock'
 
 const props = defineProps({ mode: { type: String, default: 'image' } })
 defineEmits(['select', 'inspect'])
@@ -57,6 +59,7 @@ const session = useSessionStore()
 const batch = computed(() => props.mode === 'detail' ? 12 : 60)
 const rendered = ref(batch.value)
 const gridWrap = ref(null)
+watch(() => session.settings.enable_item_stock_totals, () => { catalog.signalChange() })
 watch(() => [props.mode, catalog.search, catalog.brand, catalog.itemGroup, session.posProfile], () => {
   rendered.value = batch.value
   if (gridWrap.value) gridWrap.value.scrollTop = 0

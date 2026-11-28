@@ -2,6 +2,8 @@
 
 Verified on 2026-11-26. The POS changes are built locally; deployment and physical printer qualification remain pending.
 
+**2026-11-28 follow-up:** built-in receipt printing now defaults to automatic safe geometry and a POS-rendered fixed PDF. Old custom dimensions require explicit calibration opt-in; the manager no longer reflows built-in receipt HTML. [Current behavior and verification](receipt-right-edge-fit.md). The native measurements and HTML preview findings below remain historical evidence.
+
 ## Findings
 
 The submitted HTML previously lost per-edge borders and `table-layout` during computed-style export. Browser receipts retained those rules. Amounts could wrap or clip in the fixed totals column. Native preview also removed the inline SVG invoice barcode. These are reproducible POS export defects, separate from paper feed.

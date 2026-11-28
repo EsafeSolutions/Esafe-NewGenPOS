@@ -9,7 +9,7 @@
     <fieldset :disabled="busy || !canWrite || needsMigration || offline">
       <label class="check"><input v-model="config.silent" type="checkbox" />{{ t('Use Esafe silent printing for this outlet') }}</label>
       <label class="check"><input v-model="config.automatic_receipt" type="checkbox" :disabled="!config.silent" />{{ t('Automatically print the receipt after a successful sale') }}</label>
-      <div class="fields"><label class="field"><span>{{ t('Receipt output') }}</span><select v-model="config.receipt_output" :aria-label="t('Receipt output')"><option value="html">{{ t('Built-in receipt (HTML)') }}</option><option value="pdf">{{ t('ERPNext Print Format (PDF)') }}</option><option value="raw">{{ t('ESC/POS raw — verified printer encoding only') }}</option></select></label><label class="field copies"><span>{{ t('Copies') }}</span><input v-model.number="config.copies" type="number" min="1" max="99" step="1" /></label><label class="field"><span>{{ t('Document paper') }}</span><select v-model="config.document_paper" :aria-label="t('Document paper')"><option>A4</option><option>Letter</option></select></label></div>
+      <div class="fields"><label class="field"><span>{{ t('Receipt output') }}</span><select v-model="config.receipt_output" :aria-label="t('Receipt output')"><option value="html">{{ t('Built-in receipt (safe PDF)') }}</option><option value="pdf">{{ t('ERPNext Print Format (PDF)') }}</option><option value="raw">{{ t('ESC/POS raw — verified printer encoding only') }}</option></select></label><label class="field copies"><span>{{ t('Copies') }}</span><input v-model.number="config.copies" type="number" min="1" max="99" step="1" /></label><label class="field"><span>{{ t('Document paper') }}</span><select v-model="config.document_paper" :aria-label="t('Document paper')"><option>A4</option><option>Letter</option></select></label></div>
       <p class="hint">{{ t('Receipt width comes from Printing → Receipt (58 mm or 80 mm). Use HTML/PDF for Sinhala, Tamil and other complex scripts. Raw printing uses printer-specific encoding and commands.') }}</p>
       <button class="btn btn-primary" :disabled="!canWrite || busy || needsMigration || offline" @click="saveDefaults">{{ t('Save silent-printing defaults') }}</button>
     </fieldset>
@@ -31,6 +31,8 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import CashDrawerSetup from './CashDrawerSetup.vue'
+import { receiptPdf } from '../../printing/receiptPdf.js'
+import { receiptLayoutFor, receiptHtmlOptions } from '../../receiptLayout.js'
 import ReceiptPrintLayout from './ReceiptPrintLayout.vue'
 import { call } from '../../api'
 import { t } from '../../i18n'
@@ -67,9 +69,16 @@ function refresh(){return run(()=>manager.refreshPrinters())}
 async function inspect(id){info.value=null;if(!id)return;try{const value=await manager.capabilities(id);if(selection.value[optionsRole.value]===id)info.value=value}catch(e){error.value=e.message}}
 function saveDefaults(){return run(async()=>{const value=await call('esafepos.api.printing_settings.save_esafe_defaults',{pos_profile:props.profile,values:config.value});if(props.profile===session.posProfile)session.settings.esafe_printing=value;emit('saved',value);notice.value=t('Silent-printing defaults saved.')})}
 function saveAssignment(){return run(async()=>{selection.value=withOptions(await manager.saveBinding(props.profile,selection.value,()=>call('esafepos.api.printing_settings.authorize_workstation_setup',{pos_profile:props.profile})));saved.value=JSON.stringify(selection.value);notice.value=t('Workstation printer assignments saved.')})}
-const testHtml='<!doctype html><html><head><meta charset="UTF-8"><style>@page{size:80mm 50mm;margin:3mm}body{font:14px Arial}</style></head><body><h2>ESAFE POS</h2><p>Esafe Print Manager test</p><p>Printer test only. No sale or cash-drawer pulse.</p></body></html>'
-function test(){return run(async()=>{const result=await manager.dispatch({key:crypto.randomUUID(),profile:props.profile,role:'receipt',format:'html',data:testHtml,title:'ESAFE printer test',options:{copies:1,size:{width:80,height:50},margins:3},reference:{doctype:'POS Profile',name:props.profile},user:session.user});notice.value=t(printStatusMessage(result))})}
-function preview(){return run(async()=>{const result=await manager.preview(props.profile,'receipt','html',testHtml,{size:{width:80,height:50},margins:3});previewUrl.value=`data:image/png;base64,${result.dataBase64}`})}
+async function testDocument(){
+  const source=document.createElement('div')
+  source.className='receipt '+(session.settings.receipt_paper_width==='58mm'?'paper-58':'paper-80')
+  source.style.cssText='position:fixed;left:-10000px;width:80mm'
+  source.innerHTML='<div class="receipt-head"><div class="receipt-company">ESAFE POS</div></div><p>Esafe Print Manager test</p><p>Printer test only. No sale or cash-drawer pulse.</p>'
+  document.body.appendChild(source)
+  try{return await receiptPdf(source,receiptLayoutFor(source,await manager.binding(props.profile)))}finally{source.remove()}
+}
+function test(){return run(async()=>{const doc=await testDocument();const result=await manager.dispatch({key:crypto.randomUUID(),profile:props.profile,role:'receipt',format:'pdf',data:doc.data,title:'ESAFE printer test',options:{...receiptHtmlOptions(doc,1),duplex:'none',color:false},reference:{doctype:'POS Profile',name:props.profile},user:session.user});notice.value=t(printStatusMessage(result))})}
+function preview(){return run(async()=>{const doc=await testDocument();const result=await manager.preview(props.profile,'receipt','pdf',new Uint8Array(await doc.data.arrayBuffer()),receiptHtmlOptions(doc,1));previewUrl.value=`data:image/png;base64,${result.dataBase64}`})}
 watch(()=>[props.profile,props.defaults],load)
 onMounted(load)
 </script>

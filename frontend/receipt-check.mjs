@@ -12,7 +12,7 @@ const root = path.dirname(fileURLToPath(import.meta.url))
 const output = process.env.RECEIPT_ARTIFACTS
 if (output) await mkdir(output, { recursive: true })
 const server = await createServer({
-  root, base: '/', server: { port: 0, host: '127.0.0.1', open: false },
+  root, base: '/', server: { port: 0, host: '127.0.0.1', open: false, hmr: false },
   plugins: [{
     name: 'receipt-check',
     configureServer(server) {
@@ -86,7 +86,7 @@ try {
   })
   const errors = []
   page.on('pageerror', (error) => { errors.push(error.message); console.error(error.message) })
-  await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/receipt-check.html`, { waitUntil: 'domcontentloaded' })
+  await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/receipt-check.html`, { waitUntil: 'domcontentloaded', timeout:60000 })
   await page.waitForFunction(() => window.ready)
   let shortHeight = 0
   for (const config of [

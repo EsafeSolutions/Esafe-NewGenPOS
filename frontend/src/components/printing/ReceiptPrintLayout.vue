@@ -1,27 +1,29 @@
 <template>
   <section class="receipt-layout">
     <h4>{{ t('Receipt paper and margins') }}</h4>
-    <p>{{ t('Use the same Windows queue and paper setting for browser and silent printing. Roll width, Windows page width and printable width can differ. The SDK lists supported forms, but does not identify the active Windows form or hardware printable area.') }}</p>
+    <p>{{ t('Automatic safe fitting is on by default. Built-in receipts use a fixed print-ready PDF in Esafe, so the manager cannot reflow the text or shift individual columns.') }}</p>
     <p>{{ t('Saved receipt queue') }}: <strong>{{ printer || t('Choose a receipt printer first') }}</strong></p>
-    <p>{{ t('New receipt setups start at 72 mm for an 80 mm roll and 48 mm for a 58 mm roll. These are starting widths; match the actual Windows form before printing. Wider calibrated layouts remain available.') }}</p>
+    <p>{{ t('Automatic fitting uses 72 mm for an 80 mm roll and 48 mm for a 58 mm roll, with safe margins. Older custom measurements are ignored until calibrated measurements are explicitly enabled.') }}</p>
     <p v-if="error" class="error" role="alert">{{ error }}</p>
     <p v-if="notice" role="status">{{ notice }}</p>
     <fieldset :disabled="!canWrite || offline || needsMigration || !printer || busy">
+      <label class="calibration-choice"><input v-model="calibrated" type="checkbox" @change="changeMode" />{{ t('Use calibrated measurements (advanced)') }}</label>
+      <p v-if="!calibrated" role="status">{{ t('Automatic safe fitting is active. No manual margin adjustment is needed for normal receipt layouts.') }}</p>
       <div class="fields">
         <label class="field"><span>{{ t('Physical roll width') }}</span><select v-model.number="roll" :aria-label="t('Physical roll width')" @change="load"><option :value="58">58 mm</option><option :value="80">80 mm</option></select></label>
-        <label class="field"><span>{{ t('Windows paper width (mm)') }}</span><input v-model.number="layout.paperWidth" :aria-label="t('Windows paper width (mm)')" type="number" min="10" :max="roll" step="0.1" /></label>
-        <label class="field"><span>{{ t('Printable width (mm)') }}</span><input v-model.number="layout.printableWidth" :aria-label="t('Printable width (mm)')" type="number" min="10" :max="layout.paperWidth" step="0.1" /></label>
+        <label class="field"><span>{{ t('Windows paper width (mm)') }}</span><input v-model.number="layout.paperWidth" :disabled="!calibrated" :aria-label="t('Windows paper width (mm)')" type="number" min="10" :max="roll" step="0.1" /></label>
+        <label class="field"><span>{{ t('Printable width (mm)') }}</span><input v-model.number="layout.printableWidth" :disabled="!calibrated" :aria-label="t('Printable width (mm)')" type="number" min="10" :max="layout.paperWidth" step="0.1" /></label>
       </div>
       <h5>{{ t('Receipt margins (mm)') }}</h5>
       <div class="fields margin-fields">
-        <label v-for="side in sides" :key="side.key" class="field"><span>{{ t(side.label) }}</span><input v-model.number="layout.margins[side.key]" :aria-label="t(side.label)" type="number" min="0" max="20" step="0.1" /></label>
+        <label v-for="side in sides" :key="side.key" class="field"><span>{{ t(side.label) }}</span><input v-model.number="layout.margins[side.key]" :disabled="!calibrated" :aria-label="t(side.label)" type="number" min="0" max="20" step="0.1" /></label>
       </div>
       <p v-if="contentWidth !== null" class="width-summary">{{ t('Receipt content width') }}: <strong>{{ contentWidth }} mm</strong></p>
-      <p>{{ t('If amounts are cut off on the right, first match the Windows paper and printable widths, then increase the right margin. Left and right margins reduce the content width. Top and bottom margins add space before and after the receipt; page length follows the content.') }}</p>
-      <p>{{ t('Margins apply once to browser and built-in HTML receipts. Use zero margins in the browser print dialog. ERPNext PDF uses its own Print Format, and raw ESC/POS uses its own command layout. Settings are separate for each assigned receipt queue, outlet, workstation and 58/80 mm roll.') }}</p>
+      <p v-if="calibrated">{{ t('If amounts are cut off on the right, first match the Windows paper and printable widths, then increase the right margin. Left and right margins reduce the content width. Top and bottom margins add space before and after the receipt; page length follows the content.') }}</p>
+      <p>{{ t('Margins apply once to browser and built-in receipts. Use zero margins in the browser print dialog. ERPNext PDF uses its own Print Format, and raw ESC/POS uses its own command layout. Settings are separate for each assigned receipt queue, outlet, workstation and 58/80 mm roll.') }}</p>
       <div class="layout-actions">
         <button class="btn btn-outline" @click="useSafeLayout">{{ t('Use safe thermal layout') }}</button>
-        <button class="btn btn-outline" @click="resetMargins">{{ t('Reset margins to 3 mm') }}</button>
+        <button class="btn btn-outline" :disabled="!calibrated" @click="resetMargins">{{ t('Reset margins to 3 mm') }}</button>
         <button class="btn btn-outline" @click="previewMargins">{{ t('Preview receipt margins') }}</button>
         <button class="btn btn-outline" @click="browserTest">{{ t('Browser margin test') }}</button>
         <button class="btn btn-primary" @click="save">{{ t('Save workstation receipt layout') }}</button>
@@ -47,6 +49,7 @@ const props = defineProps({ profile: String, canWrite: Boolean, offline: Boolean
 const session = useSessionStore()
 const roll = ref(session.settings.receipt_paper_width === '58mm' ? 58 : 80)
 const layout = ref(validateReceiptLayout({}, roll.value))
+const calibrated = ref(false)
 const printer = ref(''), busy = ref(false), error = ref(''), notice = ref('')
 const preview = ref(null), testSource = ref(null)
 const sides = [{ key: 'left', label: 'Left margin (mm)' }, { key: 'right', label: 'Right margin (mm)' }, { key: 'top', label: 'Top margin (mm)' }, { key: 'bottom', label: 'Bottom margin (mm)' }]
@@ -61,13 +64,14 @@ const calibration = computed(() => ({
   payments: [{ mode_of_payment: 'Cash', amount: 12345.67 }],
   receipt_settings: { receipt_template: 'Table', receipt_paper_width: roll.value + 'mm', receipt_show_invoice_barcode: 0, receipt_show_cashier: 0, receipt_show_terminal: 0, receipt_footer: 'Margin test only — no sale' },
 }))
+function changeMode() { if (!calibrated.value) layout.value = validateReceiptLayout({}, roll.value); preview.value = null }
 function resetMargins() { layout.value.margins = { top: 3, right: 3, bottom: 3, left: 3 } }
-function useSafeLayout() { layout.value = validateReceiptLayout({}, roll.value); notice.value = t('Safe starting layout loaded. Preview and test both edges, then save for this printer.') }
+function useSafeLayout() { calibrated.value = false; changeMode(); notice.value = t('Automatic safe fitting selected. Save to keep this printer in automatic mode.') }
 async function prepareTest(browser = false) {
   if (busy.value) return
   error.value = ''; busy.value = true
   try {
-    const geometry = validateReceiptLayout(layout.value, roll.value)
+    const geometry = calibrated.value ? validateReceiptLayout(layout.value, roll.value) : { ...validateReceiptLayout({}, roll.value), automatic: true }
     await nextTick()
     const source = testSource.value.querySelector('.receipt')
     if (browser) await printReceipt(source, geometry)
@@ -85,7 +89,8 @@ async function load() {
     const binding = await manager.binding(props.profile)
     if (seq !== generation) return
     printer.value = binding.receipt || ''
-    layout.value = validateReceiptLayout(binding.receiptLayout?.[roll.value], roll.value)
+    calibrated.value = binding.receiptLayout?.[roll.value]?.calibrated === true
+    layout.value = validateReceiptLayout(calibrated.value ? binding.receiptLayout[roll.value] : {}, roll.value)
   } catch (e) {
     if (seq === generation) error.value = e.message
   }
@@ -94,7 +99,7 @@ async function save() {
   if (busy.value) return
   error.value = ''; notice.value = ''; busy.value = true
   try {
-    await manager.saveReceiptLayout(props.profile, roll.value, layout.value, () => call(
+    await manager.saveReceiptLayout(props.profile, roll.value, { ...layout.value, calibrated: calibrated.value }, () => call(
       'esafepos.api.printing_settings.authorize_workstation_setup', { pos_profile: props.profile }
     ))
     notice.value = t('Receipt layout saved for this workstation and roll width.')
@@ -110,4 +115,8 @@ onMounted(load)
 <style scoped>
 .receipt-layout{border-top:1px solid var(--border);padding:20px 0}h4{font-size:14px;margin:0}p{font-size:12px;line-height:1.7;color:var(--text-muted)}fieldset{border:0;padding:0;min-width:0}.fields{display:flex;flex-wrap:wrap;gap:12px}.field{display:flex;flex-direction:column;gap:6px;flex:1;min-width:130px;font-size:12px;margin:12px 0}input,select{width:100%;box-sizing:border-box;padding:9px;border:1px solid var(--border);border-radius:var(--radius);background:var(--input-bg);color:var(--text);font:inherit}.error{color:var(--red)}@media(max-width:520px){.fields{flex-direction:column;gap:0}.btn{width:100%}}
 h5{font-size:13px;margin:16px 0 0}.layout-actions{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0}.width-summary strong{color:var(--text)}.margin-preview{padding:12px;background:var(--input-bg);border:1px solid var(--border);overflow:auto}.margin-preview iframe{display:block;max-width:100%;max-height:420px;border:0;background:#fff}.margin-test-source{position:fixed;left:-10000px;top:0;width:80mm;pointer-events:none}
+</style>
+
+<style scoped>
+.calibration-choice{display:flex;align-items:center;gap:8px;font-size:12px;margin:14px 0}.calibration-choice input{width:16px;height:16px;flex:none}
 </style>

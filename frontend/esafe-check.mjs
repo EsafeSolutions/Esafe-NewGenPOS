@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict'
 import { createEsafeService, recoveryMessage } from './src/printing/esafe.js'
 import { EsafeClient } from '@esafe/printer-manager'
-import { validateReceiptLayout, receiptHtmlOptions } from './src/receiptLayout.js'
+import { validateReceiptLayout, receiptHtmlOptions, receiptLayoutFor } from './src/receiptLayout.js'
 assert.equal(typeof new EsafeClient().printers.capabilities, 'function')
 function memoryJournal() {
   const settings=new Map(),intents=new Map(),clone=(v)=>v===undefined ? undefined : structuredClone(v)
@@ -26,6 +26,14 @@ function harness(options={}){
   return {journal,client,service,authorizations,lock}
 }
 const request={key:'sale-1',profile:'Till',role:'receipt',format:'html',data:'<p>සිංහල தமிழ்</p>',options:{copies:1},title:'Receipt INV-1',reference:{doctype:'POS Invoice',name:'INV-1'},user:'cashier'}
+{
+  const source={classList:{contains:()=>false}},legacy={receiptLayout:{80:{paperWidth:'broken',printableWidth:800,margins:{left:18,right:0}}}}
+  assert.deepEqual(receiptLayoutFor(source,legacy),{paperWidth:72,printableWidth:72,margins:{top:3,right:3,bottom:3,left:3},automatic:true})
+  const calibrated={paperWidth:80,printableWidth:76,margins:{top:1,right:2,bottom:1,left:2},calibrated:true}
+  assert.deepEqual(receiptLayoutFor(source,{receiptLayout:{80:calibrated}}),calibrated)
+  assert.throws(()=>validateReceiptLayout({calibrated:'yes'}))
+  console.log('PASS automatic defaults ignore stale/invalid legacy measurements; explicit calibration remains available')
+}
 async function prepare(h){await h.journal.saveSetting('approved',true);await h.journal.saveSetting('binding:Till',{profile:'Till',receipt:'receipt',labels:'label',document:'office',report:'receipt'})}
 {
   const h=harness();await prepare(h)
@@ -134,6 +142,11 @@ async function prepare(h){await h.journal.saveSetting('approved',true);await h.j
   await h.service.saveReceiptLayout('Till',80,wide,async()=>{})
   await h.service.saveReceiptLayout('Till',58,narrow,async()=>{})
   assert.deepEqual((await h.service.binding('Till')).receiptLayout,{58:narrow,80:wide})
+  await h.service.saveReceiptLayout('Till',80,{...wide,calibrated:true},async()=>{})
+  assert.equal((await h.service.binding('Till')).receiptLayout[80].calibrated,true)
+  await h.service.saveReceiptLayout('Till',80,{...wide,calibrated:false},async()=>{})
+  assert.deepEqual((await h.service.binding('Till')).receiptLayout,{58:narrow,80:wide},'Returning to automatic removes only this roll calibration flag')
+  assert.equal(receiptLayoutFor({classList:{contains:()=>false}},await h.service.binding('Till')).automatic,true)
   assert.equal((await h.service.binding('Another outlet')).receiptLayout,undefined)
   assert.equal(h.client.calls.length,0);assert.equal(h.client.pairings.length,0,'Layout save does not print or change scopes')
   await h.service.saveBinding('Till',{receipt:'receipt'},async()=>{})

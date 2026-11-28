@@ -151,6 +151,8 @@ def ensure_setup():
     make_buying_fields()
     from esafepos.b2b_setup import setup as setup_b2b
     setup_b2b()
+    from esafepos.hr_setup import setup as setup_hr
+    setup_hr()
     drop_deprecated_custom_fields()
     migrate_price_books()
     ensure_return_reasons()

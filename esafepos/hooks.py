@@ -74,10 +74,12 @@ scheduler_events = {
 # runtime. It returns at once unless a demo run has set
 # frappe.flags.esafepos_demo_stamp, so a real sale is never touched.
 has_permission = {
+    "EsafePOS HR Payroll Batch": "esafepos.hr_setup.has_permission",
     "EsafePOS B2B Settlement": "esafepos.b2b_setup.has_permission",
     "EsafePOS Customer Cheque": "esafepos.b2b_setup.has_permission",
 }
 permission_query_conditions = {
+    "EsafePOS HR Payroll Batch": "esafepos.hr_setup.query_conditions",
     "EsafePOS B2B Settlement": "esafepos.b2b_setup.query_conditions",
     "EsafePOS Customer Cheque": "esafepos.b2b_setup.query_conditions",
 }

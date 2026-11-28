@@ -13,11 +13,7 @@
         :aria-label="t('Price check')" @click="priceCheckOpen = true">
         <Icon name="tag" :size="18" />
       </button>
-      <button v-if="session.settings.enable_customer_display" type="button"
-        class="btn btn-icon sell-header-tool" :title="t('Customer display options')"
-        :aria-label="t('Display')" @click="displayControlsOpen = true">
-        <Icon name="monitor" :size="18" />
-      </button>
+      <CustomerDisplayQuickBar v-if="session.settings.enable_customer_display" @settings="displayControlsOpen = true" />
       <label v-if="!showBundles && !showFavourites" class="sell-header-tool catalog-view" :title="t('Item view')">
         <Icon :name="itemMode === 'image' ? 'grid' : itemMode" :size="18" />
         <select class="catalog-mode" :aria-label="t('Item view')" v-model="itemMode">
@@ -50,7 +46,6 @@
       <button class="btn btn-ghost btn-sm" @click="cart.cancelExchange()">{{ t('Cancel exchange') }}</button>
     </div>
     <section class="catalog">
-      <CustomerDisplayQuickBar v-if="session.settings.enable_customer_display" @settings="displayControlsOpen = true" />
       <div class="catalog-toolbar">
         <div class="search-box" data-tour="sell-search">
           <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="m21 21-4.3-4.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
@@ -689,8 +684,8 @@ function onDiscountApproved(result) {
 .sell-header-tool {
   display: inline-grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
+  width: var(--header-tool-size, 32px);
+  height: var(--header-tool-size, 32px);
   flex: none;
   border-radius: 8px;
   background: rgba(255, 255, 255, .14);

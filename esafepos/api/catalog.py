@@ -156,6 +156,44 @@ def stock_levels(warehouse, item_codes):
     return {b.item_code: available_qty(b.item_code, warehouse, b.actual_qty) for b in bins}
 
 
+def _total_stock_quantities(profile, item_codes):
+    """Optional POS quantity summary, without granting warehouse/stock editing.
+
+    Like register stock on a tile, this is a selling summary authorized by the
+    site's feature switch. Limit it to the active company and applicable native
+    Warehouse User Permissions (Frappe expands allowed tree descendants).
+    """
+    from esafepos.features import enabled
+
+    if not enabled("enable_item_stock_totals"):
+        return None, False
+    if not frappe.has_permission("Item", "read"):
+        frappe.throw(_("You do not have access to the item catalog."), frappe.PermissionError)
+    from esafepos.api.permissions import assert_outlet
+    from frappe.core.doctype.user_permission.user_permission import get_user_permissions
+
+    assert_outlet(profile.name)
+    warehouses = frappe.get_all("Warehouse", filters={"company": profile.company, "is_group": 0, "disabled": 0},
+                                pluck="name", limit_page_length=0)
+    rules = [row for row in get_user_permissions().get("Warehouse", [])
+             if not row.get("applicable_for") or row.get("applicable_for") in ("Warehouse", "Bin", "POS Invoice", "Sales Invoice")]
+    if rules:
+        permitted = {row.get("doc") for row in rules}
+        warehouses = [name for name in warehouses if name in permitted]
+    codes = list(dict.fromkeys(item_codes))
+    totals = {code: 0 for code in codes}
+    if codes and warehouses:
+        bins = frappe.get_all("Bin", filters={"item_code": ["in", codes], "warehouse": ["in", warehouses]},
+                              fields=["item_code", "sum(actual_qty) as actual_qty"], group_by="item_code", limit_page_length=0)
+        for row in bins:
+            totals[row.item_code] = flt(row.actual_qty)
+        for warehouse in warehouses:
+            for code, held in pos_reserved_map(warehouse).items():
+                if code in totals:
+                    totals[code] -= flt(held)
+    return {code: flt(qty, 9) for code, qty in totals.items()}, profile.warehouse in warehouses
+
+
 def item_groups_under(groups):
     """Each group with every group beneath it (Item Group is a tree), the way
     ERPNext's own POS reads a POS Profile's item groups and the group picked on
@@ -267,6 +305,8 @@ def get_items(pos_profile: str, search: str = "", item_group: str = "", start: i
             b.item_code: flt(b.actual_qty) - reserved.get(b.item_code, 0) for b in bins
         }
 
+    total_stock, total_includes_register = _total_stock_quantities(profile, [i["item_code"] for i in items if i["is_stock_item"]])
+
     barcode_map = {}
     for row in frappe.get_all(
         "Item Barcode",
@@ -281,6 +321,9 @@ def get_items(pos_profile: str, search: str = "", item_group: str = "", start: i
         item["price"] = price_map.get(item["item_code"], 0)
         item["standard_price"] = standard_map.get(item["item_code"]) or item["price"]
         item["actual_qty"] = stock_map.get(item["item_code"], 0)
+        item["total_stock_qty"] = total_stock.get(item["item_code"], 0) if total_stock is not None else None
+        item["total_stock_includes_register"] = total_includes_register
+        item["total_stock_scope"] = [frappe.session.user, profile.name, profile.company] if total_stock is not None else None
         item["barcode"] = barcode_map.get(item["item_code"])
         # _user_tags is comma-joined with a leading comma, hand the client a list
         # so promotions can target items by tag.

@@ -84,6 +84,7 @@
   "balances_across_companies",
   "features_section",
   "enable_buying",
+  "enable_item_stock_totals",
   "enable_regular_invoices",
   "enable_customer_balances",
   "enable_customer_payments",
@@ -655,6 +656,13 @@
    "label": "Buying and supplier payments"
   },
   {
+   "default": "0",
+   "description": "Show each product's total stock across permitted warehouses in the active company on the POS Sell dashboard. Register warehouse stock still controls sale availability.",
+   "fieldname": "enable_item_stock_totals",
+   "fieldtype": "Check",
+   "label": "Show total stock on POS dashboard"
+  },
+  {
    "default": "1",
    "description": "Enable the customer-oriented ESAFE B2B workspace and direct ERPNext Sales Invoices. Child selling, payment and cheque features remain independent.",
    "fieldname": "enable_regular_invoices",
@@ -726,7 +734,7 @@
   },
   {
    "default": "0",
-   "description": "Enable daily wage payroll calculations after the attendance and day-rate policy is configured.",
+   "description": "Preview and create native Salary Slip drafts using existing Frappe HR payroll settings and salary structures.",
    "fieldname": "enable_day_salary",
    "fieldtype": "Check",
    "label": "Daily salary"

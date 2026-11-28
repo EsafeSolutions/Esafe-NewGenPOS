@@ -139,6 +139,8 @@ For feed purchased in **25 kg and 50 kg bags**, use two distinct alternate UOMs,
 
 In **Items**, combine the category and brand filters with item name, code or barcode search. Users with ERPNext Item write access can edit the display name and upload a JPEG, PNG or WebP product photo up to 5 MB. **Save changes** attaches the image to the ERPNext Item and refreshes the POS catalog.
 
+**Total stock on product tiles:** In **Settings → General → Features**, turn on **Show total stock on POS dashboard** and choose **Save Settings**. Each Sell product tile then shows **total in stock** across permitted, enabled warehouses in the active company, in that item's stock unit. Pending POS sales and returns are reflected in the total. Hover over the quantity to see the register's own stock. Turn the feature off to show register stock again; it is off by default. Sales and the out-of-stock filter still use the register's warehouse, so stock elsewhere does not increase what this register may sell. Offline tiles use their last cached total, updated for sales and returns on this device. Run site migration after deployment and refresh the POS to expose the new setting.
+
 The side rail now has one **Items & stock** manager with four tabs:
 
 - **Item details:** Search active, disabled or all items and filter by category, brand and item type. Create items, edit their names/category/brand/description, set selling and purchasing availability, manage images, units, prices and barcodes, or check **Disable item** and save. To re-enable an item, find it under **Disabled items**, clear **Disable item**, and save. Template edits follow ERPNext's configured variant-field propagation; review affected variants after saving. **Export loaded items** downloads the currently loaded search rows as CSV.
@@ -369,9 +371,9 @@ a label printer (a roll) or on an A4 sheet of labels.
 
 **Receipt sections and custom design:** in **Printing → Receipt**, use the loyalty button or section checkboxes, and **Show all optional sections / Hide optional sections** for bulk changes. Expand **Advanced custom receipt editor** to change alignments, text sizes, line height, padding, spacing, border thickness and image heights. The live preview updates as you edit; blank values retain the template. Save the default or selected outlet to apply. Printer margins add to design padding. [Setup, supported outputs and migration](receipt-custom-editor.md).
 
-**Right-edge clipping:** unconfigured 80/58 mm rolls now start at 72/48 mm printable pages. For an existing setup, choose **Use safe thermal layout**, match the actual Windows form, preview/test and save for that queue. Long identifiers wrap and numeric values are checked before printing. Quantity and alternate-unit names such as **150 kg Pack** now fit separately, so a long unit no longer causes the repeated width error. Crowded item columns automatically become labelled details beneath the product, preserving every amount. An impossible layout still prompts for adjustment instead of sending clipped output. Existing calibrated widths are retained. [Setup and evidence](receipt-right-edge-fit.md).
+**Receipt fitting:** automatic safe fitting is now the default on new and existing workstations. Receipts use a 72/48 mm page for 80/58 mm rolls with safe margins; older custom widths and shifted margins are ignored unless explicitly enabled as calibrated measurements. Company headings and item columns adapt to available space. Automatic mode also tightens line spacing, item padding and gaps between sections; it removes excessive legacy top/bottom padding. Unit names such as **150 kg Pack** use the product-name width instead of squeezing into the quantity column. Every amount is retained. Esafe **Built-in receipt (safe PDF)** freezes the prepared receipt before native printing, preventing a second HTML engine from changing columns and fonts. [Setup and evidence](receipt-right-edge-fit.md).
 
-**Receipt paper on this workstation:** after assigning a receipt queue, enter its Windows paper width, printable width and left/right/top/bottom margins separately for 58 mm and 80 mm rolls. Browser and built-in HTML receipts share these measurements and a content-fitted page height. If the right edge clips, match the driver widths and increase the right margin; the effective content width updates as you edit. **Preview receipt margins** and **Browser margin test** use synthetic amounts with your unsaved entries. **Reset margins to 3 mm** restores the four default margins; use **Save workstation receipt layout** to apply changes to normal receipts. Existing uniform insets retain their spacing. Use HTML for the designer’s borders and fonts. If the browser keeps feeding after the footer, check its selected Windows form and the driver’s receipt/continuous-paper and cut settings; CSS cannot force an early driver cut. See [measurements, setup and verified examples](silent-receipt-diagnosis.md).
+**Advanced receipt measurements:** most tills can keep automatic fitting. Under **Printing → Printers → Receipt paper and margins**, **Use calibrated measurements (advanced)** enables custom Windows/printable widths and four margins for a printer already measured by an operator. Preview/test and save only after checking its actual output. **Use safe thermal layout** returns the draft to automatic mode; save to leave calibration mode. Browser printing should use the correct queue/form, zero extra browser margins and fit scaling. Driver cut/feed settings still control paper handling. No new migration is needed for automatic fitting. [Measurements and earlier native diagnosis](silent-receipt-diagnosis.md).
 
 With silent printing disabled, USB/Windows queues remain selectable in the browser dialog. Existing server-network receipts require the printer to be reachable from the ERPNext server. QZ Tray setup is not included.
 
@@ -1701,6 +1703,12 @@ return is taken by a till of the sale's own company.
 ---
 
 ## 16. Roles & permissions
+
+The optional **HR** workspace provides attendance, Expense Claims and approved
+monthly payroll earnings when Frappe HR is installed and the corresponding
+features are enabled. HR Manager and payroll approval roles are separate from
+POS manager access; native document permissions still apply. See the
+[HR setup, policy and operator guide](hr-module.md) before enabling payroll.
 
 EsafePOS access is governed entirely by **standard ERPNext DocType permissions**,
 manage them in **Role Permissions Manager** (Frappe Cloud → desk → search

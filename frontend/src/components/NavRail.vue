@@ -29,6 +29,10 @@
       <svg viewBox="0 0 24 24"><path d="M3 7h18v14H3zM7 7V3h10v4M9 12l3 3 3-3m-3-2v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <span class="rail-label">{{ t('Buying') }}</span>
     </router-link>
+    <router-link v-if="session.settings.enable_hr_integration && session.permissions.hr" to="/hr" class="rail-item" :title="t('Human resources')" active-class="active">
+      <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2m11-13a4 4 0 1 1-8 0 4 4 0 0 1 8 0m4 3 2 2 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span class="rail-label">{{ t('HR') }}</span>
+    </router-link>
     <router-link v-if="holdsVisible" to="/holds" class="rail-item" :title="t('Holds')" active-class="active">
       <svg viewBox="0 0 24 24"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
       <span class="rail-label">{{ t('Holds') }}</span>

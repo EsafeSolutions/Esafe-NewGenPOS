@@ -27,8 +27,8 @@
           <span class="brand-divider" aria-hidden="true"></span>
           <div class="topbar-title">{{ pageTitle }}</div>
           <span class="tb-pill tb-clock"><Icon name="clock" /> {{ clockText }}</span>
-          <span v-if="session.registerOpen && shiftText" class="tb-pill tb-shift">
-            <Icon name="check" /> {{ t('Shift Open:') }} <b>{{ shiftText }}</b>
+          <span v-if="session.registerOpen && shiftText" class="tb-pill tb-shift" :title="`${t('Shift Open:')} ${shiftText}`" :aria-label="`${t('Shift Open:')} ${shiftText}`">
+            <Icon name="check" /><span class="tb-shift-label">{{ t('Shift Open:') }}</span><b>{{ shiftText }}</b>
           </span>
         </div>
         <div v-if="session.company" class="topbar-shop">
@@ -456,6 +456,7 @@ const pageTitle = computed(
       '/messages': t('Customer messaging'),
       '/invoices': t('ESAFE B2B MODULE'),
       '/b2b': t('ESAFE B2B MODULE'),
+      '/hr': t('Human resources'),
       '/buying': t('Buying'),
       '/holds': t('Holds'),
       '/register': t('Register'),
@@ -605,24 +606,25 @@ function setupAutoLock() {
   min-width: 0;
 }
 .topbar {
-  min-height: 52px;
+  --header-tool-size: 32px;
+  min-height: 48px;
   background: var(--topbar-bg);
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 16px;
-  gap: 12px 20px;
+  padding: 6px 12px;
+  gap: 6px 10px;
   flex-shrink: 0;
 }
 .topbar-left {
   display: flex;
   align-items: center;
   flex: 0 0 auto;
-  gap: 12px;
+  gap: 8px;
   min-width: 0;
-  max-width: 42%;
-  flex-wrap: wrap;
+  max-width: 100%;
+  flex-shrink: 1;
 }
 .brand-lockup {
   display: flex;
@@ -645,21 +647,21 @@ function setupAutoLock() {
   white-space: nowrap;
 }
 .topbar-shop {
-  flex: 1 0 14rem;
+  flex: 1 1 9rem;
   display: flex;
   justify-content: center;
   min-width: 0;
 }
 .shop-name {
   max-width: min(100%, 460px);
-  padding: 7px clamp(10px, 1.2vw, 24px) 8px;
+  padding: 5px clamp(8px, 1vw, 16px);
   border: 1px solid rgba(255, 255, 255, .24);
   border-radius: 999px;
   background: linear-gradient(135deg, rgba(255, 255, 255, .18), rgba(255, 255, 255, .08));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .18), 0 6px 18px rgba(8, 51, 113, .16);
   text-align: center;
   letter-spacing: .01em;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 800;
   min-width: 0;
   overflow: hidden;
@@ -671,6 +673,10 @@ function setupAutoLock() {
   font-size: 17px;
   font-weight: 700;
   white-space: nowrap;
+  min-width: 0;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .tb-pill {
   display: inline-flex;
@@ -689,24 +695,29 @@ function setupAutoLock() {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 8px;
-  flex-wrap: wrap;
+  gap: 4px;
+  flex-wrap: nowrap;
   min-width: 0;
 }
-.topbar-tools { display: flex; align-items: center; gap: 6px; }
+.topbar-tools { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
 .topbar-tools:empty { display: none; }
-.lang-pill.topbar-icon { display: inline-grid; place-items: center; width: 36px; min-height: 36px; padding: 0; }
+.lang-pill.topbar-icon { display: inline-grid; place-items: center; width: var(--header-tool-size); min-height: var(--header-tool-size); padding: 0; flex-shrink: 0; }
 .erp-link { text-decoration: none; }
 .topbar-icon:focus-visible { outline: 2px solid var(--brand-soft); outline-offset: 2px; }
 .lang-pill.nav-toggle, .nav-backdrop { display: none; }
 .topbar-user {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-size: 12.5px;
   color: var(--on-pos-blue-muted);
-  max-width: 100%;
+  max-width: 280px;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.topbar-user .user-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .lang-pill,
 .register-pill,
 .offline-pill { white-space: nowrap; }
@@ -714,6 +725,8 @@ function setupAutoLock() {
 @media (max-width: 1400px) {
   .topbar-user .user-name { display: none; }
 }
+@media (max-width: 1700px) { .tb-shift-label { display: none; } .tb-shift { padding-inline: 8px; } }
+.topbar .outlet-switch { max-width: 148px; flex-shrink: 0; }
 .outlet-switch {
   font-size: 12.5px;
   padding: 3px 8px;
@@ -812,8 +825,8 @@ function setupAutoLock() {
     position: relative;
     z-index: 42;
   }
-  .topbar { padding: 8px 10px; gap: 8px; }
-  .topbar-left { gap: 8px; }
+  .topbar { padding: 6px 8px; gap: 6px; }
+  .topbar-left { gap: 6px; max-width: 100%; }
   .brand-identity { gap: 6px; }
   .brand-identity .mobile-brand { display: grid; }
   .brand-wordmark { font-size: 12px; }
@@ -824,11 +837,12 @@ function setupAutoLock() {
     font-size: 16px;
   }
   .tb-clock, .tb-shift { display: none; }
-  .topbar-right { position: relative; justify-content: flex-start; }
+  .topbar-right { position: relative; justify-content: flex-start; flex-wrap: wrap; }
   .lang-menu { position: static; }
   .lang-list { inset-inline-start: 0; inset-inline-end: auto; max-width: 100%; }
   .outlet-switch { max-width: 150px; }
 }
+@media (max-width: 480px) { .brand-wordmark { display: none; } .topbar-shop { flex-basis: 70px; } .shop-name { font-size: 13px; padding-inline: 8px; } }
 .content {
   flex: 1;
   min-height: 0;

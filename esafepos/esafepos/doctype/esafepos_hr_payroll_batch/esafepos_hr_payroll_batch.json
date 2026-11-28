@@ -1,0 +1,168 @@
+{
+ "doctype": "DocType",
+ "name": "EsafePOS HR Payroll Batch",
+ "module": "EsafePOS",
+ "engine": "InnoDB",
+ "autoname": "hash",
+ "track_changes": 1,
+ "field_order": [
+  "company",
+  "employee",
+  "month",
+  "kind",
+  "salary_component",
+  "currency",
+  "amount",
+  "status",
+  "period_key",
+  "snapshot",
+  "fingerprint",
+  "prepared_by",
+  "approved_by",
+  "approved_at",
+  "additional_salary",
+  "posted_by",
+  "posted_at"
+ ],
+ "fields": [
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "read_only": 1,
+   "options": "Company",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "employee",
+   "fieldtype": "Data",
+   "label": "Employee",
+   "read_only": 1,
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "month",
+   "fieldtype": "Data",
+   "label": "Payroll month",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "kind",
+   "fieldtype": "Select",
+   "label": "Earning type",
+   "read_only": 1,
+   "options": "Commission",
+   "reqd": 1
+  },
+  {
+   "fieldname": "currency",
+   "fieldtype": "Link",
+   "label": "Currency",
+   "read_only": 1,
+   "options": "Currency"
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "label": "Approved earning",
+   "read_only": 1,
+   "options": "currency"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "read_only": 1,
+   "options": "Draft\nApproved\nPosted",
+   "default": "Draft",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "period_key",
+   "fieldtype": "Data",
+   "label": "Unique employee period",
+   "read_only": 1,
+   "unique": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "snapshot",
+   "fieldtype": "Long Text",
+   "label": "Source snapshot",
+   "read_only": 1
+  },
+  {
+   "fieldname": "fingerprint",
+   "fieldtype": "Data",
+   "label": "Source fingerprint",
+   "read_only": 1
+  },
+  {
+   "fieldname": "prepared_by",
+   "fieldtype": "Link",
+   "label": "Prepared by",
+   "read_only": 1,
+   "options": "User"
+  },
+  {
+   "fieldname": "approved_by",
+   "fieldtype": "Link",
+   "label": "Approved by",
+   "read_only": 1,
+   "options": "User"
+  },
+  {
+   "fieldname": "approved_at",
+   "fieldtype": "Datetime",
+   "label": "Approved at",
+   "read_only": 1
+  },
+  {
+   "fieldname": "additional_salary",
+   "fieldtype": "Data",
+   "label": "Additional Salary",
+   "read_only": 1
+  },
+  {
+   "fieldname": "posted_by",
+   "fieldtype": "Link",
+   "label": "Posted by",
+   "read_only": 1,
+   "options": "User"
+  },
+  {
+   "fieldname": "posted_at",
+   "fieldtype": "Datetime",
+   "label": "Posted at",
+   "read_only": 1
+  },
+  {
+   "fieldname": "salary_component",
+   "fieldtype": "Data",
+   "label": "Native commission earning component",
+   "read_only": 1
+  }
+ ],
+ "permissions": [
+  {
+   "role": "Payroll User",
+   "read": 1,
+   "print": 1
+  },
+  {
+   "role": "Payroll Manager",
+   "read": 1,
+   "print": 1
+  },
+  {
+   "role": "System Manager",
+   "read": 1,
+   "print": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC"
+}

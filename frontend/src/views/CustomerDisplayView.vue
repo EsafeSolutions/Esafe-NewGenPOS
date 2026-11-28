@@ -4,9 +4,8 @@
 <template>
   <div ref="screenRoot" class="cdisplay" :inert="isPreview || undefined">
     <CustomerDisplayContent mode="adverts" background :config="presentation" :mirror="isPreview" :visual-state="mirrorState?.playback" @visual="playback = $event" />
-    <div class="cd-screen-tools"><strong>{{ snap.company || t('Welcome') }}</strong><span v-if="fullscreenError" role="status">{{ fullscreenError }}</span><button v-if="fullscreenAvailable && !isPreview" class="btn btn-outline btn-sm" @click="toggleFullscreen"><Icon name="monitor" /> {{ fullscreen ? t('Exit full screen') : t('Full screen') }}</button></div>
+    <div class="cd-screen-tools"><strong>{{ snap.company || t('Welcome') }}</strong><span v-if="fullscreenError" role="status">{{ fullscreenError }}</span><button v-if="fullscreenAvailable && !isPreview" class="btn btn-outline btn-sm" @click="toggleFullscreen"><Icon name="monitor" /> {{ fullscreen ? t('Exit full screen') : t('Full screen') }}</button><button v-if="showLive" class="btn-icon cd-live-close" :aria-label="t('Hide live sale')" @click="dismissLive"><Icon name="close" /></button></div>
     <section v-if="showLive" class="cd-live-popup" role="dialog" aria-modal="false" :aria-label="t('Live sale')" @keydown.esc="dismissLive">
-    <button class="btn-icon cd-live-close" :aria-label="t('Hide live sale popup')" @click="dismissLive"><Icon name="close" /></button>
     <section v-if="snap.receipt && snap.greeting" class="cd-farewell" role="status">
       <Icon name="check" :size="64" />
       <h1>{{ t('Thank you very much for your purchase!') }}</h1>
@@ -311,8 +310,8 @@ onBeforeUnmount(() => {
 .cd-screen-tools { position: absolute; inset: 14px 20px auto; z-index: 40; margin: 0; pointer-events: none; }
 .cd-screen-tools > strong { max-width: 70%; padding: 8px 12px; border-radius: var(--radius); background: color-mix(in srgb, var(--card-bg) 94%, transparent); }
 .cd-screen-tools > button { pointer-events: auto; }
-.cd-live-popup { position: absolute; z-index: 10; right: 4vw; top: 50%; transform: translateY(-50%); width: min(1080px, 78vw); height: min(760px, calc(100% - 164px)); display: flex; flex-direction: column; padding: clamp(14px, 1.8vw, 28px); background: var(--page-bg); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); min-height: 0; }
-.cd-live-close { position: absolute; top: 10px; right: 10px; z-index: 2; background: var(--card-bg); }
+.cd-live-popup { position: absolute; z-index: 10; inset: 0; width: 100%; height: 100%; display: flex; flex-direction: column; padding: clamp(14px, 1.8vw, 28px); padding-top: clamp(76px, 6vw, 108px); background: var(--page-bg); min-height: 0; }
+.cd-live-close { background: var(--card-bg); }
 .cd-live-popup .cd-head { padding-inline-end: 30px; flex-shrink: 0; }
 .cd-live-popup .cd-overlay { position: absolute; border-radius: inherit; }
 .cd-popup-sheet { position: absolute; z-index: 30; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(860px, calc(100% - 96px)); max-height: calc(100% - 170px); display: flex; flex-direction: column; padding: 18px 24px 24px; background: var(--page-bg); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); overflow: hidden; }
@@ -366,12 +365,15 @@ onBeforeUnmount(() => {
 .cd-equivalent { text-align: end; }
 .cd-next { width: 100%; margin-top: 8px; }
 .cd-empty { margin: 12vh auto; text-align: center; color: var(--text-muted); font-size: 1.25rem; }
-.cd-welcome { width: min(1160px, 100%); flex: 1; min-height: 0; overflow: auto; align-self: center; display: grid; grid-template-columns: 1fr 1fr; align-content: center; }
+.cd-welcome { width: 100%; flex: 1; min-height: 0; overflow: auto; display: grid; grid-template-columns: 1fr 1fr; }
 .cd-welcome-brand { background: var(--topbar-bg); color: #fff; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; padding: clamp(18px, 5vw, 62px); border-radius: 16px 0 0 16px; }
 .cd-welcome-brand img { width: 65px; height: 65px; object-fit: contain; background: white; padding: 7px; border-radius: 12px; }
 .cd-welcome-brand p { margin: 26px 0 0; font-size: clamp(18px, 3vw, 34px); }
 .cd-welcome-brand h1 { margin: 0; font-size: clamp(27px, 5vw, 68px); line-height: 1.02; overflow-wrap: anywhere; }
 .cd-welcome :deep(.contact-pad) { border-radius: 0 16px 16px 0; }
+.cd-welcome :deep(.keypad button) { font-size: clamp(24px, 2.4vw, 36px); }
+.cd-welcome :deep(input) { font-size: clamp(24px, 3vw, 42px); }
+.cd-welcome :deep(header h2) { font-size: clamp(24px, 2vw, 36px); }
 .cd-overlay { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 10px; background: color-mix(in srgb, var(--topbar-bg) 60%, transparent); }
 .cd-dialog { width: min(440px, 100%); max-height: 100%; overflow: auto; border-radius: 16px; }
 @media (max-width: 900px) {
@@ -380,7 +382,7 @@ onBeforeUnmount(() => {
 @media (max-width: 600px) {
   .cd-screen-tools { inset: 10px 12px auto; gap: 6px; }
   .cd-screen-tools > strong { font-size: 14px; padding: 8px; }
-  .cd-live-popup { left: 12px; right: 12px; width: auto; height: calc(100% - 176px); padding: 12px; }
+  .cd-live-popup { padding: 72px 12px 12px; }
   .cd-popup-sheet { width: calc(100% - 28px); max-height: calc(100% - 170px); padding: 12px; }
   .cd-bank-dialog { width: calc(100% - 24px); max-height: calc(100dvh - 40px); padding: 12px; }
   .cd-bank-title { gap: 8px; }

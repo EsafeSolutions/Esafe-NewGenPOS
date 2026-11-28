@@ -3,6 +3,7 @@ export function receiptRollWidth(source) { return source?.classList.contains('pa
 // Common thermal heads are narrower than the physical roll. Full-width
 // layouts remain available as an explicit, calibrated workstation setting.
 export function safeReceiptWidth(roll) { return roll === 58 ? 48 : 72 }
+export const AUTOMATIC_RECEIPT_SPACING = Object.freeze({ lineHeight: '1.2', sectionGap: '1.5mm', itemPadding: '0.35mm', paddingTop: '0mm', paddingBottom: '0mm' })
 export function validateReceiptLayout(value = {}, roll = 80) {
   const paperWidth = value.paperWidth ?? safeReceiptWidth(roll)
   const printableWidth = value.printableWidth ?? paperWidth
@@ -15,11 +16,15 @@ export function validateReceiptLayout(value = {}, roll = 80) {
   const margins = Object.fromEntries(['top', 'right', 'bottom', 'left'].map((side) => [side, value.margins?.[side] ?? inset]))
   if (!Object.values(margins).every((n) => typeof n === 'number' && Number.isFinite(n) && n >= 0 && n <= 20)) throw new Error('Use margins from 0 to 20 mm.')
   if (printableWidth - margins.left - margins.right < 10) throw new Error('Left and right margins must leave at least 10 mm for receipt content.')
-  return { paperWidth, printableWidth, margins }
+  if (value.calibrated !== undefined && typeof value.calibrated !== 'boolean') throw new Error('Choose automatic or calibrated receipt measurements.')
+  return { paperWidth, printableWidth, margins, ...(value.calibrated ? { calibrated: true } : {}) }
 }
 export function receiptLayoutFor(source, binding = {}) {
   const roll = receiptRollWidth(source)
-  return validateReceiptLayout(binding.receiptLayout?.[roll], roll)
+  const saved = binding.receiptLayout?.[roll]
+  // Legacy widths and margins have never established a hardware calibration.
+  // Default to a safe layout without asking each cashier to repair old values.
+  return saved?.calibrated === true ? validateReceiptLayout(saved, roll) : { ...validateReceiptLayout({}, roll), automatic: true }
 }
 export function receiptHtmlOptions(document, copies = 1) {
   return { copies, size: { width: document.width, height: document.height }, margins: 0, orientation: 'portrait', scale: 'fit' }

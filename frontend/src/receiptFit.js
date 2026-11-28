@@ -25,7 +25,9 @@ function fitItemColumns(root, doc, win) {
     const available = table.getBoundingClientRect().width - 2
     const minimum = headers.map((header, index) => {
       const cells = index === 0 ? [...table.querySelectorAll('tbody .retail-no')] : rows.map(row => row.children[index]).filter(Boolean)
-      return Math.max(10, ...cells.map(cell => {
+      const headerFont = Number.parseFloat(win.getComputedStyle(header).fontSize)
+      const headerMinimum = textWidth(header, doc) * Math.min(1, MIN_FONT / headerFont) + horizontalSpace(header, win) + 2
+      return Math.max(10, headerMinimum, ...cells.map(cell => {
         const value = cell.querySelector('.retail-quantity') || cell
         const font = Number.parseFloat(win.getComputedStyle(value).fontSize)
         return textWidth(value, doc) * Math.min(1, MIN_FONT / font) + horizontalSpace(cell, win) + 2
@@ -60,6 +62,25 @@ export function fitReceiptContent(root) {
   const doc = root.ownerDocument, win = doc.defaultView
   let adjusted = 0, unsafe = false
   const itemRowsReflowed = fitItemColumns(root, doc, win)
+  for (const heading of root.querySelectorAll('.receipt-company')) {
+    const previous = heading.style.whiteSpace
+    heading.style.whiteSpace = 'nowrap'
+    const available = heading.getBoundingClientRect().width - horizontalSpace(heading, win)
+    const required = textWidth(heading, doc), current = Number.parseFloat(win.getComputedStyle(heading).fontSize)
+    if (required > available + TOLERANCE) {
+      const size = Math.max(12, Math.floor(current * available / required * 98) / 100)
+      heading.style.fontSize = `${size}px`; adjusted++
+    }
+    if (textWidth(heading, doc) > available + TOLERANCE) heading.style.whiteSpace = previous
+  }
+  for (const label of root.querySelectorAll('.retail-meta-row > :first-child')) {
+    const previous = label.style.whiteSpace
+    label.style.whiteSpace = 'nowrap'
+    const available = label.getBoundingClientRect().width - horizontalSpace(label, win)
+    const required = textWidth(label, doc), current = Number.parseFloat(win.getComputedStyle(label).fontSize)
+    if (required > available + TOLERANCE) { label.style.fontSize = `${Math.max(MIN_FONT, Math.floor(current * available / required * 98) / 100)}px`; adjusted++ }
+    label.style.whiteSpace = previous
+  }
   // Keep a shared amount column, with room remaining for the labels. A huge
   // amount must not expand the grid beyond the receipt's printable width.
   for (const grid of root.querySelectorAll('.tpl-table .retail-totals, .tpl-table .retail-loyalty')) {

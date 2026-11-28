@@ -14,8 +14,8 @@
       <section :aria-label="t('Display content')">
         <h3>{{ t('Popup layers over adverts') }}</h3>
         <div class="dc-modes"><button v-for="mode in DISPLAY_MODES" :key="mode.value" class="btn btn-outline" :aria-pressed="draft.mode === mode.value" @click="switchMode(mode.value)"><Icon :name="mode.icon" :size="20" /> {{ t(mode.label) }}</button></div>
-        <p class="muted">{{ t('Adverts stay in the background. Sales appear automatically as a popup. Bank details, counter status and QR codes open as layers above it. Adverts hides the popups until the next sale update.') }}</p>
-        <p class="muted">{{ t('Opening the second display also opens a movable mini preview in the POS. Use the quick-switch bar on Sell to change layers without this editor.') }}</p>
+        <p class="muted">{{ t('Adverts stay in the background. Live sales and membership use the full customer screen. Bank details, counter status and QR codes open as compact popups above it. Adverts hides the foreground until the next sale update.') }}</p>
+        <p class="muted">{{ t('Opening the second display also opens a movable mini preview in the POS. Open the monitor icon in the blue header to switch screens without this editor.') }}</p>
       </section>
       <section v-if="draft.mode === 'closed'">
         <h3>{{ t('Counter closed') }}</h3>

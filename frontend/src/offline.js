@@ -4,6 +4,7 @@
 // Offline layer: IndexedDB cache for bootstrap + catalog, and a queue for
 // sales made while the network is down. No external dependencies.
 import { parseScaleBarcode } from './barcode'
+import { applyStockLevel } from './itemStock'
 
 const DB_NAME = 'esafepos'
 const DB_VERSION = 5
@@ -220,7 +221,7 @@ export async function patchCatalogStock(levels) {
       req.onsuccess = () => {
         const item = req.result
         if (!item) return
-        item.actual_qty = levels[code]
+        applyStockLevel(item, levels[code])
         store.put(item)
         written += 1
       }
@@ -246,7 +247,7 @@ export async function patchCatalogStockBy(deltas) {
       req.onsuccess = () => {
         const item = req.result
         if (!item || !item.is_stock_item) return
-        item.actual_qty = (Number(item.actual_qty) || 0) - deltas[code]
+        applyStockLevel(item, (Number(item.actual_qty) || 0) - deltas[code])
         store.put(item)
         written += 1
       }

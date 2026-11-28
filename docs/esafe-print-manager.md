@@ -31,7 +31,7 @@ New POS Profile fields:
 |---|---|
 | `esafepos_silent_printing` | Off; choose the native route |
 | `esafepos_auto_print_receipt` | Off; original receipt after successful checkout |
-| `esafepos_receipt_output` | `html`; built-in HTML, ERPNext PDF or compatible ESC/POS raw |
+| `esafepos_receipt_output` | `html`; built-in designer frozen as safe PDF, ERPNext PDF or compatible ESC/POS raw |
 | `esafepos_print_copies` | 1; validated 1–99 and checked against driver maximum |
 | `esafepos_document_paper` | A4; A4 or Letter |
 
@@ -64,7 +64,7 @@ Assignments are IndexedDB records scoped by ERP origin, browser profile/workstat
 | Kitchen/order tickets | No such dispatch workflow was found; no new ticket integration is claimed |
 | Images | Existing receipt logos/barcodes are embedded; labels retain raster-PDF output. There was no independent image dispatch workflow to replace |
 
-HTML embeds images/styles and uses installed system fonts with complex-script shaping; native rendering cannot fetch external assets or scripts. A logo that cannot be safely embedded produces an error. Qualify Windows Sinhala/Tamil fonts. Use HTML/PDF for Sinhala, Tamil and other complex scripts; ESC/POS raw is only for an encoding verified on the actual printer. Raw SDK options contain **copies only**; the existing byte renderer owns layout/cutting. ZPL/TSPL exports remain files; no new EPL or automatic command-language route is invented.
+Built-in receipts now render the validated self-contained HTML once in the POS into a fixed monochrome PDF before native dispatch. Automatic dimensions ignore old unverified width/margin settings; manual calibration is an explicit advanced choice. See [automatic fitting](receipt-right-edge-fit.md). Other HTML report outputs embed images/styles and use installed system fonts with complex-script shaping; native rendering cannot fetch external assets or scripts. A logo that cannot be safely embedded produces an error. Qualify Windows Sinhala/Tamil fonts. Use HTML/PDF for Sinhala, Tamil and other complex scripts; ESC/POS raw is only for an encoding verified on the actual printer. Raw SDK options contain **copies only**; the existing byte renderer owns layout/cutting. ZPL/TSPL exports remain files; no new EPL or automatic command-language route is invented.
 
 The existing server `print_receipt(open_drawer=...)` permission/byte path remains intact. The new local drawer controls use the separate authorization/intent path described in the [drawer guide](cash-drawer-controls.md). Before the drawer update there was no dedicated browser drawer-opening action; ordinary receipt rendering still defaults to no pulse. Esafe receipt rendering explicitly requests `open_drawer=0`; pairing, preview, recovery, tests and retries never add a pulse or request device permissions. If a site has a separate custom drawer workflow, qualify it separately before switching that site.
 

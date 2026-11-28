@@ -12,6 +12,7 @@ from frappe.utils import cint
 
 FIELDS = (
     "enable_buying",
+    "enable_item_stock_totals",
     "enable_regular_invoices",
     "enable_customer_balances",
     "enable_customer_payments",
@@ -34,6 +35,7 @@ FIELDS = (
 # opt-in until their site configuration and policy are complete.
 DEFAULTS = {
     "enable_buying": 1,
+    "enable_item_stock_totals": 0,
     "enable_regular_invoices": 1,
     "enable_customer_balances": 1,
     "enable_customer_payments": 1,
@@ -52,16 +54,8 @@ DEFAULTS = {
     "enable_customer_sales_progress": 0,
 }
 
-# These controls are staged until their workflows are connected. Keeping them
-# visible makes the roadmap and dependencies clear without advertising a toggle
-# that currently has no operational effect.
-PENDING = {
-    "enable_hr_integration",
-    "enable_attendance",
-    "enable_expense_claims",
-    "enable_day_salary",
-    "enable_commission_payroll",
-}
+# Reserved for future controls whose workflows have not been connected.
+PENDING = set()
 
 
 DEPENDENCIES = {
